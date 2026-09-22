@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Expenses\Tables;
 
 use App\Filament\Resources\Expenses\ExpenseResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Expense;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -123,7 +124,8 @@ class ExpensesTable
                     ->multiple()
                     ->relationship('emission', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
                 SelectFilter::make('expense_service_provider_id')
                     ->label('Prestador')
                     ->relationship('serviceProvider', 'name')

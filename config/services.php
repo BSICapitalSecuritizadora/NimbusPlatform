@@ -18,36 +18,36 @@ return [
         'key' => env('POSTMARK_API_KEY'),
     ],
 
-    'resend' => [
+    'resend'   => [
         'key' => env('RESEND_API_KEY'),
     ],
 
-    'ses' => [
-        'key' => env('AWS_ACCESS_KEY_ID'),
+    'ses'      => [
+        'key'    => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
-    'slack' => [
+    'slack'    => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
-            'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
+            'channel'              => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
 
-    'outlook' => [
-        'tenant_id' => env('OUTLOOK_TENANT_ID'),
-        'client_id' => env('OUTLOOK_CLIENT_ID'),
+    'outlook'  => [
+        'tenant_id'     => env('OUTLOOK_TENANT_ID'),
+        'client_id'     => env('OUTLOOK_CLIENT_ID'),
         'client_secret' => env('OUTLOOK_CLIENT_SECRET'),
-        'mailbox' => env('OUTLOOK_MAILBOX'),
-        'auth_mode' => env('OUTLOOK_MAIL_AUTH_MODE', 'smtp_oauth'),
+        'mailbox'       => env('OUTLOOK_MAILBOX'),
+        'auth_mode'     => env('OUTLOOK_MAIL_AUTH_MODE', 'smtp_oauth'),
     ],
 
-    'azure' => [
-        'client_id' => env('AZURE_CLIENT_ID'),
+    'azure'    => [
+        'client_id'     => env('AZURE_CLIENT_ID'),
         'client_secret' => env('AZURE_CLIENT_SECRET'),
-        'redirect' => env('AZURE_REDIRECT_URI'),
-        'tenant' => env('AZURE_TENANT_ID', 'common'),
+        'redirect'      => env('AZURE_REDIRECT_URI'),
+        'tenant'        => env('AZURE_TENANT_ID', 'common'),
     ],
 
     /*
@@ -66,14 +66,14 @@ return [
     | uma tentativa e mais três. Subir esse número alonga o job na mesma medida
     | e precisa ser conferido contra o `--timeout` do worker.
     */
-    'gemini' => [
-        'key' => env('GEMINI_API_KEY'),
-        'model' => env('GEMINI_MODEL', 'gemini-3.7-flash'),
-        'inline_max_bytes' => (int) env('GEMINI_INLINE_MAX_BYTES', 12 * 1024 * 1024),
-        'file_activation_timeout' => (int) env('GEMINI_FILE_ACTIVATION_TIMEOUT', 120),
+    'gemini'   => [
+        'key'                        => env('GEMINI_API_KEY'),
+        'model'                      => env('GEMINI_MODEL', 'gemini-3.8-flash'),
+        'inline_max_bytes'           => (int) env('GEMINI_INLINE_MAX_BYTES', 12 * 1024 * 1024),
+        'file_activation_timeout'    => (int) env('GEMINI_FILE_ACTIVATION_TIMEOUT', 120),
         'obligations_min_confidence' => (float) env('GEMINI_OBLIGATIONS_MIN_CONFIDENCE', 0.6),
-        'max_attempts' => (int) env('GEMINI_MAX_ATTEMPTS', 4),
-        'retry_base_seconds' => (int) env('GEMINI_RETRY_BASE_SECONDS', 5),
+        'max_attempts'               => (int) env('GEMINI_MAX_ATTEMPTS', 4),
+        'retry_base_seconds'         => (int) env('GEMINI_RETRY_BASE_SECONDS', 5),
     ],
 
     /*
@@ -87,8 +87,8 @@ return [
     | para forçá-lo pelo cliente. A exclusão por rota abaixo é o controle que a
     | aplicação consegue garantir sozinha.
     */
-    'clarity' => [
-        'id' => env('CLARITY_PROJECT_ID'),
+    'clarity'  => [
+        'id'              => env('CLARITY_PROJECT_ID'),
 
         'excluded_routes' => [
             // Canal de Ética: denúncias pressupõem anonimato; gravar a sessão de
@@ -120,11 +120,11 @@ return [
         ],
     ],
 
-    'portal' => [
+    'portal'   => [
         'url' => env('APP_PORTAL_URL', '/portal'),
     ],
 
-    'contact' => [
+    'contact'  => [
         'email' => env('CONTACT_EMAIL', 'contato@bsicapital.com.br'),
     ],
 

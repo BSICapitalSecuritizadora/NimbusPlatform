@@ -6,6 +6,7 @@ use App\Concerns\MoneyFormatter;
 use App\Enums\ContractInstallmentStatus;
 use App\Filament\Resources\ContractInstallments\ContractInstallmentResource;
 use App\Filament\Resources\Contracts\ContractResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Client;
 use App\Models\Construction;
 use App\Models\Contract;
@@ -208,7 +209,8 @@ class ContractInstallmentsTable
                 ->query(fn (Builder $query, array $data): Builder => $query->when(
                     $data['value'] ?? null,
                     fn (Builder $query, mixed $emissionId): Builder => $query->forEmission($emissionId),
-                )),
+                ))
+                ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
             SelectFilter::make('construction')
                 ->label('Empreendimento')
@@ -228,7 +230,8 @@ class ContractInstallmentsTable
                         'contract',
                         fn (Builder $contractQuery): Builder => $contractQuery->where('construction_id', $constructionId),
                     ),
-                )),
+                ))
+                ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
             SelectFilter::make('contract_id')
                 ->label('Contrato')

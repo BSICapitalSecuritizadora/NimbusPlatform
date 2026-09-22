@@ -299,13 +299,13 @@ class DeadlinesWidget extends Widget implements HasActions, HasSchemas
 
                 return [
                     Action::make('viewIssuance')
-                        ->label('View issuance')
+                        ->label(__('Ver emissão'))
                         ->icon('heroicon-o-building-office-2')
                         ->color('gray')
                         ->url(fn (): ?string => $canOpenEmission ? EmissionResource::getUrl('edit', ['record' => $obligation->emission_id]) : null)
                         ->visible(fn (): bool => $canOpenEmission),
                     Action::make('viewFull')
-                        ->label('View full obligation')
+                        ->label(__('Ver obrigação completa'))
                         ->icon('heroicon-o-arrow-top-right-on-square')
                         ->color('primary')
                         ->url(fn (): ?string => $canOpenEmission ? EmissionResource::getUrl('edit', ['record' => $obligation->emission_id, 'relation' => ObligationsRelationManager::class]) : null)

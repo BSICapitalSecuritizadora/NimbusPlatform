@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\EmissionMonthlyReportNotes\Tables;
 
 use App\Filament\Resources\EmissionMonthlyReportNotes\EmissionMonthlyReportNoteResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\EmissionMonthlyReportNote;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -106,7 +107,8 @@ class EmissionMonthlyReportNotesTable
                             ->label('Emissão')
                             ->relationship('emission', 'name')
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                         SelectFilter::make('reference_month')
                             ->label('Competência')

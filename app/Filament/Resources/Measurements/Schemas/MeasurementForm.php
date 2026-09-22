@@ -28,11 +28,11 @@ class MeasurementForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
-            ->columns(['default' => 1, 'lg' => 12])
             ->components([
                 Section::make('Dados da Medição')
                     ->description('Identifique a operação e confirme a competência do envio.')
-                    ->columnSpan(['default' => 12, 'lg' => 5])
+                    ->columnSpanFull()
+                    ->columns(['default' => 1, 'md' => 2])
                     ->schema([
                         Select::make('operation_id')
                             ->label('Operação')
@@ -94,11 +94,11 @@ class MeasurementForm
 
                 Section::make('Arquivo por Empreendimento')
                     ->description('Associe a medição prevista e envie o arquivo correspondente para cada empreendimento.')
-                    ->columnSpan(['default' => 12, 'lg' => 7])
+                    ->columnSpanFull()
                     ->schema([
                         Placeholder::make('empty_operation_notice')
                             ->hiddenLabel()
-                            ->content(new HtmlString('<div class="flex items-center gap-3 p-4 text-xs leading-relaxed text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200/80 dark:border-slate-800"><svg class="w-5 h-5 text-slate-400 dark:text-slate-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg><span>Selecione uma operação no painel à esquerda para listar os empreendimentos vinculados e enviar os respectivos arquivos de medição.</span></div>'))
+                            ->content(new HtmlString('<div class="flex flex-col items-center gap-1.5 px-6 py-10 text-center"><svg class="w-8 h-8 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke-width="1.25" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg><p class="text-sm font-semibold text-slate-600 dark:text-slate-300">Nenhuma operação selecionada</p><p class="max-w-md text-xs leading-relaxed text-slate-400 dark:text-slate-500">Selecione uma operação acima para carregar os empreendimentos vinculados e enviar os respectivos arquivos de medição.</p></div>'))
                             ->visible(fn (Get $get): bool => blank($get('operation_id'))),
 
                         Repeater::make('assets')
@@ -109,7 +109,7 @@ class MeasurementForm
                             ->deleteAction(fn (Action $action) => $action->tooltip('Remover empreendimento deste envio'))
                             ->reorderable(false)
                             ->minItems(1)
-                            ->columns(1)
+                            ->columns(['default' => 1, 'md' => 2])
                             ->itemLabel(fn (array $state): ?string => filled($state['plan_set_id'] ?? null)
                                 ? static::planSetLabel($state['plan_set_id'])
                                 : 'Empreendimento')
@@ -149,6 +149,7 @@ class MeasurementForm
 
                                 FileUpload::make('storage_path')
                                     ->label('Arquivo da Medição')
+                                    ->columnSpanFull()
                                     ->disk(DocumentStorageService::privateDisk())
                                     ->directory(DocumentStorageService::PRIVATE_PREFIX.'/measurements/assets')
                                     ->acceptedFileTypes((array) config('uploads.measurement.allowed_mimes', ['application/pdf']))

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Filament\Widgets\Dashboard\DeadlinesWidget;
 use App\Filament\Widgets\Dashboard\ExecutiveIndicatorsWidget;
 use App\Filament\Widgets\Dashboard\MeasurementCockpit;
@@ -145,11 +146,13 @@ class Dashboard extends BaseDashboard
                                 ->label('Operação')
                                 ->placeholder('Todas')
                                 ->searchable()
+                                ->extraAttributes(AnchoredFilterDropdown::fieldAttributes())
                                 ->options(fn (): array => $viewer instanceof User ? $readModel->operationOptions($viewer) : []),
                             Select::make('emission_id')
                                 ->label('Emissão')
                                 ->placeholder('Todas')
                                 ->searchable()
+                                ->extraAttributes(AnchoredFilterDropdown::fieldAttributes())
                                 ->options(fn (): array => $viewer instanceof User ? $readModel->emissionOptions($viewer) : []),
                             Select::make('responsible_user_id')
                                 ->label('Responsável')

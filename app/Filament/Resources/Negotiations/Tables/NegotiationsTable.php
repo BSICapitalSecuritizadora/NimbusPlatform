@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Negotiations\Tables;
 
 use App\Filament\Resources\Negotiations\NegotiationResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Emission;
 use App\Models\Negotiation;
 use App\Services\Reports\ContractNegotiationAggregates;
@@ -162,13 +163,15 @@ class NegotiationsTable
                     ->label('Emissão')
                     ->relationship('emission', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                 SelectFilter::make('construction_id')
                     ->label('Empreendimento')
                     ->relationship('construction', 'development_name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                 SelectFilter::make('reference_month')
                     ->label('Competência')

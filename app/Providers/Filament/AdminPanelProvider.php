@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Enums\AccessPermission;
 use App\Filament\Pages\Auth\CustomLogin;
 use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\MyAccount;
 use App\Filament\Pages\Nimbus\NotificationSettings;
 use App\Filament\Resources\Activities\ActivityResource;
 use App\Filament\Resources\DocumentDownloads\DocumentDownloadResource;
@@ -22,11 +23,13 @@ use App\Filament\Resources\ReminderLogs\ReminderLogResource;
 use App\Http\Middleware\EnsureTwoFactorEnabled;
 use App\Http\Middleware\EnsureUserIsApproved;
 use App\Http\Middleware\SetSecurityHeaders;
+use App\Models\UserPreference;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\MenuItem;
 use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
 use Filament\Panel;
@@ -34,6 +37,7 @@ use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Platform;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Table;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
@@ -73,9 +77,24 @@ class AdminPanelProvider extends PanelProvider
                 Platform::Other => null,
             })
             ->viteTheme('resources/css/filament/admin/theme.css')
+            ->userMenuItems([
+                MenuItem::make()
+                    ->label('Minha Conta')
+                    ->icon(Heroicon::OutlinedUserCircle)
+                    ->url(fn (): string => MyAccount::getUrl(panel: 'admin'))
+                    ->sort(1),
+            ])
             ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,
                 fn () => view('filament.topbar.user-context'),
+            )
+            ->renderHook(
+                PanelsRenderHook::HEAD_START,
+                fn (): string => view('filament.account.preference-sync-head')->render(),
+            )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn (): string => view('filament.account.preference-sync-body')->render(),
             )
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
@@ -228,6 +247,12 @@ class AdminPanelProvider extends PanelProvider
     {
         DateTimePicker::configureUsing(function (DateTimePicker $component): void {
             $component->native(false);
+        });
+
+        Table::configureUsing(function (Table $table): void {
+            $table
+                ->paginationPageOptions(fn (): ?array => UserPreference::globalTablePageOptions())
+                ->defaultPaginationPageOption(fn (): ?int => UserPreference::globalDefaultTablePerPage($table));
         });
     }
 }

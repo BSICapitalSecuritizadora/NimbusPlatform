@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Account\ThemePreferenceController;
 use App\Http\Controllers\Admin\AdminDocumentDownloadController;
 use App\Http\Controllers\Admin\AdminDocumentPreviewController;
 use App\Http\Controllers\Admin\ClientTemplateDownloadController;
@@ -49,6 +50,11 @@ use Illuminate\Support\Str;
 // Microsoft Azure Auth
 Route::get('/auth/azure/redirect', [AzureController::class, 'redirect'])->name('auth.azure.redirect');
 Route::get('/auth/azure/callback', [AzureController::class, 'callback'])->name('auth.azure.callback');
+
+// Self-service account preferences (theme quick-switcher sync).
+Route::post('/account/preferences/theme', ThemePreferenceController::class)
+    ->middleware(['auth', 'throttle:60,1'])
+    ->name('account.preferences.theme');
 
 Route::get('/', [HomeController::class, 'index'])->name('site.home');
 

@@ -6,6 +6,7 @@ use App\Enums\SalesBoardCycleStatus;
 use App\Enums\SalesBoardStaleImpact;
 use App\Filament\Resources\SalesBoardCycles\Actions\CheckSalesBoardCycleStaleAction;
 use App\Filament\Resources\SalesBoardCycles\SalesBoardCycleResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\SalesBoardCycle;
 use App\Support\SalesBoards\SalesBoardCycleNextAction;
 use Filament\Actions\ActionGroup;
@@ -128,13 +129,15 @@ class SalesBoardCyclesTable
                     ->label('Emissão')
                     ->relationship('emission', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                 SelectFilter::make('construction_id')
                     ->label('Empreendimento')
                     ->relationship('construction', 'development_name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                 SelectFilter::make('reference_month')
                     ->label('Competência')

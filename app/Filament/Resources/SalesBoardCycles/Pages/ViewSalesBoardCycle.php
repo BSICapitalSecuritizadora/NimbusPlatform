@@ -13,6 +13,7 @@ use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardPublication;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ViewRecord;
+use Illuminate\Contracts\View\View;
 
 class ViewSalesBoardCycle extends ViewRecord
 {
@@ -23,8 +24,15 @@ class ViewSalesBoardCycle extends ViewRecord
     protected static ?string $breadcrumb = 'Visualizar';
 
     protected array $extraBodyAttributes = [
-        'class' => 'bsi-fund-form-page bsi-sales-board-cycle-view-page',
+        'class' => 'bsi-sales-board-cycle-view-page',
     ];
+
+    public function getHeader(): ?View
+    {
+        return view('filament.resources.sales-board-cycles.pages.cycle-header', [
+            'record' => $this->getRecord(),
+        ]);
+    }
 
     public function getSubheading(): ?string
     {
@@ -46,8 +54,8 @@ class ViewSalesBoardCycle extends ViewRecord
             OpenManagementReviewAction::make(),
             $this->viewPublishedBoardAction(),
             $this->viewManagementReviewAction(),
-            CheckSalesBoardCycleStaleAction::make(),
-            RecalculateSalesBoardCycleAction::make(),
+            CheckSalesBoardCycleStaleAction::make()->outlined(),
+            RecalculateSalesBoardCycleAction::make()->color('gray')->link(),
         ];
     }
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\UserPreference;
 use App\Services\Security\PiiPseudonymizer;
 use Filament\Facades\Filament;
 use Illuminate\Http\RedirectResponse;
@@ -84,7 +85,7 @@ class AzureController extends Controller
         request()->session()->put('auth.microsoft_sso', $azureMfaPerformed);
 
         // M-12: validate intended URL is on the same host to prevent open redirect
-        $intended = request()->session()->pull('url.intended', '/admin');
+        $intended = request()->session()->pull('url.intended', UserPreference::homeUrlFor($user));
         $appHost = parse_url((string) config('app.url'), PHP_URL_HOST);
         $intendedHost = parse_url((string) $intended, PHP_URL_HOST);
         $safeIntended = (! $intendedHost || $intendedHost === $appHost) ? $intended : '/admin';

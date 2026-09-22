@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Funds\Tables;
 
 use App\Filament\Resources\Funds\FundResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Fund;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -163,7 +164,8 @@ class FundsTable
                     ->label('Operação')
                     ->relationship('emission', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
                 SelectFilter::make('fund_type_id')
                     ->label('Tipo de Fundo')
                     ->relationship('fundType', 'name')

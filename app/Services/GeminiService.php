@@ -1052,7 +1052,8 @@ PROMPT;
         return self::BASE_URL.'models/'.$this->model().':generateContent';
     }
 
-    private function model(): string
+    /** Modelo configurado — público para que quem grava proveniência registre com qual modelo extraiu. */
+    public function model(): string
     {
         return (string) config('services.gemini.model', 'gemini-3.7-flash');
     }

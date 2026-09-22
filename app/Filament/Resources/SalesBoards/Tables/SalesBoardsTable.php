@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\SalesBoards\Tables;
 
 use App\Filament\Resources\SalesBoards\SalesBoardResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\SalesBoard;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -122,13 +123,15 @@ class SalesBoardsTable
                     ->label('Emissão')
                     ->relationship('emission', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                 SelectFilter::make('construction_id')
                     ->label('Empreendimento')
                     ->relationship('construction', 'development_name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                 SelectFilter::make('reference_month')
                     ->label('Competência')

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operations\Tables;
 
 use App\Enums\OperationStatus;
 use App\Filament\Resources\Operations\OperationResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Operation;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -163,7 +164,8 @@ class OperationsTable
                                     ),
                             )
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
                     ]
                     : []
             )

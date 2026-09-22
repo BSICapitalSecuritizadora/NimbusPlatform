@@ -805,3 +805,26 @@ it('handles empty states gracefully across chart widgets when no data is present
     expect($priorityWidget->instance()->isEmpty())->toBeTrue();
     $priorityWidget->assertSee('Nenhuma pendência por prioridade');
 });
+
+it('localizes quick view modal footer actions in operational table widget', function () {
+    $emission = Emission::factory()->active()->create(['name' => 'CRI Nimbus Corporate']);
+    $obligation = makeDashboardObligation('a_vencer', '2026-06-25', $emission, [
+        'title' => 'Obrigação Teste Localização',
+    ]);
+
+    $this->actingAs(makeAdminUser());
+
+    $component = Livewire::test(ObligationOperationalTableWidget::class);
+    $table = $component->instance()->getTable();
+    $action = $table->getAction('quickView');
+
+    expect($action)->not->toBeNull()
+        ->and($action->getModalCancelActionLabel())->toBe('Fechar');
+
+    $footerActions = $action->record($obligation)->getExtraModalFooterActions();
+    $labels = collect($footerActions)->mapWithKeys(fn ($a) => [$a->getName() => $a->getLabel()])->all();
+
+    expect($labels)->toBe([
+        'viewFull' => 'Ver obrigação completa',
+    ]);
+});

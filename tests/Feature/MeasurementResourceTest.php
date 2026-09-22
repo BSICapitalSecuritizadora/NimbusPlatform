@@ -450,7 +450,7 @@ it('shows payment to the payment manager and finalize to the finalizer', functio
         ->assertActionHidden('finalize');
 });
 
-it('renders the create measurement page with custom subheading and two-panel sections', function () {
+it('renders the create measurement page with custom subheading and stacked sections', function () {
     $this->actingAs(makeMeasurementAdminUser());
 
     Livewire::test(CreateMeasurement::class)
@@ -460,7 +460,8 @@ it('renders the create measurement page with custom subheading and two-panel sec
         ->assertSee('Identifique a operação e confirme a competência do envio.')
         ->assertSee('Arquivo por Empreendimento')
         ->assertSee('Associe a medição prevista e envie o arquivo correspondente para cada empreendimento.')
-        ->assertSee('Selecione uma operação no painel à esquerda para listar os empreendimentos vinculados')
+        ->assertSee('Nenhuma operação selecionada')
+        ->assertSee('Selecione uma operação acima para carregar os empreendimentos vinculados')
         ->assertFormFieldExists('operation_id')
         ->assertFormFieldExists('reference_month')
         ->assertFormFieldExists('notes');

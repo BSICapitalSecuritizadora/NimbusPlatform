@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Documents\Tables;
 
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Document;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -284,7 +285,8 @@ class DocumentsTable
                     ->label('Série')
                     ->relationship('emissions', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                 Filter::make('rascunho')
                     ->label('Rascunho')

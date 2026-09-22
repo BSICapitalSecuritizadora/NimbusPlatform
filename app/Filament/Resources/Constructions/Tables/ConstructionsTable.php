@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Constructions\Tables;
 
 use App\Filament\Resources\Constructions\ConstructionResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Construction;
 use App\Models\ExpenseServiceProvider;
 use Filament\Actions\Action;
@@ -133,7 +134,8 @@ class ConstructionsTable
                             ->label('Emissão')
                             ->relationship('emission', 'name')
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                         SelectFilter::make('development_name')
                             ->label('Empreendimento')
@@ -142,7 +144,8 @@ class ConstructionsTable
                                 ->pluck('development_name', 'development_name')
                                 ->all())
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                         SelectFilter::make('measurement_company_id')
                             ->label('Empresa de medição')
@@ -153,7 +156,8 @@ class ConstructionsTable
                                     ->whereHas('type', fn (Builder $query): Builder => $query->where('name', Construction::MEASUREMENT_COMPANY_TYPE_NAME)),
                             )
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                         SelectFilter::make('state')
                             ->label('Estado')

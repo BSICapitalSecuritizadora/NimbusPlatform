@@ -565,8 +565,9 @@
                                             }
                                         }
                                     }"
+                                    class="fi-ta-filter-col-group flex items-center gap-2 shrink-0"
                                 >
-                                <span x-ref="filtersDropdownContainer" x-on:mousedown="closeSiblingPanel('filters')">
+                                <span x-ref="filtersDropdownContainer" x-on:mousedown="closeSiblingPanel('filters')" class="inline-flex items-center shrink-0">
                                 @if ($hasFiltersDialog)
                                     @if (($filtersLayout === FiltersLayout::Modal) || $filtersTriggerAction->isModalSlideOver())
                                         @php
@@ -662,7 +663,7 @@
 
                                 {{ FilamentView::renderHook(TablesRenderHook::TOOLBAR_COLUMN_MANAGER_TRIGGER_BEFORE, scopes: static::class) }}
 
-                                <span x-ref="columnsDropdownContainer" x-on:mousedown="closeSiblingPanel('columns')">
+                                <span x-ref="columnsDropdownContainer" x-on:mousedown="closeSiblingPanel('columns')" class="inline-flex items-center shrink-0">
                                 @if ($hasColumnManager)
                                     @php
                                         $columnManagerMaxHeight = $getColumnManagerMaxHeight();

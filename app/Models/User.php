@@ -200,6 +200,14 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         return $this->hasOne(ProposalRepresentative::class);
     }
 
+    /**
+     * @return HasOne<UserPreference, $this>
+     */
+    public function preferences(): HasOne
+    {
+        return $this->hasOne(UserPreference::class);
+    }
+
     public function invitedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'invited_by');

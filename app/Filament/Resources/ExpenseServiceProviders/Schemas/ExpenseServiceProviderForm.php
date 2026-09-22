@@ -96,7 +96,7 @@ class ExpenseServiceProviderForm
                 ->stripCharacters(['.', '/', '-'])
                 ->required()
                 ->rule('digits:14')
-                ->columnSpan([
+                ->columnSpan($lockServiceProviderType ? ['default' => 'full'] : [
                     'default' => 1,
                     'sm' => 5,
                     'md' => 5,

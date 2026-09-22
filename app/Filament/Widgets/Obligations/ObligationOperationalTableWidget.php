@@ -8,6 +8,7 @@ use App\Filament\Exports\ObligationExporter;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationsRelationManager;
 use App\Filament\Resources\Emissions\Schemas\ObligationFormFields;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Obligation;
 use App\Services\Obligations\ObligationDashboardData;
 use Filament\Actions\Action;
@@ -148,7 +149,8 @@ class ObligationOperationalTableWidget extends TableWidget
                 ->label('Emissão')
                 ->relationship('emission', 'name')
                 ->searchable()
-                ->preload(),
+                ->preload()
+                ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
             SelectFilter::make('status')
                 ->label('Status')
                 ->options(Obligation::STATUS_OPTIONS),
@@ -253,9 +255,9 @@ class ObligationOperationalTableWidget extends TableWidget
                         'canViewEvidence' => $canViewEvidence,
                         'canViewComments' => $canViewComments,
                     ]))
-                    ->extraModalFooterActions(fn (Obligation $record): array => [
+                    ->extraModalFooterActions(fn (?Obligation $record): array => $record ? [
                         Action::make('viewFull')
-                            ->label('Ver detalhes completos')
+                            ->label(__('Ver obrigação completa'))
                             ->icon('heroicon-o-arrow-top-right-on-square')
                             ->color('primary')
                             ->url(fn (): ?string => $canOpenEmission ? EmissionResource::getUrl('edit', [
@@ -263,7 +265,7 @@ class ObligationOperationalTableWidget extends TableWidget
                                 'relation' => ObligationsRelationManager::class,
                             ]) : null)
                             ->visible(fn (): bool => (bool) $canOpenEmission),
-                    ]),
+                    ] : []),
             ])
             ->headerActions([
                 ExportAction::make()

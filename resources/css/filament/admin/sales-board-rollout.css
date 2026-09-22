@@ -1,0 +1,415 @@
+.bsi-sales-board-rollout-manage-page {
+    --rollout-surface: #fbfaf8;
+    --rollout-inset: #f8f7f4;
+    --rollout-hover: #efede9;
+    --rollout-text: #16313b;
+    --rollout-muted: #52646b;
+    --rollout-border: rgb(9 27 35 / 0.13);
+    --rollout-gold: #a06e28;
+    --rollout-gold-soft: #ba8b46;
+}
+
+.dark .bsi-sales-board-rollout-manage-page {
+    --rollout-surface: #091b23;
+    --rollout-inset: #0d2530;
+    --rollout-hover: #12313b;
+    --rollout-text: #e6e4e4;
+    --rollout-muted: #a4b7bf;
+    --rollout-border: rgb(164 183 191 / 0.16);
+    background: #06151c;
+}
+
+.bsi-sales-board-rollout-manage-page .fi-page,
+.bsi-sales-board-rollout-manage-page .fi-page-main,
+.bsi-sales-board-rollout-manage-page .fi-page-content {
+    min-width: 0;
+}
+
+.bsi-sales-board-rollout-manage-page .fi-page,
+.bsi-sales-board-rollout-manage-page .fi-page-content {
+    gap: 1.25rem;
+}
+
+.bsi-sales-board-rollout-manage-page ::selection {
+    background: rgb(160 110 40 / 0.35);
+}
+
+/* ── Cabeçalho: título, badge de modo e contexto da emissão ── */
+.bsi-sales-board-rollout-manage-page .fi-header {
+    align-items: start;
+    padding: 1.25rem;
+    border: 1px solid var(--rollout-border);
+    border-radius: 12px;
+    background: var(--rollout-surface);
+    box-shadow: none;
+}
+
+.bsi-sales-board-rollout-manage-page .fi-header > div:first-child {
+    min-width: 0;
+    flex: 1;
+}
+
+.bsi-sales-board-rollout-manage-page .fi-header-heading {
+    color: var(--rollout-text);
+    font-size: 1.375rem;
+    line-height: 1.4;
+    letter-spacing: -0.02em;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.625rem 1rem;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-title .fi-badge {
+    letter-spacing: normal;
+    font-weight: 500;
+}
+
+.bsi-sales-board-rollout-manage-page .fi-header-subheading {
+    display: grid;
+    gap: 0.375rem;
+    max-width: 80ch;
+    color: var(--rollout-muted);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-context {
+    color: var(--rollout-text);
+    font-size: 0.875rem;
+}
+
+.bsi-sales-board-rollout-manage-page .fi-breadcrumbs-item-label {
+    color: var(--rollout-muted);
+    font-size: 0.75rem;
+}
+
+/* ── Seções: superfície única, sem caixas aninhadas pesadas ── */
+.bsi-sales-board-rollout-manage-page .fi-section {
+    background: var(--rollout-surface);
+    border: 1px solid var(--rollout-border);
+    border-radius: 12px;
+    box-shadow: none;
+}
+
+.bsi-sales-board-rollout-manage-page .fi-section-header {
+    padding: 1.125rem 1.25rem 0.75rem;
+    background: transparent;
+    border: 0;
+}
+
+.bsi-sales-board-rollout-manage-page .fi-section-content-ctn {
+    border: 0;
+}
+
+.bsi-sales-board-rollout-manage-page .fi-section-content {
+    padding: 0.25rem 1.25rem 1.25rem;
+}
+
+.bsi-sales-board-rollout-manage-page .fi-section-header-heading {
+    color: var(--rollout-text);
+    font-size: 0.9375rem;
+    font-weight: 600;
+}
+
+.bsi-sales-board-rollout-manage-page .fi-section-header-description {
+    color: var(--rollout-muted);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+}
+
+.bsi-sales-board-rollout-manage-page .fi-section-header > .fi-icon {
+    color: var(--rollout-muted);
+    width: 1.125rem;
+    height: 1.125rem;
+}
+
+/* ── Resumo executivo ── */
+.bsi-sales-board-rollout-manage-page .bsi-rollout-summary dt {
+    color: var(--rollout-muted);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-summary dd {
+    color: var(--rollout-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-summary dd .bsi-rollout-secondary {
+    color: var(--rollout-muted);
+    font-weight: 400;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-dot {
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    flex-shrink: 0;
+    border-radius: 9999px;
+}
+
+/* ── Próxima ação: integrada ao card, com filete dourado ── */
+.bsi-sales-board-rollout-manage-page .bsi-rollout-next-action [data-sales-board-next-action] {
+    background: var(--rollout-inset);
+    border: 1px solid var(--rollout-border);
+    border-inline-start: 3px solid var(--rollout-gold);
+    border-radius: 10px;
+    box-shadow: none;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-next-action [data-sales-board-next-action] > div > div > p:first-child {
+    color: var(--rollout-muted);
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-next-action [data-sales-board-next-action] > div > div > p:nth-child(2) {
+    color: var(--rollout-text);
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-next-action [data-sales-board-next-action] :is(p, li) {
+    color: var(--rollout-muted);
+}
+
+/* Notas neutras (sem o cinza quente do tema) */
+.bsi-sales-board-rollout-manage-page .bsi-rollout-note {
+    background: rgb(164 183 191 / 0.08);
+    border: 1px solid var(--rollout-border);
+    color: var(--rollout-muted);
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-note .font-medium {
+    color: var(--rollout-text);
+}
+
+/* Painéis internos discretos: impacto, linhas da comparação */
+.bsi-sales-board-rollout-manage-page .bsi-rollout-inset {
+    background: transparent;
+    border: 1px solid var(--rollout-border);
+    border-radius: 10px;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-inset > p:first-child {
+    color: var(--rollout-muted);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-inset > p:nth-child(2) {
+    color: var(--rollout-text);
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-row {
+    background: transparent;
+    border-radius: 10px;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-row-idle {
+    border-color: var(--rollout-border);
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-row > div:first-child > p:first-child {
+    color: var(--rollout-text);
+}
+
+/* ── Hierarquia de ações ── */
+.bsi-sales-board-rollout-manage-page :is(.bsi-rollout-mode-actions, .bsi-rollout-empty-action, .bsi-rollout-gate-actions) .fi-btn {
+    min-height: 2.5rem;
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    box-shadow: none;
+}
+
+.bsi-sales-board-rollout-manage-page :is(.bsi-rollout-mode-actions, .bsi-rollout-empty-action) .fi-btn.fi-color-primary {
+    background: #a06e28;
+    color: #fff;
+}
+
+.bsi-sales-board-rollout-manage-page :is(.bsi-rollout-mode-actions, .bsi-rollout-empty-action) .fi-btn.fi-color-primary:hover:not(:disabled) {
+    background: #8b5e21;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-recipients .fi-btn.fi-color-gray,
+.bsi-sales-board-rollout-manage-page .bsi-rollout-draft-actions .fi-btn.fi-color-gray {
+    border: 1px solid rgb(160 110 40 / 0.45);
+    background: transparent;
+    color: var(--rollout-text);
+    box-shadow: none;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-recipients .fi-btn.fi-color-gray:hover:not(:disabled),
+.bsi-sales-board-rollout-manage-page .bsi-rollout-draft-actions .fi-btn.fi-color-gray:hover:not(:disabled) {
+    background: var(--rollout-hover);
+    border-color: rgb(160 110 40 / 0.7);
+    color: var(--rollout-text);
+}
+
+.bsi-sales-board-rollout-manage-page :is(.fi-btn, .fi-link, .fi-icon-btn):focus-visible {
+    outline: 2px solid var(--rollout-gold-soft);
+    outline-offset: 2px;
+}
+
+/* ── Estado vazio da homologação ── */
+.bsi-sales-board-rollout-manage-page .bsi-rollout-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 46rem;
+    margin-inline: auto;
+    padding-block: 1.5rem 0.5rem;
+    text-align: center;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-empty-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid var(--rollout-border);
+    border-radius: 9999px;
+    background: var(--rollout-inset);
+    color: var(--rollout-gold-soft);
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-empty-icon .fi-icon {
+    width: 1.375rem;
+    height: 1.375rem;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-empty-title {
+    margin-top: 0.875rem;
+    color: var(--rollout-text);
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-empty-text {
+    margin-top: 0.5rem;
+    max-width: 60ch;
+    color: var(--rollout-muted);
+    font-size: 0.8125rem;
+    line-height: 1.6;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-empty-action {
+    margin-top: 1.125rem;
+}
+
+/* ── Responsáveis: duas colunas com divisor, sem subcards ── */
+.bsi-sales-board-rollout-manage-page .bsi-rollout-recipients-grid {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-recipient + .bsi-rollout-recipient {
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rollout-border);
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-recipient-label {
+    color: var(--rollout-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-recipient-description {
+    margin-top: 0.25rem;
+    color: var(--rollout-muted);
+    font-size: 0.75rem;
+    line-height: 1.5;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-recipient-list {
+    color: var(--rollout-text);
+}
+
+@media (min-width: 640px) {
+    .bsi-sales-board-rollout-manage-page .bsi-rollout-recipients-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 0 2rem;
+    }
+
+    .bsi-sales-board-rollout-manage-page .bsi-rollout-recipient + .bsi-rollout-recipient {
+        padding-top: 0;
+        padding-inline-start: 2rem;
+        border-top: 0;
+        border-inline-start: 1px solid var(--rollout-border);
+    }
+}
+
+/* ── Comparação e portão: texto sobre o petróleo ── */
+.bsi-sales-board-rollout-manage-page .bsi-rollout-comparison table thead {
+    border-color: var(--rollout-border);
+    color: var(--rollout-muted);
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-comparison table tbody tr {
+    border-color: var(--rollout-border);
+    color: var(--rollout-text);
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-comparison .fi-ta-content-ctn,
+.bsi-sales-board-rollout-manage-page .bsi-rollout-comparison .overflow-x-auto {
+    scrollbar-width: thin;
+    scrollbar-color: var(--rollout-border) transparent;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-gate li > span:last-child {
+    color: var(--rollout-text);
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-gate li > span:last-child > span {
+    color: var(--rollout-muted);
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-gate-actions > p {
+    color: var(--rollout-text);
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-history li > span {
+    color: var(--rollout-muted);
+    overflow-wrap: anywhere;
+}
+
+.bsi-sales-board-rollout-manage-page .bsi-rollout-history li > p {
+    color: var(--rollout-text);
+    overflow-wrap: anywhere;
+}
+
+/* Badge de modo discreta no cabeçalho */
+.dark .bsi-sales-board-rollout-manage-page .bsi-rollout-title .fi-badge.fi-color-gray {
+    color: #c5d6dd;
+    background: rgb(164 183 191 / 0.1);
+    --tw-ring-color: rgb(164 183 191 / 0.18);
+}
+
+@media (max-width: 639px) {
+    .bsi-sales-board-rollout-manage-page .fi-header {
+        padding: 1rem;
+    }
+
+    .bsi-sales-board-rollout-manage-page .fi-section-header,
+    .bsi-sales-board-rollout-manage-page .fi-section-content {
+        padding-inline: 1rem;
+    }
+
+    .bsi-sales-board-rollout-manage-page :is(.bsi-rollout-mode-actions, .bsi-rollout-empty-action, .bsi-rollout-gate-actions) .fi-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .bsi-sales-board-rollout-manage-page .bsi-rollout-empty {
+        padding-block: 1rem 0.25rem;
+    }
+}

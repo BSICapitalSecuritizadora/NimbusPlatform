@@ -20,6 +20,7 @@ use App\Models\ProposalCompany;
 use App\Models\ProposalContact;
 use App\Models\ProposalRepresentative;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Filament\Actions\Action;
 use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Livewire\Livewire;
@@ -467,6 +468,46 @@ it('renders measurement filters in a full-width horizontal panel with active bad
         ->assertSet('filters', [])
         ->assertDontSee('filtro ativo')
         ->assertDontSee('Limpar filtros');
+});
+
+it('renders obligation quick view modal completely in Portuguese', function () {
+    $user = makeAdminUser();
+    $user->assignRole('super-admin');
+    $emission = Emission::factory()->active()->create([
+        'name' => 'CRI Nimbus Corporate',
+    ]);
+    $obligation = Obligation::factory()->for($emission)->create([
+        'title' => 'Entrega do relatório trimestral',
+        'status' => 'a_vencer',
+        'due_date' => today()->addDays(2),
+    ]);
+
+    $this->actingAs($user);
+
+    $component = Livewire::test(DeadlinesWidget::class)
+        ->mountAction('quickView', ['record' => $obligation->id])
+        ->assertActionMounted('quickView');
+
+    /** @var Action $action */
+    $action = $component->instance()->getMountedAction();
+    expect($action)->not->toBeNull()
+        ->and($action->getModalCancelActionLabel())->toBe('Fechar');
+
+    $footerActions = $action->getExtraModalFooterActions();
+    $labels = collect($footerActions)->mapWithKeys(fn ($a) => [$a->getName() => $a->getLabel()])->all();
+
+    expect($labels)->toBe([
+        'viewIssuance' => 'Ver emissão',
+        'viewFull' => 'Ver obrigação completa',
+    ]);
+
+    $modalContent = (string) $action->getModalContent();
+    expect($modalContent)->toContain('Entrega do relatório trimestral')
+        ->and($modalContent)->toContain('CRI Nimbus Corporate')
+        ->and($modalContent)->toContain('Responsável')
+        ->and($modalContent)->toContain('Vencimento')
+        ->and($modalContent)->not->toContain('View issuance')
+        ->and($modalContent)->not->toContain('View full obligation');
 });
 
 function createCockpitProposal(

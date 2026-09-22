@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Contracts\Tables;
 use App\Concerns\MoneyFormatter;
 use App\Enums\ContractStatus;
 use App\Filament\Resources\Contracts\ContractResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Client;
 use App\Models\Construction;
 use App\Models\Contract;
@@ -153,7 +154,8 @@ class ContractsTable
                     ->query(fn (Builder $query, array $data): Builder => $query->when(
                         $data['value'] ?? null,
                         fn (Builder $query, mixed $emissionId): Builder => $query->forEmission($emissionId),
-                    )),
+                    ))
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                 SelectFilter::make('construction_id')
                     ->label('Empreendimento')
@@ -166,7 +168,8 @@ class ContractsTable
                         ->pluck('development_name', 'id')
                         ->all())
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                 SelectFilter::make('status')
                     ->label('Status')

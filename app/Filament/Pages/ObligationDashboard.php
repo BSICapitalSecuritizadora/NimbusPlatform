@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Enums\AccessPermission;
 use App\Enums\ObligationFrequency;
 use App\Filament\Resources\Emissions\Schemas\ObligationFormFields;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Filament\Widgets\Obligations\ObligationEvidenceOverviewStatsWidget;
 use App\Filament\Widgets\Obligations\ObligationOperationalTableWidget;
 use App\Filament\Widgets\Obligations\ObligationOverdueAgingChartWidget;
@@ -121,6 +122,7 @@ class ObligationDashboard extends Dashboard
                 ->label('Emissão')
                 ->placeholder('Todas')
                 ->searchable()
+                ->extraAttributes(AnchoredFilterDropdown::fieldAttributes())
                 ->options(fn (): array => Emission::query()
                     ->whereHas('obligations')
                     ->orderBy('name')

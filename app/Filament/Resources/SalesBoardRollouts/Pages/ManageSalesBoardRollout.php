@@ -27,6 +27,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 use Filament\Resources\Pages\Page;
 use Filament\Support\Enums\Width;
+use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Locked;
 
 /**
@@ -54,7 +55,7 @@ class ManageSalesBoardRollout extends Page
     protected static ?string $breadcrumb = 'Rollout';
 
     protected array $extraBodyAttributes = [
-        'class' => 'bsi-fund-form-page bsi-sales-board-rollout-manage-page',
+        'class' => 'bsi-sales-board-rollout-manage-page',
     ];
 
     /**
@@ -84,17 +85,22 @@ class ManageSalesBoardRollout extends Page
         return $emission;
     }
 
+    public function getHeader(): ?View
+    {
+        return view('filament.resources.sales-board-rollouts.pages.rollout-header', [
+            'emission' => $this->emission(),
+        ]);
+    }
+
     public function getSubheading(): ?string
     {
         $emission = $this->emission();
 
-        return sprintf(
-            '%s · %s',
-            $emission->sales_board_source->label(),
-            $emission->usesAutomatedSalesBoard()
-                ? 'desde a competência '.($emission->sales_board_automation_start_reference_month?->format('m/Y') ?? '—')
-                : $emission->sales_board_source->description(),
-        );
+        if ($emission->usesAutomatedSalesBoard()) {
+            return 'desde a competência '.($emission->sales_board_automation_start_reference_month?->format('m/Y') ?? '—');
+        }
+
+        return $emission->sales_board_source->description();
     }
 
     public function currentHomologation(): ?SalesBoardRolloutHomologation

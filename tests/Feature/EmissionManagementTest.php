@@ -558,12 +558,21 @@ it('creates an issuer inline from the emission form with the locked issuer type'
         ]),
     ]);
 
-    Livewire::test(CreateEmission::class)
+    $component = Livewire::test(CreateEmission::class)
         ->assertActionHasLabel($createIssuerAction, 'Cadastrar Prestador')
-        ->mountAction($createIssuerAction)
-        ->fillForm([
-            'cnpj' => '12.345.678/0001-90',
-        ])
+        ->mountAction($createIssuerAction);
+
+    $schemaName = $component->instance()->getMountedActionSchemaName();
+    $formSchema = $component->instance()->getSchema($schemaName);
+    $cnpjField = collect($formSchema->getComponents())->first(fn ($c) => method_exists($c, 'getName') && $c->getName() === 'cnpj');
+    $nameField = collect($formSchema->getComponents())->first(fn ($c) => method_exists($c, 'getName') && $c->getName() === 'name');
+
+    expect($cnpjField?->getColumnSpan())->toBe(['default' => 'full'])
+        ->and($nameField?->getColumnSpan())->toBe(['default' => 'full']);
+
+    $component->fillForm([
+        'cnpj' => '12.345.678/0001-90',
+    ])
         ->assertActionDataSet([
             'name' => 'Emissor Inline',
         ])

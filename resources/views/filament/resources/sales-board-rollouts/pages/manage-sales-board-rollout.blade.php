@@ -22,125 +22,144 @@
     @endphp
 
     {{-- O modo atual, e o que ele significa. Tudo em texto: a cor só acompanha. --}}
-    <x-filament::section>
-        <dl class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-                <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Emissão</dt>
-                <dd class="mt-1 text-sm font-semibold">{{ $emission->name }}</dd>
-            </div>
-            <div>
-                <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Modo do Quadro de Vendas</dt>
-                <dd class="mt-1 text-sm font-semibold">{{ $emission->sales_board_source->label() }}</dd>
-            </div>
-            <div>
-                <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Automação global</dt>
-                <dd class="mt-1 flex items-center gap-2 text-sm font-semibold">
-                    <x-filament::icon
-                        :icon="$globalEnabled ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle'"
-                        @class([
-                            'h-5 w-5 shrink-0',
-                            'text-success-600 dark:text-success-400' => $globalEnabled,
-                            'text-danger-600 dark:text-danger-400' => ! $globalEnabled,
-                        ])
-                    />
-                    {{ $globalEnabled ? 'Ligada' : 'Desligada' }}
-                </dd>
-            </div>
-            <div>
-                <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Competência inicial da automação</dt>
-                <dd class="mt-1 text-sm font-semibold">
-                    {{ $emission->sales_board_automation_start_reference_month?->format('m/Y') ?? '—' }}
-                </dd>
-            </div>
-            <div class="sm:col-span-2">
-                <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Homologação</dt>
-                <dd class="mt-1 text-sm font-semibold">
-                    @if ($activeHomologation !== null)
-                        Tentativa {{ $activeHomologation->attempt }} · {{ $activeHomologation->status->label() }}
-                        @if ($activeHomologation->activated_at)
-                            · ativada em {{ $activeHomologation->activated_at->format('d/m/Y') }}
+    <div class="bsi-rollout-summary">
+        <x-filament::section>
+            <x-slot name="heading">Resumo executivo</x-slot>
+            <x-slot name="description">
+                {{ $emission->sales_board_source->description() }}
+            </x-slot>
+
+            <dl class="grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Emissão</dt>
+                    <dd class="mt-1 text-sm font-semibold">{{ $emission->name }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Modo do Quadro de Vendas</dt>
+                    <dd class="mt-1 text-sm font-semibold">{{ $emission->sales_board_source->label() }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Automação global</dt>
+                    <dd class="mt-1 flex items-center gap-2 text-sm font-semibold">
+                        <span @class([
+                            'bsi-rollout-dot',
+                            'bg-success-500' => $globalEnabled,
+                            'bg-warning-500' => ! $globalEnabled,
+                        ])></span>
+                        {{ $globalEnabled ? 'Ligada' : 'Desligada' }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Empreendimentos</dt>
+                    <dd class="mt-1 text-sm font-semibold tabular-nums">{{ $emission->constructions()->count() }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Competência inicial da automação</dt>
+                    <dd class="mt-1 text-sm font-semibold tabular-nums">
+                        {{ $emission->sales_board_automation_start_reference_month?->format('m/Y') ?? '—' }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Homologação</dt>
+                    <dd class="mt-1 text-sm font-semibold">
+                        @if ($activeHomologation !== null)
+                            Tentativa {{ $activeHomologation->attempt }} · {{ $activeHomologation->status->label() }}
+                            @if ($activeHomologation->activated_at)
+                                · ativada em {{ $activeHomologation->activated_at->format('d/m/Y') }}
+                            @endif
+                        @elseif ($pendingHomologation !== null)
+                            Tentativa {{ $pendingHomologation->attempt }} · {{ $pendingHomologation->status->label() }}
+                        @else
+                            Nenhuma homologação ativa.
+                            @if ($homologation !== null)
+                                <span class="bsi-rollout-secondary font-normal">
+                                    Última: tentativa {{ $homologation->attempt }} · {{ $homologation->status->label() }}{{ $homologation->wasActivated() ? ' · já usada numa ativação' : '' }}.
+                                </span>
+                            @endif
                         @endif
-                    @elseif ($pendingHomologation !== null)
-                        Tentativa {{ $pendingHomologation->attempt }} · {{ $pendingHomologation->status->label() }}
-                    @else
-                        Nenhuma homologação ativa.
-                        @if ($homologation !== null)
-                            <span class="font-normal text-gray-500 dark:text-gray-400">
-                                Última: tentativa {{ $homologation->attempt }} · {{ $homologation->status->label() }}{{ $homologation->wasActivated() ? ' · já usada numa ativação' : '' }}.
-                            </span>
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Escopo</dt>
+                    <dd class="mt-1 text-sm font-semibold">
+                        @if (! $isAutomated)
+                            —
+                        @elseif ($scopeDrift)
+                            <x-filament::badge color="danger">Alterado desde a homologação · automação suspensa</x-filament::badge>
+                        @else
+                            <x-filament::badge color="success">Íntegro</x-filament::badge>
                         @endif
-                    @endif
-                </dd>
+                    </dd>
+                </div>
+            </dl>
+
+            <div class="bsi-rollout-next-action mt-6">
+                @include('filament.sales-boards.next-action', ['nextAction' => $this->nextAction($homologation, $gate, $scopeDrift)])
             </div>
-            <div>
-                <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Escopo</dt>
-                <dd class="mt-1 text-sm font-semibold">
-                    @if (! $isAutomated)
-                        —
-                    @elseif ($scopeDrift)
-                        Alterado desde a homologação · automação suspensa
-                    @else
-                        Íntegro
-                    @endif
-                </dd>
-            </div>
-            <div>
-                <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Empreendimentos</dt>
-                <dd class="mt-1 text-sm font-semibold">{{ $emission->constructions()->count() }}</dd>
-            </div>
-        </dl>
 
-        <div class="mt-6">
-            @include('filament.sales-boards.next-action', ['nextAction' => $this->nextAction($homologation, $gate, $scopeDrift)])
-        </div>
+            @unless ($globalEnabled)
+                <p class="mt-4 rounded-md bg-warning-50 p-3 text-sm text-warning-700 dark:bg-warning-400/10 dark:text-warning-400">
+                    A automação global está desligada. Uma Emissão pode ser homologada e ativada, mas
+                    <strong>nenhuma competência será processada</strong> enquanto o agendador global estiver desligado.
+                </p>
+            @endunless
 
-        <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">
-            {{ $emission->sales_board_source->description() }}
-        </p>
+            @if ($scopeDrift)
+                <p class="mt-4 rounded-md bg-danger-50 p-3 text-sm text-danger-700 dark:bg-danger-400/10 dark:text-danger-400">
+                    <strong>Automação suspensa por alteração de escopo.</strong>
+                    Os empreendimentos da Emissão mudaram desde a homologação vigente. O rollout é por Emissão inteira,
+                    então nenhum empreendimento é processado até que uma nova homologação cubra o conjunto atual —
+                    automatizar só os antigos deixaria metade da Emissão sem competência.
+                </p>
+            @endif
 
-        @unless ($globalEnabled)
-            <p class="mt-4 rounded-md bg-warning-50 p-3 text-sm text-warning-700 dark:bg-warning-400/10 dark:text-warning-400">
-                A automação global está desligada. Uma Emissão pode ser homologada e ativada, mas
-                <strong>nenhuma competência será processada</strong> enquanto o agendador global estiver desligado.
-            </p>
-        @endunless
-
-        @if ($scopeDrift)
-            <p class="mt-4 rounded-md bg-danger-50 p-3 text-sm text-danger-700 dark:bg-danger-400/10 dark:text-danger-400">
-                <strong>Automação suspensa por alteração de escopo.</strong>
-                Os empreendimentos da Emissão mudaram desde a homologação vigente. O rollout é por Emissão inteira,
-                então nenhum empreendimento é processado até que uma nova homologação cubra o conjunto atual —
-                automatizar só os antigos deixaria metade da Emissão sem competência.
-            </p>
-        @endif
-
-        {{--
-            Uma ação escrita direto no Blade é impressa mesmo quando `visible()` a
-            esconde -- o Filament só filtra as ações que ele mesmo posiciona -- e
-            aparece como um botão inerte. Por isso cada uma é conferida aqui.
-        --}}
-        @if ($canManage)
-            <div class="mt-6 flex flex-wrap gap-3">
-                @foreach ([$this->openHomologationAction, $this->activateAction, $this->returnToLegacyAction] as $modeAction)
-                    @if ($modeAction->isVisible())
+            {{--
+                Uma ação escrita direto no Blade é impressa mesmo quando `visible()` a
+                esconde -- o Filament só filtra as ações que ele mesmo posiciona -- e
+                aparece como um botão inerte. Por isso cada uma é conferida aqui.
+                Sem homologação, abrir é a ação contextual do estado vazio abaixo, e
+                não desta linha -- a mesma ação, impressa uma única vez.
+            --}}
+            @php
+                $modeActions = collect($homologation === null
+                    ? [$this->activateAction, $this->returnToLegacyAction]
+                    : [$this->openHomologationAction, $this->activateAction, $this->returnToLegacyAction])
+                    ->filter(fn ($modeAction): bool => $modeAction->isVisible());
+            @endphp
+            @if ($canManage && $modeActions->isNotEmpty())
+                <div class="bsi-rollout-mode-actions mt-6 flex flex-wrap gap-3">
+                    @foreach ($modeActions as $modeAction)
                         {{ $modeAction }}
-                    @endif
-                @endforeach
-            </div>
-        @endif
-    </x-filament::section>
+                    @endforeach
+                </div>
+            @endif
+        </x-filament::section>
+    </div>
 
     @if ($homologation === null)
-        <x-filament::section>
-            <x-slot name="heading">Nenhuma homologação registrada</x-slot>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
-                Nenhuma homologação foi aberta para esta Emissão.
-                Automatizar uma Emissão não é ligar uma chave: antes é preciso comparar a posição do legado com a
-                que o motor novo apura, entender as diferenças, revisar os impactos e definir os responsáveis.
-            </p>
-        </x-filament::section>
+        <div class="bsi-rollout-empty-section">
+            <x-filament::section>
+                <div class="bsi-rollout-empty">
+                    <span class="bsi-rollout-empty-icon">
+                        <x-filament::icon icon="heroicon-o-clipboard-document-check" />
+                    </span>
+                    <p class="bsi-rollout-empty-title">Nenhuma homologação registrada</p>
+                    <p class="bsi-rollout-empty-text">
+                        Nenhuma homologação foi aberta para esta Emissão.
+                        Automatizar uma Emissão não é ligar uma chave: antes é preciso comparar a posição do legado com a
+                        que o motor novo apura, entender as diferenças, revisar os impactos e definir os responsáveis.
+                    </p>
+                    @if ($canManage && $this->openHomologationAction->isVisible())
+                        <div class="bsi-rollout-empty-action">
+                            {{ $this->openHomologationAction }}
+                        </div>
+                    @endif
+                </div>
+            </x-filament::section>
+        </div>
     @else
         {{-- A homologação em curso. --}}
+        <div class="bsi-rollout-homologation">
         <x-filament::section>
             <x-slot name="heading">
                 <span class="flex items-center gap-3">
@@ -163,7 +182,7 @@
                     continua como está, porque homologação aprovada não se reescreve.
                 </p>
             @elseif (! $isAutomated && $homologation->isApproved() && ! $homologation->wasActivated())
-                <p class="mb-4 rounded-md bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                <p class="bsi-rollout-note mb-4 rounded-md p-3 text-sm">
                     A aprovação representa o estado revisado no momento da homologação.
                     Os dados serão revalidados no momento da ativação.
                 </p>
@@ -178,7 +197,7 @@
             @endif
 
             @if ($canManage && $homologation->isEditable())
-                <div class="flex flex-wrap gap-3">
+                <div class="bsi-rollout-draft-actions flex flex-wrap gap-3">
                     @foreach ([$this->reassessAction, $this->markGuaranteesReviewedAction, $this->markMonthlyReportReviewedAction] as $draftAction)
                         @if ($draftAction->isVisible())
                             {{ $draftAction }}
@@ -188,16 +207,16 @@
             @endif
 
             <div class="mt-4 grid gap-3 sm:grid-cols-2">
-                <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Impacto sobre Garantias</p>
+                <div class="bsi-rollout-inset p-3">
+                    <p>Impacto sobre Garantias</p>
                     <p class="mt-1 text-sm">
                         {{ $homologation->guaranteesReviewed()
                             ? 'Revisado por '.($homologation->guaranteesReviewedBy?->name ?? '—').' em '.$homologation->guarantees_reviewed_at->format('d/m/Y H:i')
                             : 'Ainda não revisado.' }}
                     </p>
                 </div>
-                <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Impacto sobre o Relatório Mensal</p>
+                <div class="bsi-rollout-inset p-3">
+                    <p>Impacto sobre o Relatório Mensal</p>
                     <p class="mt-1 text-sm">
                         {{ $homologation->monthlyReportReviewed()
                             ? 'Revisado por '.($homologation->monthlyReportReviewedBy?->name ?? '—').' em '.$homologation->monthly_report_reviewed_at->format('d/m/Y H:i')
@@ -206,8 +225,10 @@
                 </div>
             </div>
         </x-filament::section>
+        </div>
 
         {{-- Legado contra derivado, empreendimento a empreendimento. --}}
+        <div class="bsi-rollout-comparison">
         <x-filament::section>
             <x-slot name="heading">Posição do legado × posição apurada</x-slot>
             <x-slot name="description">
@@ -217,10 +238,10 @@
             <div class="space-y-4">
                 @foreach ($homologation->constructions as $row)
                     <div @class([
-                        'rounded-lg border p-4',
+                        'bsi-rollout-row rounded-lg border p-4',
                         'border-danger-300 dark:border-danger-700' => ! $row->is_ready,
                         'border-warning-300 dark:border-warning-700' => $row->is_ready && $row->requiresAcknowledgement(),
-                        'border-gray-200 dark:border-gray-700' => $row->is_ready && ! $row->requiresAcknowledgement(),
+                        'bsi-rollout-row-idle' => $row->is_ready && ! $row->requiresAcknowledgement(),
                     ])>
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <p class="text-sm font-semibold">{{ $row->construction?->development_name ?? '—' }}</p>
@@ -305,9 +326,9 @@
                         @endif
 
                         @if ($row->accepted_difference)
-                            <p class="mt-3 rounded-md bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                            <p class="bsi-rollout-note mt-3 rounded-md p-3 text-sm">
                                 <span class="font-medium">Diferença analisada:</span> {{ $row->difference_reason }}
-                                <span class="block text-xs text-gray-500 dark:text-gray-400">
+                                <span class="block text-xs">
                                     {{ $row->acceptedBy?->name ?? '—' }}
                                     @if ($row->accepted_at) · {{ $row->accepted_at->format('d/m/Y H:i') }} @endif
                                 </span>
@@ -330,54 +351,60 @@
                 @endforeach
             </div>
         </x-filament::section>
+        </div>
     @endif
 
     {{-- Responsáveis internos. --}}
-    <x-filament::section>
-        <x-slot name="heading">Responsáveis pelos avisos</x-slot>
-        <x-slot name="description">
-            Define para quem os avisos da automação vão. Não concede permissão nenhuma — quem abre as telas
-            continua passando pelas permissões de sempre.
-        </x-slot>
+    <div class="bsi-rollout-recipients">
+        <x-filament::section>
+            <x-slot name="heading">Responsáveis pelos avisos</x-slot>
+            <x-slot name="description">
+                Define para quem os avisos da automação vão. Não concede permissão nenhuma — quem abre as telas
+                continua passando pelas permissões de sempre.
+            </x-slot>
 
-        <div class="grid gap-4 sm:grid-cols-2">
-            @foreach (\App\Enums\SalesBoardRolloutRecipientRole::cases() as $role)
-                <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-                    <p class="text-sm font-semibold">{{ $role->label() }}</p>
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ $role->description() }}</p>
+            <div class="bsi-rollout-recipients-grid">
+                @foreach (\App\Enums\SalesBoardRolloutRecipientRole::cases() as $role)
+                    <div class="bsi-rollout-recipient">
+                        <p class="bsi-rollout-recipient-label">{{ $role->label() }}</p>
+                        <p class="bsi-rollout-recipient-description">{{ $role->description() }}</p>
 
-                    @if (count($recipients[$role->value]) === 0)
-                        <p class="mt-3 text-sm text-danger-700 dark:text-danger-400">Nenhum responsável definido.</p>
-                    @else
-                        <ul class="mt-3 space-y-2">
-                            @foreach ($recipients[$role->value] as $recipient)
-                                <li class="flex items-center justify-between gap-3 text-sm">
-                                    <span>
-                                        {{ $recipient->user?->name ?? '—' }}
-                                        @unless ($recipient->user?->isOperational())
-                                            <x-filament::badge color="danger" size="sm">Inativo</x-filament::badge>
-                                        @endunless
-                                    </span>
-                                    @if ($canManage)
-                                        {{ ($this->removeRecipientAction)(['recipient' => $recipient->id]) }}
-                                    @endif
-                                </li>
-                            @endforeach
-                        </ul>
-                    @endif
+                        @if (count($recipients[$role->value]) === 0)
+                            <p class="mt-3">
+                                <x-filament::badge color="warning">Nenhum responsável definido.</x-filament::badge>
+                            </p>
+                        @else
+                            <ul class="bsi-rollout-recipient-list mt-3 space-y-2">
+                                @foreach ($recipients[$role->value] as $recipient)
+                                    <li class="flex items-center justify-between gap-3 text-sm">
+                                        <span>
+                                            {{ $recipient->user?->name ?? '—' }}
+                                            @unless ($recipient->user?->isOperational())
+                                                <x-filament::badge color="danger" size="sm">Inativo</x-filament::badge>
+                                            @endunless
+                                        </span>
+                                        @if ($canManage)
+                                            {{ ($this->removeRecipientAction)(['recipient' => $recipient->id]) }}
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
 
-                    @if ($canManage)
-                        <div class="mt-3">
-                            {{ ($this->addRecipientAction)(['role' => $role->value]) }}
-                        </div>
-                    @endif
-                </div>
-            @endforeach
-        </div>
-    </x-filament::section>
+                        @if ($canManage)
+                            <div class="mt-3">
+                                {{ ($this->addRecipientAction)(['role' => $role->value]) }}
+                            </div>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        </x-filament::section>
+    </div>
 
     {{-- O portão: read model do estado real, nunca um checklist a marcar. --}}
     @if ($gate !== null)
+        <div class="bsi-rollout-gate">
         <x-filament::section>
             <x-slot name="heading">
                 <span class="flex items-center gap-3">
@@ -418,7 +445,7 @@
                 leitura viva do portão só para decidir se imprime o botão.
             --}}
             @if ($canManage && $homologation->isEditable())
-                <div class="mt-6 flex flex-wrap items-center gap-3">
+                <div class="bsi-rollout-gate-actions mt-6 flex flex-wrap items-center gap-3">
                     @if ($gate['ready'])
                         {{ $this->approveAction }}
                     @endif
@@ -434,12 +461,14 @@
                 </div>
             @endif
         </x-filament::section>
+        </div>
     @endif
 
     {{-- A trilha de mudanças de modo. --}}
     @php($events = $emission->salesBoardRolloutEvents()->with('actor')->limit(10)->get())
 
     @if ($events->isNotEmpty())
+        <div class="bsi-rollout-history">
         <x-filament::section collapsible collapsed>
             <x-slot name="heading">Histórico de rollout</x-slot>
 
@@ -459,5 +488,6 @@
                 @endforeach
             </ul>
         </x-filament::section>
+        </div>
     @endif
 </x-filament-panels::page>

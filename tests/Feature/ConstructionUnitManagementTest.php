@@ -5,11 +5,14 @@ use App\Filament\Resources\ConstructionUnits\Pages\CreateConstructionUnit;
 use App\Filament\Resources\ConstructionUnits\Pages\EditConstructionUnit;
 use App\Filament\Resources\ConstructionUnits\Pages\ListConstructionUnits;
 use App\Filament\Resources\ConstructionUnits\Pages\ViewConstructionUnit;
+use App\Filament\Resources\ConstructionUnits\Tables\ConstructionUnitsTable;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\Emission;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Forms\Components\Select;
+use Filament\Tables\Table;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -244,6 +247,31 @@ it('filters units by emission and by construction', function () {
         ->assertCanNotSeeTableRecords([$piratiningaUnit, $outraUnit]);
 
     expect($otherEmission->constructionUnits()->count())->toBe(1);
+});
+
+it('filters units by block and uses anchored dropdown styling', function () {
+    $this->actingAs(makeAdminUser());
+
+    [$emission, $construction] = unitEmissionAndConstruction();
+
+    $unitA = ConstructionUnit::factory()->forConstruction($construction)->create(['block' => 'A', 'unit' => '101']);
+    $unitB = ConstructionUnit::factory()->forConstruction($construction)->create(['block' => 'B', 'unit' => '201']);
+
+    Livewire::test(ListConstructionUnits::class)
+        ->filterTable('block', 'A')
+        ->assertCanSeeTableRecords([$unitA])
+        ->assertCanNotSeeTableRecords([$unitB])
+        ->filterTable('block', 'B')
+        ->assertCanSeeTableRecords([$unitB])
+        ->assertCanNotSeeTableRecords([$unitA]);
+
+    $table = ConstructionUnitsTable::configure(new Table(new ListConstructionUnits));
+    $filter = $table->getFilter('block');
+    $components = $filter->getSchemaComponents();
+
+    expect($components)->not()->toBeEmpty()
+        ->and($components[0]->getExtraAttributes()['class'] ?? '')
+        ->toContain(AnchoredFilterDropdown::DROPDOWN_CLASS);
 });
 
 it('exposes the units of an emission through its constructions', function () {

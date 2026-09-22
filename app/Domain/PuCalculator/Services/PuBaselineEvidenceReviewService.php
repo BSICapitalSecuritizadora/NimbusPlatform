@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\Services;
 
+use App\Domain\PuCalculator\Enums\PuBaselineEvidenceConfidence;
 use App\Domain\PuCalculator\Enums\PuBaselineEvidenceDocumentType;
 use App\Domain\PuCalculator\Enums\PuBaselineEvidenceStatus;
 use App\Domain\PuCalculator\Enums\PuBaselineEvidenceType;
@@ -13,7 +14,6 @@ use App\Models\Document;
 use App\Models\Emission;
 use App\Models\EmissionPuBaselineEvidence;
 use App\Models\User;
-use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -21,6 +21,10 @@ use Illuminate\Validation\ValidationException;
 final class PuBaselineEvidenceReviewService
 {
     public const LOG_NAME = 'pu-baseline-evidence';
+
+    public function __construct(
+        private readonly PuBaselineEvidenceExtractionService $extraction,
+    ) {}
 
     /**
      * @param array{
@@ -30,7 +34,8 @@ final class PuBaselineEvidenceReviewService
      *   evidenced_value:string,
      *   reference?:?string,
      *   confidence:string,
-     *   notes?:?string
+     *   notes?:?string,
+     *   extraction_id?:?string
      * } $data
      */
     public function create(Emission $emission, array $data, User $actor): EmissionPuBaselineEvidence
@@ -51,11 +56,28 @@ final class PuBaselineEvidenceReviewService
         $this->validateValue($evidenceType, $value);
         $this->validateDocumentType($evidenceType, $documentType);
 
-        if (! in_array($confidence, ['high', 'medium', 'low'], true)) {
+        if (PuBaselineEvidenceConfidence::tryFrom($confidence) === null) {
             throw ValidationException::withMessages([
                 'confidence' => 'Informe confiança alta, média ou baixa.',
             ]);
         }
+
+        $reference = $this->nullableTrim($data['reference'] ?? null);
+        $notes = $this->nullableTrim($data['notes'] ?? null);
+        $provenance = $this->extraction->provenance(
+            $data['extraction_id'] ?? null,
+            $emission,
+            $document,
+            $evidenceType,
+            $actor,
+            [
+                'document_type' => $documentType->value,
+                'evidenced_value' => $value,
+                'reference' => $reference,
+                'confidence' => $confidence,
+                'notes' => $notes,
+            ],
+        );
 
         $evidence = EmissionPuBaselineEvidence::query()->create([
             'emission_id' => $emission->id,
@@ -63,10 +85,14 @@ final class PuBaselineEvidenceReviewService
             'evidence_type' => $evidenceType,
             'document_type' => $documentType,
             'evidenced_value' => $value,
-            'reference' => $this->nullableTrim($data['reference'] ?? null),
+            'reference' => $reference,
+            'page' => $provenance['page'],
+            'excerpt' => $provenance['excerpt'],
             'confidence' => $confidence,
+            'value_origin' => $provenance['value_origin'],
             'status' => PuBaselineEvidenceStatus::PendingReview,
-            'notes' => $this->nullableTrim($data['notes'] ?? null),
+            'notes' => $notes,
+            'extraction' => $provenance['extraction'],
             'created_by' => $actor->id,
         ]);
 
@@ -80,6 +106,9 @@ final class PuBaselineEvidenceReviewService
                 'evidence_type' => $evidenceType->value,
                 'evidenced_value' => $value,
                 'status' => PuBaselineEvidenceStatus::PendingReview->value,
+                'value_origin' => $provenance['value_origin']->value,
+                'extraction_id' => $provenance['extraction']['id'] ?? null,
+                'edited_fields' => $provenance['extraction']['edited_fields'] ?? [],
             ])
             ->log('Evidência de baseline criada para revisão.');
 
@@ -180,27 +209,11 @@ final class PuBaselineEvidenceReviewService
 
     private function validateValue(PuBaselineEvidenceType $evidenceType, string $value): void
     {
-        if ($evidenceType === PuBaselineEvidenceType::FirstIntegralizationDate) {
-            $date = CarbonImmutable::createFromFormat('!Y-m-d', $value);
+        $violation = $evidenceType->valueViolation($value);
 
-            if ($date === null || $date->toDateString() !== $value) {
-                throw ValidationException::withMessages([
-                    'evidenced_value' => 'Informe a data comprovada no formato AAAA-MM-DD.',
-                ]);
-            }
-        }
-
-        if ($evidenceType === PuBaselineEvidenceType::IntegralizedQuantity
-            && (! is_numeric($value) || (float) $value <= 0)) {
+        if ($violation !== null) {
             throw ValidationException::withMessages([
-                'evidenced_value' => 'Informe uma quantidade integralizada maior que zero.',
-            ]);
-        }
-
-        if ($evidenceType === PuBaselineEvidenceType::ExternalPuReference
-            && ! in_array($value, ['available_pending_comparison', 'matched', 'divergent'], true)) {
-            throw ValidationException::withMessages([
-                'evidenced_value' => 'Informe se o gabarito aguarda comparação, foi aderente ou divergiu.',
+                'evidenced_value' => $violation,
             ]);
         }
     }
@@ -209,14 +222,9 @@ final class PuBaselineEvidenceReviewService
         PuBaselineEvidenceType $evidenceType,
         PuBaselineEvidenceDocumentType $documentType,
     ): void {
-        $isExternalReference = $evidenceType === PuBaselineEvidenceType::ExternalPuReference;
-        $valid = $isExternalReference
-            ? $documentType === PuBaselineEvidenceDocumentType::OfficialPuMemory
-            : $documentType !== PuBaselineEvidenceDocumentType::OfficialPuMemory;
-
-        if (! $valid) {
+        if (! $evidenceType->acceptsDocumentType($documentType)) {
             throw ValidationException::withMessages([
-                'document_type' => $isExternalReference
+                'document_type' => $evidenceType === PuBaselineEvidenceType::ExternalPuReference
                     ? 'Use uma memória oficial de PU como gabarito independente.'
                     : 'A memória de PU não comprova integralização ou quantidade.',
             ]);

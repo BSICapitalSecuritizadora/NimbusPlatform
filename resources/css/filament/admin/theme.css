@@ -1,4 +1,6 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
+@import './sales-board-cycle.css';
+@import './sales-board-rollout.css';
 
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
@@ -1988,10 +1990,16 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 }
 
 /* ── Painel de Filtros (Largura Confortável: 420px - 460px) ── */
+/* Não há seletor descendente por `wire:key` aqui. `[wire:key*="table.filters"]
+   .fi-dropdown-panel` alcançava também o painel de qualquer select aninhado no painel
+   de filtros (Emissão, Empreendimento…), que herdava ~440px em vez da largura do
+   próprio trigger. Restringi-lo com `:has(.fi-ta-filters)` apenas repetiria o
+   primeiro seletor da lista, com especificidade (0,3,0): venceria o `44vh` +
+   `overflow-y: auto` de `.fi-scrollable` e o override de celular, e o painel passaria
+   de 608px com `overflow: hidden`, escondendo "Aplicar filtros" em tablet e celular. */
 .fi-dropdown-panel:has(.fi-ta-filters),
 .fi-dropdown-panel.fi-ta-filters-dropdown-panel,
 .bsi-job-applications-list-page .fi-dropdown-panel:has(.fi-ta-filters),
-[wire\:key*="table.filters"] .fi-dropdown-panel,
 [wire\:key*="table.filters"].fi-dropdown-panel {
     width: min(440px, calc(100vw - 32px)) !important;
     min-width: min(420px, calc(100vw - 32px)) !important;
@@ -2007,7 +2015,6 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 .fi-dropdown-panel:has(.fi-ta-col-manager),
 .fi-dropdown-panel.fi-ta-col-manager-dropdown-panel,
 .bsi-job-applications-list-page .fi-dropdown-panel:has(.fi-ta-col-manager),
-[wire\:key*="table.column-manager"] .fi-dropdown-panel,
 [wire\:key*="table.column-manager"].fi-dropdown-panel {
     width: min(300px, calc(100vw - 32px)) !important;
     min-width: min(280px, calc(100vw - 32px)) !important;
@@ -3425,8 +3432,111 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     outline: none !important;
 }
 
+/* ═════════════════════════════════════════════════════════════════════
+   FILTROS PESQUISÁVEIS — PAINEL ANCORADO NO TRIGGER
+   ("Emissão", "Empreendimento", "Empresa de medição", "Operação" e "Bloco")
+   ═════════════════════════════════════════════════════════════════════
+   Causa raiz: o select pesquisável do Filament v5 cria o painel dentro do próprio
+   `.fi-select-input-ctn` e define `width` inline = `offsetWidth` do trigger. Dentro
+   dos filtros de tabela ele passa a `position: fixed`, porque a view publicada
+   `resources/views/vendor/filament-tables/components/filters.blade.php` marca
+   `.fi-ta-filters` como `.fi-fixed-positioning-context`. Em `fixed`, o bloco contentor
+   é a viewport: o `min-width: 100% !important` de `.fi-select-input .fi-dropdown-panel`
+   vira 100vw e vence o `width` inline — o dropdown nascia na borda esquerda da tela,
+   atravessando a sidebar, com a busca igualmente esticada. Sem espaço abaixo, o
+   Floating UI o virava para cima, cobrindo o cabeçalho da página: o clique "fora"
+   caía dentro do próprio painel e ele parecia preso aberto.
+
+   Escopo: somente os campos marcados por App\Filament\Support\AnchoredFilterDropdown
+   (classe `bsi-anchored-filter-dropdown` no wrapper `.fi-fo-select` do campo). A adesão
+   é explícita, filtro a filtro; nenhum outro select, date picker, autocomplete, action
+   ou dropdown do sistema é alcançado.
+
+   Largura: nada de `width` aqui — anular o `min-width` basta para o `width` inline do
+   Filament (largura do trigger, reescrita a cada abertura) voltar a valer. O teto é o
+   `max-width: 100% !important` do próprio Filament (`@layer components`), que em `fixed`
+   equivale à viewport; um `max-width` `!important` do tema, fora de camada, perderia
+   para ele e seria letra morta — por isso não há nenhum aqui.
+   Altura: até 22.5rem (360px), limitada a 44vh. O Filament posiciona só com offset,
+   shift e flip (sem o middleware `size`), então o teto precisa caber de um dos lados
+   do trigger: 44vh sempre cabe no lado maior, e em telas baixas (celular deitado, ou
+   menos de ~770px de altura com o campo no meio) a lista encolhe em vez de sair da tela. Com
+   poucas opções a altura é automática; o scroll fica na lista de opções e a busca
+   permanece no topo. Posicionamento, flip/shift e o ciclo abrir/fechar continuam a
+   cargo do Floating UI e do JS do Filament — aqui só se corrige geometria. */
+.bsi-anchored-filter-dropdown .fi-dropdown-panel,
+.bsi-anchored-filter-dropdown .fi-select-input .fi-dropdown-panel {
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: min(22.5rem, 44vh) !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+/* O layout flex só entra quando o painel está aberto; caso contrário o `display: flex`
+   venceria o `display: none` que o JS escreve inline e o dropdown ficaria preso aberto. */
+.bsi-anchored-filter-dropdown .fi-dropdown-panel[style*="display: block"],
+.bsi-anchored-filter-dropdown .fi-select-input .fi-dropdown-panel[style*="display: block"] {
+    display: flex !important;
+}
+
+.bsi-anchored-filter-dropdown .fi-dropdown-panel[style*="display: none"],
+.bsi-anchored-filter-dropdown .fi-select-input .fi-dropdown-panel[style*="display: none"] {
+    display: none !important;
+}
+
+/* Busca fixa no topo, nunca mais larga que o painel. */
+.bsi-anchored-filter-dropdown .fi-dropdown-panel .fi-select-input-search-ctn {
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.bsi-anchored-filter-dropdown .fi-dropdown-panel .fi-select-input-search-ctn .fi-input {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* A barra de rolagem pertence à lista de opções, não ao painel nem à página.
+   `grid-auto-rows: min-content` + `align-content: start` são obrigatórios: a lista do
+   Filament é um grid e, ao virar item flexível encolhível, suas trilhas eram comprimidas
+   para caber nos 360px — cada opção ficava com 20px (menos que o próprio padding) e os
+   rótulos se sobrepunham. Com as trilhas presas ao conteúdo o excedente vira scroll. */
+.bsi-anchored-filter-dropdown .fi-dropdown-panel .fi-dropdown-list,
+.bsi-anchored-filter-dropdown .fi-dropdown-panel .fi-select-input-options-ctn {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    grid-auto-rows: min-content !important;
+    align-content: start !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(183, 131, 47, 0.35) transparent !important;
+}
+
+/* Nomes longos (emissões, empreendimentos, operações) quebram dentro da largura do trigger, sem
+   overflow lateral. Exceção: no recorte de medições do cockpit a regra legada
+   `.bsi-measurement-filters-section` mantém cada opção em uma única linha, cortada na borda. */
+.bsi-anchored-filter-dropdown .fi-dropdown-panel .fi-select-input-option,
+.bsi-anchored-filter-dropdown .fi-dropdown-panel .fi-dropdown-list-item {
+    overflow-wrap: anywhere !important;
+}
+
 /* ── Native Select Dropdown Color-Scheme & Option Theming ── */
-select.fi-select-input,
+select.fi-select-input {
+    color-scheme: dark !important;
+    background-color: transparent !important;
+    border-radius: inherit !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    color: #fbfaf8 !important;
+}
+
 select.fi-select-input option,
 select.fi-select-input optgroup {
     color-scheme: dark !important;
@@ -3438,6 +3548,30 @@ select.fi-select-input option:checked,
 select.fi-select-input option[selected] {
     background-color: #12313b !important;
     color: #d4af37 !important;
+}
+
+/* ── Select Rounded Corner Refinement & Dropdown Safety ── */
+.fi-fo-select-native.fi-input-wrp,
+.fi-input-wrp:has(> .fi-input-wrp-content-ctn > select.fi-select-input) {
+    overflow: hidden !important;
+}
+
+.fi-fo-select .fi-select-input-btn {
+    border-radius: inherit !important;
+    background-color: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+.fi-fo-select .fi-input-wrp-content-ctn {
+    border-radius: inherit !important;
+}
+
+.fi-fo-select.fi-input-wrp:focus-within {
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 1px #b7832f !important;
 }
 
 /* ── Cockpit Tabs & Filter Navigation ── */
@@ -4870,6 +5004,152 @@ html:not(.dark) .bsi-construction-units-list-page tr.fi-ta-row:hover {
         width: 4.5rem;
     }
 }
+
+/* ── Toolbar da Tabela Unidades: Controles de Filtros e Colunas Independentes ── */
+.bsi-construction-units-list-page .fi-ta-header-toolbar > div:last-child {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 0.75rem !important;
+}
+
+/* Container Imediato que agrupa os botões de Filtros e Colunas */
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group,
+.bsi-construction-units-list-page .fi-ta-header-toolbar div:has(> span[x-ref="filtersDropdownContainer"]) {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    flex-shrink: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+}
+
+/* Wrapper individual de cada dropdown / botão na toolbar */
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group > span,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-dropdown,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-dropdown-trigger {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    vertical-align: middle !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+}
+
+/* Botões de Filtro e Colunas: 40x40px, Borda Completa, Border-Radius Individual (8px), Fundo Azul-Petróleo Institucional */
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-dropdown > .fi-dropdown-trigger > button,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-modal > .fi-modal-trigger > button,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-trigger-action-ctn > button,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-dropdown > .fi-dropdown-trigger > button,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-modal > .fi-modal-trigger > button,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group .fi-icon-btn,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-dropdown .fi-icon-btn,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-dropdown .fi-icon-btn {
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    min-width: 2.5rem !important;
+    min-height: 2.5rem !important;
+    max-width: 2.5rem !important;
+    max-height: 2.5rem !important;
+    box-sizing: border-box !important;
+    border-radius: 8px !important;
+    -webkit-border-radius: 8px !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    background: #0d252e !important;
+    color: rgba(251, 250, 248, 0.8) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+    transition: all 150ms ease-out !important;
+    isolation: isolate !important;
+}
+
+/* Ícones dos Botões de Filtros e Colunas */
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-dropdown svg,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-dropdown svg,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group .fi-icon-btn svg,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group .fi-icon-btn .fi-icon-btn-icon {
+    width: 1.125rem !important;
+    height: 1.125rem !important;
+    min-width: 1.125rem !important;
+    min-height: 1.125rem !important;
+    max-width: 1.125rem !important;
+    max-height: 1.125rem !important;
+    margin: 0 !important;
+    display: block !important;
+    color: inherit !important;
+}
+
+/* Hover nos Botões de Filtros e Colunas */
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-dropdown > .fi-dropdown-trigger > button:hover,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-modal > .fi-modal-trigger > button:hover,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-dropdown > .fi-dropdown-trigger > button:hover,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-modal > .fi-modal-trigger > button:hover,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group .fi-icon-btn:hover {
+    background: #12313b !important;
+    border-color: rgba(183, 131, 47, 0.4) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(4, 14, 19, 0.3) !important;
+    transform: none !important;
+}
+
+/* Focus nos Botões: Ring/outline dourado respeitando o border-radius */
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group .fi-icon-btn:focus-visible,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-dropdown > .fi-dropdown-trigger > button:focus-visible,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-dropdown > .fi-dropdown-trigger > button:focus-visible {
+    outline: 2px solid #b7832f !important;
+    outline-offset: 2px !important;
+}
+
+/* Estado Ativo / Dropdown Aberto */
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-dropdown > .fi-dropdown-trigger > button[aria-expanded="true"],
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-dropdown > .fi-dropdown-trigger > button[aria-expanded="true"],
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group .fi-icon-btn[aria-expanded="true"],
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group .fi-icon-btn.fi-active {
+    background: #12313b !important;
+    border-color: #b7832f !important;
+    color: #ffffff !important;
+    box-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.3),
+        0 0 0 2px rgba(183, 131, 47, 0.25) !important;
+}
+
+/* Indicador de Filtro Ativo (Badge / Dot dourado) */
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-dropdown .fi-icon-btn-badge-ctn,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-dropdown .fi-badge {
+    background: #b7832f !important;
+    color: #06151c !important;
+    font-weight: 700 !important;
+    font-size: 0.625rem !important;
+    border-radius: 9999px !important;
+}
+
+@media (max-width: 640px) {
+    .bsi-construction-units-list-page .fi-ta-header-toolbar > div:last-child {
+        width: 100% !important;
+        justify-content: space-between !important;
+        margin-left: 0 !important;
+    }
+
+    .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-search-field {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+    }
+
+    .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-input-wrp {
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+}
+
 
 /* ── Clientes: Central Cadastral de Identificação e Contato ── */
 
@@ -8311,6 +8591,25 @@ html:not(.dark) .fi-activity-card:hover {
     border-color: #c4bbb8 !important;
 }
 
+/* Enviar Medição: Cancelar terciário (fantasma) — mesma altura, sem competir com o outline secundário */
+.bsi-measurement-form-page form.fi-sc-form .fi-sc-actions .fi-btn.bsi-form-cancel-action:not(.fi-color-primary) {
+    color: #766c68 !important;
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+.bsi-measurement-form-page form.fi-sc-form .fi-sc-actions .fi-btn.bsi-form-cancel-action:not(.fi-color-primary):hover {
+    color: #34302e !important;
+    background: rgba(9, 27, 35, 0.06) !important;
+    border-color: transparent !important;
+}
+
+.bsi-measurement-form-page form.fi-sc-form .fi-sc-actions .fi-btn.bsi-form-cancel-action:not(.fi-color-primary):focus-visible {
+    outline: 2px solid #b7832f !important;
+    outline-offset: 2px !important;
+}
+
 /* ── Dark mode: azul-petróleo profundo, bordas frias, dourado só no foco/CTA ── */
 /* Base cromática da página: azul-petróleo profundo (navy-950), nunca preto quente */
 .dark .bsi-construction-form-page,
@@ -8476,6 +8775,19 @@ html:not(.dark) .fi-activity-card:hover {
     color: #fbfaf8 !important;
     background: rgba(251, 250, 248, 0.06) !important;
     border-color: rgba(148, 163, 184, 0.4) !important;
+}
+
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-sc-actions .fi-btn.bsi-form-cancel-action:not(.fi-color-primary) {
+    color: rgba(251, 250, 248, 0.55) !important;
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-sc-actions .fi-btn.bsi-form-cancel-action:not(.fi-color-primary):hover {
+    color: #fbfaf8 !important;
+    background: rgba(251, 250, 248, 0.08) !important;
+    border-color: transparent !important;
 }
 
 /* Mobile: campos empilhados, ações em largura confortável */
@@ -12429,7 +12741,15 @@ html:not(.dark) .fi-activity-card:hover {
     padding-inline: 0.75rem !important;
 }
 
-/* ── Textareas in Wizard (Full-width descriptive fields with comfortable height & resize) ── */
+/* ── Textareas & Long-Form Legal Blocks in Wizard ── */
+.bsi-cockpit-page .fi-sc-wizard .fi-fo-textarea .fi-input-wrp-content-ctn > div,
+.dark .bsi-cockpit-page .fi-sc-wizard .fi-fo-textarea .fi-input-wrp-content-ctn > div,
+.bsi-cockpit-page .fi-sc-wizard .fi-fo-textarea div:has(> textarea),
+.dark .bsi-cockpit-page .fi-sc-wizard .fi-fo-textarea div:has(> textarea) {
+    height: auto !important;
+    min-height: 7.25rem !important;
+}
+
 .bsi-cockpit-page .fi-sc-wizard textarea.fi-input,
 .dark .bsi-cockpit-page .fi-sc-wizard textarea.fi-input,
 .bsi-cockpit-page .fi-sc-wizard textarea,
@@ -12438,18 +12758,137 @@ html:not(.dark) .fi-activity-card:hover {
     font-size: 0.875rem !important;
     line-height: 1.6 !important;
     color: #fbfaf8 !important;
-    padding: 0.875rem 1rem !important;
+    padding: 0.875rem 1.25rem 0.875rem 1rem !important;
     resize: vertical !important;
+    overflow-y: auto !important;
+}
+
+@supports (-moz-appearance: none) {
+    .bsi-cockpit-page .fi-sc-wizard textarea.fi-input,
+    .dark .bsi-cockpit-page .fi-sc-wizard textarea.fi-input,
+    .bsi-cockpit-page .fi-sc-wizard textarea,
+    .dark .bsi-cockpit-page .fi-sc-wizard textarea {
+        scrollbar-width: thin !important;
+        scrollbar-color: rgba(148, 163, 184, 0.35) transparent !important;
+    }
+}
+
+.bsi-cockpit-page .fi-sc-wizard textarea::-webkit-scrollbar,
+.dark .bsi-cockpit-page .fi-sc-wizard textarea::-webkit-scrollbar {
+    width: 7px !important;
+}
+
+.bsi-cockpit-page .fi-sc-wizard textarea::-webkit-scrollbar-track,
+.dark .bsi-cockpit-page .fi-sc-wizard textarea::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+
+.bsi-cockpit-page .fi-sc-wizard textarea::-webkit-scrollbar-thumb,
+.dark .bsi-cockpit-page .fi-sc-wizard textarea::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.35) !important;
+    border-radius: 9999px !important;
+    transition: background-color 150ms ease-out !important;
+}
+
+.bsi-cockpit-page .fi-sc-wizard textarea::-webkit-scrollbar-thumb:hover,
+.dark .bsi-cockpit-page .fi-sc-wizard textarea::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(183, 131, 47, 0.65) !important;
+}
+
+
+/* ── Unified Single-Surface Selects in Wizard (Native Select Inputs) ── */
+.bsi-cockpit-page .fi-sc-wizard .fi-fo-select-native.fi-input-wrp,
+.dark .bsi-cockpit-page .fi-sc-wizard .fi-fo-select-native.fi-input-wrp,
+.bsi-cockpit-page .fi-sc-wizard .fi-input-wrp:has(> .fi-input-wrp-content-ctn > select.fi-select-input),
+.dark .bsi-cockpit-page .fi-sc-wizard .fi-input-wrp:has(> .fi-input-wrp-content-ctn > select.fi-select-input) {
+    background: rgba(6, 21, 28, 0.7) !important;
+    border: 1px solid rgba(183, 131, 47, 0.22) !important;
+    border-radius: 10px !important;
+    min-height: 2.875rem !important;
+    padding-inline: 0 !important;
+    padding-block: 0 !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    box-shadow: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    transition: all 150ms ease-out !important;
+}
+
+.bsi-cockpit-page .fi-sc-wizard .fi-fo-select-native.fi-input-wrp:hover,
+.dark .bsi-cockpit-page .fi-sc-wizard .fi-fo-select-native.fi-input-wrp:hover,
+.bsi-cockpit-page .fi-sc-wizard .fi-input-wrp:has(> .fi-input-wrp-content-ctn > select.fi-select-input):hover,
+.dark .bsi-cockpit-page .fi-sc-wizard .fi-input-wrp:has(> .fi-input-wrp-content-ctn > select.fi-select-input):hover {
+    background: rgba(18, 49, 59, 0.45) !important;
+    border-color: rgba(183, 131, 47, 0.42) !important;
+}
+
+.bsi-cockpit-page .fi-sc-wizard .fi-fo-select-native.fi-input-wrp:focus-within,
+.dark .bsi-cockpit-page .fi-sc-wizard .fi-fo-select-native.fi-input-wrp:focus-within,
+.bsi-cockpit-page .fi-sc-wizard .fi-input-wrp:has(> .fi-input-wrp-content-ctn > select.fi-select-input):focus-within,
+.dark .bsi-cockpit-page .fi-sc-wizard .fi-input-wrp:has(> .fi-input-wrp-content-ctn > select.fi-select-input):focus-within {
+    background: rgba(18, 49, 59, 0.6) !important;
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.2) !important;
+}
+
+.bsi-cockpit-page .fi-sc-wizard .fi-fo-select-native .fi-input-wrp-content-ctn,
+.dark .bsi-cockpit-page .fi-sc-wizard .fi-fo-select-native .fi-input-wrp-content-ctn,
+.bsi-cockpit-page .fi-sc-wizard .fi-input-wrp:has(> .fi-input-wrp-content-ctn > select.fi-select-input) .fi-input-wrp-content-ctn,
+.dark .bsi-cockpit-page .fi-sc-wizard .fi-input-wrp:has(> .fi-input-wrp-content-ctn > select.fi-select-input) .fi-input-wrp-content-ctn {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 2.75rem !important;
+    display: flex !important;
+    align-items: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 .bsi-cockpit-page .fi-sc-wizard select.fi-select-input,
 .dark .bsi-cockpit-page .fi-sc-wizard select.fi-select-input {
+    width: 100% !important;
+    height: 100% !important;
     min-height: 2.75rem !important;
-    font-size: 0.875rem !important;
+    line-height: 2.75rem !important;
+    background-color: transparent !important;
+    border: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    border-radius: 10px !important;
+    cursor: pointer !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
     color: #fbfaf8 !important;
     text-align: center !important;
     text-align-last: center !important;
+    font-size: 0.875rem !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239d918d' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+    background-position: right 0.875rem center !important;
+    background-repeat: no-repeat !important;
+    background-size: 1.125rem 1.125rem !important;
     padding-inline: 2.25rem !important;
+}
+
+.bsi-cockpit-page .fi-sc-wizard .fi-fo-select-native.fi-input-wrp:hover select.fi-select-input,
+.dark .bsi-cockpit-page .fi-sc-wizard .fi-fo-select-native.fi-input-wrp:hover select.fi-select-input,
+.bsi-cockpit-page .fi-sc-wizard select.fi-select-input:hover,
+.dark .bsi-cockpit-page .fi-sc-wizard select.fi-select-input:hover {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23b7832f' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.75' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+}
+
+.bsi-cockpit-page .fi-sc-wizard select.fi-select-input option,
+.dark .bsi-cockpit-page .fi-sc-wizard select.fi-select-input option {
+    background-color: #091b23 !important;
+    color: #fbfaf8 !important;
+}
+
+.bsi-cockpit-page .fi-sc-wizard select.fi-select-input option:checked,
+.dark .bsi-cockpit-page .fi-sc-wizard select.fi-select-input option:checked {
+    background-color: #12313b !important;
+    color: #d4af37 !important;
 }
 
 /* ── Centered Selected Value in Wizard Selects (Symmetrical padding reserves icon space) ── */
@@ -15240,3 +15679,17 @@ body.bsi-negotiation-view-page,
 
 
 
+/* ── Minha Conta: compact table density ── */
+html[data-table-density='compact'] .fi-ta-record-content-ctn {
+    padding-block: 0.5rem !important;
+    row-gap: 0.375rem !important;
+}
+
+html[data-table-density='compact'] .fi-ta-header-cell {
+    padding-block: 0.5rem !important;
+}
+
+html[data-table-density='compact'] .fi-ta-record-checkbox,
+html[data-table-density='compact'] .fi-ta-page-checkbox {
+    margin-block: 0.75rem !important;
+}

@@ -42,10 +42,12 @@ class SalesBoardCycleInfolist
     protected static function nextActionSection(): Section
     {
         return Section::make('Próxima ação')
+            ->extraAttributes(['class' => 'bsi-cycle-section bsi-cycle-next-action'])
             ->icon('heroicon-o-arrow-right-circle')
             ->columnSpanFull()
             ->schema([
                 TextEntry::make('next_action_headline')
+                    ->label('Orientação do ciclo')
                     ->hiddenLabel()
                     ->state(fn (SalesBoardCycle $record): string => SalesBoardCycleNextAction::for($record)->headline)
                     ->icon(fn (SalesBoardCycle $record): string => SalesBoardCycleNextAction::for($record)->icon)
@@ -54,6 +56,7 @@ class SalesBoardCycleInfolist
                     ->helperText(fn (SalesBoardCycle $record): string => SalesBoardCycleNextAction::for($record)->detail),
 
                 TextEntry::make('next_action_source_checked_at')
+                    ->label('Verificação da fonte')
                     ->hiddenLabel()
                     ->state(fn (SalesBoardCycle $record): string => $record->currentBaseline?->last_checked_at === null
                         ? 'A fonte ainda não foi verificada desde a apuração. Use “Verificar alterações” para conferir agora.'
@@ -71,27 +74,27 @@ class SalesBoardCycleInfolist
     protected static function identificationSection(): Section
     {
         return Section::make('Competência')
+            ->extraAttributes(['class' => 'bsi-cycle-section bsi-cycle-identification'])
             ->description('A que empreendimento e a que mês esta posição pertence.')
             ->icon('heroicon-o-calendar-days')
             ->columnSpanFull()
-            ->columns(['default' => 1, 'sm' => 2, 'md' => 4])
+            ->columns(['default' => 1, 'sm' => 2, 'lg' => 3])
             ->schema([
                 TextEntry::make('emission.name')
                     ->label('Operação')
                     ->weight('bold')
-                    ->icon('heroicon-m-briefcase')
-                    ->columnSpan(['default' => 1, 'md' => 2]),
+                    ->icon('heroicon-m-briefcase'),
 
                 TextEntry::make('construction.development_name')
                     ->label('Empreendimento')
                     ->weight('bold')
-                    ->icon('heroicon-m-building-office-2')
-                    ->columnSpan(['default' => 1, 'md' => 2]),
+                    ->icon('heroicon-m-building-office-2'),
 
                 TextEntry::make('reference_month')
                     ->label('Competência')
                     ->date('m/Y')
                     ->badge()
+                    ->color('gray')
                     ->icon('heroicon-m-calendar'),
 
                 TextEntry::make('position_date')
@@ -116,25 +119,35 @@ class SalesBoardCycleInfolist
     protected static function positionSection(): Section
     {
         return Section::make('Posição congelada')
+            ->extraAttributes(['class' => 'bsi-cycle-section bsi-cycle-position'])
             ->description('Os totais são a soma das unidades da versão vigente, e não um número digitado à parte.')
             ->icon('heroicon-o-lock-closed')
             ->columnSpanFull()
             ->schema([
-                Grid::make(['default' => 1, 'sm' => 2, 'md' => 5])->schema([
-                    static::bucket('Estoque', 'stock'),
-                    static::bucket('Financiado', 'financed'),
-                    static::bucket('Quitado', 'settled'),
-                    static::bucket('Permutado', 'exchanged'),
+                Grid::make(['default' => 2, 'sm' => 3, 'lg' => 5])
+                    ->extraAttributes(['class' => 'bsi-cycle-kpis'])
+                    ->schema([
+                        static::bucket('Estoque', 'stock'),
+                        static::bucket('Financiado', 'financed'),
+                        static::bucket('Quitado', 'settled'),
+                        static::bucket('Permutado', 'exchanged'),
 
-                    TextEntry::make('total_units')
-                        ->label('Total')
-                        ->state(fn (SalesBoardCycle $record): string => static::units($record->currentBaseline?->units_total))
-                        ->helperText(fn (SalesBoardCycle $record): string => static::money(
-                            $record->currentBaseline?->totalValueCents(),
-                        ))
-                        ->weight('bold')
-                        ->size('lg'),
-                ]),
+                        TextEntry::make('total_units')
+                            ->label('Total')
+                            ->state(fn (SalesBoardCycle $record): string => static::units($record->currentBaseline?->units_total))
+                            ->weight('bold')
+                            ->size('lg'),
+                    ]),
+
+                TextEntry::make('consolidated_value')
+                    ->label('Valor consolidado')
+                    ->state(fn (SalesBoardCycle $record): string => static::money(
+                        $record->currentBaseline?->totalValueCents(),
+                    ))
+                    ->weight('bold')
+                    ->size('lg')
+                    ->extraAttributes(['class' => 'bsi-cycle-consolidated-value'])
+                    ->columnSpanFull(),
 
                 TextEntry::make('undetermined_units')
                     ->label('Indeterminadas')
@@ -150,10 +163,11 @@ class SalesBoardCycleInfolist
     protected static function versionSection(): Section
     {
         return Section::make('Versão vigente e a fonte')
+            ->extraAttributes(['class' => 'bsi-cycle-section bsi-cycle-metadata'])
             ->description('O resumo da fonte material observada e o da posição derivada dela são perguntas diferentes: a fonte pode mudar sem que nenhum número mude.')
             ->icon('heroicon-o-finger-print')
             ->columnSpanFull()
-            ->columns(['default' => 1, 'sm' => 2, 'md' => 4])
+            ->columns(['default' => 1, 'sm' => 2, 'lg' => 4])
             ->schema([
                 TextEntry::make('currentBaseline.version')
                     ->label('Versão')
@@ -175,7 +189,7 @@ class SalesBoardCycleInfolist
                 TextEntry::make('currentBaseline.reason')
                     ->label('Motivo do recálculo')
                     ->placeholder('Versão inicial')
-                    ->columnSpan(['default' => 1, 'md' => 1]),
+                    ->columnSpan(1),
 
                 TextEntry::make('stale_impact')
                     ->label('Situação da fonte')
@@ -183,7 +197,7 @@ class SalesBoardCycleInfolist
                     ->badge()
                     ->color(fn (SalesBoardCycle $record): string => ($record->currentBaseline?->stale_impact ?? SalesBoardStaleImpact::None)->color())
                     ->helperText(fn (SalesBoardCycle $record): string => ($record->currentBaseline?->stale_impact ?? SalesBoardStaleImpact::None)->description())
-                    ->columnSpan(['default' => 1, 'md' => 2]),
+                    ->columnSpan(['default' => 1, 'lg' => 2]),
 
                 TextEntry::make('currentBaseline.last_checked_at')
                     ->label('Última verificação')
@@ -201,16 +215,17 @@ class SalesBoardCycleInfolist
                     ->state(fn (SalesBoardCycle $record): string => static::fingerprint($record->currentBaseline?->source_fingerprint))
                     ->copyable()
                     ->copyableState(fn (SalesBoardCycle $record): ?string => $record->currentBaseline?->source_fingerprint)
-                    ->extraAttributes(['class' => 'font-mono'])
-                    ->columnSpan(['default' => 1, 'md' => 2]),
+                    ->extraAttributes(['class' => 'font-mono bsi-cycle-fingerprint'])
+                    ->columnStart(1)
+                    ->columnSpan(['default' => 1, 'lg' => 2]),
 
                 TextEntry::make('currentBaseline.snapshot_fingerprint')
                     ->label('Resumo da posição')
                     ->state(fn (SalesBoardCycle $record): string => static::fingerprint($record->currentBaseline?->snapshot_fingerprint))
                     ->copyable()
                     ->copyableState(fn (SalesBoardCycle $record): ?string => $record->currentBaseline?->snapshot_fingerprint)
-                    ->extraAttributes(['class' => 'font-mono'])
-                    ->columnSpan(['default' => 1, 'md' => 2]),
+                    ->extraAttributes(['class' => 'font-mono bsi-cycle-fingerprint'])
+                    ->columnSpan(['default' => 1, 'lg' => 2]),
             ]);
     }
 

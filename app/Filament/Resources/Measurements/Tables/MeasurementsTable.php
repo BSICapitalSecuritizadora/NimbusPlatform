@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Measurements\Tables;
 
 use App\Filament\Resources\Measurements\MeasurementResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Measurement;
 use App\Models\User;
 use App\Services\MeasurementOperationalReadModel;
@@ -192,7 +193,8 @@ class MeasurementsTable
                             ->searchable()
                             ->query(fn (Builder $query, array $data): Builder => $query
                                 ->when(filled($data['value'] ?? null), fn (Builder $measurements): Builder => $measurements
-                                    ->where('operation_id', (int) $data['value']))),
+                                    ->where('operation_id', (int) $data['value'])))
+                            ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                         SelectFilter::make('emission_id')
                             ->label('Emissão')
@@ -201,7 +203,8 @@ class MeasurementsTable
                             ->query(fn (Builder $query, array $data): Builder => $query
                                 ->when(filled($data['value'] ?? null), fn (Builder $measurements): Builder => $measurements
                                     ->whereHas('operation', fn (Builder $operations): Builder => $operations
-                                        ->where('emission_id', (int) $data['value'])))),
+                                        ->where('emission_id', (int) $data['value']))))
+                            ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                         SelectFilter::make('responsible_user_id')
                             ->label('Responsável')

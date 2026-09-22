@@ -10,6 +10,7 @@ use App\Services\MeasurementWorkflow;
 use App\Services\OperationLifecycleService;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Support\Enums\Alignment;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -26,6 +27,8 @@ class CreateMeasurement extends CreateRecord
     protected array $extraBodyAttributes = [
         'class' => 'bsi-construction-form-page bsi-measurement-form-page',
     ];
+
+    public static string|Alignment $formActionsAlignment = Alignment::End;
 
     public function getSubheading(): ?string
     {
@@ -97,6 +100,20 @@ class CreateMeasurement extends CreateRecord
         app(MeasurementWorkflow::class)->startReview($this->record->refresh(), auth()->user());
     }
 
+    /**
+     * Ordem visual do rodapé: terciária à esquerda, primária à direita.
+     *
+     * @return array<int, Action>
+     */
+    protected function getFormActions(): array
+    {
+        return [
+            $this->getCancelFormAction(),
+            ...($this->canCreateAnother() ? [$this->getCreateAnotherFormAction()] : []),
+            $this->getCreateFormAction(),
+        ];
+    }
+
     protected function getCreateFormAction(): Action
     {
         return parent::getCreateFormAction()
@@ -115,7 +132,8 @@ class CreateMeasurement extends CreateRecord
     {
         return parent::getCancelFormAction()
             ->label('Cancelar')
-            ->color('gray');
+            ->color('gray')
+            ->extraAttributes(['class' => 'bsi-form-cancel-action']);
     }
 
     protected function getCreatedNotificationTitle(): ?string

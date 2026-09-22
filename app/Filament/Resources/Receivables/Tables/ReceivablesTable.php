@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Receivables\Tables;
 
 use App\Filament\Resources\Receivables\Pages\ListReceivables;
 use App\Filament\Resources\Receivables\ReceivableResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Receivable;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -112,7 +113,8 @@ class ReceivablesTable
                     ->label('Emissão')
                     ->relationship('emission', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                 SelectFilter::make('reference_month')
                     ->label('Mês')

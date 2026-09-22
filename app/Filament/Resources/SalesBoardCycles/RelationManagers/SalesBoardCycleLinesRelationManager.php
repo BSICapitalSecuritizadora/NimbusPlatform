@@ -98,6 +98,12 @@ class SalesBoardCycleLinesRelationManager extends RelationManager
 
                 TextColumn::make('settlement_state')
                     ->label('Quitação')
+                    ->badge()
+                    ->color(fn (?ContractSettlementState $state): string => match ($state) {
+                        ContractSettlementState::Settled => 'success',
+                        ContractSettlementState::Undetermined => 'warning',
+                        default => 'gray',
+                    })
                     ->placeholder('—')
                     ->formatStateUsing(fn (?ContractSettlementState $state): ?string => $state?->label())
                     ->description(fn (SalesBoardCycleLine $record): ?string => $record->settlement_installments_total === null
@@ -112,6 +118,7 @@ class SalesBoardCycleLinesRelationManager extends RelationManager
                     ->description(fn (SalesBoardCycleLine $record): ?string => $record->exchange_effective_from
                         ?->format('\v\i\g\e\n\t\e \d\e\s\d\e d/m/Y'))
                     ->alignEnd()
+                    ->extraCellAttributes(['class' => 'font-mono tabular-nums whitespace-nowrap'])
                     ->toggleable(),
 
                 TextColumn::make('bucket_value')

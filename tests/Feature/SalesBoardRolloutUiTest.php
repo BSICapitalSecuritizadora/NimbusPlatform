@@ -57,6 +57,22 @@ it('explains that automating is not a switch', function () {
         ->assertSee('não é ligar uma chave');
 });
 
+it('presents the rollout as an executive summary with the mode next to the title', function () {
+    $scenario = RolloutFixture::emission(1);
+
+    $page = Livewire::test(ManageSalesBoardRollout::class, ['record' => $scenario['emission']->getKey()])
+        ->assertOk()
+        ->assertSee('Resumo executivo')
+        ->assertSee('Próxima ação')
+        ->assertSee('Abrir homologação')
+        ->assertSee('Nenhum responsável definido');
+
+    // O modo virou badge junto ao título, e a abertura é a ação do estado vazio.
+    expect($page->html())
+        ->toMatch('/bsi-rollout-title[\s\S]*fi-badge[\s\S]*Legado/')
+        ->and(substr_count($page->html(), 'Abrir homologação'))->toBe(1);
+});
+
 it('shows the legacy versus derived comparison per construction', function () {
     $scenario = RolloutFixture::emission(1);
     RolloutFixture::legacyBoard($scenario['constructions'][0], stockUnits: 5, stockValue: '3000000.00');

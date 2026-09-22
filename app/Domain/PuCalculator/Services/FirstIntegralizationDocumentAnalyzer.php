@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\Services;
 
+use App\Domain\PuCalculator\Enums\PuBaselineEvidenceConfidence;
 use App\Domain\PuCalculator\Enums\PuBaselineEvidenceDocumentType;
 use App\Models\Document;
 use App\Models\Emission;
@@ -502,11 +503,7 @@ PROMPT;
 
     private function confidenceLabel(float $score): string
     {
-        return match (true) {
-            $score >= 0.85 => 'high',
-            $score >= 0.60 => 'medium',
-            default => 'low',
-        };
+        return PuBaselineEvidenceConfidence::fromScore($score)->value;
     }
 
     private function date(mixed $value): ?string

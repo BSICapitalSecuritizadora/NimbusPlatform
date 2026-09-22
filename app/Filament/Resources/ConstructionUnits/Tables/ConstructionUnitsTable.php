@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ConstructionUnits\Tables;
 
 use App\Filament\Resources\ConstructionUnits\ConstructionUnitResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\Emission;
@@ -113,7 +114,8 @@ class ConstructionUnitsTable
                     ->query(fn (Builder $query, array $data): Builder => $query->when(
                         $data['value'] ?? null,
                         fn (Builder $query, mixed $emissionId): Builder => $query->forEmission($emissionId),
-                    )),
+                    ))
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                 SelectFilter::make('construction_id')
                     ->label('Empreendimento')
@@ -126,7 +128,8 @@ class ConstructionUnitsTable
                         ->pluck('development_name', 'id')
                         ->all())
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                 SelectFilter::make('block')
                     ->label('Bloco')
@@ -145,7 +148,8 @@ class ConstructionUnitsTable
                             ->all();
                     })
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
             ])
             ->actions([
                 ActionGroup::make([
