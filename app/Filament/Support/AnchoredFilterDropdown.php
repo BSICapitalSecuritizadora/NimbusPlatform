@@ -6,9 +6,10 @@ use Closure;
 use Filament\Forms\Components\Select;
 
 /**
- * Geometria compartilhada do dropdown dos filtros pesquisáveis de "Emissão",
- * "Empreendimento", "Empresa de medição", "Operação" e "Bloco": o popup fica ancorado no
- * trigger que o abriu.
+ * Geometria compartilhada do dropdown dos filtros de "Emissão", "Empreendimento",
+ * "Empresa de medição", "Operação", "Bloco" e "Tipo": o popup fica ancorado no trigger
+ * que o abriu. Vale para todo filtro renderizado pelo select JS do Filament (pesquisável
+ * ou `native(false)`); filtros com `<select>` nativo não sofrem o defeito e ficam fora.
  *
  * O select pesquisável do Filament v5 monta o painel (`.fi-dropdown-panel`) dentro do
  * próprio `.fi-select-input-ctn` e define `width` inline igual ao `offsetWidth` do

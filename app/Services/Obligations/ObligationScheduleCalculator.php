@@ -5,9 +5,11 @@ namespace App\Services\Obligations;
 use App\Domain\PuCalculator\Contracts\BusinessDayCalendar;
 use App\Enums\ObligationDueDateCalculationStatus;
 use App\Enums\ObligationDueRuleType;
+use App\Enums\ObligationFrequency;
 use App\Enums\ObligationInitialDateInclusion;
 use App\Enums\ObligationInvalidDayPolicy;
 use App\Enums\ObligationOffsetDirection;
+use App\Enums\ObligationSeriesStatus;
 use App\Exceptions\ObligationCalendarCoverageException;
 use App\Models\ObligationSeries;
 use App\Models\ObligationSeriesRule;
@@ -115,6 +117,31 @@ class ObligationScheduleCalculator
             ObligationDueRuleType::BusinessDaysRelativeToEvent => $this->resolveBusinessDaysRelativeToEvent($rule, $referenceDate),
             default => new ObligationDueDateResolution(null, 'Regra sem resolução automática.'),
         };
+    }
+
+    /**
+     * Rótulo da próxima ocorrência mostrado na aba de séries e na ficha da
+     * obrigação criada a partir de uma sugestão.
+     */
+    public function nextOccurrenceLabel(ObligationSeries $series): string
+    {
+        if ($series->status === ObligationSeriesStatus::AwaitingConfiguration) {
+            return 'Aguardando configuração';
+        }
+
+        if ($series->frequency === ObligationFrequency::OnDemand) {
+            return 'Sob demanda';
+        }
+
+        if ($series->status !== ObligationSeriesStatus::Active) {
+            return 'Sem nova geração';
+        }
+
+        $next = $this->nextOccurrence($series);
+
+        return $next === null
+            ? 'Nenhuma dentro da vigência'
+            : sprintf('%s · comp. %s', $next['due_date']->format('d/m/Y'), $next['competence_date']->format('m/Y'));
     }
 
     /**

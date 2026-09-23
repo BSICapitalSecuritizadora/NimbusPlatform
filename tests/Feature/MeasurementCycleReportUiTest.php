@@ -369,3 +369,28 @@ it('explains every canonical detail coverage state without converting unknown va
     'partial' => [MeasurementHistoryCompleteness::Partial, 'Parte do histórico está disponível'],
     'insufficient' => [MeasurementHistoryCompleteness::Insufficient, 'Não há evidência histórica suficiente'],
 ]);
+
+it('renders institutional date picker fields for historical filters and preserves date filtering', function () {
+    $actor = p3b2UiActor([
+        AccessPermission::MeasurementsView->value,
+        AccessPermission::MeasurementsCycleReportsView->value,
+    ]);
+    $this->actingAs($actor);
+    $this->mock(MeasurementCycleReportingService::class, function ($mock): void {
+        $mock->shouldReceive('report')->andReturn(p3b2UiResult());
+    });
+
+    Livewire::test(MeasurementCycleReport::class)
+        ->assertSee('Saída desde')
+        ->assertSee('Saída até')
+        ->assertSee('mcrDatePicker', false)
+        ->assertSee('mcr-datepicker-panel', false)
+        ->assertSee('mcr-datepicker-input', false)
+        ->set('periodFrom', '2026-08-01')
+        ->set('periodTo', '2026-08-10')
+        ->assertSet('periodFrom', '2026-08-01')
+        ->assertSet('periodTo', '2026-08-10')
+        ->call('clearFilters')
+        ->assertSet('periodFrom', '')
+        ->assertSet('periodTo', '');
+});

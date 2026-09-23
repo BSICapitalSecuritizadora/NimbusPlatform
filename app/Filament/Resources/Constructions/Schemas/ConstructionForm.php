@@ -75,6 +75,7 @@ class ConstructionForm
                 $withEmission
                     ? Select::make('emission_id')
                         ->label('Emissão')
+                        ->extraAttributes(['class' => 'bsi-construction-emission-select'])
                         ->relationship('emission', 'name')
                         ->searchable()
                         ->preload()

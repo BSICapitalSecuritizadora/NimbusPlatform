@@ -4,11 +4,17 @@ namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Actions\Emissions\ImportIntegralizationHistoriesFromSpreadsheet;
 use App\Actions\Emissions\IntegralizationHistorySpreadsheetTemplate;
+use App\Actions\Emissions\RecordIntegralizationHistory;
+use App\Domain\PuCalculator\Services\DecimalRounder;
+use App\Domain\PuCalculator\ValueObjects\Decimal;
+use App\Enums\AccessPermission;
+use App\Enums\IntegralizationSource;
 use App\Filament\Pages\Settings as SettingsPage;
 use App\Filament\Resources\ExpenseServiceProviders\Schemas\ExpenseServiceProviderForm;
 use App\Models\ExpenseServiceProvider;
 use App\Models\ExpenseServiceProviderType;
 use App\Models\IntegralizationHistory;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -30,6 +36,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class IntegralizationHistoriesRelationManager extends RelationManager
 {
@@ -51,6 +58,7 @@ class IntegralizationHistoriesRelationManager extends RelationManager
             ->schema([
                 DatePicker::make('date')
                     ->label('Data de Integralização')
+                    ->displayFormat('d/m/Y')
                     ->required(),
                 TextInput::make('quantity')
                     ->label('Quantidade')
@@ -63,7 +71,8 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                     ->afterStateHydrated(fn (Get $get, Set $set): null => self::syncFinancialValue($get, $set))
                     ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncFinancialValue($get, $set))
                     ->formatStateUsing(fn (mixed $state): ?string => self::formatDecimalForDisplay($state, 0))
-                    ->dehydrateStateUsing(fn (mixed $state): ?float => self::normalizeDecimalValue($state))
+                    ->dehydrateStateUsing(fn (mixed $state): ?string => self::normalizeDecimalValue($state))
+                    ->rule(fn (): Closure => self::maskedDecimalRule('Informe uma quantidade válida.'))
                     ->placeholder('0')
                     ->validationMessages([
                         'required' => 'Informe a quantidade a integralizar.',
@@ -80,8 +89,13 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                     ->afterStateHydrated(fn (Get $get, Set $set): null => self::syncFinancialValue($get, $set))
                     ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncFinancialValue($get, $set))
                     ->formatStateUsing(fn (mixed $state): ?string => self::formatDecimalForDisplay($state, 8))
-                    ->dehydrateStateUsing(fn (mixed $state): ?float => self::normalizeDecimalValue($state))
-                    ->placeholder('0,00000000'),
+                    ->dehydrateStateUsing(fn (mixed $state): ?string => self::normalizeDecimalValue($state))
+                    ->required(fn (string $operation): bool => $operation === 'create')
+                    ->rule(fn (): Closure => self::maskedDecimalRule('Informe um PU válido.'))
+                    ->placeholder('0,00000000')
+                    ->validationMessages([
+                        'required' => 'Informe o PU da integralização.',
+                    ]),
                 TextInput::make('financial_value')
                     ->label('Valor Financeiro')
                     ->prefix('R$')
@@ -92,7 +106,7 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                     JS))
                     ->helperText('Calculado automaticamente: Quantidade × PU.')
                     ->formatStateUsing(fn (mixed $state): ?string => self::formatDecimalForDisplay($state, 2))
-                    ->dehydrateStateUsing(fn (Get $get): ?float => self::calculateFinancialValue($get))
+                    ->dehydrateStateUsing(fn (Get $get): ?string => self::calculateFinancialValue($get))
                     ->placeholder('0,00'),
                 Select::make('investor_fund')
                     ->label('Fundo do Investidor')
@@ -101,6 +115,12 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                     ->preload()
                     ->getSearchResultsUsing(fn (string $search): array => self::getInvestorFundOptions($search))
                     ->getOptionLabelUsing(fn (mixed $value): ?string => filled($value) ? (string) $value : null)
+                    ->required(fn (string $operation): bool => $operation === 'create')
+                    ->in(fn (?IntegralizationHistory $record): array => self::allowedInvestorFunds($record))
+                    ->validationMessages([
+                        'required' => 'Selecione o fundo do investidor.',
+                        'in' => 'Selecione um fundo do investidor cadastrado.',
+                    ])
                     ->createOptionForm(fn (): array => ExpenseServiceProviderForm::fields(
                         serviceProviderTypeId: self::resolveInvestorFundTypeId(),
                         lockServiceProviderType: true,
@@ -113,7 +133,8 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                             ->label('Cadastrar Fundo do Investidor')
                             ->modalHeading('Cadastrar Fundo do Investidor'),
                     )
-                    ->placeholder('Selecione ou cadastre o fundo'),
+                    ->placeholder('Selecione ou cadastre o fundo')
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -169,11 +190,14 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                     ->tooltip('Configurar mapeamento de colunas do template')
                     ->url(fn (): string => SettingsPage::getUrl(panel: 'admin'))
                     ->visible(fn (): bool => auth()->user()?->can('settings.view') ?? false),
+                $this->makeCreateIntegralizationAction('create')
+                    ->outlined(),
                 Action::make('import')
                     ->label('Importar Dados')
                     ->icon('heroicon-o-arrow-up-tray')
                     ->color('primary')
                     ->tooltip('Importar histórico de integralizações via planilha (.xlsx / .csv)')
+                    ->authorize(fn (): bool => $this->canRecordIntegralizations())
                     ->modalHeading('Importar Planilha de Integralizações')
                     ->modalSubmitActionLabel('Importar Dados')
                     ->form([
@@ -198,7 +222,7 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                                 ->send();
 
                             return;
-                        } catch (\Throwable) {
+                        } catch (Throwable) {
                             Notification::make()
                                 ->title('Erro ao processar o arquivo')
                                 ->danger()
@@ -212,14 +236,6 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                             ->body("{$count} registros foram processados.")
                             ->success()
                             ->send();
-                    }),
-                CreateAction::make()
-                    ->label('Adicionar Integralização')
-                    ->icon('heroicon-m-plus')
-                    ->tooltip('Cadastrar integralização manualmente')
-                    ->modalHeading('Adicionar Integralização')
-                    ->before(function (Action $action, array $data): void {
-                        $this->validateIntegralizationQuantityOrHalt($action, $data);
                     }),
             ])
             ->actions([
@@ -242,18 +258,13 @@ class IntegralizationHistoriesRelationManager extends RelationManager
             ->emptyStateHeading('Nenhuma integralização cadastrada')
             ->emptyStateDescription('Cadastre manualmente a primeira integralização ou importe uma planilha para iniciar o histórico desta emissão.')
             ->emptyStateActions([
-                CreateAction::make('empty_create')
-                    ->label('Adicionar Integralização')
-                    ->icon('heroicon-m-plus')
-                    ->color('primary')
-                    ->modalHeading('Adicionar Integralização')
-                    ->before(function (Action $action, array $data): void {
-                        $this->validateIntegralizationQuantityOrHalt($action, $data);
-                    }),
+                $this->makeCreateIntegralizationAction('empty_create')
+                    ->color('primary'),
                 Action::make('empty_import')
                     ->label('Importar Dados')
                     ->icon('heroicon-o-arrow-up-tray')
                     ->color('gray')
+                    ->authorize(fn (): bool => $this->canRecordIntegralizations())
                     ->modalHeading('Importar Planilha de Integralizações')
                     ->modalSubmitActionLabel('Importar Dados')
                     ->form([
@@ -278,7 +289,7 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                                 ->send();
 
                             return;
-                        } catch (\Throwable) {
+                        } catch (Throwable) {
                             Notification::make()
                                 ->title('Erro ao processar o arquivo')
                                 ->danger()
@@ -301,6 +312,74 @@ class IntegralizationHistoriesRelationManager extends RelationManager
         parent::afterActionCalled($action);
 
         $this->dispatch('integralization-histories-updated');
+    }
+
+    /**
+     * "Nova Integralização" grava pela mesma operação da planilha
+     * ({@see RecordIntegralizationHistory}); aqui só se converte a máscara pt-BR
+     * em decimal. O Valor Financeiro do modal é prévia: a gravação o deriva de
+     * novo da quantidade e do PU.
+     *
+     * O `authorize()` explícito vale também na página de visualização, onde o
+     * painel deixa o RelationManager somente leitura -- editar e excluir
+     * continuam fora dali.
+     */
+    protected function makeCreateIntegralizationAction(string $name): CreateAction
+    {
+        return CreateAction::make($name)
+            ->label('Nova Integralização')
+            ->icon('heroicon-m-plus')
+            ->tooltip('Cadastrar integralização manualmente')
+            ->modalHeading('Nova Integralização')
+            ->createAnother(false)
+            ->authorize(fn (): bool => $this->canRecordIntegralizations())
+            ->successNotificationTitle('Integralização adicionada com sucesso.')
+            ->failureNotificationTitle('Não foi possível adicionar a integralização.')
+            ->using(function (CreateAction $action, array $data, RecordIntegralizationHistory $recordIntegralizationHistory): IntegralizationHistory {
+                try {
+                    return $recordIntegralizationHistory->create($this->getOwnerRecord(), [
+                        'date' => $data['date'] ?? null,
+                        'quantity' => $data['quantity'] ?? null,
+                        'unit_value' => $data['unit_value'] ?? null,
+                        'investor_fund' => $data['investor_fund'] ?? null,
+                    ], IntegralizationSource::Manual);
+                } catch (ValidationException $exception) {
+                    throw $this->withMountedActionErrorPaths($exception);
+                } catch (Throwable $exception) {
+                    report($exception);
+
+                    $action->sendFailureNotification();
+                    $action->halt();
+                }
+            });
+    }
+
+    /**
+     * A operação responde pelo nome do campo (`quantity`, `date`...); no modal o
+     * campo vive sob o caminho da ação montada, e é lá que o erro aparece.
+     */
+    protected function withMountedActionErrorPaths(ValidationException $exception): ValidationException
+    {
+        $statePath = $this->getMountedActionSchema()?->getStatePath();
+
+        if (blank($statePath)) {
+            return $exception;
+        }
+
+        return ValidationException::withMessages(
+            collect($exception->errors())
+                ->mapWithKeys(fn (array $messages, string $field): array => ["{$statePath}.{$field}" => $messages])
+                ->all(),
+        );
+    }
+
+    /**
+     * Integralização é dado financeiro da emissão e alimenta a curva de PU e o
+     * saldo devedor: registrar, pela planilha ou à mão, exige `emissions.update`.
+     */
+    protected function canRecordIntegralizations(): bool
+    {
+        return auth()->user()?->can(AccessPermission::EmissionsUpdate->value) ?? false;
     }
 
     protected function validateIntegralizationQuantityOrHalt(
@@ -329,26 +408,61 @@ class IntegralizationHistoriesRelationManager extends RelationManager
         }
     }
 
+    /**
+     * O que vem do banco e da prévia é decimal canônico em string, formatado
+     * sem passar por `float`: a prévia do Valor Financeiro mostra exatamente o
+     * centavo que a gravação vai derivar, em qualquer ordem de grandeza.
+     */
     private static function formatDecimalForDisplay(mixed $state, int $decimals): ?string
     {
         if (blank($state) && $state !== 0 && $state !== '0') {
             return null;
         }
 
-        return number_format((float) $state, $decimals, ',', '.');
+        if (! (is_string($state) && RecordIntegralizationHistory::isPlainDecimal($state))) {
+            return number_format((float) $state, $decimals, ',', '.');
+        }
+
+        $rounded = app(DecimalRounder::class)->round($state, $decimals);
+        $isNegative = str_starts_with($rounded, '-');
+        [$integerPart, $fractionPart] = array_pad(explode('.', ltrim($rounded, '-'), 2), 2, '');
+
+        return ($isNegative ? '-' : '')
+            .strrev(implode('.', str_split(strrev($integerPart), 3)))
+            .($decimals > 0 ? ','.$fractionPart : '');
     }
 
-    private static function normalizeDecimalValue(mixed $state): ?float
+    /**
+     * Máscara pt-BR ("1.000,98765432") para o decimal canônico
+     * ("1000.98765432") que {@see RecordIntegralizationHistory} recebe; `null`
+     * para vazio ou para o que não for número.
+     */
+    private static function normalizeDecimalValue(mixed $state): ?string
     {
-        if (blank($state) && $state !== 0 && $state !== '0') {
+        if (is_int($state)) {
+            return (string) $state;
+        }
+
+        if (is_float($state)) {
+            return Decimal::of($state)->value();
+        }
+
+        if (! is_string($state)) {
             return null;
         }
 
-        if (is_int($state) || is_float($state)) {
-            return (float) $state;
-        }
+        $normalizedValue = str_replace(['.', ','], ['', '.'], trim($state));
 
-        return (float) str_replace(['.', ','], ['', '.'], (string) $state);
+        return RecordIntegralizationHistory::isPlainDecimal($normalizedValue) ? $normalizedValue : null;
+    }
+
+    private static function maskedDecimalRule(string $message): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail) use ($message): void {
+            if (filled($value) && (self::normalizeDecimalValue($value) === null)) {
+                $fail($message);
+            }
+        };
     }
 
     private static function syncFinancialValue(Get $get, Set $set): null
@@ -360,16 +474,29 @@ class IntegralizationHistoriesRelationManager extends RelationManager
         return null;
     }
 
-    private static function calculateFinancialValue(Get $get): ?float
+    private static function calculateFinancialValue(Get $get): ?string
     {
-        $quantity = self::normalizeDecimalValue($get('quantity'));
-        $unitValue = self::normalizeDecimalValue($get('unit_value'));
+        return app(RecordIntegralizationHistory::class)->financialValueFor(
+            self::normalizeDecimalValue($get('quantity')),
+            self::normalizeDecimalValue($get('unit_value')),
+        );
+    }
 
-        if ($quantity === null || $unitValue === null) {
-            return null;
-        }
-
-        return round($quantity * $unitValue, 2);
+    /**
+     * Fundos aceitos pelo formulário: o cadastro de Fundos do Investidor. Na
+     * edição o nome já gravado também vale -- a planilha grava texto livre, e
+     * corrigir a quantidade não pode obrigar a trocar o fundo.
+     *
+     * @return list<string>
+     */
+    private static function allowedInvestorFunds(?IntegralizationHistory $record): array
+    {
+        return collect(array_keys(self::getInvestorFundOptions()))
+            ->push($record?->investor_fund)
+            ->filter(fn (mixed $name): bool => filled($name))
+            ->map(fn (mixed $name): string => (string) $name)
+            ->values()
+            ->all();
     }
 
     /**

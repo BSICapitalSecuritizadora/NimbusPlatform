@@ -292,3 +292,78 @@ it('confirms a detected change from the review queue', function (): void {
         ->and(app(InstrumentPositionResolver::class)->resolve($instrument->fresh())->numeric(LegalInstrumentFieldKey::MinimumCoverage))
         ->toBe(1.3);
 });
+
+it('renders the refined dossier modal view with document badges, status, and processing summary', function (): void {
+    $emission = Emission::factory()->create();
+
+    $instrument = LegalInstrument::factory()
+        ->ofType(LegalInstrumentType::SecuritizationTerm, '001/2026')
+        ->create(['emission_id' => $emission->id]);
+
+    $user = makeAdminUser();
+
+    $docOriginal = Document::factory()->create(['title' => 'Termo de Securitização Original']);
+    LegalInstrumentDocument::factory()->original('2024-01-10')->create([
+        'legal_instrument_id' => $instrument->id,
+        'document_id' => $docOriginal->id,
+        'added_by' => $user->id,
+        'processing_status' => LegalInstrumentDocumentStatus::NeedsReview,
+        'message' => '10 alteração(ões) pendente(s) de revisão · 6 garantia(s) identificada(s) · 4 obrigação(ões) sugerida(s)',
+        'extraction_attempts' => 3,
+        'effect_summary' => 'Termo de securitização base com garantias imobiliárias.',
+    ]);
+
+    $docAmendment = Document::factory()->create(['title' => '1º Aditamento ao Termo']);
+    LegalInstrumentDocument::factory()->amendment(1, '2024-06-18')->create([
+        'legal_instrument_id' => $instrument->id,
+        'document_id' => $docAmendment->id,
+        'added_by' => $user->id,
+        'processing_status' => LegalInstrumentDocumentStatus::Processed,
+        'message' => 'Documento lido. Nenhuma alteração em relação à posição vigente.',
+        'extraction_attempts' => 1,
+        'effect_summary' => 'Inclui agente fiduciário substituto.',
+    ]);
+
+    $instrument->load(['documents.document', 'documents.addedBy']);
+
+    $html = view('filament.resources.emissions.relation-managers.legal-instrument-dossier', [
+        'instrument' => $instrument,
+    ])->render();
+
+    expect($html)
+        ->toContain('Termo de Securitização Original')
+        ->toContain('Documento original')
+        ->toContain('1º Aditamento ao Termo')
+        ->toContain('1º Aditamento')
+        ->toContain('10/01/2024')
+        ->toContain('18/06/2024')
+        ->toContain('Necessita revisão')
+        ->toContain('Processado')
+        ->toContain('10 alteração(ões) pendente(s) de revisão')
+        ->toContain('6 garantia(s) identificada(s)')
+        ->toContain('4 obrigação(ões) sugerida(s)')
+        ->toContain('3 tentativa(s)')
+        ->toContain('bsi-dossier-modal')
+        ->toContain('bsi-dossier-col-papel')
+        ->toContain('bsi-dossier-badge-base')
+        ->toContain('bsi-dossier-badge-amendment')
+        ->toContain('bsi-status-warning')
+        ->toContain('bsi-status-success')
+        ->toContain('Anexado por');
+});
+
+it('renders the empty state when dossier has no documents', function (): void {
+    $emission = Emission::factory()->create();
+
+    $instrument = LegalInstrument::factory()
+        ->ofType(LegalInstrumentType::SecuritizationTerm, '002/2026')
+        ->create(['emission_id' => $emission->id]);
+
+    $html = view('filament.resources.emissions.relation-managers.legal-instrument-dossier', [
+        'instrument' => $instrument->load(['documents.document', 'documents.addedBy']),
+    ])->render();
+
+    expect($html)
+        ->toContain('Nenhum documento no dossiê')
+        ->toContain('Anexar documento');
+});

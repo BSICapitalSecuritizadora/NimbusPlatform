@@ -35,6 +35,7 @@ class OperationForm
                 ->schema([
                     Select::make('emission_id')
                         ->label('Emissão')
+                        ->extraAttributes(['class' => 'bsi-operation-emission-select'])
                         ->placeholder('Selecione a emissão...')
                         ->options(fn (): array => static::emissionOptions())
                         ->getSearchResultsUsing(fn (string $search): array => static::emissionOptions($search))

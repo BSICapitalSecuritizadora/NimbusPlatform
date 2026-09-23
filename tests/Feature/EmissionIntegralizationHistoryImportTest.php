@@ -39,7 +39,7 @@ it('registers the spreadsheet import action on the integralization histories rel
         'ownerRecord' => $emission,
         'pageClass' => EditEmission::class,
     ])
-        ->assertTableHeaderActionsExistInOrder(['download_template', 'manage_template', 'import', 'create'])
+        ->assertTableHeaderActionsExistInOrder(['download_template', 'manage_template', 'create', 'import'])
         ->assertTableActionExists('download_template')
         ->assertTableActionHasLabel('download_template', 'Download do Template')
         ->assertTableActionExists('manage_template')
@@ -53,6 +53,7 @@ it('accepts pt-br financial masks when creating an integralization history manua
     $emission = Emission::factory()->create([
         'issued_quantity' => 10000,
     ]);
+    registerInvestorFund('Head Invest');
 
     $this->actingAs($user);
 
@@ -316,6 +317,7 @@ it('shows the issued quantity validation message on the manual create modal', fu
         'financial_value' => 7000000,
         'investor_fund' => 'Head Invest',
     ]);
+    registerInvestorFund('Teste');
 
     $this->actingAs($user);
 
@@ -331,15 +333,13 @@ it('shows the issued quantity validation message on the manual create modal', fu
             'financial_value' => '600.000,00',
             'investor_fund' => 'Teste',
         ])
-        ->callMountedTableAction();
+        ->callMountedTableAction()
+        ->assertHasTableActionErrors([
+            'quantity' => 'A quantidade informada excede a Quantidade Emitida. Restam 500 disponíveis para integralização.',
+        ])
+        ->assertTableActionMounted('create');
 
-    Notification::assertNotified(
-        Notification::make()
-            ->title('Integralização não realizada')
-            ->body('A quantidade informada excede a Quantidade Emitida. Restam 500 disponíveis para integralização.')
-            ->danger()
-            ->persistent(),
-    );
+    Notification::assertNotNotified('Integralização adicionada com sucesso.');
 
     expect($emission->refresh()->integralized_quantity)->toBe(7000)
         ->and(IntegralizationHistory::query()->where('emission_id', $emission->id)->count())->toBe(1);
@@ -365,6 +365,14 @@ it('rolls back spreadsheet imports when the total quantity exceeds the issued qu
     expect(IntegralizationHistory::query()->where('emission_id', $emission->id)->count())->toBe(0)
         ->and($emission->refresh()->integralized_quantity)->toBe(0);
 });
+
+function registerInvestorFund(string $name): ExpenseServiceProvider
+{
+    return ExpenseServiceProvider::factory()->create([
+        'name' => $name,
+        'expense_service_provider_type_id' => ExpenseServiceProviderType::query()->firstOrCreate(['name' => 'Fundo do Investidor'])->getKey(),
+    ]);
+}
 
 /**
  * @param  array<int, array<int, mixed>>  $rows

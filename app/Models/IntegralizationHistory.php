@@ -2,14 +2,23 @@
 
 namespace App\Models;
 
+use App\Actions\Emissions\RecordIntegralizationHistory;
+use App\Enums\IntegralizationSource;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\Contracts\Activity;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
 class IntegralizationHistory extends Model
 {
     use LogsActivity;
+
+    /**
+     * Canal da gravação em andamento, preenchido por {@see RecordIntegralizationHistory}.
+     * Não é atributo: só existe para o Activitylog registrar a origem do evento.
+     */
+    public ?IntegralizationSource $recordedThrough = null;
 
     protected static function booted(): void
     {
@@ -55,6 +64,17 @@ class IntegralizationHistory extends Model
             ->logFillable()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
+    }
+
+    public function tapActivity(Activity $activity): void
+    {
+        if ($this->recordedThrough === null) {
+            return;
+        }
+
+        $properties = $activity->properties ?? collect();
+
+        $activity->properties = $properties->put('source', $this->recordedThrough->value);
     }
 
     public function emission(): BelongsTo

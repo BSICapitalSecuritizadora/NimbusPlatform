@@ -2,14 +2,21 @@
 
 namespace App\Actions\Emissions;
 
+use App\Domain\PuCalculator\ValueObjects\Decimal;
+use App\Enums\IntegralizationSource;
 use App\Models\Emission;
-use App\Models\IntegralizationHistory;
 use Carbon\Carbon;
 use DateTimeInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\SimpleExcel\SimpleExcelReader;
 
+/**
+ * Lê a planilha e entrega cada linha a {@see RecordIntegralizationHistory},
+ * a mesma operação do cadastro manual. Aqui fica só o que é da planilha:
+ * mapear colunas, converter células em decimal canônico e pular linhas sem
+ * data ou sem quantidade (em branco, totais, cabeçalhos repetidos).
+ */
 class ImportIntegralizationHistoriesFromSpreadsheet
 {
     protected const HEADER_FIELD_MAP = [
@@ -27,6 +34,8 @@ class ImportIntegralizationHistoriesFromSpreadsheet
         'fundo' => 'investor_fund',
         'investidor' => 'investor_fund',
     ];
+
+    public function __construct(private RecordIntegralizationHistory $recordIntegralizationHistory) {}
 
     public function handle(string $path, Emission $emission): int
     {
@@ -51,40 +60,18 @@ class ImportIntegralizationHistoriesFromSpreadsheet
             foreach ($rows as $row) {
                 $date = $this->parseDate($row[$columnMap['columns']['date']] ?? null);
                 $quantity = $this->parseAmount($row[$columnMap['columns']['quantity']] ?? null);
-                $unitValue = $this->parseAmount($row[$columnMap['columns']['unit_value']] ?? null);
-                $financialValue = $this->parseAmount($row[$columnMap['columns']['financial_value']] ?? null);
-                $investorFund = $this->parseText($row[$columnMap['columns']['investor_fund']] ?? null);
 
-                if (! $date || $quantity === null || $quantity <= 0) {
+                if (! $date || $quantity === null || bccomp($quantity, '0', RecordIntegralizationHistory::QUANTITY_SCALE) <= 0) {
                     continue;
                 }
 
-                if ($financialValue === null && $unitValue !== null) {
-                    $financialValue = $quantity * $unitValue;
-                }
-
-                $attributes = [
+                $this->recordIntegralizationHistory->createOrUpdateForDate($emission, [
+                    'date' => $date,
                     'quantity' => $quantity,
-                    'unit_value' => $unitValue,
-                    'financial_value' => $financialValue,
-                    'investor_fund' => $investorFund,
-                ];
-
-                $integralizationHistory = IntegralizationHistory::query()
-                    ->where('emission_id', $emission->id)
-                    ->whereDate('date', $date)
-                    ->first();
-
-                if ($integralizationHistory) {
-                    $integralizationHistory->fill($attributes);
-                    $integralizationHistory->save();
-                } else {
-                    IntegralizationHistory::query()->create([
-                        'emission_id' => $emission->id,
-                        'date' => $date,
-                        ...$attributes,
-                    ]);
-                }
+                    'unit_value' => $this->parseAmount($row[$columnMap['columns']['unit_value']] ?? null),
+                    'financial_value' => $this->parseAmount($row[$columnMap['columns']['financial_value']] ?? null),
+                    'investor_fund' => $this->parseText($row[$columnMap['columns']['investor_fund']] ?? null),
+                ], IntegralizationSource::Spreadsheet);
 
                 $importedIntegralizationHistories++;
             }
@@ -164,10 +151,19 @@ class ImportIntegralizationHistoriesFromSpreadsheet
         }
     }
 
-    protected function parseAmount(mixed $value): ?float
+    /**
+     * Decimal canônico ("1000.5"), sem passar por `float` quando a célula é
+     * texto. Célula numérica já chega `float` do leitor e é convertida sem
+     * notação científica; a escala da coluna é aplicada adiante.
+     */
+    protected function parseAmount(mixed $value): ?string
     {
-        if (is_int($value) || is_float($value)) {
-            return (float) $value;
+        if (is_int($value)) {
+            return (string) $value;
+        }
+
+        if (is_float($value)) {
+            return Decimal::of($value)->value();
         }
 
         if (! is_string($value)) {
@@ -200,7 +196,9 @@ class ImportIntegralizationHistoriesFromSpreadsheet
             return null;
         }
 
-        return (float) $normalizedValue;
+        return RecordIntegralizationHistory::isPlainDecimal($normalizedValue)
+            ? $normalizedValue
+            : Decimal::of((float) $normalizedValue)->value();
     }
 
     protected function parseText(mixed $value): ?string

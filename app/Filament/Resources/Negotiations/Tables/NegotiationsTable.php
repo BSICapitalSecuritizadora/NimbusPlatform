@@ -192,7 +192,8 @@ class NegotiationsTable
                 SelectFilter::make('tipo')
                     ->label('Tipo')
                     ->options(['Venda' => 'Venda', 'Distrato' => 'Distrato'])
-                    ->native(false),
+                    ->native(false)
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
             ])
             ->actions([

@@ -2,17 +2,21 @@
 
 namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
+use App\Domain\PuCalculator\Services\PuBaselineEvidenceExtractionService;
 use App\Enums\AccessPermission;
 use App\Enums\ObligationDueRuleType;
 use App\Enums\ObligationFrequency;
 use App\Filament\Resources\Emissions\EmissionResource;
+use App\Filament\Resources\Emissions\Schemas\CreatedObligationInfolist;
 use App\Filament\Resources\Emissions\Schemas\ObligationFormFields;
 use App\Filament\Resources\Emissions\Schemas\ObligationSeriesFormFields;
 use App\Jobs\GenerateEmissionObligationsJob;
 use App\Models\Document;
 use App\Models\Emission;
 use App\Models\ExtractedObligation;
+use App\Models\Obligation;
 use App\Models\ObligationGenerationRun;
+use App\Models\ObligationSeries;
 use App\Services\Obligations\ObligationSuggestionReviewService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -24,9 +28,12 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Alignment;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -34,6 +41,7 @@ use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\HtmlString;
 
 class ObligationSuggestionsRelationManager extends RelationManager
@@ -49,6 +57,11 @@ class ObligationSuggestionsRelationManager extends RelationManager
     protected ?ObligationGenerationRun $generationRunCache = null;
 
     protected bool $generationRunResolved = false;
+
+    /**
+     * @var array<int, array{obligation: ?Obligation, series: ?ObligationSeries, document: ?Document}>
+     */
+    protected array $createdObligationCache = [];
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
@@ -205,14 +218,7 @@ class ObligationSuggestionsRelationManager extends RelationManager
             ->actions([
                 $this->makeApproveAction(),
                 $this->makeRejectAction(),
-                Action::make('view_obligation')
-                    ->label('Abrir obrigação criada')
-                    ->icon('heroicon-o-arrow-top-right-on-square')
-                    ->color('gray')
-                    ->url(fn (ExtractedObligation $record): string => EmissionResource::getUrl('edit', ['record' => $record->emission_id]))
-                    ->openUrlInNewTab()
-                    ->visible(fn (ExtractedObligation $record): bool => filled($record->obligation?->id) || filled($record->obligationSeries?->id))
-                    ->authorize(fn (): bool => auth()->user()?->can(AccessPermission::ObligationsView->value) ?? false),
+                $this->makeViewCreatedObligationAction(),
                 ActionGroup::make([
                     EditAction::make()
                         ->label('Editar')
@@ -464,6 +470,188 @@ class ObligationSuggestionsRelationManager extends RelationManager
                 $this->reviewService()->reject($record, auth()->user(), $data['review_notes'] ?? null);
             })
             ->successNotificationTitle('Sugestão rejeitada com sucesso.');
+    }
+
+    protected function makeViewCreatedObligationAction(): Action
+    {
+        return Action::make('view_obligation')
+            ->label('Abrir obrigação criada')
+            ->icon('heroicon-o-eye')
+            ->color('gray')
+            ->modalHeading('Obrigação criada')
+            ->modalDescription('Consulte as informações da obrigação gerada a partir da sugestão aprovada.')
+            ->modalWidth(Width::FourExtraLarge)
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Fechar')
+            ->modalFooterActionsAlignment(Alignment::End)
+            ->stickyModalHeader()
+            ->stickyModalFooter()
+            // Foco na própria janela: sem isso o trap foca o primeiro link
+            // ("Abrir no documento") e o modal abre rolado para o meio da ficha.
+            ->extraModalWindowAttributes(['autofocus' => true, 'tabindex' => '-1'])
+            // Com alinhamento à direita o Filament inverte a ordem visual: o link
+            // vem primeiro para aparecer à direita de "Fechar".
+            ->modalFooterActions(fn (Action $action, ExtractedObligation $record): array => [
+                Action::make('open_created_obligation_page')
+                    ->label('Abrir página completa')
+                    ->icon('heroicon-o-arrow-top-right-on-square')
+                    ->outlined()
+                    ->url($this->createdObligationPageUrl($record), shouldOpenInNewTab: true)
+                    ->visible($this->createdObligationPageUrl($record) !== null),
+                $action->getModalCancelAction(),
+            ])
+            ->mountUsing(function (?Schema $schema, ExtractedObligation $record): void {
+                $schema?->fill();
+
+                $this->reportMissingCreatedObligation($record);
+            })
+            ->schema(fn (ExtractedObligation $record): array => $this->createdObligationSchema($record))
+            ->visible(fn (ExtractedObligation $record): bool => $record->status === ExtractedObligation::STATUS_APPROVED
+                || filled($record->obligation?->id)
+                || filled($record->obligationSeries?->id))
+            ->authorize(fn (): bool => $this->canViewCreatedObligation());
+    }
+
+    /**
+     * @return array<int, Component>
+     */
+    protected function createdObligationSchema(ExtractedObligation $suggestion): array
+    {
+        ['obligation' => $obligation, 'series' => $series, 'document' => $document] = $this->createdObligationFor($suggestion);
+
+        /** @var Emission $emission */
+        $emission = $this->getOwnerRecord();
+
+        return CreatedObligationInfolist::make(
+            emission: $emission,
+            suggestion: $suggestion,
+            obligation: $obligation,
+            series: $series,
+            document: $document,
+            documentUrl: $this->createdObligationSourceUrl($document, ($obligation ?? $series)?->source_page),
+        );
+    }
+
+    /**
+     * Destinos criados pela aprovação, localizados pela chave estrangeira e
+     * restritos à emissão desta página — nunca pelo título. A consulta é refeita
+     * a cada requisição para mostrar o estado atual; o cache vale só dentro dela.
+     * A obrigação mais antiga vence porque a chave não é única no banco.
+     *
+     * A permissão é conferida de novo aqui porque o pedido de carregamento
+     * preguiçoso do Livewire pula o `canViewForRecord` do hydrate e aceita
+     * `mountedActions` no payload, renderizando o modal sem passar pelo
+     * `authorize()` da ação.
+     *
+     * @return array{obligation: ?Obligation, series: ?ObligationSeries, document: ?Document}
+     */
+    protected function createdObligationFor(ExtractedObligation $suggestion): array
+    {
+        if (! $this->canViewCreatedObligation()) {
+            return ['obligation' => null, 'series' => null, 'document' => null];
+        }
+
+        return $this->createdObligationCache[$suggestion->getKey()] ??= $this->loadCreatedObligation($suggestion);
+    }
+
+    /**
+     * @return array{obligation: ?Obligation, series: ?ObligationSeries, document: ?Document}
+     */
+    protected function loadCreatedObligation(ExtractedObligation $suggestion): array
+    {
+        $emissionId = $this->getOwnerRecord()->getKey();
+
+        $obligation = Obligation::query()
+            ->with('responsibleUser')
+            ->where('emission_id', $emissionId)
+            ->where('extracted_obligation_id', $suggestion->getKey())
+            ->orderBy('id')
+            ->first();
+
+        $series = ObligationSeries::query()
+            ->with(['responsibleUser', 'rules'])
+            ->where('emission_id', $emissionId)
+            ->where('extracted_obligation_id', $suggestion->getKey())
+            ->first();
+
+        $documentId = $series?->document_id ?? $suggestion->document_id;
+
+        return [
+            'obligation' => $obligation,
+            'series' => $series,
+            'document' => ($obligation !== null || $series !== null) && $documentId !== null
+                ? $this->getOwnerRecord()->documents()->whereKey($documentId)->first()
+                : null,
+        ];
+    }
+
+    /**
+     * Só oferece o link quando o preview abriria de fato: a rota exige
+     * `documents.view` e varredura limpa, e responderia 403/404 no lugar do
+     * documento.
+     */
+    protected function createdObligationSourceUrl(?Document $document, ?int $page): ?string
+    {
+        if ($document === null || ! (auth()->user()?->can(AccessPermission::DocumentsView->value) ?? false)) {
+            return null;
+        }
+
+        return PuBaselineEvidenceExtractionService::sourceUrl($document, $page);
+    }
+
+    /**
+     * A aba é escolhida pelo índice em `EmissionResource::getRelations()`: o
+     * Filament ignora o nome da classe no parâmetro `relation` e abriria a
+     * primeira aba.
+     */
+    protected function createdObligationPageUrl(ExtractedObligation $suggestion): ?string
+    {
+        if (! (auth()->user()?->can(AccessPermission::EmissionsView->value) ?? false)) {
+            return null;
+        }
+
+        ['obligation' => $obligation, 'series' => $series] = $this->createdObligationFor($suggestion);
+
+        $relationManager = match (true) {
+            $obligation !== null => ObligationsRelationManager::class,
+            $series !== null => ObligationSeriesRelationManager::class,
+            default => null,
+        };
+
+        if ($relationManager === null) {
+            return null;
+        }
+
+        $parameters = ['record' => $this->getOwnerRecord()];
+        $relationKey = array_search($relationManager, EmissionResource::getRelations(), true);
+
+        if ($relationKey !== false) {
+            $parameters['relation'] = $relationKey;
+        }
+
+        return EmissionResource::getUrl('edit', $parameters);
+    }
+
+    protected function canViewCreatedObligation(): bool
+    {
+        return auth()->user()?->can(AccessPermission::ObligationsView->value) ?? false;
+    }
+
+    protected function reportMissingCreatedObligation(ExtractedObligation $suggestion): void
+    {
+        ['obligation' => $obligation, 'series' => $series] = $this->createdObligationFor($suggestion);
+
+        if ($obligation !== null || $series !== null) {
+            return;
+        }
+
+        Log::warning('ObligationSuggestions: sugestão sem obrigação ou série vinculada ao abrir a obrigação criada.', [
+            'event' => 'obligation_suggestion_created_target_missing',
+            'suggestion_id' => $suggestion->getKey(),
+            'suggestion_status' => $suggestion->status,
+            'emission_id' => $this->getOwnerRecord()->getKey(),
+            'user_id' => auth()->id(),
+        ]);
     }
 
     protected function findSecuritizationTerm(): ?Document

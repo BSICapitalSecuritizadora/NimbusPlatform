@@ -1,6 +1,7 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
 @import './sales-board-cycle.css';
 @import './sales-board-rollout.css';
+@import './measurement-cycle-report.css';
 
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
@@ -3613,6 +3614,308 @@ select.fi-select-input option[selected] {
 }
 
 /* ── Filament Pagination "Por Página" Selector Refinement ── */
+.fi-pagination-records-per-page-select-ctn {
+    display: inline-flex !important;
+    align-items: center !important;
+    vertical-align: middle !important;
+}
+
+/*
+ * O `teleport` do x-float só troca a estratégia para `fixed`: o painel continua dentro de
+ * `.fi-pagination`, que o Filament marca com `container-type: inline-size`. O Floating UI toma esse
+ * nav como bloco de contenção e posiciona relativo a ele, mas o navegador posiciona `fixed` pela
+ * janela, e o menu abria fora da tela. `contain: layout` faz do wrapper o bloco de contenção para os dois.
+ */
+.fi-pagination-records-per-page-dropdown {
+    contain: layout !important;
+}
+
+/* Botão Trigger Fechado: 32px de altura, compacto, bordas arredondadas (8px), fundo institucional */
+.fi-pagination-records-per-page-btn {
+    box-sizing: border-box !important;
+    border-radius: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 2rem !important;
+    min-height: 2rem !important;
+    max-height: 2rem !important;
+    gap: 0.375rem !important;
+    padding-block: 0 !important;
+    padding-inline-start: 0.625rem !important;
+    padding-inline-end: 0.5rem !important;
+    border: 1px solid rgba(183, 131, 47, 0.22) !important;
+    background-color: #091b23 !important;
+    color: #fbfaf8 !important;
+    box-shadow: 0 1px 3px rgba(4, 14, 19, 0.3) !important;
+    cursor: pointer !important;
+    transition: all 150ms ease-out !important;
+    outline: none !important;
+    line-height: 1 !important;
+}
+
+:not(.dark) .fi-pagination-records-per-page-btn {
+    background-color: #ffffff !important;
+    border: 1px solid #dbd5d3 !important;
+    color: #221f1e !important;
+    box-shadow: 0 1px 2px rgba(9, 27, 35, 0.04) !important;
+}
+
+.dark .fi-pagination-records-per-page-btn {
+    background-color: #091b23 !important;
+    border: 1px solid rgba(183, 131, 47, 0.22) !important;
+    color: #fbfaf8 !important;
+    box-shadow: 0 1px 3px rgba(4, 14, 19, 0.3) !important;
+}
+
+.fi-pagination-records-per-page-btn:hover {
+    border-color: rgba(183, 131, 47, 0.4) !important;
+    background-color: #0d252e !important;
+}
+
+:not(.dark) .fi-pagination-records-per-page-btn:hover {
+    border-color: #c4bbb8 !important;
+    background-color: #f9f8f6 !important;
+}
+
+/*
+ * `:not(.dark)` também casa no modo escuro (body, nav e qualquer ancestral sem `.dark`):
+ * sem este gêmeo declarado depois, o hover claro vence e o trigger fica branco ao clicar.
+ */
+.dark .fi-pagination-records-per-page-btn:hover {
+    border-color: rgba(183, 131, 47, 0.4) !important;
+    background-color: #0d252e !important;
+}
+
+/* Aberto: o Filament grava `aria-expanded` no próprio botão, nunca no wrapper `.fi-dropdown-trigger` */
+.dark .fi-pagination-records-per-page-btn[aria-expanded="true"] {
+    background-color: #0d252e !important;
+}
+
+/* Foco por clique e menu aberto: anel dourado discreto */
+.fi-pagination-records-per-page-select-ctn .fi-pagination-records-per-page-btn:focus,
+.fi-pagination-records-per-page-select-ctn .fi-pagination-records-per-page-btn[aria-expanded="true"] {
+    border-color: rgba(183, 131, 47, 0.6) !important;
+    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.18) !important;
+}
+
+/* Foco por teclado: anel forte, com o menu aberto ou fechado */
+.fi-pagination-records-per-page-select-ctn .fi-pagination-records-per-page-btn:focus-visible {
+    border-color: #b7832f !important;
+    outline: 2px solid #b7832f !important;
+    outline-offset: 1px !important;
+    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.25) !important;
+}
+
+/* Prefixo "por página" no Trigger */
+.fi-pagination-records-per-page-prefix {
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    color: rgba(251, 250, 248, 0.65) !important;
+    white-space: nowrap !important;
+    letter-spacing: normal !important;
+}
+
+:not(.dark) .fi-pagination-records-per-page-prefix {
+    color: #5d5653 !important;
+}
+
+.dark .fi-pagination-records-per-page-prefix {
+    color: rgba(251, 250, 248, 0.65) !important;
+}
+
+@supports (container-type: inline-size) {
+    @container (max-width: 28rem) {
+        .fi-pagination-records-per-page-prefix {
+            display: none !important;
+        }
+    }
+}
+
+@media (max-width: 640px) {
+    .fi-pagination-records-per-page-prefix {
+        display: none !important;
+    }
+}
+
+/* Valor atual no Trigger (ex: "10", "25", "50", "100") */
+.fi-pagination-records-per-page-value {
+    font-size: 0.8125rem !important;
+    font-weight: 600 !important;
+    font-variant-numeric: tabular-nums !important;
+    color: #fbfaf8 !important;
+}
+
+:not(.dark) .fi-pagination-records-per-page-value {
+    color: #221f1e !important;
+}
+
+.dark .fi-pagination-records-per-page-value {
+    color: #fbfaf8 !important;
+}
+
+/* Chevron do Trigger */
+.fi-pagination-records-per-page-chevron {
+    width: 1rem !important;
+    height: 1rem !important;
+    min-width: 1rem !important;
+    min-height: 1rem !important;
+    color: rgba(251, 250, 248, 0.5) !important;
+    transition: transform 150ms ease-out, color 150ms ease-out !important;
+    flex-shrink: 0 !important;
+}
+
+:not(.dark) .fi-pagination-records-per-page-chevron {
+    color: #766c68 !important;
+}
+
+.dark .fi-pagination-records-per-page-chevron {
+    color: rgba(251, 250, 248, 0.5) !important;
+}
+
+.fi-pagination-records-per-page-btn[aria-expanded="true"] .fi-pagination-records-per-page-chevron {
+    transform: rotate(180deg) !important;
+    color: #b7832f !important;
+}
+
+/* ── Menu Aberto (Dropdown Panel Customizado e Compacto) ── */
+.fi-dropdown-panel:has(.fi-pagination-records-per-page-menu) {
+    box-sizing: border-box !important;
+    background-color: #091b23 !important;
+    border: 1px solid rgba(183, 131, 47, 0.25) !important;
+    border-radius: 8px !important;
+    box-shadow:
+        0 4px 16px rgba(4, 14, 19, 0.45),
+        0 1px 3px rgba(0, 0, 0, 0.3) !important;
+    padding: 0.25rem !important;
+    min-width: 6.5rem !important;
+    max-width: 9.5rem !important;
+    overflow: hidden !important;
+    z-index: 50 !important;
+    --tw-ring-color: transparent !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+:not(.dark) .fi-dropdown-panel:has(.fi-pagination-records-per-page-menu) {
+    background-color: #ffffff !important;
+    border: 1px solid #dbd5d3 !important;
+    box-shadow: 0 4px 14px rgba(9, 27, 35, 0.08) !important;
+}
+
+.dark .fi-dropdown-panel:has(.fi-pagination-records-per-page-menu) {
+    background-color: #091b23 !important;
+    border: 1px solid rgba(183, 131, 47, 0.25) !important;
+    box-shadow:
+        0 4px 16px rgba(4, 14, 19, 0.45),
+        0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Lista de Opções */
+.fi-pagination-records-per-page-menu {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    list-style: none !important;
+}
+
+/* Cada Item/Opção: 36px de altura (dentro de 34–38px), off-white, padding consistente */
+.fi-pagination-records-per-page-item {
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    height: 2.25rem !important;
+    min-height: 2.25rem !important;
+    max-height: 2.25rem !important;
+    padding-inline: 0.75rem !important;
+    padding-block: 0 !important;
+    border: none !important;
+    border-radius: 6px !important;
+    background-color: transparent !important;
+    color: #e6e4e4 !important;
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    font-variant-numeric: tabular-nums !important;
+    cursor: pointer !important;
+    text-align: left !important;
+    transition: background-color 120ms ease, color 120ms ease !important;
+    outline: none !important;
+    user-select: none !important;
+}
+
+:not(.dark) .fi-pagination-records-per-page-item {
+    color: #221f1e !important;
+}
+
+.dark .fi-pagination-records-per-page-item {
+    color: #e6e4e4 !important;
+}
+
+/* Hover na Opção */
+.fi-pagination-records-per-page-item:hover,
+.fi-pagination-records-per-page-item:focus-visible {
+    background-color: #12313b !important;
+    color: #ffffff !important;
+}
+
+:not(.dark) .fi-pagination-records-per-page-item:hover,
+:not(.dark) .fi-pagination-records-per-page-item:focus-visible {
+    background-color: #f4f2ee !important;
+    color: #11100f !important;
+}
+
+.dark .fi-pagination-records-per-page-item:hover,
+.dark .fi-pagination-records-per-page-item:focus-visible {
+    background-color: #12313b !important;
+    color: #ffffff !important;
+}
+
+/* Item Atualmente Selecionado: destaque sutil em azul mais claro + texto contrastante */
+.fi-pagination-records-per-page-item.fi-selected {
+    background-color: #0d252e !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+}
+
+:not(.dark) .fi-pagination-records-per-page-item.fi-selected {
+    background-color: #f0ece5 !important;
+    color: #96651f !important;
+    font-weight: 600 !important;
+}
+
+.dark .fi-pagination-records-per-page-item.fi-selected {
+    background-color: #0d252e !important;
+    color: #ffffff !important;
+}
+
+.fi-pagination-records-per-page-item-label {
+    flex: 1 1 auto !important;
+    text-align: left !important;
+}
+
+/* Ícone de Checkmark Dourado no Item Selecionado */
+.fi-pagination-records-per-page-item-check {
+    width: 1rem !important;
+    height: 1rem !important;
+    min-width: 1rem !important;
+    min-height: 1rem !important;
+    color: #b7832f !important;
+    margin-inline-start: 0.5rem !important;
+    flex-shrink: 0 !important;
+}
+
+:not(.dark) .fi-pagination-records-per-page-item-check {
+    color: #96651f !important;
+}
+
+.dark .fi-pagination-records-per-page-item-check {
+    color: #b7832f !important;
+}
+
+/* Fallback de compatibilidade caso o select nativo seja renderizado em formulários legados */
 .fi-pagination-records-per-page-select .fi-input-wrp,
 .fi-pagination-records-per-page-select.fi-compact .fi-input-wrp {
     overflow: hidden !important;
@@ -3620,135 +3923,18 @@ select.fi-select-input option[selected] {
     border-radius: 8px !important;
     display: inline-flex !important;
     align-items: center !important;
-    transition: border-color 150ms ease, box-shadow 150ms ease !important;
 }
 
 :not(.dark) .fi-pagination-records-per-page-select .fi-input-wrp,
 :not(.dark) .fi-pagination-records-per-page-select.fi-compact .fi-input-wrp {
     background-color: #ffffff !important;
     border: 1px solid #dbd5d3 !important;
-    box-shadow: 0 1px 2px rgba(9, 27, 35, 0.04) !important;
-    --tw-ring-shadow: 0 0 #0000 !important;
-}
-
-:not(.dark) .fi-pagination-records-per-page-select .fi-input-wrp:hover,
-:not(.dark) .fi-pagination-records-per-page-select.fi-compact .fi-input-wrp:hover {
-    border-color: #c4bbb8 !important;
-}
-
-:not(.dark) .fi-pagination-records-per-page-select .fi-input-wrp:focus-within,
-:not(.dark) .fi-pagination-records-per-page-select.fi-compact .fi-input-wrp:focus-within {
-    border-color: #b7832f !important;
-    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.2) !important;
-    --tw-ring-shadow: 0 0 #0000 !important;
 }
 
 .dark .fi-pagination-records-per-page-select .fi-input-wrp,
 .dark .fi-pagination-records-per-page-select.fi-compact .fi-input-wrp {
     background-color: #091b23 !important;
     border: 1px solid rgba(183, 131, 47, 0.22) !important;
-    box-shadow: 0 1px 3px rgba(4, 14, 19, 0.3) !important;
-    --tw-ring-shadow: 0 0 #0000 !important;
-}
-
-.dark .fi-pagination-records-per-page-select .fi-input-wrp:hover,
-.dark .fi-pagination-records-per-page-select.fi-compact .fi-input-wrp:hover {
-    border-color: rgba(183, 131, 47, 0.38) !important;
-}
-
-.dark .fi-pagination-records-per-page-select .fi-input-wrp:focus-within,
-.dark .fi-pagination-records-per-page-select.fi-compact .fi-input-wrp:focus-within {
-    border-color: #b7832f !important;
-    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.25) !important;
-    --tw-ring-shadow: 0 0 #0000 !important;
-}
-
-/* Prefixo "por página": remove borda divisória para criar superfície contínua */
-.fi-pagination-records-per-page-select .fi-input-wrp-prefix {
-    border-inline-end: none !important;
-    border-right: none !important;
-    background: transparent !important;
-    padding-inline-start: 0.625rem !important;
-    padding-inline-end: 0.125rem !important;
-    padding-block: 0 !important;
-    margin: 0 !important;
-}
-
-.fi-pagination-records-per-page-select .fi-input-wrp-label {
-    font-size: 0.8125rem !important;
-    font-weight: 500 !important;
-    white-space: nowrap !important;
-    letter-spacing: normal !important;
-    line-height: 1.5 !important;
-}
-
-:not(.dark) .fi-pagination-records-per-page-select .fi-input-wrp-label {
-    color: #5d5653 !important;
-}
-
-.dark .fi-pagination-records-per-page-select .fi-input-wrp-label {
-    color: rgba(251, 250, 248, 0.65) !important;
-}
-
-.fi-pagination-records-per-page-select .fi-input-wrp-content-ctn,
-.fi-pagination-records-per-page-select.fi-compact .fi-input-wrp-content-ctn {
-    min-width: 0 !important;
-    flex: 1 1 auto !important;
-}
-
-/* Elemento <select>: transparente, sem bordas internas, sem pontas vazando */
-.fi-pagination-records-per-page-select select.fi-select-input,
-.fi-pagination-records-per-page-select.fi-compact select.fi-select-input {
-    background-color: transparent !important;
-    border: none !important;
-    outline: none !important;
-    box-shadow: none !important;
-    --tw-ring-shadow: 0 0 #0000 !important;
-    box-sizing: border-box !important;
-    border-radius: 0 !important;
-    margin: 0 !important;
-    transform: none !important;
-    height: auto !important;
-    min-height: 2rem !important;
-    line-height: 1.5 !important;
-    font-size: 0.8125rem !important;
-    font-weight: 600 !important;
-    font-variant-numeric: tabular-nums !important;
-    cursor: pointer !important;
-    padding-block: 0.25rem !important;
-    padding-inline-start: 0.25rem !important;
-    padding-inline-end: 1.875rem !important;
-    background-position: right 0.5rem center !important;
-    background-repeat: no-repeat !important;
-    background-size: 1.125rem 1.125rem !important;
-}
-
-:not(.dark) .fi-pagination-records-per-page-select select.fi-select-input,
-:not(.dark) .fi-pagination-records-per-page-select.fi-compact select.fi-select-input {
-    color: #221f1e !important;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%235d5653' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
-}
-
-.dark .fi-pagination-records-per-page-select select.fi-select-input,
-.dark .fi-pagination-records-per-page-select.fi-compact select.fi-select-input {
-    color: #fbfaf8 !important;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239d918d' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
-}
-
-:not(.dark) .fi-pagination-records-per-page-select select.fi-select-input option,
-:not(.dark) .fi-pagination-records-per-page-select select.fi-select-input optgroup {
-    background-color: #ffffff !important;
-    color: #221f1e !important;
-}
-
-:not(.dark) .fi-pagination-records-per-page-select select.fi-select-input option:checked,
-:not(.dark) .fi-pagination-records-per-page-select select.fi-select-input option[selected] {
-    background-color: #efede9 !important;
-    color: #96651f !important;
-}
-
-.fi-pagination-records-per-page-select.fi-compact select.fi-select-input {
-    padding-inline-start: 0.625rem !important;
 }
 
 /* ── Filament Table Grouping Selectors ("Agrupar por" & "Ascendente/Descendente") ── */
@@ -5013,7 +5199,17 @@ html:not(.dark) .bsi-construction-units-list-page tr.fi-ta-row:hover {
     gap: 0.75rem !important;
 }
 
-/* Container Imediato que agrupa os botões de Filtros e Colunas */
+/* Padronização de altura e raio do campo de busca para alinhamento vertical exato */
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-input-wrp {
+    height: 2.5rem !important;
+    min-height: 2.5rem !important;
+    max-height: 2.5rem !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+/* Container imediato que agrupa exclusivamente os botões de Filtros e Colunas (sem wrapper visual externo) */
 .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group,
 .bsi-construction-units-list-page .fi-ta-header-toolbar div:has(> span[x-ref="filtersDropdownContainer"]) {
     display: flex !important;
@@ -5027,28 +5223,35 @@ html:not(.dark) .bsi-construction-units-list-page tr.fi-ta-row:hover {
     box-shadow: none !important;
 }
 
-/* Wrapper individual de cada dropdown / botão na toolbar */
+/* Wrappers individuais de cada controle: pegada fixa de 40x40px para garantir respiro real de 8px */
 .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group > span,
-.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-dropdown,
-.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-dropdown-trigger {
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group .fi-dropdown,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group .fi-dropdown-trigger {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     vertical-align: middle !important;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    min-width: 2.5rem !important;
+    min-height: 2.5rem !important;
+    max-width: 2.5rem !important;
+    max-height: 2.5rem !important;
     padding: 0 !important;
     margin: 0 !important;
     flex-shrink: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
 }
 
-/* Botões de Filtro e Colunas: 40x40px, Borda Completa, Border-Radius Individual (8px), Fundo Azul-Petróleo Institucional */
+/* Botões de Filtros e Colunas: 40x40px, Borda Completa, Border-Radius Individual (8px), Fundo Azul-Petróleo Institucional */
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group button.fi-icon-btn,
 .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-dropdown > .fi-dropdown-trigger > button,
 .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-modal > .fi-modal-trigger > button,
 .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-trigger-action-ctn > button,
 .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-dropdown > .fi-dropdown-trigger > button,
-.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-modal > .fi-modal-trigger > button,
-.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group .fi-icon-btn,
-.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-dropdown .fi-icon-btn,
-.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-dropdown .fi-icon-btn {
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-modal > .fi-modal-trigger > button {
     width: 2.5rem !important;
     height: 2.5rem !important;
     min-width: 2.5rem !important;
@@ -5070,13 +5273,14 @@ html:not(.dark) .bsi-construction-units-list-page tr.fi-ta-row:hover {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
     transition: all 150ms ease-out !important;
     isolation: isolate !important;
+    position: relative !important;
 }
 
 /* Ícones dos Botões de Filtros e Colunas */
-.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-dropdown svg,
-.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-dropdown svg,
 .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group .fi-icon-btn svg,
-.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group .fi-icon-btn .fi-icon-btn-icon {
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group .fi-icon-btn .fi-icon-btn-icon,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-dropdown svg,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-dropdown svg {
     width: 1.125rem !important;
     height: 1.125rem !important;
     min-width: 1.125rem !important;
@@ -5089,11 +5293,11 @@ html:not(.dark) .bsi-construction-units-list-page tr.fi-ta-row:hover {
 }
 
 /* Hover nos Botões de Filtros e Colunas */
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group button.fi-icon-btn:hover,
 .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-dropdown > .fi-dropdown-trigger > button:hover,
 .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-modal > .fi-modal-trigger > button:hover,
 .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-dropdown > .fi-dropdown-trigger > button:hover,
-.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-modal > .fi-modal-trigger > button:hover,
-.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group .fi-icon-btn:hover {
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-modal > .fi-modal-trigger > button:hover {
     background: #12313b !important;
     border-color: rgba(183, 131, 47, 0.4) !important;
     color: #ffffff !important;
@@ -5102,7 +5306,7 @@ html:not(.dark) .bsi-construction-units-list-page tr.fi-ta-row:hover {
 }
 
 /* Focus nos Botões: Ring/outline dourado respeitando o border-radius */
-.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group .fi-icon-btn:focus-visible,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group button.fi-icon-btn:focus-visible,
 .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-dropdown > .fi-dropdown-trigger > button:focus-visible,
 .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-dropdown > .fi-dropdown-trigger > button:focus-visible {
     outline: 2px solid #b7832f !important;
@@ -5110,10 +5314,10 @@ html:not(.dark) .bsi-construction-units-list-page tr.fi-ta-row:hover {
 }
 
 /* Estado Ativo / Dropdown Aberto */
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group button.fi-icon-btn[aria-expanded="true"],
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group button.fi-icon-btn.fi-active,
 .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-dropdown > .fi-dropdown-trigger > button[aria-expanded="true"],
-.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-dropdown > .fi-dropdown-trigger > button[aria-expanded="true"],
-.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group .fi-icon-btn[aria-expanded="true"],
-.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group .fi-icon-btn.fi-active {
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-col-manager-dropdown > .fi-dropdown-trigger > button[aria-expanded="true"] {
     background: #12313b !important;
     border-color: #b7832f !important;
     color: #ffffff !important;
@@ -5123,19 +5327,36 @@ html:not(.dark) .bsi-construction-units-list-page tr.fi-ta-row:hover {
 }
 
 /* Indicador de Filtro Ativo (Badge / Dot dourado) */
-.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-dropdown .fi-icon-btn-badge-ctn,
+.bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-dropdown .fi-icon-btn-badge-ctn {
+    position: absolute !important;
+    top: -0.25rem !important;
+    right: -0.25rem !important;
+    z-index: 10 !important;
+}
+
 .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filters-dropdown .fi-badge {
     background: #b7832f !important;
     color: #06151c !important;
     font-weight: 700 !important;
     font-size: 0.625rem !important;
+    min-width: 1rem !important;
+    height: 1rem !important;
+    padding: 0 0.25rem !important;
     border-radius: 9999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 1px solid #06151c !important;
 }
 
 @media (max-width: 640px) {
     .bsi-construction-units-list-page .fi-ta-header-toolbar > div:last-child {
         width: 100% !important;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
         justify-content: space-between !important;
+        gap: 0.5rem !important;
         margin-left: 0 !important;
     }
 
@@ -5147,6 +5368,11 @@ html:not(.dark) .bsi-construction-units-list-page tr.fi-ta-row:hover {
     .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-input-wrp {
         min-width: 0 !important;
         width: 100% !important;
+    }
+
+    .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-ta-filter-col-group {
+        flex-shrink: 0 !important;
+        gap: 0.5rem !important;
     }
 }
 
@@ -8864,6 +9090,146 @@ html:not(.dark) .fi-activity-card:hover {
     box-sizing: border-box !important;
     min-width: 0 !important;
     background-color: transparent !important;
+}
+
+/* Emissão no cadastro e na edição: o popup absoluto precisa sair dos dois wrappers do input. */
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-constructions form.fi-sc-form .bsi-construction-emission-select,
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-constructions form.fi-sc-form .bsi-construction-emission-select > .fi-input-wrp-content-ctn {
+    overflow: visible !important;
+}
+
+/* Estado no cadastro e na edição: o popup absoluto precisa sair dos dois wrappers do input. */
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-constructions form.fi-sc-form .bsi-field-state,
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-constructions form.fi-sc-form .bsi-field-state > .fi-input-wrp-content-ctn {
+    overflow: visible !important;
+}
+
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-constructions .bsi-construction-emission-select .fi-select-input-value-label,
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-constructions .bsi-field-state .fi-select-input-value-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* A busca permanece no topo; somente a lista rola. A largura e a posição são nativas. */
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-constructions .bsi-construction-emission-select .fi-dropdown-panel {
+    min-width: 0 !important;
+    max-height: min(22.5rem, 44vh) !important;
+    overflow: hidden !important;
+    flex-direction: column;
+    z-index: 20 !important;
+}
+
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-constructions .bsi-field-state .fi-dropdown-panel {
+    min-width: 0 !important;
+    max-height: min(22.5rem, 44vh) !important;
+    overflow: hidden !important;
+    flex-direction: column;
+    z-index: 20 !important;
+}
+
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-constructions .bsi-construction-emission-select .fi-select-input-btn[aria-expanded="true"] + .fi-dropdown-panel {
+    display: flex !important;
+}
+
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-constructions .bsi-field-state .fi-select-input-btn[aria-expanded="true"] + .fi-dropdown-panel {
+    display: flex !important;
+}
+
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-constructions .bsi-construction-emission-select .fi-select-input-search-ctn {
+    flex: 0 0 auto;
+}
+
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-constructions .bsi-field-state .fi-select-input-search-ctn {
+    flex: 0 0 auto;
+}
+
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-constructions .bsi-construction-emission-select .fi-dropdown-list {
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    grid-auto-rows: min-content;
+    align-content: start;
+}
+
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-constructions .bsi-field-state .fi-dropdown-list {
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    grid-auto-rows: min-content;
+    align-content: start;
+}
+
+/* Espaço reservado para o botão de limpar e chevron no select de Estado com valor selecionado */
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-constructions .bsi-field-state .fi-select-input-ctn-clearable .fi-select-input-btn {
+    padding-inline-end: 3.5rem !important;
+}
+
+/* Emissão na criação e na edição de operação: mesma causa da Emissão da obra. As páginas
+   carregam `bsi-construction-form-page`, que impõe `overflow: hidden` nos dois wrappers do
+   input; o popup absoluto precisa sair deles, senão a busca parece espremida no trigger. */
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-operations form.fi-sc-form .bsi-operation-emission-select,
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-operations form.fi-sc-form .bsi-operation-emission-select > .fi-input-wrp-content-ctn {
+    overflow: visible !important;
+}
+
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-operations .bsi-operation-emission-select .fi-select-input-value-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* A busca permanece no topo; somente a lista rola. A largura e a posição são nativas. */
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-operations .bsi-operation-emission-select .fi-dropdown-panel {
+    min-width: 0 !important;
+    max-height: min(22.5rem, 44vh) !important;
+    overflow: hidden !important;
+    flex-direction: column;
+    z-index: 20 !important;
+}
+
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-operations .bsi-operation-emission-select .fi-select-input-btn[aria-expanded="true"] + .fi-dropdown-panel {
+    display: flex !important;
+}
+
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-operations .bsi-operation-emission-select .fi-select-input-search-ctn {
+    flex: 0 0 auto;
+}
+
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-operations .bsi-operation-emission-select .fi-dropdown-list {
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    grid-auto-rows: min-content;
+    align-content: start;
+}
+
+/* Empresa de medição no cadastro e na edição. O `fi-fixed-positioning-context` do campo torna o
+   painel `fixed`, que escapa dos wrappers com `overflow: hidden`; em `fixed` o bloco
+   contentor é a viewport e o `min-width: 100%` global virava 100vw. Sem o piso, vale o
+   `width` inline do Filament (o do trigger, sem o `+`). */
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-constructions .bsi-field-measurement-company .fi-dropdown-panel {
+    min-width: 0 !important;
+    max-height: min(22.5rem, 44vh) !important;
+    overflow: hidden !important;
+    flex-direction: column;
+    z-index: 20 !important;
+}
+
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-constructions .bsi-field-measurement-company .fi-select-input-btn[aria-expanded="true"] + .fi-dropdown-panel {
+    display: flex !important;
+}
+
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-constructions .bsi-field-measurement-company .fi-select-input-search-ctn {
+    flex: 0 0 auto;
+}
+
+:is(.fi-resource-create-record-page, .fi-resource-edit-record-page).fi-resource-constructions .bsi-field-measurement-company .fi-dropdown-list {
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    grid-auto-rows: min-content;
+    align-content: start;
 }
 
 /* 3. Botão trigger do Select Searchable (Estado e Empresa de medição) */
@@ -15692,4 +16058,191 @@ html[data-table-density='compact'] .fi-ta-header-cell {
 html[data-table-density='compact'] .fi-ta-record-checkbox,
 html[data-table-density='compact'] .fi-ta-page-checkbox {
     margin-block: 0.75rem !important;
+}
+
+/* ── Dossiê de Instrumento Jurídico (Modal Refinement) ── */
+.bsi-dossier-modal {
+    width: 100%;
+}
+
+.bsi-dossier-table-wrapper {
+    box-sizing: border-box !important;
+    border: 1px solid rgba(29, 69, 84, 0.45) !important;
+    background-color: rgba(9, 27, 35, 0.4) !important;
+}
+
+:not(.dark) .bsi-dossier-table-wrapper {
+    border: 1px solid #dbd5d3 !important;
+    background-color: #ffffff !important;
+}
+
+.dark .bsi-dossier-table-wrapper {
+    border: 1px solid rgba(29, 69, 84, 0.45) !important;
+    background-color: rgba(9, 27, 35, 0.4) !important;
+}
+
+:not(.dark) .bsi-dossier-table thead {
+    background-color: #f8fafc !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.dark .bsi-dossier-table thead {
+    background-color: #0e2733 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+:not(.dark) .bsi-dossier-table tbody tr {
+    border-bottom: 1px solid #f1f5f9 !important;
+}
+
+.dark .bsi-dossier-table tbody tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+:not(.dark) .bsi-dossier-table tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+.dark .bsi-dossier-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
+/* Coluna Papel: largura mínima estrita e nowrap para não quebrar badges */
+.bsi-dossier-col-papel {
+    width: 16% !important;
+    min-width: 145px !important;
+    max-width: 170px !important;
+    white-space: nowrap !important;
+}
+
+/* Badge Papel: inline-flex, sem quebra, altura compacta, cantos arredondados */
+.bsi-dossier-badge {
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+    border-radius: 9999px !important;
+    padding-inline: 0.625rem !important;
+    padding-block: 0.25rem !important;
+    font-size: 0.75rem !important;
+    line-height: 1 !important;
+    font-weight: 500 !important;
+    letter-spacing: normal !important;
+    border: 1px solid transparent !important;
+    transition: all 120ms ease !important;
+}
+
+/* Papel: Documento original (Base) */
+.dark .bsi-dossier-badge-base {
+    background-color: #122b37 !important;
+    color: #fef08a !important;
+    border-color: rgba(183, 131, 47, 0.35) !important;
+}
+
+:not(.dark) .bsi-dossier-badge-base {
+    background-color: #fef9c3 !important;
+    color: #854d0e !important;
+    border-color: #fde047 !important;
+}
+
+/* Papel: Aditamento (1º Aditamento, etc.) */
+.dark .bsi-dossier-badge-amendment {
+    background-color: #0e2a37 !important;
+    color: #7dd3fc !important;
+    border-color: rgba(56, 189, 248, 0.25) !important;
+}
+
+:not(.dark) .bsi-dossier-badge-amendment {
+    background-color: #e0f2fe !important;
+    color: #0369a1 !important;
+    border-color: #bae6fd !important;
+}
+
+/* Papel: Outros papéis */
+.dark .bsi-dossier-badge-other {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: #e6e4e4 !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+:not(.dark) .bsi-dossier-badge-other {
+    background-color: #f3f4f6 !important;
+    color: #374151 !important;
+    border-color: #e5e7eb !important;
+}
+
+/* Badge Status Processamento */
+.bsi-status-badge {
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    white-space: nowrap !important;
+    border-radius: 9999px !important;
+    padding-inline: 0.625rem !important;
+    padding-block: 0.25rem !important;
+    font-size: 0.6875rem !important;
+    line-height: 1 !important;
+    font-weight: 500 !important;
+    border: 1px solid transparent !important;
+}
+
+.dark .bsi-status-warning {
+    background-color: rgba(245, 158, 11, 0.15) !important;
+    color: #fcd34d !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+:not(.dark) .bsi-status-warning {
+    background-color: #fef3c7 !important;
+    color: #b45309 !important;
+    border-color: #fde68a !important;
+}
+
+.dark .bsi-status-success {
+    background-color: rgba(16, 185, 129, 0.15) !important;
+    color: #6ee7b7 !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+:not(.dark) .bsi-status-success {
+    background-color: #d1fae5 !important;
+    color: #047857 !important;
+    border-color: #a7f3d0 !important;
+}
+
+.dark .bsi-status-danger {
+    background-color: rgba(244, 63, 94, 0.15) !important;
+    color: #fda4af !important;
+    border-color: rgba(244, 63, 94, 0.3) !important;
+}
+
+:not(.dark) .bsi-status-danger {
+    background-color: #ffe4e6 !important;
+    color: #be123c !important;
+    border-color: #fecdd3 !important;
+}
+
+.dark .bsi-status-info {
+    background-color: rgba(14, 165, 233, 0.15) !important;
+    color: #7dd3fc !important;
+    border-color: rgba(14, 165, 233, 0.25) !important;
+}
+
+:not(.dark) .bsi-status-info {
+    background-color: #e0f2fe !important;
+    color: #0284c7 !important;
+    border-color: #bae6fd !important;
+}
+
+.dark .bsi-status-default {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: #94a3b8 !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+:not(.dark) .bsi-status-default {
+    background-color: #f1f5f9 !important;
+    color: #475569 !important;
+    border-color: #e2e8f0 !important;
 }

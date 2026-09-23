@@ -297,6 +297,12 @@
     min-width: 0;
 }
 
+/* Tabelas sem busca (Versões, Validações): sem o campo de pesquisa para empurrar
+   o grupo Filtros/Colunas para a direita, o botão Colunas ancorava à esquerda. */
+.bsi-sales-board-cycle-view-page .bsi-cycle-toolbar-end .fi-ta-header-toolbar > div:last-child {
+    justify-content: flex-end;
+}
+
 .bsi-sales-board-cycle-view-page .fi-ta-search-field {
     width: min(100%, 26rem);
     max-width: none;
@@ -326,6 +332,12 @@
 
 .bsi-sales-board-cycle-view-page .fi-ta-header-toolbar .fi-icon-btn {
     width: 2.5rem;
+}
+
+/* O .fi-icon-btn do Filament traz margin -0.5rem; ampliado para 40px, Filtros e Colunas
+   vazavam 8px de cada wrapper e anulavam o gap de 8px, sobrepondo-se. */
+.bsi-sales-board-cycle-view-page .fi-ta-filter-col-group .fi-icon-btn {
+    margin: 0;
 }
 
 .bsi-sales-board-cycle-view-page .fi-ta-header-toolbar .fi-input-wrp-content-ctn {

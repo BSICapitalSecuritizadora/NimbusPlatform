@@ -6,6 +6,7 @@ use App\Filament\Resources\ConstructionUnits\Pages\ListConstructionUnits;
 use App\Filament\Resources\ContractInstallments\Pages\ListContractInstallments;
 use App\Filament\Resources\Contracts\Pages\ListContracts;
 use App\Filament\Resources\Expenses\Pages\ListExpenses;
+use App\Filament\Resources\ExpenseServiceProviders\Pages\ListExpenseServiceProviders;
 use App\Filament\Resources\Funds\Pages\ListFunds;
 use App\Filament\Resources\Measurements\Pages\ListMeasurements;
 use App\Filament\Resources\Negotiations\Pages\ListNegotiations;
@@ -17,7 +18,9 @@ use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\Emission;
+use App\Models\ExpenseServiceProviderType;
 use App\Models\Measurement;
+use App\Models\Negotiation;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Forms\Components\Select;
@@ -102,6 +105,21 @@ function blockFilterPages(): array
 {
     return [
         'unidades' => [ListConstructionUnits::class, 'block'],
+    ];
+}
+
+/**
+ * Todo filtro "Tipo" renderizado pelo select JS do Filament: a página de listagem e o nome
+ * do filtro. Os demais filtros "Tipo" (importações, alterações de importação, movimentos
+ * do ciclo) usam o `<select>` nativo, cujo popup é do navegador e nunca foi 100vw.
+ *
+ * @return array<string, array{0: class-string, 1: string}>
+ */
+function typeFilterPages(): array
+{
+    return [
+        'negociações' => [ListNegotiations::class, 'tipo'],
+        'prestadores de serviço' => [ListExpenseServiceProviders::class, 'expense_service_provider_type_id'],
     ];
 }
 
@@ -362,6 +380,77 @@ it('wires every Bloco SelectFilter in the panel to the shared dropdown', functio
     expect($chains)->toHaveCount(count(blockFilterPages()))
         ->and($unwired)->toBe([]);
 });
+
+it('anchors the dropdown of every Tipo filter rendered by the JS select to its trigger', function (string $page, string $filterName) {
+    actingAsFilterDropdownAdmin();
+
+    Negotiation::factory()->create();
+    ExpenseServiceProviderType::factory()->create();
+
+    $filter = Livewire::test($page)
+        ->assertTableFilterExists($filterName)
+        ->instance()
+        ->getTable()
+        ->getFilter($filterName);
+
+    $field = $filter->getSchemaComponents()[0];
+
+    // O Filament só troca o `<select>` nativo pelo select JS quando o campo é pesquisável,
+    // múltiplo, aceita HTML ou declara `native(false)`; é esse select que tinha o defeito.
+    expect($filter->getLabel())->toBe('Tipo')
+        ->and($field)->toBeInstanceOf(Select::class)
+        ->and($field->isNative() && ! $field->isSearchable())->toBeFalse()
+        ->and($field->getExtraAttributes())
+        ->toMatchArray(['class' => AnchoredFilterDropdown::DROPDOWN_CLASS]);
+})->with(typeFilterPages());
+
+it('keeps the Venda and Distrato options of the negotiations Tipo filter', function () {
+    actingAsFilterDropdownAdmin();
+
+    Negotiation::factory()->create();
+
+    $field = Livewire::test(ListNegotiations::class)
+        ->instance()
+        ->getTable()
+        ->getFilter('tipo')
+        ->getSchemaComponents()[0];
+
+    expect($field->getOptions())->toBe(['Venda' => 'Venda', 'Distrato' => 'Distrato'])
+        ->and($field->isSearchable())->toBeFalse();
+});
+
+it('wires exactly the Tipo SelectFilters rendered by the JS select to the shared dropdown', function () {
+    $chains = collect(selectFilterChainsLabeled('Tipo'));
+
+    $rendersJsSelect = fn (array $chain): bool => str_contains($chain['chain'], '->searchable()')
+        || str_contains($chain['chain'], '->native(false)')
+        || str_contains($chain['chain'], '->multiple()');
+    $isWired = fn (array $chain): bool => str_contains($chain['chain'], '->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField())');
+
+    // "Tipo" é rótulo genérico: só os filtros com select JS aderem. Os nativos ficam fora
+    // de propósito, e a contagem total é o contrato para um filtro "Tipo" novo.
+    expect($chains)->toHaveCount(5)
+        ->and($chains->filter($rendersJsSelect)->pluck('path')->sort()->values()->all())
+        ->toBe([
+            'app/Filament/Resources/ExpenseServiceProviders/Tables/ExpenseServiceProvidersTable.php',
+            'app/Filament/Resources/Negotiations/Tables/NegotiationsTable.php',
+        ])
+        ->and($chains->filter($rendersJsSelect)->reject($isWired)->all())->toBe([])
+        ->and($chains->reject($rendersJsSelect)->filter($isWired)->all())->toBe([]);
+});
+
+it('leaves the Tipo registration fields out of the shared dropdown', function (string $relativePath) {
+    $source = file_get_contents(base_path($relativePath));
+
+    // O mesmo rótulo existe nos cadastros (prestador, obrigações); a correção é só de filtro.
+    expect($source)
+        ->toContain("->label('Tipo')")
+        ->not->toContain('AnchoredFilterDropdown');
+})->with([
+    'app/Filament/Resources/ExpenseServiceProviders/Schemas/ExpenseServiceProviderForm.php',
+    'app/Filament/Resources/Emissions/Schemas/ObligationFormFields.php',
+    'app/Filament/Resources/Emissions/Schemas/ObligationSeriesFormFields.php',
+]);
 
 it('leaves the Bloco registration and editing fields out of the shared dropdown', function (string $relativePath) {
     $source = file_get_contents(base_path($relativePath));

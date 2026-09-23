@@ -433,7 +433,7 @@ class LegalInstrumentsRelationManager extends RelationManager
             ->modalCancelActionLabel('Fechar')
             ->modalContent(fn (LegalInstrument $record): View => view(
                 'filament.resources.emissions.relation-managers.legal-instrument-dossier',
-                ['instrument' => $record->load('documents.document')],
+                ['instrument' => $record->load(['documents.document', 'documents.addedBy'])],
             ));
     }
 

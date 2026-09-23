@@ -110,7 +110,8 @@ class SalesBoardCycleBuilderReviewsRelationManager extends RelationManager
                         'record' => $record->sales_board_cycle_id,
                     ]).'?review='.$record->getKey()),
             ])
-            ->toolbarActions([]);
+            ->toolbarActions([])
+            ->extraAttributes(['class' => 'bsi-cycle-toolbar-end']);
     }
 
     public function isReadOnly(): bool

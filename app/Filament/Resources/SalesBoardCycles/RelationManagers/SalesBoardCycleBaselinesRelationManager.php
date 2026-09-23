@@ -126,7 +126,8 @@ class SalesBoardCycleBaselinesRelationManager extends RelationManager
             ->actions([
                 $this->compareAction(),
             ])
-            ->toolbarActions([]);
+            ->toolbarActions([])
+            ->extraAttributes(['class' => 'bsi-cycle-toolbar-end']);
     }
 
     /**

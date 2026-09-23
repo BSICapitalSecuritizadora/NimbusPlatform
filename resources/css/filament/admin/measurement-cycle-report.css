@@ -1,0 +1,880 @@
+/* ── Relatório do Ciclo de Medições (.bsi-measurement-cycle-report) ──
+ * Faixa executiva: cards principais full width, KPIs em faixa única com
+ * divisores sutis, tabelas operacionais e badges semânticos. Escopo fechado
+ * nesta página; superfícies seguem o padrão institucional azul-petróleo. */
+
+.bsi-measurement-cycle-report {
+    --mcr-surface: #fbfaf8;
+    --mcr-inset: #f4f2ee;
+    --mcr-hover: #efede9;
+    --mcr-text: #16313b;
+    --mcr-muted: #52646b;
+    --mcr-border: rgb(9 27 35 / 0.13);
+    --mcr-gold: #a06e28;
+    --mcr-gold-strong: #8b5e21;
+    --mcr-focus: #ba8b46;
+    color-scheme: light;
+}
+
+.dark .bsi-measurement-cycle-report {
+    --mcr-surface: #091b23;
+    --mcr-inset: #0d2530;
+    --mcr-hover: #12313b;
+    --mcr-text: #e6e4e4;
+    --mcr-muted: #a4b7bf;
+    --mcr-border: rgb(164 183 191 / 0.16);
+    background: #06151c;
+    color-scheme: dark;
+}
+
+.bsi-measurement-cycle-report .fi-page,
+.bsi-measurement-cycle-report .fi-page-main,
+.bsi-measurement-cycle-report .fi-page-content {
+    min-width: 0;
+}
+
+.bsi-measurement-cycle-report .fi-page {
+    max-width: 1600px;
+    margin-inline: auto;
+    gap: 1.25rem;
+}
+
+.bsi-measurement-cycle-report .fi-page-content {
+    gap: 1.25rem;
+}
+
+/* Título longo: permite quebra em telas estreitas. */
+.bsi-measurement-cycle-report .fi-header-heading {
+    white-space: normal;
+}
+
+/* ── Cards principais ── */
+.mcr-card {
+    min-width: 0;
+    background: var(--mcr-surface);
+    border: 1px solid var(--mcr-border);
+    border-radius: 12px;
+    box-shadow: none;
+}
+
+.mcr-card-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    padding: 1.125rem 1.25rem 0.875rem;
+}
+
+.mcr-card-head h2 {
+    color: var(--mcr-text);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.mcr-card-head p {
+    max-width: 110ch;
+    margin-top: 0.25rem;
+    color: var(--mcr-muted);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+}
+
+.mcr-card-head-actions {
+    display: flex;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.mcr-card-foot {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 0.875rem 1.25rem;
+    border-top: 1px solid var(--mcr-border);
+}
+
+/* ── Botões institucionais ── */
+.mcr-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    min-height: 2.5rem;
+    padding: 0.5rem 0.9375rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.25;
+    white-space: nowrap;
+    transition:
+        background-color 150ms ease-out,
+        border-color 150ms ease-out,
+        color 150ms ease-out;
+}
+
+.mcr-btn--gold {
+    background: var(--mcr-gold);
+    color: #fff;
+}
+
+.mcr-btn--gold:hover {
+    background: var(--mcr-gold-strong);
+    color: #fff;
+}
+
+.mcr-btn--ghost {
+    background: transparent;
+    border-color: var(--mcr-border);
+    color: var(--mcr-text);
+}
+
+.mcr-btn--ghost:hover {
+    background: var(--mcr-hover);
+    color: var(--mcr-text);
+}
+
+.mcr-link {
+    color: var(--mcr-gold);
+    font-weight: 600;
+}
+
+.mcr-link:hover {
+    color: var(--mcr-gold-strong);
+    text-decoration: underline;
+}
+
+.dark .mcr-link {
+    color: #d5aa67;
+}
+
+.dark .mcr-link:hover {
+    color: #ecd9ae;
+}
+
+.mcr-btn:focus-visible,
+.mcr-link:focus-visible,
+.mcr-kpi:focus-visible {
+    outline: 2px solid var(--mcr-focus);
+    outline-offset: 2px;
+}
+
+/* ── Filtros ── */
+.mcr-filters {
+    padding: 0.25rem 1.25rem 1.25rem;
+}
+
+.mcr-field {
+    display: grid;
+    align-content: start;
+    gap: 0.375rem;
+    min-width: 0;
+    color: var(--mcr-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.mcr-field > span {
+    letter-spacing: 0.03em;
+    overflow-wrap: break-word;
+}
+
+.mcr-input {
+    width: 100%;
+    height: 2.5rem;
+    min-height: 2.5rem;
+    padding: 0 0.75rem;
+    color: var(--mcr-text);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    background: var(--mcr-surface);
+    border: 1px solid var(--mcr-border);
+    border-radius: 8px;
+    box-shadow: none;
+}
+
+select.mcr-input {
+    padding-right: 2rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mcr-input::placeholder {
+    color: var(--mcr-muted);
+}
+
+.mcr-input:focus {
+    border-color: var(--mcr-focus);
+    outline: none;
+    box-shadow: 0 0 0 1px var(--mcr-focus);
+}
+
+/* ── Datepicker Institucional (Filtros Históricos) ── */
+.mcr-datepicker-field {
+    position: relative;
+}
+
+.mcr-datepicker-trigger {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.mcr-datepicker-input {
+    width: 100%;
+    height: 2.5rem;
+    min-height: 2.5rem;
+    padding-left: 0.75rem;
+    padding-right: 2.375rem !important;
+    color: var(--mcr-text);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    background: var(--mcr-surface);
+    border: 1px solid var(--mcr-border);
+    border-radius: 8px;
+    box-shadow: none;
+    cursor: pointer;
+}
+
+.mcr-datepicker-input:focus {
+    border-color: var(--mcr-focus);
+    outline: none;
+    box-shadow: 0 0 0 1px var(--mcr-focus);
+}
+
+.mcr-datepicker-btn-icon {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 2.375rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: var(--mcr-muted);
+    cursor: pointer;
+    transition: color 150ms ease;
+}
+
+.mcr-datepicker-btn-icon:hover,
+.mcr-datepicker-field:focus-within .mcr-datepicker-btn-icon {
+    color: var(--mcr-gold);
+}
+
+.mcr-datepicker-btn-icon svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    pointer-events: none;
+}
+
+.mcr-datepicker-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 50;
+    width: 292px;
+    max-width: min(320px, calc(100vw - 2rem));
+    background: #091b23;
+    border: 1px solid rgba(160, 110, 40, 0.28);
+    border-radius: 12px;
+    box-shadow: 0 16px 36px rgba(4, 14, 19, 0.85), 0 4px 14px rgba(0, 0, 0, 0.55);
+    padding: 0.875rem;
+    box-sizing: border-box;
+    user-select: none;
+}
+
+.mcr-datepicker-panel.align-right {
+    left: auto;
+    right: 0;
+}
+
+/* Cabeçalho do Painel: Mês, Ano e Navegação */
+.mcr-datepicker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.625rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(160, 110, 40, 0.15);
+}
+
+.mcr-datepicker-title {
+    color: #e6e4e4;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: capitalize;
+}
+
+.mcr-datepicker-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.mcr-datepicker-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(160, 110, 40, 0.18);
+    color: rgba(230, 228, 228, 0.7);
+    cursor: pointer;
+    padding: 0;
+    transition: all 140ms ease;
+}
+
+.mcr-datepicker-nav-btn:hover {
+    background: rgba(160, 110, 40, 0.18);
+    border-color: rgba(160, 110, 40, 0.5);
+    color: #d8a94f;
+}
+
+.mcr-datepicker-nav-btn:focus-visible {
+    outline: 2px solid var(--mcr-focus);
+    outline-offset: 1px;
+}
+
+.mcr-datepicker-nav-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Cabeçalho dos Dias da Semana */
+.mcr-datepicker-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 0.375rem;
+    text-align: center;
+}
+
+.mcr-datepicker-weekday {
+    color: #a4b7bf;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.25rem 0;
+}
+
+/* Grade de Dias do Mês */
+.mcr-datepicker-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+    margin-bottom: 0.5rem;
+}
+
+.mcr-datepicker-day {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    width: 30px;
+    margin: 0 auto;
+    border-radius: 6px;
+    color: #e6e4e4;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 120ms ease;
+}
+
+.mcr-datepicker-day:hover:not(.is-disabled):not(.is-selected) {
+    background: #12313b;
+    color: #ffffff;
+    border-color: rgba(160, 110, 40, 0.3);
+}
+
+.mcr-datepicker-day.is-outside {
+    opacity: 0.28;
+    color: #a4b7bf;
+}
+
+.mcr-datepicker-day.is-outside:hover:not(.is-selected) {
+    opacity: 0.65;
+    background: #12313b;
+}
+
+.mcr-datepicker-day.is-in-range:not(.is-selected) {
+    background: rgba(160, 110, 40, 0.12);
+    color: #fbfaf8;
+    border-radius: 3px;
+}
+
+/* Dia Atual ("Hoje") */
+.mcr-datepicker-day.is-today:not(.is-selected) {
+    border-color: rgba(160, 110, 40, 0.65);
+    color: #d8a94f;
+    font-weight: 600;
+}
+
+/* Dia Selecionado */
+.mcr-datepicker-day.is-selected {
+    background: #a06e28;
+    color: #091b23;
+    font-weight: 700;
+    border-color: #b7832f;
+    box-shadow: 0 2px 6px rgba(160, 110, 40, 0.35);
+}
+
+.mcr-datepicker-day:focus-visible {
+    outline: 2px solid var(--mcr-focus);
+    outline-offset: 1px;
+}
+
+/* Rodapé do Painel: Ações "Limpar" e "Hoje" */
+.mcr-datepicker-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+    margin-top: 0.375rem;
+    border-top: 1px solid rgba(160, 110, 40, 0.15);
+}
+
+.mcr-datepicker-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 6px;
+    padding: 0.35rem 0.75rem;
+    transition: all 130ms ease;
+}
+
+.mcr-datepicker-action-clear {
+    font-weight: 500;
+    color: #a4b7bf;
+    background: transparent;
+    border: 1px solid rgba(164, 183, 191, 0.2);
+}
+
+.mcr-datepicker-action-clear:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #e6e4e4;
+    border-color: rgba(160, 110, 40, 0.35);
+}
+
+.mcr-datepicker-action-today {
+    font-weight: 600;
+    color: #d8a94f;
+    background: rgba(160, 110, 40, 0.12);
+    border: 1px solid rgba(160, 110, 40, 0.35);
+}
+
+.mcr-datepicker-action-today:hover {
+    background: rgba(160, 110, 40, 0.25);
+    border-color: #a06e28;
+    color: #f0c568;
+}
+
+.mcr-datepicker-action:focus-visible {
+    outline: 2px solid var(--mcr-focus);
+    outline-offset: 1px;
+}
+
+/* ── Faixa executiva de KPIs ── */
+.mcr-kpis {
+    overflow: hidden;
+}
+
+.mcr-kpis-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1px;
+    background: var(--mcr-border);
+}
+
+@media (min-width: 40rem) {
+    .mcr-kpis-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 80rem) {
+    .mcr-kpis-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+.mcr-kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    min-width: 0;
+    width: 100%;
+    padding: 1.125rem 1.25rem;
+    text-align: left;
+    background: var(--mcr-surface);
+    border: 0;
+}
+
+button.mcr-kpi {
+    cursor: pointer;
+}
+
+button.mcr-kpi:hover:not(:disabled) {
+    background: var(--mcr-hover);
+}
+
+button.mcr-kpi:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.mcr-kpi-label {
+    color: var(--mcr-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1.35;
+}
+
+.mcr-kpi-value {
+    color: var(--mcr-text);
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.mcr-kpi-value--md {
+    font-size: 1.25rem;
+}
+
+.mcr-kpi-sub {
+    color: var(--mcr-muted);
+    font-size: 0.75rem;
+    line-height: 1.5;
+}
+
+/* ── Tabelas operacionais ── */
+.mcr-table-scroll {
+    overflow-x: auto;
+    border-top: 1px solid var(--mcr-border);
+    scrollbar-width: thin;
+    scrollbar-color: var(--mcr-border) transparent;
+}
+
+.mcr-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+}
+
+.mcr-table thead th {
+    padding: 0.625rem 1rem;
+    color: var(--mcr-muted);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    text-align: left;
+    white-space: nowrap;
+    background: var(--mcr-surface);
+    border-bottom: 1px solid var(--mcr-border);
+}
+
+.mcr-table tbody td {
+    padding: 0.75rem 1rem;
+    color: var(--mcr-text);
+    vertical-align: top;
+    border-bottom: 1px solid var(--mcr-border);
+}
+
+.mcr-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.mcr-table tbody tr:hover td {
+    background: var(--mcr-hover);
+}
+
+.mcr-table .mcr-r {
+    text-align: right;
+}
+
+.mcr-num {
+    font-variant-numeric: tabular-nums;
+}
+
+.mcr-sub {
+    color: var(--mcr-muted);
+    font-size: 0.75rem;
+    line-height: 1.55;
+}
+
+.mcr-long {
+    max-width: 22rem;
+    overflow-wrap: break-word;
+}
+
+.mcr-warn {
+    color: #b45309;
+    font-size: 0.75rem;
+    line-height: 1.55;
+    overflow-wrap: break-word;
+}
+
+.dark .mcr-warn {
+    color: #fcd34d;
+}
+
+.mcr-empty {
+    padding: 2.5rem 1rem;
+    color: var(--mcr-muted);
+    font-size: 0.8125rem;
+    text-align: center;
+}
+
+/* ── Linhas operacionais (cobertura histórica) ── */
+.mcr-rows {
+    border-top: 1px solid var(--mcr-border);
+}
+
+.mcr-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--mcr-border);
+}
+
+.mcr-row:last-child {
+    border-bottom: 0;
+}
+
+.mcr-row-label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    min-width: 0;
+    color: var(--mcr-text);
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.mcr-row-value {
+    color: var(--mcr-text);
+    font-size: 1.125rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.mcr-row-value--text {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.mcr-attention {
+    color: #b45309;
+}
+
+.dark .mcr-attention {
+    color: #fcd34d;
+}
+
+.mcr-meta-foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem 1.5rem;
+    padding: 0.875rem 1.25rem;
+    border-top: 1px solid var(--mcr-border);
+    color: var(--mcr-muted);
+    font-size: 0.8125rem;
+}
+
+/* ── Paginação (links padrão preservados) ── */
+.mcr-pagination {
+    padding: 0.75rem 1.25rem;
+    border-top: 1px solid var(--mcr-border);
+}
+
+.mcr-pagination .pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.mcr-pagination .page-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+    padding: 0.375rem 0.625rem;
+    color: var(--mcr-text);
+    font-size: 0.8125rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+}
+
+.mcr-pagination a.page-link:hover {
+    background: var(--mcr-hover);
+}
+
+.mcr-pagination .page-item.active .page-link {
+    background: var(--mcr-inset);
+    border-color: var(--mcr-border);
+    font-weight: 700;
+}
+
+.mcr-pagination .page-item.disabled .page-link {
+    opacity: 0.45;
+}
+
+.mcr-pagination .page-link:focus-visible {
+    outline: 2px solid var(--mcr-focus);
+    outline-offset: 2px;
+}
+
+/* ── Detalhe canônico: listas com divisores, sem caixas aninhadas ── */
+.mcr-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    padding: 1.25rem;
+    border-top: 1px solid var(--mcr-border);
+}
+
+@media (min-width: 80rem) {
+    .mcr-detail-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.mcr-detail-block h3 {
+    color: var(--mcr-text);
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.mcr-note {
+    margin: 0 1.25rem 1rem;
+    padding: 0.75rem 1rem;
+    color: var(--mcr-muted);
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    background: var(--mcr-inset);
+    border-radius: 8px;
+}
+
+.mcr-note--amber {
+    color: #92400e;
+    background: rgb(160 110 40 / 0.12);
+}
+
+.dark .mcr-note--amber {
+    color: #fcd34d;
+    background: rgb(245 158 11 / 0.1);
+}
+
+.mcr-list {
+    margin: 0.75rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.mcr-list-item {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--mcr-border);
+}
+
+.mcr-list-item:first-child {
+    padding-top: 0;
+}
+
+.mcr-list-item:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+.mcr-list-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+}
+
+.mcr-list-title strong {
+    color: var(--mcr-text);
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.mcr-pay {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+}
+
+.mcr-pay-amount {
+    color: var(--mcr-text);
+    font-size: 0.9375rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+@media (max-width: 639px) {
+    .bsi-measurement-cycle-report .fi-page,
+    .bsi-measurement-cycle-report .fi-page-content {
+        gap: 1rem;
+    }
+
+    .mcr-card-head,
+    .mcr-filters,
+    .mcr-card-foot,
+    .mcr-row,
+    .mcr-meta-foot,
+    .mcr-pagination,
+    .mcr-detail-grid {
+        padding-inline: 1rem;
+    }
+
+    .mcr-note {
+        margin-inline: 1rem;
+    }
+
+    .mcr-table thead th,
+    .mcr-table tbody td {
+        padding-inline: 0.875rem;
+    }
+
+    .mcr-kpi-value {
+        font-size: 1.5rem;
+    }
+}

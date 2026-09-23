@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ExpenseServiceProviders\Tables;
 
 use App\Filament\Resources\Expenses\ExpenseResource;
 use App\Filament\Resources\ExpenseServiceProviders\ExpenseServiceProviderResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\ExpenseServiceProvider;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -102,7 +103,8 @@ class ExpenseServiceProvidersTable
                     ->label('Tipo')
                     ->relationship('type', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
             ])
             ->recordActions([
                 ActionGroup::make([

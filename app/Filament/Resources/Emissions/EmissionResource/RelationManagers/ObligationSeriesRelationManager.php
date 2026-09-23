@@ -152,7 +152,7 @@ class ObligationSeriesRelationManager extends RelationManager
                     )),
                 TextColumn::make('next_occurrence')
                     ->label('Próxima ocorrência')
-                    ->state(fn (ObligationSeries $record): string => $this->nextOccurrenceLabel($record))
+                    ->state(fn (ObligationSeries $record): string => app(ObligationScheduleCalculator::class)->nextOccurrenceLabel($record))
                     ->badge()
                     ->color(fn (ObligationSeries $record): string => match (true) {
                         $record->status === ObligationSeriesStatus::AwaitingConfiguration => 'warning',
@@ -503,27 +503,6 @@ class ObligationSeriesRelationManager extends RelationManager
             'starts_on' => $series->starts_on?->toDateString(),
             'ends_on' => $series->ends_on?->toDateString(),
         ]);
-    }
-
-    protected function nextOccurrenceLabel(ObligationSeries $series): string
-    {
-        if ($series->status === ObligationSeriesStatus::AwaitingConfiguration) {
-            return 'Aguardando configuração';
-        }
-
-        if ($series->frequency === ObligationFrequency::OnDemand) {
-            return 'Sob demanda';
-        }
-
-        if ($series->status !== ObligationSeriesStatus::Active) {
-            return 'Sem nova geração';
-        }
-
-        $next = app(ObligationScheduleCalculator::class)->nextOccurrence($series);
-
-        return $next === null
-            ? 'Nenhuma dentro da vigência'
-            : sprintf('%s · comp. %s', $next['due_date']->format('d/m/Y'), $next['competence_date']->format('m/Y'));
     }
 
     protected function canCreateSeries(): bool
