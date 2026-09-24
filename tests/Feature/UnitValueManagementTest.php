@@ -221,6 +221,7 @@ it('registers a discount policy from the construction page', function () {
         ->callAction(TestAction::make('newPolicy')->table(), [
             'maximum_discount_percent' => '5.00',
             'effective_from' => '2026-07-01',
+            'effective_until' => '2026-12-31',
             'reason' => 'Aprovação comercial',
         ])
         ->assertHasNoActionErrors();
@@ -230,6 +231,7 @@ it('registers a discount policy from the construction page', function () {
     expect($policy->construction_id)->toBe($construction->id)
         ->and($policy->maximum_discount_percent)->toBe('5.00')
         ->and($policy->effective_from->toDateString())->toBe('2026-07-01')
+        ->and($policy->effective_until->toDateString())->toBe('2026-12-31')
         ->and($policy->created_by_id)->not->toBeNull();
 });
 

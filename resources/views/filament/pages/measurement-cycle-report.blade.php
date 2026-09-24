@@ -39,6 +39,14 @@
             'partial' => 'bsi-status-badge bsi-status-warning',
             default => 'bsi-status-badge bsi-status-default',
         };
+        $stageName = fn (int $stage): string => match ($stage) {
+            1 => 'Engenharia',
+            2 => 'Gestão',
+            3 => 'Compliance',
+            4 => 'Pagamentos',
+            5 => 'Finalização',
+            default => 'Etapa '.$stage,
+        };
     @endphp
 
     <div class="space-y-5" wire:loading.class="opacity-60">
@@ -445,38 +453,74 @@
                 </div>
             </div>
             <div class="mcr-table-scroll">
-                <table class="mcr-table">
+                <table class="mcr-table mcr-stage-metrics">
                     <thead>
                         <tr>
-                            <th scope="col">Etapa</th>
-                            <th scope="col" class="mcr-r">Decisões</th>
-                            <th scope="col" class="mcr-r">Aprovações</th>
-                            <th scope="col" class="mcr-r">Rejeições</th>
-                            <th scope="col" class="mcr-r">Taxa rejeição</th>
-                            <th scope="col">Calendário média / mediana</th>
-                            <th scope="col">Líquida média / mediana</th>
+                            <th scope="col">Fase</th>
+                            <th scope="col">Decisões</th>
+                            <th scope="col" class="mcr-r">Taxa de rejeição</th>
+                            <th scope="col">Durações<span class="mcr-th-sub">Média / mediana</span></th>
                             <th scope="col">Pausas</th>
-                            <th scope="col">Finalizações / devoluções</th>
-                            <th scope="col">Base / excluídas</th>
+                            <th scope="col">Desfecho</th>
+                            <th scope="col">Base</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($report->stageMetrics as $metric)
                             <tr wire:key="stage-metric-{{ $metric->stage }}">
-                                <td>
-                                    Etapa {{ $metric->stage }}
+                                <td class="mcr-stage-name">
+                                    {{ $stageName((int) $metric->stage) }}
                                 </td>
-                                <td class="mcr-r mcr-num">{{ $metric->decisions }}</td>
-                                <td class="mcr-r mcr-num">{{ $metric->approvals }}</td>
-                                <td class="mcr-r mcr-num">{{ $metric->rejections }}</td>
-                                <td class="mcr-r mcr-num">{{ $this->rate($metric->rejectionRate) }}</td>
-                                <td class="mcr-num">{{ $this->duration($metric->averageCalendarDuration) }} / {{ $this->duration($metric->medianCalendarDuration) }}</td>
-                                <td class="mcr-num">{{ $this->duration($metric->averageActiveDuration) }} / {{ $this->duration($metric->medianActiveDuration) }}</td>
-                                <td class="mcr-num">Total {{ $this->duration($metric->pausedDurationTotal) }}<br />Média {{ $this->duration($metric->averagePausedDuration) }}</td>
-                                <td class="mcr-num">{{ $metric->finalizations }} / {{ $metric->finalizationReturns }}<br />Taxa {{ $this->rate($metric->finalizationReturnRate) }}</td>
                                 <td class="mcr-num">
-                                    {{ $metric->completeCohort }} completas<br />
-                                    {{ $metric->partialExcluded }} parciais · {{ $metric->insufficientExcluded }} insuficientes
+                                    <div class="mcr-main mcr-num">{{ $metric->decisions }}</div>
+                                    <div class="mcr-sub mcr-line mcr-num">{{ $metric->approvals }} aprov. · {{ $metric->rejections }} rej.</div>
+                                </td>
+                                <td class="mcr-r mcr-num">
+                                    @if ($metric->rejectionRate === null)
+                                        <span class="mcr-nd">N/D</span>
+                                    @else
+                                        <span class="mcr-rate">{{ $this->rate($metric->rejectionRate) }}</span>
+                                    @endif
+                                </td>
+                                <td class="mcr-num">
+                                    <div class="mcr-stack">
+                                        <div class="mcr-kv">
+                                            <span class="mcr-kv-label mcr-kv-label--dur">Calendário</span>
+                                            <span class="{{ $metric->averageCalendarDuration === null && $metric->medianCalendarDuration === null ? 'mcr-nd' : '' }}">{{ $this->duration($metric->averageCalendarDuration) }} / {{ $this->duration($metric->medianCalendarDuration) }}</span>
+                                        </div>
+                                        <div class="mcr-kv">
+                                            <span class="mcr-kv-label mcr-kv-label--dur">Líquida</span>
+                                            <span class="{{ $metric->averageActiveDuration === null && $metric->medianActiveDuration === null ? 'mcr-nd' : '' }}">{{ $this->duration($metric->averageActiveDuration) }} / {{ $this->duration($metric->medianActiveDuration) }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="mcr-num">
+                                    <div class="mcr-stack">
+                                        <div class="mcr-kv">
+                                            <span class="mcr-kv-label mcr-kv-label--pause">Total</span>
+                                            <span>{{ $this->duration($metric->pausedDurationTotal) }}</span>
+                                        </div>
+                                        <div class="mcr-kv">
+                                            <span class="mcr-kv-label mcr-kv-label--pause">Média</span>
+                                            <span class="{{ $metric->averagePausedDuration === null ? 'mcr-nd' : '' }}">{{ $this->duration($metric->averagePausedDuration) }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="mcr-num">
+                                    <div class="mcr-line">{{ $metric->finalizations }} finalizações</div>
+                                    <div class="mcr-line">{{ $metric->finalizationReturns }} devoluções</div>
+                                    <div class="mcr-sub mcr-line mcr-num">Taxa
+                                        @if ($metric->finalizationReturnRate === null)
+                                            <span class="mcr-nd">N/D</span>
+                                        @else
+                                            {{ $this->rate($metric->finalizationReturnRate) }}
+                                        @endif
+                                    </div>
+                                </td>
+                                <td class="mcr-num">
+                                    <div class="mcr-line">{{ $metric->completeCohort }} completas</div>
+                                    <div class="mcr-sub mcr-line mcr-num">{{ $metric->partialExcluded }} parciais</div>
+                                    <div class="mcr-sub mcr-line mcr-num">{{ $metric->insufficientExcluded }} insuficientes</div>
                                 </td>
                             </tr>
                         @endforeach
@@ -517,15 +561,15 @@
             </div>
 
             <div class="mcr-table-scroll">
-                <table class="mcr-table">
+                <table class="mcr-table mcr-visits">
                     <thead>
                         <tr>
                             <th scope="col">Medição</th>
-                            <th scope="col">Etapa / visita</th>
-                            <th scope="col">Entrada / saída</th>
+                            <th scope="col">Fase / visita</th>
+                            <th scope="col">Período</th>
                             <th scope="col">Decisão</th>
                             <th scope="col">Durações</th>
-                            <th scope="col">Actor / responsável</th>
+                            <th scope="col">Responsáveis</th>
                             <th scope="col">Cobertura</th>
                         </tr>
                     </thead>
@@ -539,23 +583,53 @@
                                     @endif
                                     <div class="mcr-sub mcr-long">{{ $row->operationLabel }} · {{ $row->emissionLabel }}</div>
                                 </td>
-                                <td class="mcr-num">Etapa {{ $row->stage }} · #{{ $row->sequence }}</td>
-                                <td class="mcr-sub mcr-num">
-                                    {{ $row->enteredAt?->format('d/m/Y H:i:s') ?? 'N/D' }}<br />
-                                    {{ $row->exitedAt?->format('d/m/Y H:i:s') ?? 'Em aberto' }}
+                                <td>
+                                    <div class="mcr-visit-stage">{{ $stageName((int) $row->stage) }}</div>
+                                    <div class="mcr-sub mcr-num">Visita {{ $row->sequence }}</div>
+                                </td>
+                                <td class="mcr-num">
+                                    <div class="mcr-stack">
+                                        <div class="mcr-kv">
+                                            <span class="mcr-kv-label mcr-kv-label--period">Entrada</span>
+                                            <span>{{ $row->enteredAt?->format('d/m/Y H:i:s') ?? 'N/D' }}</span>
+                                        </div>
+                                        <div class="mcr-kv">
+                                            <span class="mcr-kv-label mcr-kv-label--period">Saída</span>
+                                            <span>{{ $row->exitedAt?->format('d/m/Y H:i:s') ?? 'Em aberto' }}</span>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td>
                                     <span class="{{ $exitBadge($row->exitReason) }}">{{ $this->exitReason($row->exitReason) }}</span>
                                 </td>
-                                <td class="mcr-sub mcr-num">
-                                    Calendário: {{ $this->duration($row->calendarDuration) }}<br />
-                                    Pausa: {{ $this->duration($row->pausedDuration) }}<br />
-                                    Líquida: {{ $this->duration($row->activeDuration) }}
+                                <td class="mcr-num">
+                                    <div class="mcr-stack">
+                                        <div class="mcr-kv">
+                                            <span class="mcr-kv-label mcr-kv-label--dur">Calendário</span>
+                                            <span class="{{ $row->calendarDuration === null ? 'mcr-nd' : '' }}">{{ $this->duration($row->calendarDuration) }}</span>
+                                        </div>
+                                        <div class="mcr-kv">
+                                            <span class="mcr-kv-label mcr-kv-label--dur">Pausa</span>
+                                            <span class="{{ $row->pausedDuration === null ? 'mcr-nd' : '' }}">{{ $this->duration($row->pausedDuration) }}</span>
+                                        </div>
+                                        <div class="mcr-kv">
+                                            <span class="mcr-kv-label mcr-kv-label--dur">Líquida</span>
+                                            <span class="{{ $row->activeDuration === null ? 'mcr-nd' : '' }}">{{ $this->duration($row->activeDuration) }}</span>
+                                        </div>
+                                    </div>
                                 </td>
-                                <td class="mcr-sub">
-                                    Actor: {{ $row->actorName ?? 'N/D' }}<br />
-                                    Esperado: {{ $row->expectedResponsibleName ?? 'N/D' }}<br />
-                                    Delegado: {{ $this->triState($row->delegated) }} · Override: {{ $this->triState($row->adminOverride) }}
+                                <td>
+                                    <div class="mcr-stack">
+                                        <div class="mcr-kv mcr-kv--wrap">
+                                            <span class="mcr-kv-label mcr-kv-label--resp">Actor</span>
+                                            <span class="mcr-resp-name">{{ $row->actorName ?? 'N/D' }}</span>
+                                        </div>
+                                        <div class="mcr-kv mcr-kv--wrap">
+                                            <span class="mcr-kv-label mcr-kv-label--resp">Esperado</span>
+                                            <span class="mcr-resp-name">{{ $row->expectedResponsibleName ?? 'N/D' }}</span>
+                                        </div>
+                                        <div class="mcr-sub mcr-num">Delegado: {{ $this->triState($row->delegated) }} · Override: {{ $this->triState($row->adminOverride) }}</div>
+                                    </div>
                                 </td>
                                 <td>
                                     <span class="{{ $coverageBadge($row->completeness->value) }}">{{ $completeLabel($row->completeness->value) }}</span>
@@ -571,8 +645,23 @@
                 </table>
             </div>
 
-            @if ($rows->hasPages())
-                <div class="mcr-pagination">{{ $rows->links() }}</div>
+            @if ($rows->total() > 0)
+                <div class="mcr-pagination mcr-pagination-foot">
+                    <span class="mcr-pagination-overview">Exibindo {{ number_format((int) $rows->firstItem(), 0, ',', '.') }} a {{ number_format((int) $rows->lastItem(), 0, ',', '.') }} de {{ number_format($rows->total(), 0, ',', '.') }} resultados</span>
+                    <div class="mcr-pagination-controls">
+                        <label class="mcr-perpage">
+                            <span>por página</span>
+                            <select wire:model.live="visitsPerPage" class="mcr-input mcr-perpage-select" aria-label="Registros por página">
+                                @foreach ($this->visitsPerPageOptions() as $option)
+                                    <option value="{{ $option }}">{{ $option }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        @if ($rows->hasPages())
+                            {{ $rows->links('filament.pages.measurement-cycle-report-pagination') }}
+                        @endif
+                    </div>
+                </div>
             @endif
         </section>
 

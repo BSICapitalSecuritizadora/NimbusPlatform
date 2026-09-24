@@ -4,6 +4,7 @@ namespace App\Actions\Expenses;
 
 use App\Models\Expense;
 use App\Services\Expenses\ExpenseOccurrenceResolver;
+use App\Support\Money\IntegerMoney;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,7 +21,15 @@ class BuildExpenseCalendar
      * @return array{
      *     month_label: string,
      *     visible_month: string,
-     *     summary: array{event_count: int, total_amount: string, operation_count: int},
+     *     summary: array{
+     *         event_count: int,
+     *         total_amount: string,
+     *         paid_amount: string,
+     *         paid_percentage: ?string,
+     *         outstanding_amount: string,
+     *         settlement_label: ?string,
+     *         operation_count: int
+     *     },
      *     weeks: array<int, array<int, array{
      *         date: string,
      *         day_number: string,
@@ -38,6 +47,8 @@ class BuildExpenseCalendar
         $gridEnd = $monthEnd->endOfWeek(CarbonInterface::SUNDAY);
         $events = $this->buildEvents($monthStart, $monthEnd, $filters);
         $eventsByDate = $events->groupBy('date');
+        $expectedCents = $this->sumCents($events, 'amount');
+        $paidCents = $this->sumCents($events, 'paid_amount');
         $today = now()->toDateString();
         $weeks = [];
         $cursor = $gridStart;
@@ -67,7 +78,11 @@ class BuildExpenseCalendar
             'visible_month' => $monthStart->format('Y-m'),
             'summary' => [
                 'event_count' => $events->count(),
-                'total_amount' => $this->formatCurrency($events->sum('amount')),
+                'total_amount' => $this->formatCents($expectedCents),
+                'paid_amount' => $this->formatCents($paidCents),
+                'paid_percentage' => $this->formatPaidPercentage($paidCents, $expectedCents),
+                'outstanding_amount' => $this->formatCents($expectedCents - $paidCents),
+                'settlement_label' => $this->settlementLabel($expectedCents, $paidCents),
                 'operation_count' => $events->pluck('operation')->filter()->unique()->count(),
             ],
             'weeks' => $weeks,
@@ -120,8 +135,51 @@ class BuildExpenseCalendar
         );
     }
 
-    protected function formatCurrency(float|string|null $amount): string
+    /**
+     * Soma exata, em centavos, de um campo monetário das ocorrências.
+     *
+     * Previsto e pago somam o mesmo conjunto de ocorrências (mesmo mês de
+     * vencimento, mesmos filtros), para serem diretamente comparáveis. Um
+     * `paid_amount` nulo -- ocorrência em aberto -- soma zero: o pago vem do
+     * valor apurado pelo resolvedor, nunca do previsto nem do status.
+     *
+     * @param  Collection<int, array<string, mixed>>  $events
+     */
+    protected function sumCents(Collection $events, string $field): int
     {
-        return 'R$ '.number_format((float) $amount, 2, ',', '.');
+        return $events->sum(fn (array $event): int => IntegerMoney::cents($event[$field] ?? null) ?? 0);
+    }
+
+    protected function formatCents(int $cents): string
+    {
+        return 'R$ '.IntegerMoney::format($cents);
+    }
+
+    protected function formatPaidPercentage(int $paidCents, int $expectedCents): ?string
+    {
+        $basisPoints = IntegerMoney::shareInBasisPoints($paidCents, $expectedCents);
+
+        return $basisPoints !== null
+            ? IntegerMoney::formatBasisPoints($basisPoints).'%'
+            : null;
+    }
+
+    /**
+     * Saldo entre previsto e pago, sem limitar o pago ao previsto: pagar
+     * acima do previsto (juros, multa) é informado como tal, não escondido.
+     */
+    protected function settlementLabel(int $expectedCents, int $paidCents): ?string
+    {
+        if ($expectedCents <= 0) {
+            return null;
+        }
+
+        $outstandingCents = $expectedCents - $paidCents;
+
+        return match (true) {
+            $outstandingCents > 0 => $this->formatCents($outstandingCents).' em aberto',
+            $outstandingCents === 0 => 'Integralmente pago',
+            default => $this->formatCents(-$outstandingCents).' acima do previsto',
+        };
     }
 }

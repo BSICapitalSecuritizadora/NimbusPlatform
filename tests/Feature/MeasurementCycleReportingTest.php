@@ -709,3 +709,54 @@ it('crosses a 205 measurement portfolio in bounded chunks without loss duplicati
         ->and($batchCalls)->toBe(3)
         ->and($queryCount)->toBeLessThan(30);
 });
+
+it('paginates historical visit rows five at a time without changing order filters or metrics', function () {
+    $actor = p3b2ReportingActor([
+        AccessPermission::MeasurementsView->value,
+        AccessPermission::MeasurementsCycleReportsView->value,
+    ]);
+    $operation = p3b2ReportingOperation($actor);
+    $measurements = Measurement::factory()->count(7)->create([
+        'operation_id' => $operation->getKey(),
+        'status' => 'finalized',
+        'current_stage' => 5,
+    ])->each->load('operation.emission');
+    $records = $measurements->map(fn (Measurement $measurement): AuthorizedMeasurementCycleHistory => new AuthorizedMeasurementCycleHistory(
+        measurement: $measurement,
+        history: p3b2ReportingHistory($measurement, [p3b2ReportingVisit(
+            $measurement,
+            MeasurementStageExitReason::Approved,
+        )]),
+    ));
+    $service = p3b2ReportingServiceFor($records);
+
+    $page1 = $service->report($actor, new MeasurementCycleReportFilters, page: 1, perPage: 5);
+    $page2 = $service->report($actor, new MeasurementCycleReportFilters, page: 2, perPage: 5);
+    $all = $service->report($actor, new MeasurementCycleReportFilters, page: 1, perPage: 10);
+
+    expect($page1->rows)->toHaveCount(5)
+        ->and($page1->totalRows)->toBe(7)
+        ->and($page1->perPage)->toBe(5)
+        ->and($page1->currentPage)->toBe(1)
+        ->and($page2->rows)->toHaveCount(2)
+        ->and($page2->totalRows)->toBe(7)
+        ->and($page2->perPage)->toBe(5)
+        ->and($page2->currentPage)->toBe(2)
+        ->and($all->rows)->toHaveCount(7)
+        ->and(collect($page1->rows)->merge($page2->rows)->pluck('measurementId')->all())
+        ->toBe(collect($all->rows)->pluck('measurementId')->all())
+        ->and($page2->summary)->toEqual($page1->summary)
+        ->and($page2->coverage)->toEqual($page1->coverage)
+        ->and($page2->stageMetrics)->toEqual($page1->stageMetrics);
+
+    $filtered = $service->report(
+        $actor,
+        new MeasurementCycleReportFilters(measurementId: (int) $measurements->first()->getKey()),
+        page: 1,
+        perPage: 5,
+    );
+
+    expect($filtered->totalRows)->toBe(1)
+        ->and($filtered->rows)->toHaveCount(1)
+        ->and($filtered->rows[0]->measurementId)->toBe((int) $measurements->first()->getKey());
+});

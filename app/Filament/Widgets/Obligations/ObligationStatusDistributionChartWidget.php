@@ -102,6 +102,7 @@ class ObligationStatusDistributionChartWidget extends ChartWidget
                 }
             },
             cutout: '68%',
+            responsive: true,
             maintainAspectRatio: false
         }
         JS);

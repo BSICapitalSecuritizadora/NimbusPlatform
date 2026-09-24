@@ -130,7 +130,8 @@ class ExpensesTable
                     ->label('Prestador')
                     ->relationship('serviceProvider', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
                 SelectFilter::make('category')
                     ->label('Categoria')
                     ->options(Expense::CATEGORY_OPTIONS),

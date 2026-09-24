@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Nimbus\GeneralDocuments\Tables;
 
 use App\Filament\Resources\Nimbus\GeneralDocuments\GeneralDocumentResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Nimbus\GeneralDocument;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -53,7 +54,7 @@ class GeneralDocumentsTable
                     ->color('gray')
                     ->visible(fn ($livewire): bool => static::hasActiveFiltersOrSearch($livewire))
                     ->action(function ($livewire): void {
-                        $livewire->resetTableFilters();
+                        $livewire->removeTableFilters();
                         $livewire->resetTableSearch();
                     }),
             ])
@@ -131,7 +132,8 @@ class GeneralDocumentsTable
                     ->label('Categoria')
                     ->relationship('category', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                 SelectFilter::make('is_active')
                     ->label('Status')
@@ -144,12 +146,22 @@ class GeneralDocumentsTable
                     ->label('Criado por')
                     ->relationship('createdBy', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                 Filter::make('published_at')
+                    ->columns(2)
                     ->form([
-                        DatePicker::make('published_from')->label('Publicado a partir de'),
-                        DatePicker::make('published_until')->label('Publicado até'),
+                        DatePicker::make('published_from')
+                            ->label('Publicado a partir de')
+                            ->placeholder('dd/mm/aaaa')
+                            ->displayFormat('d/m/Y')
+                            ->native(false),
+                        DatePicker::make('published_until')
+                            ->label('Publicado até')
+                            ->placeholder('dd/mm/aaaa')
+                            ->displayFormat('d/m/Y')
+                            ->native(false),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -161,7 +173,8 @@ class GeneralDocumentsTable
                                 $data['published_until'] ?? null,
                                 fn (Builder $query, $date): Builder => $query->whereDate('published_at', '<=', $date),
                             );
-                    }),
+                    })
+                    ->indicateUsing(fn (array $data): array => static::publishedPeriodIndicators($data)),
             ])
             ->actions([
                 ActionGroup::make([
@@ -200,6 +213,37 @@ class GeneralDocumentsTable
                         ->visible(fn (): bool => auth()->user()?->can('nimbus.general-documents.delete') ?? false),
                 ]),
             ]);
+    }
+
+    /**
+     * Chips do filtro de período de publicação, um por campo preenchido.
+     *
+     * As chaves são os nomes dos campos, para que cada chip remova somente o
+     * seu próprio campo ao ser dispensado.
+     *
+     * @return array<string, string>
+     */
+    protected static function publishedPeriodIndicators(array $data): array
+    {
+        $indicators = [];
+
+        foreach (['published_from' => 'Publicado desde', 'published_until' => 'Publicado até'] as $field => $prefix) {
+            $value = $data[$field] ?? null;
+
+            if (! filled($value)) {
+                continue;
+            }
+
+            $date = date_create_immutable((string) $value);
+
+            if ($date === false) {
+                continue;
+            }
+
+            $indicators[$field] = $prefix.' '.$date->format('d/m/Y');
+        }
+
+        return $indicators;
     }
 
     /**

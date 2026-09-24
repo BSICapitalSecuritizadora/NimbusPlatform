@@ -1,0 +1,24 @@
+/* Biblioteca Geral: filtros "Publicado a partir de" / "Publicado até".
+ *
+ * O calendário do DatePicker JS é `position: absolute` dentro do `.fi-input-wrp`
+ * do campo. O tema declara `overflow: hidden` nesse wrapper para todos os filtros
+ * de tabela, o que recortaria o calendário em 40px e o deixaria invisível — o
+ * `flip`/`shift` do Floating UI só consegue ancorar o painel quando ele pode
+ * pintar para fora do wrapper. A exceção abaixo espelha a que o tema já concede
+ * aos wrappers de select (que escapam por `position: fixed`), restrita a esta
+ * página para não afetar os demais DatePickers do painel.
+ *
+ * O segundo bloco neutraliza o título "Período de recebimento" que o tema injeta
+ * via `::before` em toda grade de filtros contendo um DatePicker JS: o rótulo
+ * pertence a outra tela e não faz sentido sobre o período de publicação.
+ */
+body.bsi-cockpit-page.bsi-general-documents-list-page {
+    & .fi-ta-filters .fi-input-wrp:has([x-data*="dateTimePickerFormComponent"]) {
+        overflow: visible !important;
+    }
+
+    & .fi-ta-filters .fi-sc-grid:has(.fi-fo-date-time-picker)::before,
+    & .fi-ta-filters .fi-sc-grid:has([x-data*="dateTimePickerFormComponent"])::before {
+        content: none !important;
+    }
+}

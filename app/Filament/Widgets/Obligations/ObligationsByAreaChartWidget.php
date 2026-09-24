@@ -119,6 +119,7 @@ class ObligationsByAreaChartWidget extends ChartWidget
                     }
                 }
             },
+            responsive: true,
             maintainAspectRatio: false
         }
         JS);

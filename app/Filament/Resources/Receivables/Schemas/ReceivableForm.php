@@ -19,6 +19,13 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ReceivableForm
 {
+    /**
+     * Marcador do select pesquisável "Emissão" de "Identificação do resumo". O tema
+     * libera o popup da seção recortada do cadastro, junto com o bloco dos
+     * Responsáveis pelo Fluxo da operação; nenhum outro campo o recebe.
+     */
+    public const EMISSION_SELECT_CLASS = 'bsi-receivable-emission-select';
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -34,6 +41,7 @@ class ReceivableForm
                             ->searchable()
                             ->preload()
                             ->required()
+                            ->extraAttributes(['class' => static::EMISSION_SELECT_CLASS])
                             ->validationMessages([
                                 'required' => 'Selecione a emissão.',
                             ]),

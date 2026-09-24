@@ -25,6 +25,13 @@ use Illuminate\Support\HtmlString;
 
 class MeasurementForm
 {
+    /**
+     * Marcador do select pesquisável "Operação" de "Dados da Medição". O tema
+     * libera o popup dos wrappers recortados da página, junto com o bloco dos
+     * Responsáveis pelo Fluxo da operação; nenhum outro campo o recebe.
+     */
+    public const OPERATION_SELECT_CLASS = 'bsi-measurement-operation-select';
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -36,6 +43,7 @@ class MeasurementForm
                     ->schema([
                         Select::make('operation_id')
                             ->label('Operação')
+                            ->extraAttributes(['class' => static::OPERATION_SELECT_CLASS])
                             ->placeholder('Selecione a operação...')
                             // Só operação em andamento recebe medição nova, mas a
                             // que já está gravada continua listada: sem isso,

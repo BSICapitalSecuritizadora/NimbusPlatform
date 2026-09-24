@@ -5,6 +5,7 @@ namespace App\Filament\Resources\FundNames\Tables;
 use App\Filament\Resources\FundNames\FundNameResource;
 use App\Filament\Resources\Funds\FundResource;
 use App\Filament\Resources\FundTypes\FundTypeResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\FundName;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -93,7 +94,8 @@ class FundNamesTable
                     ->label('Tipo de fundo')
                     ->relationship('fundType', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
             ])
             ->recordActions([
                 ActionGroup::make([

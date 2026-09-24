@@ -57,6 +57,8 @@ class MeasurementCycleReport extends Page
     #[Url(as: 'detail_id')]
     public ?int $detailId = null;
 
+    public int $visitsPerPage = 5;
+
     protected string $view = 'filament.pages.measurement-cycle-report';
 
     protected static string|UnitEnum|null $navigationGroup = 'Operações';
@@ -168,6 +170,7 @@ class MeasurementCycleReport extends Page
             $this->actor(),
             $this->filters(),
             $this->getPage(),
+            $this->resolvedVisitsPerPage(),
         );
     }
 
@@ -365,6 +368,19 @@ class MeasurementCycleReport extends Page
                 $reason->value => $this->exitReason($reason),
             ])
             ->all();
+    }
+
+    /** @return list<int> */
+    public function visitsPerPageOptions(): array
+    {
+        return [5, 10, 25, 50];
+    }
+
+    public function resolvedVisitsPerPage(): int
+    {
+        return in_array($this->visitsPerPage, $this->visitsPerPageOptions(), true)
+            ? $this->visitsPerPage
+            : 5;
     }
 
     /** @return array<string, string> */

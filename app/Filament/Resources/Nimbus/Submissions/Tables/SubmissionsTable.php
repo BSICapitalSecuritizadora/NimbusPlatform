@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Nimbus\Submissions\Tables;
 
 use App\Filament\Resources\Nimbus\Submissions\SubmissionResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Nimbus\Submission;
 use Filament\Actions\ViewAction;
 use Filament\Support\Enums\Width;
@@ -94,7 +95,8 @@ class SubmissionsTable
                     ->label('Solicitante')
                     ->relationship('portalUser', 'full_name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
             ])
             ->actions([
                 ViewAction::make()

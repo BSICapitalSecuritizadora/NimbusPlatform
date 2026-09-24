@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Measurements\Tables;
 
+use App\Filament\Forms\Components\MonthPicker;
 use App\Filament\Resources\Measurements\MeasurementResource;
 use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Measurement;
@@ -14,14 +15,12 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ViewAction;
-use Filament\Forms\Components\DatePicker;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 class MeasurementsTable
@@ -173,15 +172,16 @@ class MeasurementsTable
                         Filter::make('competence_period')
                             ->label('Competência')
                             ->schema([
-                                DatePicker::make('from')->label('Competência inicial')->native(false),
-                                DatePicker::make('to')->label('Competência final')->native(false),
+                                MonthPicker::make('from')
+                                    ->label('Competência inicial')
+                                    ->notAfterField('to'),
+                                MonthPicker::make('to')
+                                    ->label('Competência final')
+                                    ->notBeforeField('from'),
                             ])
-                            ->columns(2)
-                            ->query(fn (Builder $query, array $data): Builder => $query
-                                ->when(filled($data['from'] ?? null), fn (Builder $measurements): Builder => $measurements
-                                    ->whereDate('reference_month', '>=', static::filterDate($data['from'])))
-                                ->when(filled($data['to'] ?? null), fn (Builder $measurements): Builder => $measurements
-                                    ->whereDate('reference_month', '<=', static::filterDate($data['to'])))),
+                            ->columns(['default' => 1, 'sm' => 2])
+                            ->query(fn (Builder $query, array $data): Builder => static::applyCompetencePeriod($query, $data))
+                            ->indicateUsing(fn (array $data): ?string => static::competencePeriodIndicator($data)),
 
                         SelectFilter::make('status')
                             ->label('Situação')
@@ -319,8 +319,72 @@ class MeasurementsTable
         return once(fn (): MeasurementOperationalReadModel => app(MeasurementOperationalReadModel::class));
     }
 
-    private static function filterDate(mixed $value): string
+    /**
+     * Indica se o estado do filtro de competência tem a final anterior à inicial.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function hasInvertedCompetencePeriod(array $data): bool
     {
-        return Carbon::parse($value)->toDateString();
+        $from = MonthPicker::parseMonth($data['from'] ?? null);
+        $to = MonthPicker::parseMonth($data['to'] ?? null);
+
+        return $from !== null && $to !== null && $to->lessThan($from);
+    }
+
+    /**
+     * Competência é mensal, mas `reference_month` guarda o dia da medição prevista no
+     * cronograma — não necessariamente o dia 1. O intervalo vai do primeiro dia da
+     * competência inicial ao último dia da final, inclusive. Valor ilegível não filtra
+     * "por aproximação": a consulta falha fechada.
+     *
+     * @param  Builder<Measurement>  $query
+     * @param  array<string, mixed>  $data
+     * @return Builder<Measurement>
+     */
+    protected static function applyCompetencePeriod(Builder $query, array $data): Builder
+    {
+        $from = MonthPicker::parseMonth($data['from'] ?? null);
+        $to = MonthPicker::parseMonth($data['to'] ?? null);
+
+        if ((filled($data['from'] ?? null) && $from === null) || (filled($data['to'] ?? null) && $to === null)) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query
+            ->when($from, fn (Builder $measurements): Builder => $measurements
+                ->whereDate('reference_month', '>=', $from->toDateString()))
+            ->when($to, fn (Builder $measurements): Builder => $measurements
+                ->whereDate('reference_month', '<=', $to->endOfMonth()->toDateString()));
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected static function competencePeriodIndicator(array $data): ?string
+    {
+        $hasFrom = filled($data['from'] ?? null);
+        $hasTo = filled($data['to'] ?? null);
+
+        if (! $hasFrom && ! $hasTo) {
+            return null;
+        }
+
+        $from = MonthPicker::parseMonth($data['from'] ?? null);
+        $to = MonthPicker::parseMonth($data['to'] ?? null);
+
+        if (($hasFrom && $from === null) || ($hasTo && $to === null)) {
+            return 'Competência: valor inválido';
+        }
+
+        if ($from !== null && $to !== null) {
+            return $from->equalTo($to)
+                ? 'Competência: '.$from->format('m/Y')
+                : 'Competência: '.$from->format('m/Y').' até '.$to->format('m/Y');
+        }
+
+        return $from !== null
+            ? 'Competência a partir de '.$from->format('m/Y')
+            : 'Competência até '.$to->format('m/Y');
     }
 }

@@ -54,43 +54,52 @@ class ConstructionUnitResource extends Resource
     {
         return $schema->components([
             Section::make('Dados da Unidade')
+                ->extraAttributes(['class' => 'bsi-unit-details'])
                 ->columnSpanFull()
-                ->columns(2)
+                ->columns(['default' => 1, 'md' => 2, 'xl' => 4])
                 ->schema([
                     TextEntry::make('construction.emission.name')
-                        ->label('Emissão')
-                        ->columnSpanFull(),
+                        ->label('Emissão'),
                     TextEntry::make('construction.development_name')
-                        ->label('Empreendimento')
-                        ->columnSpanFull(),
+                        ->label('Empreendimento'),
                     TextEntry::make('block')->label('Bloco'),
                     TextEntry::make('unit')->label('Unidade')->weight('bold'),
                 ]),
 
             Section::make('Valores')
+                ->extraAttributes(['class' => 'bsi-unit-values'])
                 ->description('Referência inicial da unidade e o valor que vale hoje.')
                 ->columnSpanFull()
-                ->columns(2)
+                ->columns(['default' => 1, 'md' => 2, 'xl' => 4])
                 ->schema([
                     TextEntry::make('base_value')
                         ->label('Valor base')
+                        ->extraAttributes(['class' => 'bsi-unit-base-value tabular-nums'])
                         ->money('BRL')
                         ->placeholder('Não informado'),
 
-                    TextEntry::make('base_value_reference_date')
-                        ->label('Data de referência do valor base')
-                        ->date('d/m/Y')
-                        ->placeholder('Não informada'),
-
                     TextEntry::make('current_value')
                         ->label('Valor vigente')
-                        ->weight('bold')
+                        ->extraAttributes(['class' => 'bsi-unit-current-value tabular-nums'])
+                        ->weight('semibold')
+                        ->helperText(function (ConstructionUnit $record): ?string {
+                            $resolved = self::currentValue($record);
+
+                            return $resolved->isAbsent() ? null : $resolved->source->label();
+                        })
                         ->state(fn (ConstructionUnit $record): string => self::currentValue($record)->formattedValue() === null
                             ? 'Sem valor conhecido'
                             : 'R$ '.self::currentValue($record)->formattedValue()),
 
+                    TextEntry::make('base_value_reference_date')
+                        ->label('Data de referência do valor base')
+                        ->extraAttributes(['class' => 'bsi-unit-value-date tabular-nums'])
+                        ->date('d/m/Y')
+                        ->placeholder('Não informada'),
+
                     TextEntry::make('current_value_effective_from')
                         ->label('Vigente desde')
+                        ->extraAttributes(['class' => 'bsi-unit-value-date tabular-nums'])
                         ->state(function (ConstructionUnit $record): string {
                             $resolved = self::currentValue($record);
 
@@ -98,11 +107,7 @@ class ConstructionUnitResource extends Resource
                                 return '—';
                             }
 
-                            return sprintf(
-                                '%s (%s)',
-                                $resolved->effectiveFrom?->format('d/m/Y') ?? '—',
-                                $resolved->source->label(),
-                            );
+                            return $resolved->effectiveFrom?->format('d/m/Y') ?? '—';
                         }),
                 ]),
         ]);

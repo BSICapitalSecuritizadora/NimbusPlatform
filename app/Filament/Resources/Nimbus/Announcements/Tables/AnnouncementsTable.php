@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Nimbus\Announcements\Tables;
 
 use App\Filament\Resources\Nimbus\Announcements\AnnouncementResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Nimbus\Announcement;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -192,7 +193,8 @@ class AnnouncementsTable
                     ->label('Criado por')
                     ->relationship('createdBy', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                 Filter::make('vigencia')
                     ->form([

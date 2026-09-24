@@ -10,7 +10,6 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Number;
@@ -20,86 +19,89 @@ class GeneralDocumentForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->columns(1)
             ->components([
-                Grid::make([
-                    'default' => 1,
-                ])
+                Section::make('Dados da Publicação')
+                    ->description('Cadastre as informações principais e o arquivo do documento.')
+                    ->icon('heroicon-o-folder')
+                    ->columnSpanFull()
+                    ->columns(1)
                     ->schema([
-                        Section::make('Dados da Publicação')
-                            ->description('Gestão e manutenção de documentos da biblioteca institucional.')
-                            ->icon('heroicon-o-folder')
-                            ->columnSpanFull()
-                            ->columns([
-                                'default' => 1,
-                                '3xl' => 2,
+                        Select::make('nimbus_category_id')
+                            ->label('Categoria')
+                            ->placeholder('Selecione uma categoria...')
+                            ->relationship('category', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->columnSpanFull(),
+                        TextInput::make('title')
+                            ->label('Título')
+                            ->placeholder('Ex.: Regulamento Interno 2026')
+                            ->required()
+                            ->maxLength(255)
+                            ->columnSpanFull(),
+                        Textarea::make('description')
+                            ->label('Descrição')
+                            ->placeholder('Resumo do conteúdo e da finalidade do documento.')
+                            ->rows(3)
+                            ->columnSpanFull(),
+                        FileUpload::make('file_path')
+                            ->label('Arquivo')
+                            ->required()
+                            ->disk(DocumentStorageService::privateDisk())
+                            ->directory(DocumentStorageService::PRIVATE_PREFIX.'/general-documents')
+                            ->maxSize((int) config('uploads.document.max_kb', 102400))
+                            ->helperText('Tamanho máximo permitido: '.(int) ceil(config('uploads.document.max_kb', 102400) / 1024).' MB.')
+                            ->acceptedFileTypes([
+                                'application/pdf',
+                                'application/msword',
+                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                'application/vnd.ms-excel',
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                'image/jpeg',
+                                'image/png',
+                                'application/zip',
                             ])
-                            ->schema([
-                                Select::make('nimbus_category_id')
-                                    ->label('Categoria')
-                                    ->relationship('category', 'name')
-                                    ->searchable()
-                                    ->preload()
-                                    ->required()
-                                    ->columnSpanFull(),
-                                TextInput::make('title')
-                                    ->label('Título')
-                                    ->placeholder('Ex: Regulamento Interno 2026')
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->columnSpanFull(),
-                                Textarea::make('description')
-                                    ->label('Descrição')
-                                    ->placeholder('Resumo do conteúdo e da finalidade do documento.')
-                                    ->rows(4)
-                                    ->columnSpanFull(),
-                                FileUpload::make('file_path')
-                                    ->label('Arquivo')
-                                    ->required()
-                                    ->disk(DocumentStorageService::privateDisk())
-                                    ->directory(DocumentStorageService::PRIVATE_PREFIX.'/general-documents')
-                                    ->maxSize((int) config('uploads.document.max_kb', 102400))
-                                    ->helperText('Tamanho máximo permitido: '.(int) ceil(config('uploads.document.max_kb', 102400) / 1024).' MB.')
-                                    ->acceptedFileTypes([
-                                        'application/pdf',
-                                        'application/msword',
-                                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                                        'application/vnd.ms-excel',
-                                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                        'image/jpeg',
-                                        'image/png',
-                                        'application/zip',
-                                    ])
-                                    ->columnSpanFull(),
+                            ->columnSpanFull(),
+                    ]),
+                Section::make('Disponibilidade')
+                    ->description('Defina quando e onde o documento ficará disponível.')
+                    ->icon('heroicon-o-document-text')
+                    ->columnSpanFull()
+                    ->columns([
+                        'default' => 1,
+                        'sm' => 2,
+                    ])
+                    ->schema([
+                        Toggle::make('is_active')
+                            ->label('Publicado no Portal')
+                            ->inline()
+                            ->default(true)
+                            ->required()
+                            ->helperText('Quando ativado, o documento ficará visível para os usuários no portal.')
+                            ->columnSpanFull(),
+                        DateTimePicker::make('published_at')
+                            ->label('Data de Publicação')
+                            ->seconds(false)
+                            ->native(false)
+                            ->helperText('Caso não seja informada, o documento não terá uma data de publicação definida.')
+                            ->columnSpan([
+                                'default' => 1,
+                                'sm' => 1,
                             ]),
-                        Section::make('Disponibilidade')
-                            ->icon('heroicon-o-document-text')
-                            ->columnSpanFull()
-                            ->schema([
-                                Toggle::make('is_active')
-                                    ->label('Publicado no Portal')
-                                    ->default(true)
-                                    ->required()
-                                    ->helperText('Quando ativado, o documento ficará visível para os usuários no portal.')
-                                    ->columnSpanFull(),
-                                DateTimePicker::make('published_at')
-                                    ->label('Data de Publicação')
-                                    ->seconds(false)
-                                    ->native(false)
-                                    ->helperText('Caso não seja informada, o documento não terá uma data de publicação definida.')
-                                    ->columnSpanFull(),
-                                Placeholder::make('file_original_name_display')
-                                    ->label('Arquivo Atual')
-                                    ->content(fn ($record): string => $record?->file_original_name ?? '—')
-                                    ->visibleOn('edit'),
-                                Placeholder::make('file_size_display')
-                                    ->label('Tamanho')
-                                    ->content(fn ($record): string => $record?->file_size ? Number::fileSize($record->file_size) : '—')
-                                    ->visibleOn('edit'),
-                                Placeholder::make('file_mime_display')
-                                    ->label('Tipo de Arquivo')
-                                    ->content(fn ($record): string => $record?->file_mime ?? '—')
-                                    ->visibleOn('edit'),
-                            ]),
+                        Placeholder::make('file_original_name_display')
+                            ->label('Arquivo Atual')
+                            ->content(fn ($record): string => $record?->file_original_name ?? '—')
+                            ->visibleOn('edit'),
+                        Placeholder::make('file_size_display')
+                            ->label('Tamanho')
+                            ->content(fn ($record): string => $record?->file_size ? Number::fileSize($record->file_size) : '—')
+                            ->visibleOn('edit'),
+                        Placeholder::make('file_mime_display')
+                            ->label('Tipo de Arquivo')
+                            ->content(fn ($record): string => $record?->file_mime ?? '—')
+                            ->visibleOn('edit'),
                     ]),
             ]);
     }

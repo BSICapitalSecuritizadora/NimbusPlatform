@@ -97,6 +97,18 @@ it('measures the effective discount without overflowing', function () {
         ->and(IntegerMoney::effectiveDiscountBasisPoints(-1, 100))->toBeNull();
 });
 
+it('measures a share of a total in basis points without capping or dividing by zero', function () {
+    expect(IntegerMoney::shareInBasisPoints(1_300_000, 1_693_512))->toBe(7676)
+        ->and(IntegerMoney::shareInBasisPoints(100_000, 100_000))->toBe(10_000)
+        ->and(IntegerMoney::shareInBasisPoints(105_420, 100_000))->toBe(10_542)
+        ->and(IntegerMoney::shareInBasisPoints(0, 100_000))->toBe(0)
+        ->and(IntegerMoney::shareInBasisPoints(1, 3))->toBe(3333)
+        ->and(IntegerMoney::shareInBasisPoints(2, 3))->toBe(6667)
+        ->and(IntegerMoney::shareInBasisPoints(999_999_999_999_999, 999_999_999_999_999))->toBe(10_000)
+        ->and(IntegerMoney::shareInBasisPoints(100, 0))->toBeNull()
+        ->and(IntegerMoney::shareInBasisPoints(100, -1))->toBeNull();
+});
+
 it('formats cents and basis points in brazilian notation', function () {
     expect(IntegerMoney::format(100_000_000))->toBe('1.000.000,00')
         ->and(IntegerMoney::format(95_000_000))->toBe('950.000,00')

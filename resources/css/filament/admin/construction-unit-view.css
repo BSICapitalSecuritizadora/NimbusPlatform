@@ -1,0 +1,279 @@
+body.bsi-cockpit-page.bsi-construction-unit-view-page {
+    --unit-text: var(--color-bsi-navy-900);
+    --unit-muted: #53646a;
+    --unit-border: rgb(18 49 59 / 0.16);
+    --unit-surface: var(--color-bsi-paper);
+    --unit-toolbar: var(--color-bsi-stone-50);
+    --unit-active: rgb(160 110 40 / 0.09);
+    --unit-accent: #805820;
+
+    & .fi-page,
+    & .fi-page-header-main-ctn,
+    & .fi-page-content,
+    & .fi-page-content > .fi-sc,
+    & .fi-sc:has(> .fi-grid-col > .fi-sc-component > .bsi-unit-details) {
+        gap: 1rem;
+        min-width: 0;
+    }
+
+    & .fi-header {
+        padding: 1rem 1.25rem;
+        background: var(--color-bsi-navy-900);
+        box-shadow: none;
+    }
+
+    & .fi-header-heading {
+        white-space: normal;
+    }
+
+    & .fi-header-subheading {
+        max-width: none;
+        margin-top: 0.375rem;
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+    }
+
+    & :is(.bsi-unit-details, .bsi-unit-values) > .fi-section {
+        border-color: var(--unit-border) !important;
+        box-shadow: none !important;
+    }
+
+    & :is(.bsi-unit-details, .bsi-unit-values) .fi-section-header {
+        padding: 0.75rem 1.25rem;
+        border-bottom: 0 !important;
+        background: transparent !important;
+    }
+
+    & :is(.bsi-unit-details, .bsi-unit-values) .fi-section-header-heading {
+        color: var(--unit-text);
+        font-size: 0.9375rem;
+    }
+
+    & :is(.bsi-unit-details, .bsi-unit-values) .fi-section-header-description {
+        color: var(--unit-muted);
+        font-size: 0.8125rem;
+    }
+
+    & :is(.bsi-unit-details, .bsi-unit-values) .fi-section-content {
+        padding: 0.25rem 1.25rem 1rem;
+    }
+
+    & :is(.bsi-unit-details, .bsi-unit-values) .fi-section-content-ctn {
+        border-top: 0;
+    }
+
+    & :is(.bsi-unit-details, .bsi-unit-values) .fi-sc {
+        gap: 1rem 1.5rem;
+    }
+
+    & :is(.bsi-unit-details, .bsi-unit-values) .fi-in-entry {
+        gap: 0.25rem;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    & :is(.bsi-unit-details, .bsi-unit-values) .fi-in-entry-label {
+        color: var(--unit-muted);
+        font-size: 0.75rem;
+        line-height: 1.5;
+        font-weight: 400;
+    }
+
+    & .bsi-unit-details .fi-in-text {
+        color: var(--unit-text);
+    }
+
+    & :is(.bsi-unit-base-value, .bsi-unit-current-value, .bsi-unit-value-date) {
+        font-variant-numeric: tabular-nums;
+        color: var(--unit-text);
+    }
+
+    & .bsi-unit-base-value {
+        font-size: 0.9375rem;
+    }
+
+    & .bsi-unit-current-value {
+        font-size: 1.125rem;
+        line-height: 1.5;
+    }
+
+    & .bsi-unit-value-date {
+        color: var(--unit-muted);
+        line-height: 1.6875rem;
+    }
+
+    & .bsi-unit-values .fi-sc-text {
+        color: var(--unit-muted);
+        font-size: 0.75rem;
+        line-height: 1.5;
+    }
+
+    & .bsi-unit-values .fi-in-entry-content-col {
+        gap: 0.25rem;
+    }
+
+    & .fi-sc-tabs {
+        min-width: 0;
+    }
+
+    & .fi-sc-tabs > .fi-tabs {
+        width: 100%;
+        margin-inline: 0;
+        padding: 0.375rem;
+        border: 1px solid var(--unit-border);
+        border-bottom: 0;
+        border-radius: 14px 14px 0 0;
+        background: var(--unit-toolbar);
+        box-shadow: none;
+    }
+
+    & .fi-sc-tabs .fi-tabs-item {
+        min-height: 2.5rem;
+        border-radius: 8px;
+    }
+
+    & .fi-sc-tabs .fi-tabs-item-label {
+        color: var(--unit-muted);
+    }
+
+    & .fi-sc-tabs .fi-tabs-item.fi-active {
+        background: var(--unit-active) !important;
+    }
+
+    & .fi-sc-tabs .fi-tabs-item.fi-active .fi-tabs-item-label {
+        color: var(--unit-accent);
+    }
+
+    & .fi-sc-tabs .fi-tabs-item:focus-visible {
+        outline: 2px solid #a06e28;
+        outline-offset: -2px;
+    }
+
+    & .fi-sc-tabs .fi-sc-tabs-tab.fi-active {
+        margin-top: 0;
+    }
+
+    & .fi-resource-relation-manager .fi-ta-ctn {
+        min-width: 0;
+        border-color: var(--unit-border) !important;
+        border-radius: 0 0 14px 14px;
+        box-shadow: none !important;
+    }
+
+    & .fi-resource-relation-manager .fi-ta-header {
+        gap: 0.75rem;
+        padding: 0.875rem 1.25rem 0.5rem;
+        border-bottom: 0 !important;
+    }
+
+    & .fi-resource-relation-manager .fi-ta-header-heading {
+        color: var(--unit-text);
+        font-size: 0.9375rem;
+    }
+
+    & .fi-resource-relation-manager .fi-ta-header > .fi-ta-actions {
+        margin-inline-start: auto;
+    }
+
+    & .fi-resource-relation-manager .fi-ta-header .fi-btn.fi-color-primary {
+        min-height: 2.25rem;
+        padding: 0.5rem 0.75rem;
+        gap: 0.375rem;
+        border-radius: 8px;
+        background: #a06e28 !important;
+        color: var(--color-white) !important;
+        font-size: 0.8125rem;
+        box-shadow: none !important;
+    }
+
+    & .fi-resource-relation-manager .fi-ta-header .fi-btn.fi-color-primary:hover {
+        background: #8c6023 !important;
+    }
+
+    & .fi-resource-relation-manager .fi-ta-header-toolbar {
+        min-height: 2.75rem;
+        padding: 0.25rem 1.25rem 0.5rem;
+        gap: 0.75rem;
+        border-bottom: 0 !important;
+    }
+
+    & .fi-resource-relation-manager .fi-ta-header-toolbar > :last-child {
+        margin-inline-start: auto;
+    }
+
+    & .fi-resource-relation-manager .fi-ta-header-toolbar .fi-icon-btn {
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: 8px;
+        color: var(--unit-muted);
+        background: var(--unit-surface);
+    }
+
+    & .fi-resource-relation-manager :is(.fi-ta-cell, .fi-ta-header-cell) {
+        font-variant-numeric: tabular-nums;
+    }
+
+    & .fi-resource-relation-manager .fi-ta-text {
+        padding-block: 0.375rem;
+    }
+
+    & .fi-resource-relation-manager .fi-ta-empty-state {
+        padding: 1.25rem;
+    }
+
+    & .fi-resource-relation-manager .fi-ta-empty-state-content {
+        max-width: 40rem;
+    }
+
+    & .fi-resource-relation-manager .fi-ta-empty-state-icon-bg {
+        margin-bottom: 0.5rem;
+        padding: 0.375rem;
+        background: transparent;
+    }
+
+    & .fi-resource-relation-manager .fi-ta-empty-state-icon-bg .fi-icon {
+        width: 1.5rem;
+        height: 1.5rem;
+        color: var(--unit-muted);
+    }
+
+    & .fi-resource-relation-manager .fi-ta-empty-state-heading {
+        color: var(--unit-text);
+        font-size: 0.875rem;
+    }
+
+    & .fi-resource-relation-manager .fi-ta-empty-state-description {
+        color: var(--unit-muted);
+        font-size: 0.8125rem;
+    }
+}
+
+.dark body.bsi-construction-unit-view-page {
+    --unit-text: var(--color-white);
+    --unit-muted: #a7b8be;
+    --unit-border: rgb(167 184 190 / 0.18);
+    --unit-surface: #0d252e;
+    --unit-toolbar: #0a2028;
+    --unit-active: rgb(160 110 40 / 0.12);
+    --unit-accent: #d7b77f;
+}
+
+@media (max-width: 47.999rem) {
+    body.bsi-cockpit-page.bsi-construction-unit-view-page {
+        & .fi-header {
+            padding: 1rem;
+        }
+
+        & :is(.bsi-unit-details, .bsi-unit-values) .fi-section-header,
+        & :is(.bsi-unit-details, .bsi-unit-values) .fi-section-content,
+        & .fi-resource-relation-manager .fi-ta-header,
+        & .fi-resource-relation-manager .fi-ta-header-toolbar {
+            padding-inline: 1rem;
+        }
+
+        & .fi-resource-relation-manager .fi-ta-header {
+            flex-wrap: wrap;
+        }
+    }
+}

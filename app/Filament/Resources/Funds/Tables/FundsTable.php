@@ -170,12 +170,14 @@ class FundsTable
                     ->label('Tipo de Fundo')
                     ->relationship('fundType', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
                 SelectFilter::make('fund_application_id')
                     ->label('Aplicação')
                     ->relationship('fundApplication', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
                 SelectFilter::make('bank_id')
                     ->label('Banco')
                     ->relationship('bank', 'name')

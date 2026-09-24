@@ -100,6 +100,7 @@ class ObligationPriorityDistributionChartWidget extends ChartWidget
                 }
             },
             cutout: '68%',
+            responsive: true,
             maintainAspectRatio: false
         }
         JS);

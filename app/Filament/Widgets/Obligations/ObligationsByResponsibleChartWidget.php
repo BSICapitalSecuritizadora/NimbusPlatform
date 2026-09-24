@@ -119,6 +119,7 @@ class ObligationsByResponsibleChartWidget extends ChartWidget
                     }
                 }
             },
+            responsive: true,
             maintainAspectRatio: false
         }
         JS);

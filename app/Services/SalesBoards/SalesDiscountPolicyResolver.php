@@ -16,7 +16,13 @@ use Carbon\CarbonInterface;
  * Fonte única da resposta para "qual desconto a BSI autorizava neste
  * empreendimento nesta data?".
  *
- * A última política com `effective_from <= data`, desempatada pelo maior `id`.
+ * A última política com `effective_from <= data`, desempatada pelo maior `id`,
+ * e só se a data não passou do `effective_until` dela (inclusivo). É a regra de
+ * substituição: a política mais nova vale a partir do próprio início e encerra
+ * a anterior ali; quando ela termina, a anterior não volta a valer -- a data
+ * fica sem política até que outra seja registrada. Linhas sem fim (anteriores
+ * ao fim explícito) seguem valendo até a próxima começar, como sempre valeram.
+ *
  * Política registrada com vigência futura não retroage; política nenhuma
  * devolve ausência explícita, nunca 0% e nunca um limite presumido -- um
  * veredito de conformidade em cima de política inventada não vale nada.
@@ -171,9 +177,18 @@ class SalesDiscountPolicyResolver
         return $latest;
     }
 
+    /**
+     * `$policy` é a de início mais recente até a data. Se ela já terminou, a
+     * data não tem política: uma mais antiga não é consultada, porque foi
+     * substituída no início desta.
+     */
     private function toResolved(int $constructionId, CarbonImmutable $date, ?SalesDiscountPolicy $policy): ResolvedSalesDiscountPolicy
     {
         if (! $policy instanceof SalesDiscountPolicy) {
+            return ResolvedSalesDiscountPolicy::absent($constructionId, $date);
+        }
+
+        if (! $policy->coversDate($date)) {
             return ResolvedSalesDiscountPolicy::absent($constructionId, $date);
         }
 

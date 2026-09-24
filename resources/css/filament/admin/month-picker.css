@@ -1,0 +1,336 @@
+/* ═════════════════════════════════════════════════════════════════════
+   SELETOR DE COMPETÊNCIA INSTITUCIONAL (MonthPicker)
+   Padrão visual: Azul-petróleo (#091B23), Dourado (#A06E28), Off-white (#E6E4E4).
+   Superfície elevada: #0D2530 | Hover: #12313B
+   Grid de 4 colunas × 3 linhas (trimestral), ancorado via fixed positioning.
+═════════════════════════════════════════════════════════════════════ */
+
+.bsi-month-picker {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+}
+
+/* ── Campo Fechado (Trigger) ── */
+.bsi-month-picker-control {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    min-width: 0;
+    height: 2.5rem;
+    border-radius: 8px;
+    border: 1px solid rgba(160, 110, 40, 0.28);
+    background: #091b23;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+    box-sizing: border-box;
+}
+
+.bsi-month-picker-control:hover {
+    border-color: rgba(160, 110, 40, 0.45);
+}
+
+.bsi-month-picker-control:focus-within {
+    border-color: #a06e28;
+    box-shadow: 0 0 0 1px #a06e28;
+}
+
+.bsi-month-picker-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
+    margin: 0;
+    padding: 0 0 0 0.875rem;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    background: transparent;
+    color: #e6e4e4;
+    font-size: 0.875rem;
+    line-height: 2.5rem;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.bsi-month-picker-input:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.bsi-month-picker-input::placeholder {
+    color: rgba(230, 228, 228, 0.45);
+}
+
+.bsi-month-picker-toggle {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0 7px 7px 0;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: color 130ms ease, background-color 130ms ease;
+}
+
+.bsi-month-picker-toggle svg {
+    width: 1.125rem;
+    height: 1.125rem;
+}
+
+.bsi-month-picker-toggle:hover,
+.bsi-month-picker-toggle[aria-expanded="true"] {
+    color: #d8a94f;
+}
+
+.bsi-month-picker-toggle:focus-visible {
+    border-radius: 6px;
+    outline: 2px solid rgba(160, 110, 40, 0.7);
+    outline-offset: -5px;
+}
+
+.bsi-month-picker-toggle:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Painel de Filtros / Validação */
+.fi-ta-filters .bsi-month-picker-input {
+    color: #e6e4e4 !important;
+}
+
+.fi-ta-filters .bsi-month-picker-input::placeholder {
+    color: rgba(230, 228, 228, 0.45) !important;
+}
+
+.fi-ta-filters .fi-input-wrp.bsi-month-picker-control.bsi-month-picker-control-invalid,
+.bsi-month-picker-control.bsi-month-picker-control-invalid {
+    border-color: rgba(248, 113, 113, 0.75) !important;
+}
+
+.bsi-month-picker-error {
+    margin: 0.375rem 0 0;
+    color: #f87171;
+    font-size: 0.75rem;
+    line-height: 1.35;
+}
+
+/* ── Popup (Ancorado via Fixed) ── */
+.bsi-month-picker-panel {
+    position: fixed;
+    z-index: 10000;
+    width: 18.5rem;
+    max-width: calc(100vw - 2rem);
+    padding: 0.875rem;
+    box-sizing: border-box;
+    border: 1px solid rgba(160, 110, 40, 0.28);
+    border-radius: 12px;
+    background: #091b23;
+    box-shadow: 0 16px 36px rgba(4, 14, 19, 0.85), 0 4px 14px rgba(0, 0, 0, 0.55);
+    color: #e6e4e4;
+    font-size: 0.8125rem;
+}
+
+/* ── Cabeçalho do Ano ── */
+.bsi-month-picker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(160, 110, 40, 0.18);
+}
+
+.bsi-month-picker-year {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #e6e4e4;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    flex: 1 1 auto;
+}
+
+.bsi-month-picker-nav-btn,
+.bsi-month-picker-panel .fi-fo-date-time-picker-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.875rem;
+    height: 1.875rem;
+    padding: 0;
+    margin: 0;
+    border: 1px solid rgba(160, 110, 40, 0.25);
+    border-radius: 6px;
+    background: #0d2530;
+    color: #e6e4e4;
+    cursor: pointer;
+    transition: background-color 130ms ease, border-color 130ms ease, color 130ms ease;
+}
+
+.bsi-month-picker-nav-btn svg,
+.bsi-month-picker-panel .fi-fo-date-time-picker-nav-btn svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.bsi-month-picker-nav-btn:hover,
+.bsi-month-picker-panel .fi-fo-date-time-picker-nav-btn:hover {
+    background: #12313b;
+    border-color: #a06e28;
+    color: #ffffff;
+}
+
+.bsi-month-picker-nav-btn:focus-visible,
+.bsi-month-picker-panel .fi-fo-date-time-picker-nav-btn:focus-visible {
+    outline: 2px solid #a06e28;
+    outline-offset: 1px;
+}
+
+/* ── Grade de Meses (4 colunas × 3 linhas padrão) ── */
+.bsi-month-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.375rem;
+    margin-bottom: 0.5rem;
+}
+
+.bsi-month-picker-panel[data-columns="3"] .bsi-month-picker-grid,
+.bsi-month-picker-grid.is-3-cols {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.bsi-month-picker-month {
+    height: 2.25rem;
+    margin: 0;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: #e6e4e4;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    text-transform: lowercase;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+}
+
+/* Hover: #12313B */
+.bsi-month-picker-month:hover:not([aria-disabled="true"]):not(.bsi-month-picker-month-selected) {
+    background: #12313b;
+    border-color: rgba(160, 110, 40, 0.35);
+    color: #ffffff;
+}
+
+.bsi-month-picker-month:focus-visible {
+    outline: 2px solid #a06e28;
+    outline-offset: 1px;
+}
+
+/* Mês atual (outline dourado discreto com superfície elevada) */
+.bsi-month-picker-month.bsi-month-picker-month-current:not(.bsi-month-picker-month-selected) {
+    background: rgba(13, 37, 48, 0.7);
+    border-color: rgba(160, 110, 40, 0.75);
+    color: #d8a94f;
+    font-weight: 600;
+}
+
+/* Mês selecionado (destaque institucional dourado #A06E28) */
+.bsi-month-picker-month.bsi-month-picker-month-selected {
+    background: #a06e28;
+    border-color: #d8a94f;
+    box-shadow: 0 2px 8px rgba(160, 110, 40, 0.45);
+    color: #091b23;
+    font-weight: 700;
+}
+
+/* Quando mês atual e selecionado coincidem */
+.bsi-month-picker-month.bsi-month-picker-month-selected.bsi-month-picker-month-current {
+    background: #a06e28;
+    border-color: #f0c568;
+    color: #091b23;
+}
+
+.bsi-month-picker-month[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.3;
+}
+
+/* ── Rodapé do Popup (Ações Limpar / Este mês) ── */
+.bsi-month-picker-footer,
+.bsi-month-picker-panel .fi-fo-date-time-picker-panel-footer {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.5rem !important;
+    padding-top: 0.625rem !important;
+    margin-top: 0.375rem !important;
+    border-top: 1px solid rgba(160, 110, 40, 0.18) !important;
+}
+
+.bsi-month-picker-footer-btn,
+.bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0.375rem 0.75rem !important;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    line-height: 1.25 !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    transition: background-color 130ms ease, border-color 130ms ease, color 130ms ease, opacity 130ms ease !important;
+}
+
+.bsi-month-picker-footer-btn-clear,
+.bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn-clear {
+    color: #e6e4e4 !important;
+    background: transparent !important;
+    border: 1px solid rgba(230, 228, 228, 0.2) !important;
+}
+
+.bsi-month-picker-footer-btn-clear:hover,
+.bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn-clear:hover {
+    background: #12313b !important;
+    border-color: rgba(160, 110, 40, 0.4) !important;
+    color: #ffffff !important;
+}
+
+.bsi-month-picker-footer-btn-clear:focus-visible,
+.bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn-clear:focus-visible {
+    outline: 2px solid #a06e28 !important;
+    outline-offset: 1px !important;
+}
+
+.bsi-month-picker-footer-btn-today,
+.bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn-today {
+    color: #e6e4e4 !important;
+    background: rgba(160, 110, 40, 0.2) !important;
+    border: 1px solid rgba(160, 110, 40, 0.45) !important;
+    font-weight: 600 !important;
+}
+
+.bsi-month-picker-footer-btn-today:hover:not(:disabled),
+.bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn-today:hover:not(:disabled) {
+    background: #a06e28 !important;
+    border-color: #d8a94f !important;
+    color: #091b23 !important;
+}
+
+.bsi-month-picker-footer-btn-today:focus-visible,
+.bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn-today:focus-visible {
+    outline: 2px solid #a06e28 !important;
+    outline-offset: 1px !important;
+}
+
+.bsi-month-picker-footer-btn:disabled,
+.bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn:disabled {
+    cursor: not-allowed !important;
+    opacity: 0.4 !important;
+}

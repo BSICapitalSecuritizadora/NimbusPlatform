@@ -263,12 +263,7 @@ class SalesBoardFingerprintService
         $policyRows = $latestSaleDate === null ? [] : $policies
             ->filter(fn (SalesDiscountPolicy $policy): bool => ((int) $policy->construction_id === $constructionId)
                 && ($this->date($policy->effective_from)->toDateString() <= $latestSaleDate->toDateString()))
-            ->map(fn (SalesDiscountPolicy $policy): string => CanonicalDigest::row([
-                (int) $policy->getKey(),
-                $constructionId,
-                IntegerMoney::basisPoints($policy->maximum_discount_percent),
-                $policy->effective_from,
-            ]))
+            ->map(fn (SalesDiscountPolicy $policy): string => CanonicalDigest::row($this->policyFields($policy, $constructionId)))
             ->values()
             ->all();
 
@@ -333,7 +328,34 @@ class SalesBoardFingerprintService
             ->whereIn('construction_id', array_keys($latestSaleDates))
             ->where('effective_from', '<=', InclusiveDateBound::upperBound($bound))
             ->orderBy('id')
-            ->get(['id', 'construction_id', 'maximum_discount_percent', 'effective_from']);
+            ->get(['id', 'construction_id', 'maximum_discount_percent', 'effective_from', 'effective_until']);
+    }
+
+    /**
+     * Campos da política que entram no fingerprint da fonte.
+     *
+     * O fim só entra quando existe. As linhas anteriores ao fim explícito não
+     * têm fim, e mantê-las com os mesmos campos de antes preserva o fingerprint
+     * das bases já congeladas: acrescentar um marcador de nulo a todas elas
+     * marcaria como alterada toda competência com política, sem que nada na
+     * fonte tivesse mudado.
+     *
+     * @return list<mixed>
+     */
+    private function policyFields(SalesDiscountPolicy $policy, int $constructionId): array
+    {
+        $fields = [
+            (int) $policy->getKey(),
+            $constructionId,
+            IntegerMoney::basisPoints($policy->maximum_discount_percent),
+            $policy->effective_from,
+        ];
+
+        if ($policy->effective_until !== null) {
+            $fields[] = $policy->effective_until;
+        }
+
+        return $fields;
     }
 
     private function date(mixed $value): CarbonImmutable

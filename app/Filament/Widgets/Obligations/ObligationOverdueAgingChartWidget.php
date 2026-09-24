@@ -103,6 +103,7 @@ class ObligationOverdueAgingChartWidget extends ChartWidget
                     }
                 }
             },
+            responsive: true,
             maintainAspectRatio: false
         }
         JS);

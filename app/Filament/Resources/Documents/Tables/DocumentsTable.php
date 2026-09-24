@@ -279,7 +279,8 @@ class DocumentsTable
                     ->label('Categoria')
                     ->options(Document::CATEGORY_OPTIONS)
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                 SelectFilter::make('emissions')
                     ->label('Série')

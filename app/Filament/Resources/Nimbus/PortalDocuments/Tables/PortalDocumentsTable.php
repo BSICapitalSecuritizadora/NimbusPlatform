@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Nimbus\PortalDocuments\Tables;
 
 use App\Filament\Resources\Nimbus\PortalDocuments\PortalDocumentResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Nimbus\PortalDocument;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -125,13 +126,15 @@ class PortalDocumentsTable
                     ->label('Usuário do Portal')
                     ->relationship('portalUser', 'full_name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                 SelectFilter::make('created_by_user_id')
                     ->label('Enviado por')
                     ->relationship('createdBy', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                 Filter::make('created_at')
                     ->form([

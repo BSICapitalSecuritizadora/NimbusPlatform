@@ -4,6 +4,7 @@ use App\DTOs\Measurements\MeasurementCurrentWorkload;
 use App\DTOs\Measurements\MeasurementCycleEvent;
 use App\DTOs\Measurements\MeasurementCycleHistory;
 use App\DTOs\Measurements\MeasurementCyclePayment;
+use App\DTOs\Measurements\MeasurementCycleReportFilters;
 use App\DTOs\Measurements\MeasurementCycleReportResult;
 use App\DTOs\Measurements\MeasurementCycleReportRow;
 use App\DTOs\Measurements\MeasurementCycleReportSummary;
@@ -393,4 +394,161 @@ it('renders institutional date picker fields for historical filters and preserve
         ->call('clearFilters')
         ->assertSet('periodFrom', '')
         ->assertSet('periodTo', '');
+});
+
+it('displays workflow stage names in the stage metrics table without changing internal stage values', function () {
+    $actor = p3b2UiActor([
+        AccessPermission::MeasurementsView->value,
+        AccessPermission::MeasurementsCycleReportsView->value,
+    ]);
+    $this->actingAs($actor);
+    $this->mock(MeasurementCycleReportingService::class, function ($mock): void {
+        $mock->shouldReceive('report')->andReturn(p3b2UiResult());
+    });
+
+    Livewire::test(MeasurementCycleReport::class)
+        ->assertSee('Engenharia')
+        ->assertSee('Gestão')
+        ->assertSee('Compliance')
+        ->assertSee('Pagamentos')
+        ->assertSee('Finalização')
+        ->assertSee('Fase')
+        ->assertSee('Decisões')
+        ->assertSee('Taxa de rejeição')
+        ->assertSee('Durações')
+        ->assertSee('Média / mediana')
+        ->assertSee('Pausas')
+        ->assertSee('Desfecho')
+        ->assertSee('Base')
+        ->assertSee('1 aprov. · 0 rej.')
+        ->assertSee('0,0%')
+        ->assertSee('Calendário')
+        ->assertSee('Líquida')
+        ->assertSee('finalizações')
+        ->assertSee('devoluções')
+        ->assertSee('completas')
+        ->assertSee('parciais')
+        ->assertSee('insuficientes')
+        ->assertSee('N/D')
+        ->assertDontSee('>Aprovações<', false)
+        ->assertDontSee('>Rejeições<', false)
+        ->assertDontSee('Calendário média / mediana')
+        ->assertDontSee('Líquida média / mediana')
+        ->assertDontSee('Finalizações / devoluções')
+        ->assertDontSee('Base / excluídas')
+        ->assertSee('stage-metric-1', false)
+        ->assertSee('stage-metric-2', false)
+        ->assertSee('stage-metric-3', false)
+        ->assertSee('stage-metric-4', false)
+        ->assertSee('stage-metric-5', false);
+});
+
+it('paginates historical visits five at a time starting on page one', function () {
+    $actor = p3b2UiActor([
+        AccessPermission::MeasurementsView->value,
+        AccessPermission::MeasurementsCycleReportsView->value,
+    ]);
+    $this->actingAs($actor);
+    $seen = [];
+    $this->mock(MeasurementCycleReportingService::class, function ($mock) use (&$seen): void {
+        $mock->shouldReceive('report')->andReturnUsing(
+            function (User $actor, MeasurementCycleReportFilters $filters, int $page, int $perPage) use (&$seen): MeasurementCycleReportResult {
+                $seen[] = [$page, $perPage];
+
+                return p3b2UiResult();
+            }
+        );
+    });
+
+    $component = Livewire::test(MeasurementCycleReport::class)
+        ->assertSet('visitsPerPage', 5)
+        ->assertSee('Exibindo 1 a 1 de 1 resultados')
+        ->assertSee('por página')
+        ->assertSee('<option value="5">5</option>', false)
+        ->assertSee('<option value="10">10</option>', false)
+        ->assertSee('<option value="25">25</option>', false)
+        ->assertSee('<option value="50">50</option>', false);
+
+    expect($seen)->toBe([[1, 5]]);
+
+    $component->set('visitsPerPage', 10);
+    expect($seen)->toBe([[1, 5], [1, 10]]);
+
+    $component->call('gotoPage', 2);
+    expect($seen)->toBe([[1, 5], [1, 10], [2, 10]]);
+
+    $component->set('visitsPerPage', 999);
+    expect($seen)->toBe([[1, 5], [1, 10], [2, 10], [1, 5]]);
+});
+
+it('renders the historical visits pagination once as a segmented control without a native overview', function () {
+    $actor = p3b2UiActor([
+        AccessPermission::MeasurementsView->value,
+        AccessPermission::MeasurementsCycleReportsView->value,
+    ]);
+    $this->actingAs($actor);
+    $base = p3b2UiResult();
+    $result = new MeasurementCycleReportResult(
+        summary: $base->summary,
+        coverage: $base->coverage,
+        stageMetrics: $base->stageMetrics,
+        rows: array_fill(0, 5, $base->rows[0]),
+        totalRows: 17,
+        currentPage: 1,
+        perPage: 5,
+        workload: $base->workload,
+        operationOptions: $base->operationOptions,
+        emissionOptions: $base->emissionOptions,
+        measurementOptions: $base->measurementOptions,
+        actorOptions: $base->actorOptions,
+        responsibleOptions: $base->responsibleOptions,
+    );
+    $this->mock(MeasurementCycleReportingService::class, function ($mock) use ($result): void {
+        $mock->shouldReceive('report')->andReturn($result);
+    });
+
+    $html = Livewire::test(MeasurementCycleReport::class)->html();
+
+    expect(substr_count($html, 'Exibindo'))->toBe(1)
+        ->and($html)->toContain('Exibindo 1 a 5 de 17 resultados')
+        ->and($html)->toContain('mcr-page-nav')
+        ->and($html)->toContain('page-item active')
+        ->and($html)->toContain('&lsaquo;')
+        ->and($html)->toContain('&rsaquo;')
+        ->and($html)->toContain('rel="next"')
+        ->and($html)->toContain('page=2')
+        ->and($html)->not->toContain('>Anterior<')
+        ->and($html)->not->toContain('>Próxima<');
+});
+
+it('groups historical visit cells with stage names and keeps every value visible', function () {
+    $actor = p3b2UiActor([
+        AccessPermission::MeasurementsView->value,
+        AccessPermission::MeasurementsCycleReportsView->value,
+    ]);
+    $this->actingAs($actor);
+    $this->mock(MeasurementCycleReportingService::class, function ($mock): void {
+        $mock->shouldReceive('report')->andReturn(p3b2UiResult());
+    });
+
+    Livewire::test(MeasurementCycleReport::class)
+        ->assertSee('Fase / visita')
+        ->assertSee('Período')
+        ->assertSee('Durações')
+        ->assertSee('Responsáveis')
+        ->assertSee('Gestão')
+        ->assertSee('Visita 1')
+        ->assertSee('Entrada')
+        ->assertSee('Saída')
+        ->assertSee('Pausa')
+        ->assertSee('Delegado')
+        ->assertSee('Override')
+        ->assertSee('01/08/2026 09:00:00')
+        ->assertSee('01/08/2026 10:00:00')
+        ->assertSee('Medição Gerencial')
+        ->assertSee('Competência 08/2026')
+        ->assertDontSee('Etapa / visita')
+        ->assertDontSee('Entrada / saída')
+        ->assertDontSee('Actor / responsável')
+        ->assertDontSee('Etapa 2 · #1');
 });

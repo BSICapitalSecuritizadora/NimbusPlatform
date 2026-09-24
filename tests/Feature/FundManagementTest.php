@@ -28,6 +28,8 @@ use Filament\Actions\Testing\TestAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Support\RawJs;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -288,6 +290,29 @@ it('allows creating a fund type inline from the fund form', function () {
         ->assertHasNoFormErrors();
 
     expect(FundType::query()->where('name', 'Fundo Multimercado')->exists())->toBeTrue();
+});
+
+it('allows creating a bank inline from the fund form and selects it', function () {
+    Storage::fake('public');
+    $this->actingAs(makeFundAdminUser());
+    $createBankAction = TestAction::make('createOption')
+        ->schemaComponent('bank_id');
+
+    $component = Livewire::test(CreateFund::class)
+        ->assertActionExists($createBankAction)
+        ->mountAction($createBankAction)
+        ->fillForm([
+            'name' => 'Banco Cooperativo de Teste S.A.',
+            'logo_path' => UploadedFile::fake()->image('logo.png'),
+        ])
+        ->callMountedAction()
+        ->assertHasNoFormErrors();
+
+    $bank = Bank::query()->where('name', 'Banco Cooperativo de Teste S.A.')->first();
+
+    expect($bank)->not->toBeNull();
+
+    $component->assertSchemaStateSet(['bank_id' => $bank->id]);
 });
 
 it('shows the required fields on the auxiliary bank resource form', function () {

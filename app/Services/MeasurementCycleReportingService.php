@@ -45,7 +45,7 @@ class MeasurementCycleReportingService
     ): MeasurementCycleReportResult {
         $this->authorize($actor);
         $page = max(1, $page);
-        $perPage = min(100, max(10, $perPage));
+        $perPage = min(100, max(1, $perPage));
         $offset = ($page - 1) * $perPage;
         $coverage = ['complete' => 0, 'partial' => 0, 'insufficient' => 0];
         $stageAccumulators = $this->emptyStageAccumulators();

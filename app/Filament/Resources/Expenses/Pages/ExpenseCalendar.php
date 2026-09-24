@@ -59,7 +59,15 @@ class ExpenseCalendar extends Page
      * @return array{
      *     month_label: string,
      *     visible_month: string,
-     *     summary: array{event_count: int, total_amount: string, operation_count: int},
+     *     summary: array{
+     *         event_count: int,
+     *         total_amount: string,
+     *         paid_amount: string,
+     *         paid_percentage: ?string,
+     *         outstanding_amount: string,
+     *         settlement_label: ?string,
+     *         operation_count: int
+     *     },
      *     weeks: array<int, array<int, array{
      *         date: string,
      *         day_number: string,

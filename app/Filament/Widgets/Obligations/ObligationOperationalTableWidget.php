@@ -158,7 +158,8 @@ class ObligationOperationalTableWidget extends TableWidget
                 ->label('Série')
                 ->relationship('series', 'title')
                 ->searchable()
-                ->preload(),
+                ->preload()
+                ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
             SelectFilter::make('series_frequency')
                 ->label('Recorrência')
                 ->options(ObligationFrequency::seriesOptions())

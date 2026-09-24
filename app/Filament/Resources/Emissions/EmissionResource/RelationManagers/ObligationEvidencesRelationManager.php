@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Enums\AccessPermission;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Obligation;
 use App\Models\ObligationEvidence;
 use App\Services\Obligations\ObligationEvidenceReviewService;
@@ -188,7 +189,8 @@ class ObligationEvidencesRelationManager extends RelationManager
                 SelectFilter::make('obligation_id')
                     ->label('Obrigação')
                     ->options(fn (): array => $this->obligationOptions())
-                    ->searchable(),
+                    ->searchable()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options(ObligationEvidence::STATUS_OPTIONS),

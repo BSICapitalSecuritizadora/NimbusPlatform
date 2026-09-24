@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ConstructionUnits\RelationManagers;
 
 use App\Concerns\MoneyFormatter;
 use App\Enums\UnitValueSource;
+use App\Filament\Resources\ConstructionUnits\Pages\ViewConstructionUnit;
 use App\Models\ConstructionUnit;
 use App\Models\ConstructionUnitValue;
 use App\Support\Dates\InclusiveDateBound;
@@ -63,6 +64,9 @@ class ConstructionUnitValuesRelationManager extends RelationManager
         $currentVersionId = $this->currentVersionId();
 
         return $table
+            ->columnManagerTriggerAction(fn (Action $action): Action => $this->getPageClass() === ViewConstructionUnit::class
+                ? $action->tooltip('Colunas')
+                : $action)
             ->recordTitleAttribute('effective_from')
             ->columns([
                 TextColumn::make('effective_from')

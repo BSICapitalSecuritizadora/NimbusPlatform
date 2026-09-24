@@ -8,6 +8,7 @@ use App\Enums\ObligationFrequency;
 use App\Filament\Exports\ObligationExporter;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Emissions\Schemas\ObligationFormFields;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Obligation;
 use App\Services\Obligations\ObligationDashboardData;
 use App\Services\Obligations\ObligationSeriesService;
@@ -313,7 +314,8 @@ class ObligationsRelationManager extends RelationManager
                 ->label('Série')
                 ->relationship('series', 'title')
                 ->searchable()
-                ->preload(),
+                ->preload()
+                ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
             SelectFilter::make('series_frequency')
                 ->label('Recorrência')
                 ->options(ObligationFrequency::seriesOptions())

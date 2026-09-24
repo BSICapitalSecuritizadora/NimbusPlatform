@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\FundNames\Schemas;
 
+use App\Filament\Resources\FundNames\Pages\EditFundName;
+use App\Filament\Resources\Funds\Schemas\FundForm;
 use App\Filament\Resources\FundTypes\Schemas\FundTypeForm;
 use App\Models\FundName;
 use Filament\Actions\Action;
@@ -12,6 +14,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Validation\Rules\Unique;
+use Livewire\Component;
 
 class FundNameForm
 {
@@ -26,6 +29,9 @@ class FundNameForm
                 ->required()
             : Select::make('fund_type_id')
                 ->label('Tipo de fundo')
+                ->extraAttributes(fn (Component $livewire): array => $livewire instanceof EditFundName
+                    ? ['class' => FundForm::CLASSIFICATION_SELECT_CLASS]
+                    : [])
                 ->relationship('fundType', 'name')
                 ->searchable()
                 ->preload()

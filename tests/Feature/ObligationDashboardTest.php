@@ -10,6 +10,9 @@ use App\Filament\Widgets\Obligations\ObligationOperationalTableWidget;
 use App\Filament\Widgets\Obligations\ObligationOverdueAgingChartWidget;
 use App\Filament\Widgets\Obligations\ObligationOverviewStatsWidget;
 use App\Filament\Widgets\Obligations\ObligationPriorityDistributionChartWidget;
+use App\Filament\Widgets\Obligations\ObligationsByAreaChartWidget;
+use App\Filament\Widgets\Obligations\ObligationsByEmissionChartWidget;
+use App\Filament\Widgets\Obligations\ObligationsByResponsibleChartWidget;
 use App\Filament\Widgets\Obligations\ObligationStatusDistributionChartWidget;
 use App\Models\Emission;
 use App\Models\ExtractedObligation;
@@ -804,6 +807,54 @@ it('handles empty states gracefully across chart widgets when no data is present
     $priorityWidget = Livewire::test(ObligationPriorityDistributionChartWidget::class);
     expect($priorityWidget->instance()->isEmpty())->toBeTrue();
     $priorityWidget->assertSee('Nenhuma pendência por prioridade');
+
+    $emissionWidget = Livewire::test(ObligationsByEmissionChartWidget::class);
+    expect($emissionWidget->instance()->isEmpty())->toBeTrue();
+    $emissionWidget->assertSee('Nenhuma emissão com pendências');
+
+    $responsibleWidget = Livewire::test(ObligationsByResponsibleChartWidget::class);
+    expect($responsibleWidget->instance()->isEmpty())->toBeTrue();
+    $responsibleWidget->assertSee('Nenhum responsável com pendências');
+
+    $areaWidget = Livewire::test(ObligationsByAreaChartWidget::class);
+    expect($areaWidget->instance()->isEmpty())->toBeTrue();
+    $areaWidget->assertSee('Nenhuma área com pendências');
+});
+
+it('configures standardized height and responsive options across all obligation chart widgets', function () {
+    $widgets = [
+        ObligationStatusDistributionChartWidget::class,
+        ObligationPriorityDistributionChartWidget::class,
+        ObligationsByEmissionChartWidget::class,
+        ObligationOverdueAgingChartWidget::class,
+        ObligationsByResponsibleChartWidget::class,
+        ObligationsByAreaChartWidget::class,
+    ];
+
+    foreach ($widgets as $widgetClass) {
+        $reflection = new ReflectionClass($widgetClass);
+        $maxHeightProp = $reflection->getProperty('maxHeight');
+        $maxHeightProp->setAccessible(true);
+        $instance = app($widgetClass);
+
+        expect($maxHeightProp->getValue($instance))->toBe('320px');
+
+        $optionsMethod = $reflection->getMethod('getOptions');
+        $optionsMethod->setAccessible(true);
+        $options = $optionsMethod->invoke($instance);
+        $optionsString = (string) $options;
+
+        expect($optionsString)
+            ->toContain('responsive: true')
+            ->toContain('maintainAspectRatio: false');
+    }
+
+    $themeCss = file_get_contents(resource_path('css/filament/admin/theme.css'));
+    expect($themeCss)
+        ->toContain('.bsi-obligation-dashboard .fi-wi-chart')
+        ->toContain('min-height: 440px !important')
+        ->toContain('min-height: 5.25rem !important')
+        ->toContain('height: calc(100% - 5.25rem) !important');
 });
 
 it('localizes quick view modal footer actions in operational table widget', function () {

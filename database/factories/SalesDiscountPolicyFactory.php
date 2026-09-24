@@ -15,6 +15,11 @@ class SalesDiscountPolicyFactory extends Factory
     protected $model = SalesDiscountPolicy::class;
 
     /**
+     * Sem fim por padrão: é a forma das linhas registradas antes do fim
+     * explícito, e é a que os cenários do quadro de vendas usam para ter uma
+     * política valendo em qualquer data depois do início. Registros com período
+     * fechado usam {@see self::effectiveUntil()} ou {@see self::during()}.
+     *
      * @return array<string, mixed>
      */
     public function definition(): array
@@ -23,6 +28,7 @@ class SalesDiscountPolicyFactory extends Factory
             'construction_id' => Construction::factory(),
             'maximum_discount_percent' => '5.00',
             'effective_from' => fake()->dateTimeBetween('-2 years', 'now')->format('Y-m-d'),
+            'effective_until' => null,
             'reason' => 'Política comercial aprovada.',
             'created_by_id' => null,
         ];
@@ -36,6 +42,16 @@ class SalesDiscountPolicyFactory extends Factory
     public function effectiveFrom(string $date): static
     {
         return $this->state(fn (): array => ['effective_from' => $date]);
+    }
+
+    public function effectiveUntil(?string $date): static
+    {
+        return $this->state(fn (): array => ['effective_until' => $date]);
+    }
+
+    public function during(string $from, string $until): static
+    {
+        return $this->effectiveFrom($from)->effectiveUntil($until);
     }
 
     public function allowing(float|int|string $percent): static

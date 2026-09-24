@@ -1,8 +1,10 @@
 <?php
 
 use App\Filament\Resources\Constructions\Pages\EditConstruction;
+use App\Filament\Resources\Constructions\RelationManagers\SalesDiscountPoliciesRelationManager;
 use App\Filament\Resources\Constructions\Schemas\ConstructionForm;
 use App\Models\Construction;
+use App\Models\SalesDiscountPolicy;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -91,6 +93,38 @@ it('marks the measurement company cnpj as intentionally read-only', function () 
             return $field->isReadOnly() && ! $field->isDisabled();
         })
         ->assertSee('Preenchido automaticamente a partir da empresa de medição selecionada.');
+});
+
+it('configures the sales discount policy relation manager with proper title, description, and actions', function () {
+    $construction = Construction::factory()->create();
+
+    $component = Livewire::test(SalesDiscountPoliciesRelationManager::class, [
+        'ownerRecord' => $construction,
+        'pageClass' => EditConstruction::class,
+    ]);
+
+    $table = $component->instance()->getTable();
+
+    expect(SalesDiscountPoliciesRelationManager::getTitle($construction, EditConstruction::class))->toBe('Política Comercial de Desconto')
+        ->and($table->getDescription())->toBe('Regras comerciais e limites aplicáveis aos descontos da obra.')
+        ->and($table->getEmptyStateHeading())->toBe('Nenhuma política registrada');
+
+    $component
+        ->assertTableActionExists('newPolicy');
+});
+
+it('shows registered policy rows with viewReason action', function () {
+    $construction = Construction::factory()->create();
+    $policy = SalesDiscountPolicy::factory()->forConstruction($construction)->effectiveFrom('2026-01-01')->create([
+        'reason' => 'Aprovação de diretoria',
+    ]);
+
+    Livewire::test(SalesDiscountPoliciesRelationManager::class, [
+        'ownerRecord' => $construction,
+        'pageClass' => EditConstruction::class,
+    ])
+        ->assertCanSeeTableRecords([$policy])
+        ->assertTableActionExists('viewReason', record: $policy);
 });
 
 function mountConstructionSection(Section $section, object $livewire): Section

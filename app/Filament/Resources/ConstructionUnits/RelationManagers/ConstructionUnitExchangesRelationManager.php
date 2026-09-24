@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ConstructionUnits\RelationManagers;
 
 use App\Concerns\MoneyFormatter;
 use App\Enums\ConstructionUnitExchangeKind;
+use App\Filament\Resources\ConstructionUnits\Pages\ViewConstructionUnit;
 use App\Models\ConstructionUnit;
 use App\Models\ConstructionUnitExchange;
 use App\Models\Contract;
@@ -63,6 +64,9 @@ class ConstructionUnitExchangesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->columnManagerTriggerAction(fn (Action $action): Action => $this->getPageClass() === ViewConstructionUnit::class
+                ? $action->tooltip('Colunas')
+                : $action)
             ->recordTitleAttribute('effective_from')
             ->columns([
                 TextColumn::make('effective_from')

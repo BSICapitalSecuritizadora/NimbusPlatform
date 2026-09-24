@@ -21,6 +21,14 @@ use Illuminate\Validation\Rules\Unique;
 
 class FundForm
 {
+    /**
+     * Marcador dos selects pesquisáveis Operação, Tipo de fundo, Nome do fundo e
+     * Aplicação de "Classificação" e Banco de "Dados Bancários". O tema libera o popup
+     * dos wrappers recortados da página, junto com o bloco dos Responsáveis pelo Fluxo
+     * da operação; nenhum outro campo o recebe.
+     */
+    public const CLASSIFICATION_SELECT_CLASS = 'bsi-fund-classification-select';
+
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
@@ -29,6 +37,7 @@ class FundForm
                 ->schema([
                     Select::make('emission_id')
                         ->label('Operação')
+                        ->extraAttributes(['class' => static::CLASSIFICATION_SELECT_CLASS])
                         ->placeholder('Selecione a operação...')
                         ->relationship('emission', 'name')
                         ->searchable()
@@ -40,6 +49,7 @@ class FundForm
 
                     Select::make('fund_type_id')
                         ->label('Tipo de fundo')
+                        ->extraAttributes(['class' => static::CLASSIFICATION_SELECT_CLASS])
                         ->placeholder('Selecione o tipo de fundo...')
                         ->relationship('fundType', 'name')
                         ->searchable()
@@ -73,6 +83,7 @@ class FundForm
 
                     Select::make('fund_name_id')
                         ->label('Nome do fundo')
+                        ->extraAttributes(['class' => static::CLASSIFICATION_SELECT_CLASS])
                         ->placeholder('Selecione o nome do fundo...')
                         ->relationship(
                             name: 'fundName',
@@ -115,6 +126,7 @@ class FundForm
 
                     Select::make('fund_application_id')
                         ->label('Aplicação')
+                        ->extraAttributes(['class' => static::CLASSIFICATION_SELECT_CLASS])
                         ->placeholder('Selecione a aplicação...')
                         ->relationship('fundApplication', 'name')
                         ->searchable()
@@ -154,6 +166,7 @@ class FundForm
                 ->schema([
                     Select::make('bank_id')
                         ->label('Banco')
+                        ->extraAttributes(['class' => static::CLASSIFICATION_SELECT_CLASS])
                         ->placeholder('Selecione o banco...')
                         ->relationship('bank', 'name')
                         ->searchable()

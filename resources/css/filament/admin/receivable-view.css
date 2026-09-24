@@ -1,0 +1,327 @@
+/* ══════════════════════════════════════════════════════════════════
+   Painel Executivo — Visualizar Resumo de Recebíveis
+   Superfícies institucionais BSI (Azul-petróleo, Off-white, Dourado),
+   faixa de KPIs, matriz de fluxo, tabela analítica de aging/projeções.
+   ══════════════════════════════════════════════════════════════════ */
+
+body.bsi-cockpit-page.bsi-receivable-view-page {
+    --rcv-navy-950: #06151c;
+    --rcv-navy-900: #091b23;
+    --rcv-navy-800: #12313b;
+    --rcv-navy-700: #0d2530;
+    --rcv-gold-500: #b7832f;
+    --rcv-gold-600: #a06e28;
+    --rcv-paper: #fbfaf8;
+    --rcv-stone-50: #f8f7f4;
+    --rcv-white: #e6e4e4;
+    --rcv-border: rgb(18 49 59 / 0.14);
+    --rcv-border-soft: rgb(18 49 59 / 0.08);
+    --rcv-muted: #53646a;
+    --rcv-text: #091b23;
+    --rcv-positive: #15803d;
+    --rcv-amber: #d97706;
+    --rcv-danger: #b91c1c;
+
+    & .fi-page,
+    & .fi-page-header-main-ctn,
+    & .fi-page-content,
+    & .fi-page-content > .fi-sc {
+        gap: 1.25rem;
+        min-width: 0;
+    }
+
+    & .fi-page {
+        overflow-x: clip;
+    }
+
+    /* ── Cabeçalho executivo institucional ─────────────────────────────── */
+    & .fi-header {
+        padding: 1.125rem 1.5rem;
+        background: linear-gradient(135deg, #091b23 0%, #0d2530 50%, #12313b 100%);
+        border: 1px solid rgb(183 131 47 / 0.22);
+        border-radius: 14px;
+        box-shadow: 0 10px 28px rgba(4, 14, 19, 0.28);
+    }
+
+    & .fi-header-heading {
+        font-size: 1.375rem;
+        font-weight: 700;
+        line-height: 1.2;
+        color: #fbfaf8;
+        letter-spacing: -0.01em;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    & .fi-header-subheading {
+        max-width: none;
+        margin-top: 0.375rem;
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        color: rgba(251, 250, 248, 0.76);
+        overflow-wrap: anywhere;
+    }
+
+    & .fi-breadcrumbs {
+        margin-bottom: 0.25rem;
+        font-size: 0.75rem;
+    }
+
+    & .fi-breadcrumbs-item-label {
+        color: rgba(251, 250, 248, 0.65);
+    }
+
+    & a.fi-breadcrumbs-item-label:hover {
+        color: #fbfaf8;
+    }
+
+    & .fi-breadcrumbs-item-separator {
+        color: rgb(183 131 47 / 0.6);
+    }
+
+    /* ── Botão Editar no Cabeçalho (Dourado institucional secundário) ─── */
+    & .fi-header-actions {
+        gap: 0.625rem;
+    }
+
+    & .fi-header-actions .fi-btn.fi-outlined.fi-color-primary {
+        --tw-ring-color: rgb(183 131 47 / 0.6);
+        background: rgb(183 131 47 / 0.1);
+        color: #f2ddb0;
+        font-weight: 600;
+        border-radius: 9px;
+        padding: 0.5rem 1rem;
+        transition: all 0.2s ease;
+    }
+
+    & .fi-header-actions .fi-btn.fi-outlined.fi-color-primary:hover {
+        --tw-ring-color: rgb(183 131 47 / 0.9);
+        background: rgb(183 131 47 / 0.2);
+        color: #ffffff;
+        box-shadow: 0 4px 12px rgba(183, 131, 47, 0.25);
+    }
+
+    /* ── Seções executivas: superfícies limpas e bordas sutis ─────────── */
+    & .fi-section {
+        background: var(--rcv-paper);
+        border: 1px solid var(--rcv-border);
+        border-radius: 14px;
+        box-shadow: none;
+        overflow: hidden;
+    }
+
+    & .fi-section > .fi-section-header {
+        padding: 0.875rem 1.375rem;
+        background: var(--rcv-stone-50);
+        border-bottom: 1px solid var(--rcv-border-soft);
+    }
+
+    & .fi-section-header-heading {
+        color: var(--rcv-navy-900);
+        font-size: 0.875rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    & .fi-section-header-heading::before {
+        content: '';
+        display: inline-block;
+        width: 3px;
+        height: 12px;
+        background: var(--rcv-gold-500);
+        border-radius: 2px;
+    }
+
+    & .fi-section-header-description {
+        color: var(--rcv-muted);
+        font-size: 0.8125rem;
+        line-height: 1.4;
+        margin-top: 0.125rem;
+    }
+
+    & .fi-section-content {
+        padding: 1.25rem 1.375rem;
+    }
+
+    & .fi-section-content-ctn {
+        border-top: 0;
+    }
+
+    /* ── TextEntry: leitura pura (Label sobre Valor, sem input) ───────── */
+    & .fi-in-entry {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    & .fi-in-entry-label {
+        color: var(--rcv-muted);
+        font-size: 0.71875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        line-height: 1.35;
+    }
+
+    & .fi-in-text {
+        color: var(--rcv-navy-900);
+        font-size: 0.9375rem;
+        font-weight: 600;
+        line-height: 1.45;
+        font-variant-numeric: tabular-nums;
+    }
+
+    & .fi-in-placeholder {
+        color: #9d918d;
+        font-size: 0.875rem;
+    }
+
+    /* ── Grade compacta de Identificação ──────────────────────────────── */
+    & .bsi-rcv-identificacao .fi-section-content {
+        padding: 1rem 1.375rem;
+    }
+
+    & .bsi-rcv-identificacao .fi-in-text {
+        font-size: 0.875rem;
+    }
+
+    /* ── Grade da Posição Financeira ──────────────────────────────────── */
+    & .bsi-rcv-posicao-financeira .fi-in-text {
+        font-size: 1.0625rem;
+    }
+
+    & .bsi-rcv-destaque-saldo .fi-in-text {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--rcv-navy-900);
+    }
+
+    /* ── Matriz de Indicadores ────────────────────────────────────────── */
+    & .bsi-rcv-indicadores .fi-in-text {
+        font-size: 1.125rem;
+        font-weight: 700;
+    }
+
+    /* ── Tabelas financeiras executivas ───────────────────────────────── */
+    & .bsi-financial-table-wrapper {
+        border-radius: 10px;
+        border: 1px solid var(--rcv-border);
+        overflow: hidden;
+    }
+
+    & .bsi-financial-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.8125rem;
+    }
+
+    & .bsi-financial-table th {
+        background: var(--rcv-stone-50);
+        color: var(--rcv-muted);
+        font-size: 0.6875rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 0.625rem 0.875rem;
+        border-bottom: 1px solid var(--rcv-border);
+    }
+
+    & .bsi-financial-table td {
+        padding: 0.625rem 0.875rem;
+        border-bottom: 1px solid var(--rcv-border-soft);
+        color: var(--rcv-navy-900);
+    }
+
+    & .bsi-financial-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    & .bsi-financial-table .bsi-num {
+        font-variant-numeric: tabular-nums;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        text-align: right;
+    }
+
+    & .bsi-financial-table .bsi-total-row {
+        background: rgba(18, 49, 59, 0.04);
+        font-weight: 700;
+    }
+
+    & .bsi-financial-table .bsi-total-row td {
+        border-top: 2px solid var(--rcv-border);
+        color: var(--rcv-navy-900);
+        font-size: 0.875rem;
+    }
+
+    /* ── Bloco de Observações / Taxa Média ────────────────────────────── */
+    & .bsi-rcv-obs-block {
+        background: var(--rcv-stone-50);
+        border: 1px solid var(--rcv-border-soft);
+        border-radius: 8px;
+        padding: 0.875rem 1rem;
+        color: var(--rcv-navy-900);
+        font-size: 0.875rem;
+        line-height: 1.55;
+        white-space: pre-line;
+    }
+}
+
+/* ── Dark Mode Tweaks ─────────────────────────────────────────────── */
+.dark body.bsi-cockpit-page.bsi-receivable-view-page {
+    --rcv-paper: #091b23;
+    --rcv-stone-50: #0d2530;
+    --rcv-border: rgba(255, 255, 255, 0.09);
+    --rcv-border-soft: rgba(255, 255, 255, 0.06);
+    --rcv-muted: rgba(230, 228, 228, 0.7);
+    --rcv-text: #fbfaf8;
+
+    & .fi-section {
+        background: #091b23;
+        border-color: rgba(255, 255, 255, 0.09);
+    }
+
+    & .fi-section > .fi-section-header {
+        background: #0d2530;
+        border-bottom-color: rgba(255, 255, 255, 0.06);
+    }
+
+    & .fi-section-header-heading {
+        color: #fbfaf8;
+    }
+
+    & .fi-in-text {
+        color: #fbfaf8;
+    }
+
+    & .bsi-financial-table th {
+        background: #0d2530;
+        color: rgba(230, 228, 228, 0.7);
+        border-bottom-color: rgba(255, 255, 255, 0.09);
+    }
+
+    & .bsi-financial-table td {
+        border-bottom-color: rgba(255, 255, 255, 0.06);
+        color: #fbfaf8;
+    }
+
+    & .bsi-financial-table .bsi-total-row {
+        background: rgba(18, 49, 59, 0.4);
+    }
+
+    & .bsi-financial-table .bsi-total-row td {
+        border-top-color: rgba(183, 131, 47, 0.35);
+        color: #ffffff;
+    }
+
+    & .bsi-rcv-obs-block {
+        background: #0d2530;
+        border-color: rgba(255, 255, 255, 0.08);
+        color: #e6e4e4;
+    }
+}

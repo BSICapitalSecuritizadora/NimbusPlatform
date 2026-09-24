@@ -12,6 +12,7 @@ use App\Filament\Resources\Operations\OperationResource;
 use App\Models\User;
 use App\Services\MeasurementOperationalExceptionReadModel;
 use App\Services\MeasurementWorkflow;
+use Carbon\CarbonImmutable;
 use Filament\Resources\Pages\Page;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
@@ -27,6 +28,10 @@ class ListMeasurementExceptions extends Page
     protected string $view = 'filament.resources.measurement-exceptions.pages.list-measurement-exceptions';
 
     protected static ?string $title = 'Exceções Operacionais';
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-operational-exceptions-page',
+    ];
 
     #[Url(as: 'q', except: '')]
     public string $search = '';
@@ -88,6 +93,27 @@ class ListMeasurementExceptions extends Page
         ]);
 
         $this->filtersChanged();
+    }
+
+    public function clearExceptionFilter(): void
+    {
+        if ($this->exceptionType === '') {
+            return;
+        }
+
+        $this->exceptionType = '';
+        $this->filtersChanged();
+    }
+
+    public function hasFilters(): bool
+    {
+        return $this->search !== ''
+            || $this->operationId !== ''
+            || $this->emissionId !== ''
+            || $this->competenceFrom !== ''
+            || $this->competenceTo !== ''
+            || $this->stage !== ''
+            || $this->exceptionType !== '';
     }
 
     public function filterByException(string $exceptionType): void
@@ -210,11 +236,46 @@ class ListMeasurementExceptions extends Page
         return [
             'operation_id' => $this->operationId,
             'emission_id' => $this->emissionId,
-            'competence_from' => $this->competenceFrom,
-            'competence_to' => $this->competenceTo,
+            'competence_from' => $this->normalizeCompetenceFrom($this->competenceFrom),
+            'competence_to' => $this->normalizeCompetenceTo($this->competenceTo),
             'stage' => $this->stage,
             'exception_type' => $this->exceptionType,
         ];
+    }
+
+    private function normalizeCompetenceFrom(?string $value): ?string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return $value;
+        }
+
+        $trimmed = trim($value);
+
+        if (preg_match('/^(\d{4})-(\d{2})$/', $trimmed, $matches)) {
+            return sprintf('%04d-%02d-01', (int) $matches[1], (int) $matches[2]);
+        }
+
+        return $trimmed;
+    }
+
+    private function normalizeCompetenceTo(?string $value): ?string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return $value;
+        }
+
+        $trimmed = trim($value);
+
+        if (preg_match('/^(\d{4})-(\d{2})$/', $trimmed, $matches)) {
+            $year = (int) $matches[1];
+            $month = (int) $matches[2];
+
+            if ($month >= 1 && $month <= 12) {
+                return CarbonImmutable::create($year, $month, 1)->endOfMonth()->toDateString();
+            }
+        }
+
+        return $trimmed;
     }
 
     /** @return array<string, string> */

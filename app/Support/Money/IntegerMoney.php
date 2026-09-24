@@ -160,6 +160,26 @@ final class IntegerMoney
     }
 
     /**
+     * Quanto `partCents` representa de `wholeCents`, em basis points.
+     *
+     * Informação de exibição (ex.: "76,76% do previsto"). Sem teto em 100%:
+     * uma parte maior que o todo é dado verdadeiro, não erro a esconder. `null`
+     * quando não há total positivo contra o qual medir -- nada de divisão por
+     * zero virando "NaN%". BCMath pelo mesmo estouro de 64 bits descrito em
+     * {@see self::effectiveDiscountBasisPoints()}.
+     */
+    public static function shareInBasisPoints(int $partCents, int $wholeCents): ?int
+    {
+        if ($wholeCents <= 0) {
+            return null;
+        }
+
+        $scaled = bcmul((string) $partCents, (string) self::BASIS_POINTS_SCALE, 0);
+
+        return (int) self::divideRoundingHalfAwayFromZero($scaled, (string) $wholeCents);
+    }
+
+    /**
      * Centavos como decimal canônico ("100000000" vira "1000000.00"), pronto
      * para uma coluna `decimal(15,2)` sem passar por `float`.
      */

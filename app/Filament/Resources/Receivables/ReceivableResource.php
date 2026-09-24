@@ -7,6 +7,7 @@ use App\Filament\Resources\Receivables\Pages\EditReceivable;
 use App\Filament\Resources\Receivables\Pages\ListReceivables;
 use App\Filament\Resources\Receivables\Pages\ViewReceivable;
 use App\Filament\Resources\Receivables\Schemas\ReceivableForm;
+use App\Filament\Resources\Receivables\Schemas\ReceivableInfolist;
 use App\Filament\Resources\Receivables\Tables\ReceivablesTable;
 use App\Models\Receivable;
 use BackedEnum;
@@ -41,6 +42,11 @@ class ReceivableResource extends Resource
         return ReceivableForm::configure($schema);
     }
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return ReceivableInfolist::configure($schema);
+    }
+
     public static function table(Table $table): Table
     {
         return ReceivablesTable::configure($table);
@@ -55,7 +61,11 @@ class ReceivableResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with('emission');
+        return parent::getEloquentQuery()->with([
+            'emission.constructions',
+            'emission.operations',
+            'emission.salesBoards',
+        ]);
     }
 
     public static function canViewAny(): bool

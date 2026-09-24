@@ -72,20 +72,33 @@
             </div>
 
             <div class="px-6 py-6 sm:px-8">
-                <div class="grid gap-4 sm:grid-cols-3">
-                    <div class="rounded-2xl border border-slate-400/15 bg-white/[0.03] p-5">
+                <div class="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+                    <div class="min-w-0 rounded-2xl border border-slate-400/15 bg-white/[0.03] p-5">
                         <span class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Eventos previstos</span>
                         <div class="mt-2 text-3xl font-semibold tabular-nums text-white">{{ $calendar['summary']['event_count'] }}</div>
                         <p class="mt-1.5 text-xs text-slate-400">Pagamentos agendados no mês exibido.</p>
                     </div>
 
-                    <div class="rounded-2xl border border-slate-400/15 bg-white/[0.03] p-5">
-                        <span class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Valor do mês</span>
+                    <div class="min-w-0 rounded-2xl border border-slate-400/15 bg-white/[0.03] p-5">
+                        <span class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Valor previsto</span>
                         <div class="mt-2 text-3xl font-semibold tabular-nums text-white">{{ $calendar['summary']['total_amount'] }}</div>
                         <p class="mt-1.5 text-xs text-slate-400">Soma das despesas previstas no período.</p>
                     </div>
 
-                    <div class="rounded-2xl border border-slate-400/15 bg-white/[0.03] p-5">
+                    <div class="min-w-0 rounded-2xl border border-slate-400/15 bg-white/[0.03] p-5">
+                        <span class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Valor pago</span>
+                        <div class="mt-2 text-3xl font-semibold tabular-nums text-white">{{ $calendar['summary']['paid_amount'] }}</div>
+                        @if ($calendar['summary']['paid_percentage'] !== null)
+                            <p class="mt-1.5 text-xs text-slate-400">
+                                <span class="font-semibold tabular-nums text-[#d5aa67]">{{ $calendar['summary']['paid_percentage'] }}</span> do previsto
+                            </p>
+                            <p class="mt-0.5 text-xs tabular-nums text-slate-500">{{ $calendar['summary']['settlement_label'] }}</p>
+                        @else
+                            <p class="mt-1.5 text-xs text-slate-400">Sem valor previsto no período.</p>
+                        @endif
+                    </div>
+
+                    <div class="min-w-0 rounded-2xl border border-slate-400/15 bg-white/[0.03] p-5">
                         <span class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Operações impactadas</span>
                         <div class="mt-2 text-3xl font-semibold tabular-nums text-white">{{ $calendar['summary']['operation_count'] }}</div>
                         <p class="mt-1.5 text-xs text-slate-400">Operações com pagamento previsto.</p>

@@ -6,8 +6,8 @@
             vários meses em um único PDF.
         </x-slot>
 
-        <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-12 xl:items-end">
-            <div class="md:col-span-2 xl:col-span-4">
+        <div class="grid grid-cols-1 gap-y-5 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-end sm:gap-x-3 xl:grid-cols-[minmax(14rem,1.4fr)_minmax(11rem,1fr)_auto_minmax(11rem,1fr)_auto] xl:gap-x-4">
+            <div class="sm:col-span-3 xl:col-span-1">
                 <label for="emissionId" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
                     Emissão <span class="text-danger-600 dark:text-danger-400">*</span>
                 </label>
@@ -21,34 +21,35 @@
                 </x-filament::input.wrapper>
             </div>
 
-            <div class="md:col-span-2 xl:col-span-5">
-                <div class="grid grid-cols-1 gap-5 sm:grid-cols-[1fr_auto_1fr] sm:items-end sm:gap-3">
-                    <div>
-                        <label for="referenceMonth" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
-                            Competência inicial <span class="text-danger-600 dark:text-danger-400">*</span>
-                        </label>
-                        <x-filament::input.wrapper>
-                            <x-filament::input type="month" wire:model.live="referenceMonth" id="referenceMonth" />
-                        </x-filament::input.wrapper>
-                    </div>
-
-                    <div class="hidden pb-2.5 text-gray-400 dark:text-gray-500 sm:block" aria-hidden="true">
-                        <x-filament::icon icon="heroicon-o-arrow-right" class="h-4 w-4" />
-                    </div>
-
-                    <div>
-                        <label for="referenceMonthEnd" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
-                            Competência final
-                            <span class="font-normal text-gray-500 dark:text-gray-400">(opcional)</span>
-                        </label>
-                        <x-filament::input.wrapper>
-                            <x-filament::input type="month" wire:model.live="referenceMonthEnd" id="referenceMonthEnd" />
-                        </x-filament::input.wrapper>
-                    </div>
-                </div>
+            <div class="min-w-0">
+                <label for="referenceMonth" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
+                    Competência inicial <span class="text-danger-600 dark:text-danger-400">*</span>
+                </label>
+                <x-month-picker
+                    wire:model.live="referenceMonth"
+                    id="referenceMonth"
+                    placeholder="mm/aaaa"
+                    required
+                />
             </div>
 
-            <div class="md:col-span-2 xl:col-span-3">
+            <div class="hidden pb-2.5 text-gray-400 dark:text-gray-500 sm:block" aria-hidden="true">
+                <x-filament::icon icon="heroicon-o-arrow-right" class="h-4 w-4" />
+            </div>
+
+            <div class="min-w-0">
+                <label for="referenceMonthEnd" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
+                    Competência final
+                    <span class="font-normal text-gray-500 dark:text-gray-400">(opcional)</span>
+                </label>
+                <x-month-picker
+                    wire:model.live="referenceMonthEnd"
+                    id="referenceMonthEnd"
+                    placeholder="mm/aaaa"
+                />
+            </div>
+
+            <div class="shrink-0 sm:col-span-3 xl:col-span-1">
                 @php($url = $this->reportUrl())
                 @if ($url)
                     <x-filament::button

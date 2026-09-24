@@ -25,6 +25,13 @@ use Illuminate\Support\HtmlString;
 
 class OperationForm
 {
+    /**
+     * Marcador dos selects pesquisáveis de "Responsáveis pelo Fluxo de Medição"
+     * (as seis etapas, a coordenação e a notificação de recusa). O tema trata o
+     * popup de todos eles de uma vez; nenhum outro campo o recebe.
+     */
+    public const WORKFLOW_RESPONSIBLE_SELECT_CLASS = 'bsi-measurement-workflow-responsible-select';
+
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
@@ -147,6 +154,7 @@ class OperationForm
 
                             Select::make('rejectionNotifyUsers')
                                 ->label('Notificar em Caso de Recusa')
+                                ->extraAttributes(['class' => static::WORKFLOW_RESPONSIBLE_SELECT_CLASS])
                                 // Mesma regra dos responsáveis: quem já está na
                                 // lista continua listado, quem entra agora
                                 // precisa estar ativo e provisionado.
@@ -287,6 +295,7 @@ class OperationForm
     {
         $select = Select::make($name)
             ->label($label)
+            ->extraAttributes(['class' => static::WORKFLOW_RESPONSIBLE_SELECT_CLASS])
             ->placeholder('Selecione o responsável...')
             ->relationship(
                 $relationship,

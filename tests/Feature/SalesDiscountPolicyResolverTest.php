@@ -122,3 +122,45 @@ it('resolves many constructions in a constant number of queries', function () {
         ->and(collect($resolved)->filter(fn ($policy): bool => $policy->isPresent()))->toHaveCount(12)
         ->and(collect($resolved)->filter(fn ($policy): bool => $policy->isAbsent()))->toHaveCount(8);
 });
+
+it('applies a policy on its last day and never after its end', function () {
+    $construction = Construction::factory()->create();
+
+    SalesDiscountPolicy::factory()->forConstruction($construction)->during('2026-07-01', '2026-07-31')->allowing('5.00')->create();
+
+    expect(discountPolicyResolver()->policyAt($construction, CarbonImmutable::parse('2026-07-01'))->maximumDiscountBasisPoints)->toBe(500)
+        ->and(discountPolicyResolver()->policyAt($construction, CarbonImmutable::parse('2026-07-31'))->maximumDiscountBasisPoints)->toBe(500)
+        ->and(discountPolicyResolver()->policyAt($construction, CarbonImmutable::parse('2026-08-01'))->isAbsent())->toBeTrue();
+});
+
+it('does not hand an ended policy back to the older one it substituted', function () {
+    $construction = Construction::factory()->create();
+
+    $older = SalesDiscountPolicy::factory()->forConstruction($construction)->effectiveFrom('2026-01-01')->allowing('5.00')->create();
+    SalesDiscountPolicy::factory()->forConstruction($construction)->during('2026-07-01', '2026-07-31')->allowing('8.00')->create();
+
+    expect(discountPolicyResolver()->policyAt($construction, CarbonImmutable::parse('2026-06-30'))->policy?->id)->toBe($older->id)
+        ->and(discountPolicyResolver()->policyAt($construction, CarbonImmutable::parse('2026-07-15'))->maximumDiscountBasisPoints)->toBe(800)
+        ->and(discountPolicyResolver()->policyAt($construction, CarbonImmutable::parse('2026-08-15'))->isAbsent())->toBeTrue();
+});
+
+it('honours the end date in the batch lookups', function () {
+    $ended = Construction::factory()->create();
+    $current = Construction::factory()->create();
+
+    SalesDiscountPolicy::factory()->forConstruction($ended)->during('2026-01-01', '2026-06-30')->allowing('5.00')->create();
+    SalesDiscountPolicy::factory()->forConstruction($current)->during('2026-01-01', '2026-12-31')->allowing('4.00')->create();
+
+    $byConstruction = discountPolicyResolver()->forConstructionIds([$ended->id, $current->id], CarbonImmutable::parse('2026-07-01'));
+    $byDate = discountPolicyResolver()->forConstructionDates([
+        ['construction_id' => $ended->id, 'date' => CarbonImmutable::parse('2026-06-30')],
+        ['construction_id' => $ended->id, 'date' => CarbonImmutable::parse('2026-07-01')],
+        ['construction_id' => $current->id, 'date' => CarbonImmutable::parse('2026-07-01')],
+    ]);
+
+    expect($byConstruction[$ended->id]->isAbsent())->toBeTrue()
+        ->and($byConstruction[$current->id]->maximumDiscountBasisPoints)->toBe(400)
+        ->and($byDate[$ended->id.'@2026-06-30']->maximumDiscountBasisPoints)->toBe(500)
+        ->and($byDate[$ended->id.'@2026-07-01']->isAbsent())->toBeTrue()
+        ->and($byDate[$current->id.'@2026-07-01']->maximumDiscountBasisPoints)->toBe(400);
+});
