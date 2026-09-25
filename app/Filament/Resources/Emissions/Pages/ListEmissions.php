@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Emissions\Pages;
 
 use App\Filament\Resources\Emissions\EmissionResource;
+use App\Filament\Support\MemoizesRecordActionAuthorization;
 use App\Models\Emission;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
@@ -11,6 +12,13 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ListEmissions extends ListRecords
 {
+    /**
+     * A exclusão de cada linha passa pelas guardas da Emissão, que consultam o
+     * banco; a policy responde uma vez por linha, não uma por pergunta do
+     * Filament.
+     */
+    use MemoizesRecordActionAuthorization;
+
     protected static string $resource = EmissionResource::class;
 
     protected array $extraBodyAttributes = [

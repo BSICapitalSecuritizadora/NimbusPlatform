@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\ContractStatus;
+use App\Exceptions\SalesBoardSourceException;
+use App\Services\SalesBoards\SalesBoardSourceGuard;
 use Database\Factories\ConstructionUnitFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -40,6 +42,28 @@ class ConstructionUnit extends Model
             'base_value' => 'decimal:2',
             'base_value_reference_date' => 'date',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        /**
+         * A unidade com história não troca de empreendimento. A derivação lê os
+         * contratos pela obra gravada neles, que só é recalculada quando o
+         * contrato é salvo: a unidade vendida sumiria da obra de origem e
+         * apareceria como estoque na outra, sem achado nenhum. O formulário já
+         * trava o campo; isto vale para os outros caminhos.
+         */
+        static::updating(function (self $unit): void {
+            if (! $unit->isDirty('construction_id')) {
+                return;
+            }
+
+            $anchors = app(SalesBoardSourceGuard::class)->unitAnchors($unit);
+
+            if ($anchors !== []) {
+                throw SalesBoardSourceException::unitConstructionLocked($anchors);
+            }
+        });
     }
 
     /**

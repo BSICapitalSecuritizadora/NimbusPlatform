@@ -117,6 +117,10 @@ class SalesBoardForm
     /**
      * Evaluated against the competence currently typed in the form, so moving to
      * an unregistered competence drops the requirement straight away.
+     *
+     * The competence is looked up by construction and month, the same key the
+     * page uses to decide whether saving creates a board or versions an
+     * existing one.
      */
     protected static function needsChangeReason(Component $component): bool
     {
@@ -138,9 +142,7 @@ class SalesBoardForm
             ->whereDate('reference_month', $referenceMonth)
             ->whereHas(
                 'salesBoard',
-                fn (Builder $query): Builder => $query
-                    ->where('emission_id', $emissionId)
-                    ->where('construction_id', $constructionId),
+                fn (Builder $query): Builder => $query->where('construction_id', $constructionId),
             )
             ->exists();
     }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Emissions;
 
+use App\Actions\Emissions\SendObligationDueNotificationsAction;
 use App\Filament\RelationManagers\ActivitiesRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\GuaranteeDetectionsRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\GuaranteesRelationManager;
@@ -27,8 +28,11 @@ use App\Filament\Resources\Emissions\Pages\PuCurveHistory;
 use App\Filament\Resources\Emissions\Pages\ViewEmission;
 use App\Filament\Resources\Emissions\Schemas\EmissionForm;
 use App\Filament\Resources\Emissions\Tables\EmissionsTable;
+use App\Filament\Support\AuthorizesThroughModelPolicy;
 use App\Models\Emission;
+use App\Policies\EmissionPolicy;
 use BackedEnum;
+use Filament\Facades\Filament;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
@@ -40,8 +44,15 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
+/**
+ * Autorizado pela {@see EmissionPolicy}. Sem ela, quem só via a
+ * lista abria a edição e excluía a Emissão: o Filament autoriza a página de
+ * edição e a DeleteAction dela pela policy, não pelos `can*()` do resource.
+ */
 class EmissionResource extends Resource
 {
+    use AuthorizesThroughModelPolicy;
+
     protected static ?string $model = Emission::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
@@ -262,21 +273,6 @@ class EmissionResource extends Resource
         return EmissionsTable::configure($table);
     }
 
-    public static function canViewAny(): bool
-    {
-        return auth()->user()->can('emissions.view');
-    }
-
-    public static function canCreate(): bool
-    {
-        return auth()->user()->can('emissions.create');
-    }
-
-    public static function canDelete(Model $record): bool
-    {
-        return auth()->user()->can('emissions.delete');
-    }
-
     public static function getRelations(): array
     {
         return [
@@ -297,6 +293,39 @@ class EmissionResource extends Resource
             ObligationEvidencesRelationManager::class,
             ActivitiesRelationManager::class,
         ];
+    }
+
+    /**
+     * O link para a edição leva ao dossiê de quem não pode editar a Emissão.
+     *
+     * Abrir a edição passou a exigir `emissions.update`. Obrigações, painéis e
+     * as páginas de PU continuam apontando "para a Emissão" pela rota de
+     * edição, e para quem só tem `emissions.view` esse link seria um 403. Em
+     * vez de corrigir link por link, a URL da edição cai na página de
+     * visualização -- o mesmo dossiê, com as mesmas abas (`?relation=`) --
+     * quando o usuário autenticado não pode editar. Sem usuário autenticado
+     * nada muda: quem monta o link fora de uma requisição escolhe a página --
+     * o e-mail de obrigações escolhe pelo destinatário
+     * ({@see SendObligationDueNotificationsAction::resolveActionUrl()}).
+     */
+    public static function getUrl(?string $name = null, array $parameters = [], bool $isAbsolute = true, ?string $panel = null, ?Model $tenant = null, bool $shouldGuessMissingParameters = false, ?string $configuration = null): string
+    {
+        if (($name === 'edit') && static::shouldFallBackToView($parameters['record'] ?? null)) {
+            $name = 'view';
+        }
+
+        return parent::getUrl($name, $parameters, $isAbsolute, $panel, $tenant, $shouldGuessMissingParameters, $configuration);
+    }
+
+    private static function shouldFallBackToView(mixed $record): bool
+    {
+        if (! Filament::auth()->check()) {
+            return false;
+        }
+
+        $emission = ($record instanceof Emission) ? $record : new Emission;
+
+        return (! static::canEdit($emission)) && static::canView($emission);
     }
 
     public static function getPages(): array

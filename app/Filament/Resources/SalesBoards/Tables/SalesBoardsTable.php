@@ -7,8 +7,6 @@ use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\SalesBoard;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
@@ -19,6 +17,13 @@ use Illuminate\Database\Eloquent\Builder;
 
 class SalesBoardsTable
 {
+    /**
+     * A listagem não exclui quadros, nem em massa nem por linha. A posição
+     * registrada é evidência consumida por Garantias e pelo Relatório Mensal, e
+     * o histórico de versões -- inclusive a posição do início da operação --
+     * iria junto com o quadro, pela FK em cascata. Uma posição errada se corrige
+     * com uma nova versão, que fica no histórico.
+     */
     public static function configure(Table $table): Table
     {
         return $table
@@ -174,11 +179,6 @@ class SalesBoardsTable
                 ])
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->tooltip('Ações do quadro'),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
             ]);
     }
 }

@@ -9,7 +9,9 @@ use App\Filament\Resources\SalesBoards\RelationManagers\SalesBoardHistoriesRelat
 use App\Filament\Resources\SalesBoards\Schemas\SalesBoardForm;
 use App\Filament\Resources\SalesBoards\Schemas\SalesBoardInfolist;
 use App\Filament\Resources\SalesBoards\Tables\SalesBoardsTable;
+use App\Filament\Support\AuthorizesThroughModelPolicy;
 use App\Models\SalesBoard;
+use App\Policies\SalesBoardPolicy;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -20,8 +22,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
+/**
+ * Autorizado pela {@see SalesBoardPolicy}: as permissões
+ * `sales-boards.*` são lidas lá, e só lá.
+ */
 class SalesBoardResource extends Resource
 {
+    use AuthorizesThroughModelPolicy;
+
     protected static ?string $model = SalesBoard::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
@@ -87,31 +95,6 @@ class SalesBoardResource extends Resource
             'construction',
             'initialPosition',
         ]);
-    }
-
-    public static function canViewAny(): bool
-    {
-        return auth()->user()?->can('sales-boards.view') ?? false;
-    }
-
-    public static function canCreate(): bool
-    {
-        return auth()->user()?->can('sales-boards.create') ?? false;
-    }
-
-    public static function canEdit(Model $record): bool
-    {
-        return auth()->user()?->can('sales-boards.update') ?? false;
-    }
-
-    public static function canView(Model $record): bool
-    {
-        return auth()->user()?->can('sales-boards.view') ?? false;
-    }
-
-    public static function canDelete(Model $record): bool
-    {
-        return auth()->user()?->can('sales-boards.delete') ?? false;
     }
 
     public static function getPages(): array

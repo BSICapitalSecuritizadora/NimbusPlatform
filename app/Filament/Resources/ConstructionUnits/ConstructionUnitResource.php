@@ -11,7 +11,9 @@ use App\Filament\Resources\ConstructionUnits\RelationManagers\ConstructionUnitEx
 use App\Filament\Resources\ConstructionUnits\RelationManagers\ConstructionUnitValuesRelationManager;
 use App\Filament\Resources\ConstructionUnits\Schemas\ConstructionUnitForm;
 use App\Filament\Resources\ConstructionUnits\Tables\ConstructionUnitsTable;
+use App\Filament\Support\AuthorizesThroughModelPolicy;
 use App\Models\ConstructionUnit;
+use App\Policies\ConstructionUnitPolicy;
 use App\Services\SalesBoards\UnitValueResolver;
 use BackedEnum;
 use Carbon\CarbonImmutable;
@@ -25,8 +27,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
+/**
+ * Autorizado pela {@see ConstructionUnitPolicy}: as permissões
+ * `constructions.*` e as guardas da unidade que já tem história vivem lá.
+ */
 class ConstructionUnitResource extends Resource
 {
+    use AuthorizesThroughModelPolicy;
+
     protected static ?string $model = ConstructionUnit::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSquares2x2;
@@ -158,52 +166,6 @@ class ConstructionUnitResource extends Resource
     public static function getGlobalSearchResultTitle(Model $record): string
     {
         return $record->display_name;
-    }
-
-    public static function canViewAny(): bool
-    {
-        return auth()->user()?->can('constructions.view') ?? false;
-    }
-
-    public static function canCreate(): bool
-    {
-        return auth()->user()?->can('constructions.create') ?? false;
-    }
-
-    public static function canView(Model $record): bool
-    {
-        return auth()->user()?->can('constructions.view') ?? false;
-    }
-
-    public static function canEdit(Model $record): bool
-    {
-        return auth()->user()?->can('constructions.update') ?? false;
-    }
-
-    /**
-     * A unit that already carries contracts is commercial history: removing it
-     * would orphan the sales made on it, so the database refuses and the action
-     * is not offered.
-     */
-    public static function canDelete(Model $record): bool
-    {
-        if (! (auth()->user()?->can('constructions.delete') ?? false)) {
-            return false;
-        }
-
-        if (! ($record instanceof ConstructionUnit)) {
-            return true;
-        }
-
-        /**
-         * O histórico de valores é protegido pela FK exatamente como os
-         * contratos: apagar a unidade destruiria a resposta para quanto ela
-         * valia em cada data. A guarda existe para o usuário ver o motivo em vez
-         * de um erro de constraint.
-         */
-        return ! $record->contracts()->withTrashed()->exists()
-            && ! $record->valueHistories()->exists()
-            && ! $record->exchanges()->exists();
     }
 
     public static function getPages(): array

@@ -110,9 +110,12 @@ function changeAfterApproval(string $change, array $scenario): void
 
         // Escopo: o conjunto de empreendimentos da Emissão.
         'construction added' => RolloutFixture::construction($scenario['emission'], 'Z'),
-        'construction removed' => $scenario['constructions'][2]->update([
-            'emission_id' => Emission::factory()->create(['status' => 'active'])->id,
-        ]),
+        // A obra homologada não troca mais de Emissão pelo model (guarda das
+        // fontes do Quadro); a saída do escopo é montada por baixo dos eventos,
+        // como a de uma base anterior à guarda, e a checagem continua valendo.
+        'construction removed' => DB::table('constructions')
+            ->where('id', $scenario['constructions'][2]->id)
+            ->update(['emission_id' => Emission::factory()->create(['status' => 'active'])->id]),
 
         // Não material: o vencimento não participa de decisão nenhuma do Quadro.
         'installment due date' => $scenario['installment']->update(['due_date' => '2026-09-30']),

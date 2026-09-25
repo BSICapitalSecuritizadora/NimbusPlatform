@@ -135,7 +135,13 @@ class ContractInstallmentsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    /**
+                     * Cada parcela passa pela mesma policy da exclusão
+                     * individual: a de contrato já congelado num ciclo fica de
+                     * fora, e a notificação diz por quê.
+                     */
+                    DeleteBulkAction::make()
+                        ->authorizeIndividualRecords(),
                 ]),
             ])
             ->emptyStateHeading(fn ($livewire): string => self::hasActiveFiltersOrSearch($livewire)
@@ -344,15 +350,18 @@ class ContractInstallmentsTable
                 ->icon('heroicon-o-pencil-square')
                 ->visible(fn (ContractInstallment $record): bool => ContractInstallmentResource::canEdit($record)),
 
+            /**
+             * Exclusão e restauração são autorizadas pela policy, pela
+             * autorização padrão da página. Um `visible()` com `canDelete()`
+             * ou `canRestore()` repetiria a consulta das guardas a cada linha.
+             */
             DeleteAction::make()
                 ->label('Excluir')
                 ->modalHeading('Excluir parcela')
-                ->modalDescription('Use a exclusão apenas para um registro criado por engano. Para tirar uma parcela do fluxo contratual preservando o histórico, informe a data de cancelamento.')
-                ->visible(fn (ContractInstallment $record): bool => ContractInstallmentResource::canDelete($record)),
+                ->modalDescription('Use a exclusão apenas para um registro criado por engano. Para tirar uma parcela do fluxo contratual preservando o histórico, informe a data de cancelamento.'),
 
             RestoreAction::make()
-                ->label('Restaurar')
-                ->visible(fn (ContractInstallment $record): bool => ContractInstallmentResource::canRestore($record)),
+                ->label('Restaurar'),
         ];
     }
 

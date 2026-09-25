@@ -164,17 +164,27 @@ class ConstructionUnitsTable
                         ->icon('heroicon-o-pencil-square')
                         ->visible(fn (ConstructionUnit $record): bool => ConstructionUnitResource::canEdit($record)),
 
+                    /**
+                     * Autorizada pela policy, pela autorização padrão da
+                     * página. Um `visible()` com `canDelete()` repetiria a
+                     * consulta das guardas a cada linha.
+                     */
                     DeleteAction::make()
                         ->label('Excluir')
-                        ->modalHeading('Excluir unidade')
-                        ->visible(fn (ConstructionUnit $record): bool => ConstructionUnitResource::canDelete($record)),
+                        ->modalHeading('Excluir unidade'),
                 ])
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->tooltip('Ações da unidade'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    /**
+                     * Cada unidade passa pela mesma policy da exclusão
+                     * individual: a que já tem história fica de fora, e a
+                     * notificação diz por quê -- em vez do erro de constraint.
+                     */
+                    DeleteBulkAction::make()
+                        ->authorizeIndividualRecords(),
                 ]),
             ])
             ->emptyStateHeading(fn ($livewire): string => static::hasActiveFiltersOrSearch($livewire)
