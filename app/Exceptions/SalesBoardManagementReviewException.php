@@ -176,15 +176,67 @@ class SalesBoardManagementReviewException extends RuntimeException implements Sh
      * com uma venda que ninguém analisou, então a aprovação confere de novo em
      * vez de confiar na materialização.
      *
+     * A orientação é devolver, e não reabrir: reabrir devolve a mesma análise,
+     * com as mesmas pendências. É a rodada seguinte -- nova validação da
+     * construtora e nova análise -- que materializa tudo o que a versão vigente
+     * aponta.
+     *
      * @param  list<string>  $contracts
      */
     public static function conformityWithoutNonconformity(array $contracts): self
     {
         return new self(sprintf(
             'A análise não cobre todas as vendas apontadas pela versão vigente: %s. '
-                .'Reabra a análise da Gestão para materializar as pendências que faltam.',
+                .'Devolva a competência à construtora: a próxima análise da Gestão nasce com uma pendência '
+                .'para cada venda que exige decisão.',
             implode('; ', array_slice($contracts, 0, 5)).(count($contracts) > 5 ? '; …' : ''),
         ));
+    }
+
+    /**
+     * Uma divergência declarada pela construtora ficou sem pendência.
+     *
+     * Mesma defesa da conformidade, do lado da declaração: uma divergência que
+     * não virou pendência nunca foi analisada pela Gestão.
+     *
+     * @param  list<string>  $divergences
+     */
+    public static function divergenceWithoutNonconformity(array $divergences): self
+    {
+        return new self(sprintf(
+            'A análise não cobre todas as divergências declaradas pela construtora: %s. '
+                .'Devolva a competência à construtora: a próxima análise da Gestão nasce com uma pendência '
+                .'para cada divergência declarada.',
+            implode('; ', array_slice($divergences, 0, 5)).(count($divergences) > 5 ? '; …' : ''),
+        ));
+    }
+
+    /**
+     * A competência deixou de ser da automação -- ou nunca foi.
+     *
+     * Publicar ali criaria um quadro imutável sem homologação ao lado. O ciclo
+     * não tem mais como terminar em publicação, e o caminho é encerrá-lo.
+     */
+    public static function competenceNotCoveredByAutomation(string $emissionName, string $referenceMonth): self
+    {
+        return new self(sprintf(
+            'A Emissão %s não cobre %s pela automação do Quadro de Vendas: ela voltou ao registro manual '
+                .'ou a competência é anterior ao início da automação. Esta competência não pode ser publicada '
+                .'pelo ciclo; use "Cancelar competência" para encerrá-la.',
+            $emissionName,
+            $referenceMonth,
+        ));
+    }
+
+    /**
+     * A abertura encontrou a competência devolvida à construtora por uma versão
+     * material nova -- a substituição que o recálculo não concluiu foi
+     * concluída agora.
+     */
+    public static function returnedToBuilderByNewVersion(): self
+    {
+        return new self('A posição vigente mudou depois do envio da construtora, e a validação enviada foi '
+            .'substituída. A competência voltou para a construtora: abra uma nova validação.');
     }
 
     /**

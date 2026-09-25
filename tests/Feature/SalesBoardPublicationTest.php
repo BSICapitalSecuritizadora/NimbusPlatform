@@ -93,10 +93,7 @@ it('refuses to publish over a position registered by hand for the same competenc
     $scenario = ManagementReviewFixture::submittedCycle();
     $cycle = $scenario['cycle']->fresh();
 
-    $manual = SalesBoard::factory()->create([
-        'emission_id' => $cycle->emission_id,
-        'construction_id' => $cycle->construction_id,
-        'reference_month' => $cycle->reference_month->toDateString(),
+    $manual = ManagementReviewFixture::manualBoardBeforeAutomation($cycle, [
         'stock_units' => 7,
         'financed_units' => 0,
         'paid_units' => 0,
@@ -130,10 +127,8 @@ it('detects the conflict even when the manual board belongs to another emission'
     // publicar ao lado criaria duas posições para o mesmo mês.
     $otherEmission = Emission::factory()->create(['status' => 'active']);
 
-    SalesBoard::factory()->create([
+    ManagementReviewFixture::manualBoardBeforeAutomation($cycle, [
         'emission_id' => $otherEmission->id,
-        'construction_id' => $cycle->construction_id,
-        'reference_month' => $cycle->reference_month->toDateString(),
     ]);
 
     $review = ManagementReviewFixture::open($cycle);
@@ -170,7 +165,9 @@ it('lets the position reader see the approved position after publication', funct
 });
 
 it('sums both constructions of an emission after both are published', function () {
-    $emission = Emission::factory()->create(['status' => 'active']);
+    $emission = Emission::factory()
+        ->automatedSalesBoardFrom(CycleFixture::AUTOMATION_START)
+        ->create(['status' => 'active']);
 
     $first = ManagementReviewFixture::submittedCycleOn($emission, '1');
     $second = ManagementReviewFixture::submittedCycleOn($emission, '2');

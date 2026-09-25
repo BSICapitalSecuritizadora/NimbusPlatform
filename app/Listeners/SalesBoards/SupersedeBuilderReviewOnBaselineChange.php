@@ -6,6 +6,8 @@ namespace App\Listeners\SalesBoards;
 
 use App\Events\SalesBoards\SalesBoardCurrentBaselineChanged;
 use App\Services\SalesBoards\SalesBoardBuilderReviewSupersedingService;
+use App\Services\SalesBoards\SalesBoardReviewSupersessionReconciler;
+use Throwable;
 
 /**
  * Liga o recálculo da Fase C à validação da Fase D sem que um saiba do outro.
@@ -24,12 +26,26 @@ class SupersedeBuilderReviewOnBaselineChange
         private readonly SalesBoardBuilderReviewSupersedingService $supersedingService,
     ) {}
 
+    /**
+     * Uma falha aqui não sobe.
+     *
+     * O ouvinte roda depois do commit: a versão nova já existe, e deixar a
+     * exceção chegar a quem recalculou mostraria um erro para um recálculo
+     * gravado -- e ainda impediria o ouvinte seguinte de rodar. A falha é
+     * registrada, e a substituição que ficou pendente é concluída pela
+     * {@see SalesBoardReviewSupersessionReconciler} na próxima abertura de
+     * validação ou análise, ou no próximo recálculo.
+     */
     public function handle(SalesBoardCurrentBaselineChanged $event): void
     {
         if (! $event->snapshotChanged()) {
             return;
         }
 
-        $this->supersedingService->supersedeOutdated($event->cycle, $event->newBaseline);
+        try {
+            $this->supersedingService->supersedeOutdated($event->cycle, $event->newBaseline);
+        } catch (Throwable $exception) {
+            report($exception);
+        }
     }
 }

@@ -28,12 +28,22 @@ use Carbon\CarbonImmutable;
 final class CycleFixture
 {
     /**
-     * Um empreendimento de emissão já ativa -- em elaboração nada é gerado.
+     * Competência a partir da qual as Emissões dos cenários são automatizadas.
+     */
+    public const AUTOMATION_START = '2026-01-01';
+
+    /**
+     * Um empreendimento de emissão já ativa -- em elaboração nada é gerado -- e
+     * com o Quadro de Vendas automatizado: só competência coberta pela
+     * automação é publicada pelo ciclo.
      */
     public static function construction(string $status = 'active'): Construction
     {
         return Construction::factory()->create([
-            'emission_id' => Emission::factory()->create(['status' => $status])->id,
+            'emission_id' => Emission::factory()
+                ->automatedSalesBoardFrom(self::AUTOMATION_START)
+                ->create(['status' => $status])
+                ->id,
         ]);
     }
 

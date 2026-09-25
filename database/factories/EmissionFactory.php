@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\SalesBoardSource;
 use App\Models\Emission;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -116,6 +117,18 @@ class EmissionFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'negotiations_source' => Emission::NEGOTIATIONS_SOURCE_CONTRACTS,
+        ]);
+    }
+
+    /**
+     * Quadro de Vendas produzido pelo ciclo mensal a partir da competência
+     * informada -- o estado que a ativação do rollout deixa na Emissão.
+     */
+    public function automatedSalesBoardFrom(string $referenceMonth): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'sales_board_source' => SalesBoardSource::Automated,
+            'sales_board_automation_start_reference_month' => $referenceMonth,
         ]);
     }
 

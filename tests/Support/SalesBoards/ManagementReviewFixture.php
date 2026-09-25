@@ -8,11 +8,13 @@ use App\DTOs\SalesBoards\SalesBoardApprovalResult;
 use App\Enums\SalesBoardMovementType;
 use App\Enums\SalesBoardNonconformityDecision;
 use App\Enums\SalesBoardNonconformityOrigin;
+use App\Enums\SalesBoardSource;
 use App\Enums\SalesPriceConformityStatus;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\Contract;
 use App\Models\Emission;
+use App\Models\SalesBoard;
 use App\Models\SalesBoardBuilderReview;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleBaseline;
@@ -221,6 +223,39 @@ final class ManagementReviewFixture
             'conformity_status' => $status,
             'conformity_reason' => $reason,
         ]);
+    }
+
+    /**
+     * Um quadro manual da competência do ciclo, registrado enquanto a Emissão
+     * ainda era legada.
+     *
+     * Numa competência automatizada o guard de escrita recusa o registro
+     * manual; um quadro assim só existe se foi gravado antes de a automação
+     * cobrir a competência -- que é exatamente o conflito que a publicação
+     * precisa detectar em vez de sobrescrever.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public static function manualBoardBeforeAutomation(SalesBoardCycle $cycle, array $attributes = []): SalesBoard
+    {
+        $emission = Emission::query()->findOrFail($cycle->emission_id);
+        $automation = $emission->only(['sales_board_source', 'sales_board_automation_start_reference_month']);
+
+        $emission->forceFill([
+            'sales_board_source' => SalesBoardSource::Legacy,
+            'sales_board_automation_start_reference_month' => null,
+        ])->save();
+
+        $board = SalesBoard::factory()->create([
+            'emission_id' => $cycle->emission_id,
+            'construction_id' => $cycle->construction_id,
+            'reference_month' => $cycle->reference_month->toDateString(),
+            ...$attributes,
+        ]);
+
+        $emission->forceFill($automation)->save();
+
+        return $board;
     }
 
     public static function open(SalesBoardCycle $cycle, ?User $actor = null): SalesBoardManagementReview

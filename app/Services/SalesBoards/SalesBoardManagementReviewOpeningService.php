@@ -51,11 +51,25 @@ class SalesBoardManagementReviewOpeningService
 {
     public function __construct(
         private readonly SalesBoardManagementReviewApplicability $applicability,
+        private readonly SalesBoardReviewSupersessionReconciler $reconciler,
     ) {}
 
     public function open(SalesBoardCycle $cycle, ?User $actor = null): SalesBoardManagementReview
     {
+        /**
+         * Antes de decidir qualquer coisa, conclui a substituição que uma versão
+         * material nova deixou pendente. Sem isso, uma análise desatualizada
+         * seria devolvida como "a análise em andamento" -- e nenhuma decisão,
+         * devolução ou aprovação passaria nela --, ou a competência ficaria em
+         * análise da Gestão sem validação aplicável para analisar.
+         */
+        $reconciled = $this->reconciler->reconcile($cycle);
+
         $cycle = $cycle->fresh();
+
+        if ($reconciled && ($cycle->status !== SalesBoardCycleStatus::ManagementReview)) {
+            throw SalesBoardManagementReviewException::returnedToBuilderByNewVersion();
+        }
 
         $existing = $this->applicability->activeDraft($cycle);
 

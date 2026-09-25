@@ -171,10 +171,7 @@ it('reports the legacy conflict instead of failing', function () {
     $scenario = ManagementReviewFixture::submittedCycle();
     $cycle = $scenario['cycle']->fresh();
 
-    $manual = SalesBoard::factory()->create([
-        'emission_id' => $cycle->emission_id,
-        'construction_id' => $cycle->construction_id,
-        'reference_month' => $cycle->reference_month->toDateString(),
+    $manual = ManagementReviewFixture::manualBoardBeforeAutomation($cycle, [
         'stock_units' => 9,
     ]);
 

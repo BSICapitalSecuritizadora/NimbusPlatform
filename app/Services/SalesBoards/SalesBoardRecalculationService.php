@@ -53,6 +53,7 @@ class SalesBoardRecalculationService
         private readonly SalesBoardFingerprintService $fingerprintService,
         private readonly SalesBoardBaselineDiffService $diffService,
         private readonly SalesBoardBaselineWriter $baselineWriter,
+        private readonly SalesBoardReviewSupersessionReconciler $reconciler,
     ) {}
 
     /**
@@ -172,6 +173,17 @@ class SalesBoardRecalculationService
             if (($sourceFingerprint === (string) $current->source_fingerprint)
                 && ($snapshotFingerprint === (string) $current->snapshot_fingerprint)) {
                 $this->markUnchanged($current, $sourceFingerprint, $snapshotFingerprint);
+
+                /**
+                 * Sem versão nova não há aviso, e é por isso que o recálculo sem
+                 * alteração reconcilia: se o aviso da versão anterior não chegou
+                 * a substituir alguma revisão, recalcular de novo -- o gesto
+                 * natural de quem encontra a competência travada -- conclui a
+                 * substituição em vez de devolver "sem alteração" e deixar tudo
+                 * como estava. O ciclo já está travado; a reconciliação roda
+                 * dentro desta transação.
+                 */
+                $this->reconciler->reconcile($locked);
 
                 return new SalesBoardRecalculationResult(
                     outcome: SalesBoardRecalculationOutcome::Unchanged,

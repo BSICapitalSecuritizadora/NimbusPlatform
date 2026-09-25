@@ -564,7 +564,7 @@ describe('quadro publicado', function () {
             ->assertOk()
             ->assertSee('Publicado pelo fluxo de governança')
             ->assertSee('Este quadro foi publicado pelo fluxo de governança e não pode mais ser alterado ou excluído manualmente.')
-            ->assertSeeInOrder(['Modo do Quadro de Vendas', 'Legado']);
+            ->assertSeeInOrder(['Modo do Quadro de Vendas', 'Automatizado']);
     });
 
     it('does not show the immutability notice on a manually recorded board', function () {
