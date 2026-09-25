@@ -21,6 +21,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\SalesBoards\BuilderReviewFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 uses(RefreshDatabase::class);
@@ -74,7 +75,8 @@ it('never lets a decision that read the analysis as a draft land after the appro
     ManagementReviewFixture::decideAll($review);
 
     $item = ManagementReviewFixture::nonconformityOf($review, SalesBoardNonconformityOrigin::SystemSaleNonConform);
-    $approver = User::factory()->create();
+    // Duas pessoas da Gestão: uma decide, a outra aprova.
+    $approver = GovernanceFixture::approver();
     $fired = false;
 
     /**
@@ -103,7 +105,7 @@ it('never lets a decision that read the analysis as a draft land after the appro
             $item,
             SalesBoardNonconformityDecision::CorrectionRequired,
             'A tabela de preços da unidade precisa de correção antes de publicar.',
-            User::factory()->create(),
+            GovernanceFixture::approver(),
         );
     } catch (Throwable) {
         $decided = false;

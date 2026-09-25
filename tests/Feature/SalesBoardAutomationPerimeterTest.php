@@ -19,11 +19,13 @@ use App\Services\SalesBoards\SalesBoardAutomationService;
 use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\SalesBoards\AutomationFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 use Tests\Support\SalesBoards\RolloutFixture;
 
@@ -64,12 +66,14 @@ function activatedEmission(int $constructions = 2): array
         RolloutFixture::legacyBoard($construction);
     }
 
+    // Quem abre a homologação não atesta, não aprova e não ativa.
     $actor = User::factory()->create();
+    $approver = GovernanceFixture::approver();
     $homologation = RolloutFixture::open($scenario['emission'], $actor);
     $people = RolloutFixture::recipients($scenario['emission'], $actor);
-    RolloutFixture::reviewImpacts($homologation, $actor);
-    RolloutFixture::approve($homologation, $actor);
-    RolloutFixture::activate($scenario['emission'], $homologation);
+    RolloutFixture::reviewImpacts($homologation, $approver);
+    RolloutFixture::approve($homologation, $approver);
+    RolloutFixture::activate($scenario['emission'], $homologation, $approver);
     RolloutFixture::enableGlobalAutomation();
 
     return [...$scenario, 'people' => $people];
@@ -99,7 +103,8 @@ it('closes the open targets of an emission that returns to legacy, with reason a
     expect($blocked->status)->toBe(SalesBoardAutomationTargetStatus::Blocked)
         ->and($satisfied->status)->toBe(SalesBoardAutomationTargetStatus::Satisfied);
 
-    $actor = User::factory()->create();
+    // Retornar ao legado é da Gestão.
+    $actor = GovernanceFixture::approver();
     RolloutFixture::returnToLegacy($scenario['emission'], $actor, 'Retorno ao legado para revisar o cadastro.');
 
     $blocked->refresh();
@@ -144,6 +149,17 @@ it('never reminds about a manual cycle of a legacy emission', function () {
 
     $this->travelTo(CarbonImmutable::parse('2026-09-10 12:00:00'));
     $scenario = ManagementReviewFixture::submittedCycle();
+
+    /**
+     * O ciclo só nasce em competência coberta pela automação. O que sobra
+     * numa Emissão legada é o ciclo gerado à mão antes de ela voltar ao
+     * legado; o modo é trocado sem eventos, porque o cenário não é o retorno
+     * ao legado do rollout -- esse encerra os alvos e é coberto acima.
+     */
+    DB::table('emissions')->where('id', $scenario['cycle']->emission_id)->update([
+        'sales_board_source' => SalesBoardSource::Legacy->value,
+        'sales_board_automation_start_reference_month' => null,
+    ]);
 
     config()->set('sales_board.automation.enabled', true);
     config()->set('sales_board.automation.reminders.management_review_after_days', 0);
@@ -270,7 +286,7 @@ it('shows who closed a competence and when, in Brasília time, on the closed tab
 
     // 02:30 de 20/09 em UTC, o fuso em que a aplicação grava: 23:30 de 19/09 em Brasília.
     $this->travelTo(CarbonImmutable::parse('2026-09-20 02:30:00', 'UTC'));
-    RolloutFixture::returnToLegacy($scenario['emission'], User::factory()->create(['name' => 'Fulana da Gestão']));
+    RolloutFixture::returnToLegacy($scenario['emission'], GovernanceFixture::approver(['name' => 'Fulana da Gestão']));
 
     /**
      * A tela não tem página de detalhe: sem isto, o autor do encerramento só

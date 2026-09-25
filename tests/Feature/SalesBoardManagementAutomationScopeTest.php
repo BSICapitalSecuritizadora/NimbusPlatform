@@ -16,6 +16,7 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 uses(RefreshDatabase::class);
@@ -45,7 +46,7 @@ it('refuses to publish once the emission returned to legacy', function () {
 
     app(SalesBoardRolloutActivationService::class)->returnToLegacy(
         Emission::query()->findOrFail($scenario['cycle']->emission_id),
-        User::factory()->create(),
+        GovernanceFixture::approver(),
         'A Emissão volta ao registro manual até a revisão do contrato.',
     );
 

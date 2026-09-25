@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\SalesBoards\SalesBoardRolloutHomologationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\SalesBoards\DerivationFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\RolloutFixture;
 
 uses(RefreshDatabase::class);
@@ -39,8 +40,11 @@ function homologationApprovedBehindAStaleDraft(): array
     $stale = RolloutFixture::open($scenario['emission'], User::factory()->create());
 
     RolloutFixture::recipients($scenario['emission']);
-    RolloutFixture::reviewImpacts($stale, User::factory()->create());
-    RolloutFixture::approve($stale, User::factory()->create());
+
+    // Atestar e aprovar são da Gestão, e não de quem abriu a homologação.
+    $approver = GovernanceFixture::approver();
+    RolloutFixture::reviewImpacts($stale, $approver);
+    RolloutFixture::approve($stale, $approver);
 
     return ['scenario' => $scenario, 'stale' => $stale];
 }

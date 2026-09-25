@@ -20,10 +20,12 @@ final class GovernanceFixture
 {
     /**
      * Alguém da Gestão: só a permissão de aprovação, sem nenhum papel.
+     *
+     * @param  array<string, mixed>  $attributes
      */
-    public static function approver(): User
+    public static function approver(array $attributes = []): User
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create($attributes);
         $user->givePermissionTo(AccessPermission::SalesBoardsApprove->value);
 
         return $user;
