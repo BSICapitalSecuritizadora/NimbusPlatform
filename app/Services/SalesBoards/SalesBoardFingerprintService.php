@@ -6,6 +6,7 @@ namespace App\Services\SalesBoards;
 
 use App\DTOs\SalesBoards\SalesBoardSnapshot;
 use App\DTOs\SalesBoards\SalesBoardSourceObservation;
+use App\Enums\ContractStatus;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\ConstructionUnitExchange;
@@ -13,6 +14,7 @@ use App\Models\ConstructionUnitValue;
 use App\Models\Contract;
 use App\Models\ContractInstallment;
 use App\Models\SalesDiscountPolicy;
+use App\Support\Contracts\ContractOccupancy;
 use App\Support\Dates\InclusiveDateBound;
 use App\Support\Money\IntegerMoney;
 use App\Support\SalesBoards\CanonicalDigest;
@@ -38,6 +40,13 @@ use Illuminate\Support\Collection;
  * torná-la obsoleta. O mesmo vale para tabelas de preço e políticas com vigência
  * posterior. O custo é um segundo conjunto de leituras, constante no número de
  * empreendimentos.
+ *
+ * O mesmo recorte vale para os fatos datados de contratos e parcelas. Pagamento
+ * e distrato posteriores à data da posição entram como ausentes, e o `status`
+ * do contrato entra só no único ponto em que a derivação o consulta -- marcado
+ * como permutado enquanto ocupa a unidade. Tudo o que ainda pode mudar a posição
+ * naquela data continua dentro: um pagamento que passa de antes para depois do
+ * fechamento, ou o contrário, muda o resumo.
  *
  * Nada aqui recalcula regra de negócio: a observação não decide classificação,
  * ocupação, quitação nem conformidade. Ela apenas registra, de forma canônica, o
@@ -86,16 +95,13 @@ class SalesBoardFingerprintService
             ->whereIn('construction_id', $constructionIds)
             ->where('sale_date', '<=', InclusiveDateBound::upperBound($positionDate))
             ->orderBy('id')
-            ->get(['id', 'construction_id', 'construction_unit_id', 'code', 'sale_date', 'sale_value', 'cancellation_date', 'status']);
+            ->get(['id', 'construction_id', 'construction_unit_id', 'code', 'sale_date', 'sale_value', 'cancellation_date', 'status', 'deleted_at']);
 
         $contractIds = $contracts->map(fn (Contract $contract): int => (int) $contract->getKey())->all();
 
-        $installments = $contractIds === []
-            ? collect()
-            : ContractInstallment::query()
-                ->whereIn('contract_id', $contractIds)
-                ->orderBy('id')
-                ->get(['id', 'contract_id', 'expected_value', 'paid_value', 'payment_date', 'cancellation_date']);
+        $installmentDigests = $contractIds === []
+            ? []
+            : $this->installmentDigests($contractIds, $positionDate);
 
         $values = $unitIds === []
             ? collect()
@@ -123,11 +129,12 @@ class SalesBoardFingerprintService
                 constructionId: $constructionId,
                 units: $units->filter(fn (ConstructionUnit $unit): bool => (int) $unit->construction_id === $constructionId),
                 contracts: $contracts->filter(fn (Contract $contract): bool => (int) $contract->construction_id === $constructionId),
-                installments: $installments,
+                installmentDigests: $installmentDigests,
                 values: $values,
                 exchanges: $exchanges,
                 policies: $policies,
                 latestSaleDate: $latestSaleDates[$constructionId] ?? null,
+                positionDate: $positionDate,
             );
         }
 
@@ -144,7 +151,7 @@ class SalesBoardFingerprintService
      *
      * @param  Collection<int, ConstructionUnit>  $units
      * @param  Collection<int, Contract>  $contracts
-     * @param  Collection<int, ContractInstallment>  $installments
+     * @param  array<int, string>  $installmentDigests  indexado por `contract_id`
      * @param  Collection<int, ConstructionUnitValue>  $values
      * @param  Collection<int, ConstructionUnitExchange>  $exchanges
      * @param  Collection<int, SalesDiscountPolicy>  $policies
@@ -153,11 +160,12 @@ class SalesBoardFingerprintService
         int $constructionId,
         Collection $units,
         Collection $contracts,
-        Collection $installments,
+        array $installmentDigests,
         Collection $values,
         Collection $exchanges,
         Collection $policies,
         ?CarbonImmutable $latestSaleDate,
+        CarbonImmutable $positionDate,
     ): SalesBoardSourceObservation {
         $unitIds = $units->map(fn (ConstructionUnit $unit): int => (int) $unit->getKey())->values()->all();
         $unitIdSet = array_flip($unitIds);
@@ -211,16 +219,24 @@ class SalesBoardFingerprintService
         $contractRows = [];
         $contractIdsByUnit = [];
         $unitIdByContract = [];
+        $positionDay = $positionDate->toDateString();
 
         foreach ($contracts as $contract) {
             $contractId = (int) $contract->getKey();
             $unitId = (int) $contract->construction_unit_id;
 
             /**
+             * O distrato entra só se já tinha acontecido na data da posição: um
+             * distrato de setembro não libera a unidade em julho, e a derivação
+             * de julho o ignora.
+             *
              * `status` é material apesar de não classificar nada: ele é o que
              * denuncia um contrato marcado como permutado sem permuta
-             * registrada, e esse achado bloqueia a competência. Uma fonte que
-             * passa a bloquear precisa ser detectada.
+             * registrada, e esse achado bloqueia a competência. Mas a derivação
+             * só o consulta para um contrato que ocupa a unidade na data, e só
+             * pergunta se ele é "permutado". Entra, portanto, essa resposta --
+             * e não o status cru: marcar como quitado ou distratado depois do
+             * fechamento não muda nada no mês fechado.
              */
             $contractRows[$contractId] = CanonicalDigest::row([
                 $contractId,
@@ -228,37 +244,15 @@ class SalesBoardFingerprintService
                 $contract->code,
                 $contract->sale_date,
                 IntegerMoney::cents($contract->sale_value),
-                $contract->cancellation_date,
-                $contract->status,
+                $this->dayUpTo($contract->cancellation_date?->toDateString(), $positionDay),
+                ($contract->status === ContractStatus::Exchanged) && ContractOccupancy::occupiesAt($contract, $positionDate),
             ]);
 
             $contractIdsByUnit[$unitId][] = $contractId;
             $unitIdByContract[$contractId] = $unitId;
         }
 
-        $installmentRows = [];
-        foreach ($installments as $installment) {
-            $contractId = (int) $installment->contract_id;
-
-            if (! isset($contractRows[$contractId])) {
-                continue;
-            }
-
-            /**
-             * `due_date` fica fora: o vencimento não participa de nenhuma
-             * decisão da derivação -- a quitação olha pagamento, valor e
-             * cancelamento -- e incluí-lo faria um reagendamento de boleto
-             * marcar a competência como alterada.
-             */
-            $installmentRows[$contractId][] = CanonicalDigest::row([
-                (int) $installment->getKey(),
-                $contractId,
-                IntegerMoney::cents($installment->expected_value),
-                IntegerMoney::cents($installment->paid_value),
-                $installment->payment_date,
-                $installment->cancellation_date,
-            ]);
-        }
+        $scheduleDigests = array_intersect_key($installmentDigests, $contractRows);
 
         $policyRows = $latestSaleDate === null ? [] : $policies
             ->filter(fn (SalesDiscountPolicy $policy): bool => ((int) $policy->construction_id === $constructionId)
@@ -274,7 +268,7 @@ class SalesBoardFingerprintService
             exchangeRows: $exchangeRows,
             contractRows: $contractRows,
             contractIdsByUnit: $contractIdsByUnit,
-            installmentRows: $installmentRows,
+            installmentDigests: $scheduleDigests,
             unitIdByContract: $unitIdByContract,
             policyRows: $policyRows,
         );
@@ -356,6 +350,114 @@ class SalesBoardFingerprintService
         }
 
         return $fields;
+    }
+
+    /**
+     * Um resumo por contrato do cronograma como ele estava na data da posição.
+     *
+     * As parcelas são a fonte que cresce com a obra -- uma obra madura tem
+     * dezenas de milhares -- e por isso são lidas em fluxo, como linhas simples,
+     * sem virar model: hidratar cada uma custava cerca de 2 KB e dezenas de
+     * microssegundos, e a observação de 57.600 parcelas ocupava mais de 100 MB
+     * de uma requisição que tem 256. Da parcela não sobra nada além do resumo
+     * do contrato dela.
+     *
+     * A ordem por contrato e depois por `id` é o que permite resumir em fluxo:
+     * cada contrato chega inteiro, na mesma ordem de sempre, e o resumo dele
+     * fecha antes de o próximo começar. Uma consulta só, como antes, e o
+     * soft delete do model continua valendo -- `toBase()` aplica os escopos.
+     *
+     * `due_date` fica fora: o vencimento não participa de nenhuma decisão da
+     * derivação -- a quitação olha pagamento, valor e cancelamento -- e incluí-lo
+     * faria um reagendamento de boleto marcar a competência como alterada.
+     *
+     * @param  list<int>  $contractIds
+     * @return array<int, string> resumo indexado por `contract_id`
+     */
+    private function installmentDigests(array $contractIds, CarbonImmutable $positionDate): array
+    {
+        $positionDay = $positionDate->toDateString();
+        $digests = [];
+        $currentContractId = null;
+        $schedule = null;
+
+        $rows = ContractInstallment::query()
+            ->select(['id', 'contract_id', 'expected_value', 'paid_value', 'payment_date', 'cancellation_date'])
+            ->whereIn('contract_id', $contractIds)
+            ->orderBy('contract_id')
+            ->orderBy('id')
+            ->toBase()
+            ->cursor();
+
+        foreach ($rows as $row) {
+            $contractId = (int) $row->contract_id;
+
+            if ($contractId !== $currentContractId) {
+                if ($schedule !== null) {
+                    $digests[$currentContractId] = $schedule->digest();
+                }
+
+                $currentContractId = $contractId;
+                $schedule = new CanonicalDigest;
+            }
+
+            $schedule->append(CanonicalDigest::row($this->installmentFields($row, $contractId, $positionDay)));
+        }
+
+        if ($schedule !== null) {
+            $digests[$currentContractId] = $schedule->digest();
+        }
+
+        return $digests;
+    }
+
+    /**
+     * Os fatos de uma parcela que a derivação usa na data da posição.
+     *
+     * Paga em D é `payment_date <= D` com valor suficiente; válida em D é sem
+     * cancelamento ou cancelada depois de D. Um pagamento ou um cancelamento
+     * posterior a D, portanto, responde exatamente como a ausência deles -- e é
+     * assim que entra. O valor pago acompanha a data: sem pagamento até D, ele
+     * não decide nada.
+     *
+     * @return list<mixed>
+     */
+    private function installmentFields(object $installment, int $contractId, string $positionDay): array
+    {
+        $paymentDay = $this->dayUpTo($this->rawDay($installment->payment_date), $positionDay);
+
+        return [
+            (int) $installment->id,
+            $contractId,
+            IntegerMoney::cents($installment->expected_value),
+            $paymentDay === null ? null : IntegerMoney::cents($installment->paid_value),
+            $paymentDay,
+            $this->dayUpTo($this->rawDay($installment->cancellation_date), $positionDay),
+        ];
+    }
+
+    /**
+     * O dia de uma coluna `date` lida sem model.
+     *
+     * O SQLite devolve o que o Eloquent gravou, com hora
+     * (`2026-07-10 00:00:00`); o MySQL devolve só o dia. O fingerprint precisa
+     * do mesmo texto nos dois -- o mesmo `Y-m-d` que o cast `date` produziria.
+     */
+    private function rawDay(mixed $value): ?string
+    {
+        if (($value === null) || ($value === '')) {
+            return null;
+        }
+
+        return substr((string) $value, 0, 10);
+    }
+
+    /**
+     * Um fato datado, se ele já tinha acontecido na data da posição.
+     */
+    private function dayUpTo(?string $day, string $positionDay): ?string
+    {
+        return (($day !== null) && ($day <= $positionDay)) ? $day : null;
     }
 
     private function date(mixed $value): CarbonImmutable

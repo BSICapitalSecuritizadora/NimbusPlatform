@@ -25,9 +25,21 @@ use App\Support\SalesBoards\CanonicalDigest;
  * obsoleto. Por isso cada conjunto é carregado já limitado à vigência que a
  * competência alcança, em vez de filtrado depois.
  *
+ * O recorte vale também para o que é datado dentro de um contrato. Pagamento e
+ * distrato posteriores à data da posição não existiam nela, e a derivação os
+ * ignora ao decidir ocupação e quitação; aqui eles entram como ausentes. Sem
+ * isso, o pagamento de agosto importado antes da aprovação de julho marcaria
+ * julho como "fonte alterada" todo mês -- e a justificativa que isso exige
+ * viraria texto padrão justamente quando uma mudança real acontecesse.
+ *
  * As linhas chegam aqui já canonizadas por {@see CanonicalDigest}, o que garante
  * que o resumo global e os resumos por unidade e por movimento sejam feitos
  * sobre exatamente a mesma representação dos mesmos fatos.
+ *
+ * As parcelas chegam já resumidas, uma por contrato. Nenhum dos três resumos
+ * precisa de uma parcela isolada -- a unidade e a quitação olham o cronograma
+ * do contrato inteiro --, e guardar uma linha por parcela fazia a observação de
+ * uma obra madura ocupar tanta memória quanto a própria derivação.
  */
 readonly class SalesBoardSourceObservation extends BaseDTO
 {
@@ -37,7 +49,7 @@ readonly class SalesBoardSourceObservation extends BaseDTO
      * @param  array<int, list<string>>  $exchangeRows  permutas vigentes, por unidade
      * @param  array<int, string>  $contractRows  linha canônica de cada contrato
      * @param  array<int, list<int>>  $contractIdsByUnit  contratos de cada unidade
-     * @param  array<int, list<string>>  $installmentRows  parcelas, por contrato
+     * @param  array<int, string>  $installmentDigests  resumo do cronograma de cada contrato na data da posição
      * @param  array<int, int>  $unitIdByContract  unidade de cada contrato
      * @param  list<string>  $policyRows  políticas alcançadas pelas vendas da competência
      */
@@ -48,7 +60,7 @@ readonly class SalesBoardSourceObservation extends BaseDTO
         public array $exchangeRows,
         public array $contractRows,
         public array $contractIdsByUnit,
-        public array $installmentRows,
+        public array $installmentDigests,
         public array $unitIdByContract,
         public array $policyRows,
     ) {}
@@ -59,16 +71,20 @@ readonly class SalesBoardSourceObservation extends BaseDTO
      * Calculado sobre o documento canônico inteiro, e não pela concatenação dos
      * resumos por linha: assim a inclusão ou a remoção de uma unidade, de um
      * contrato ou de uma parcela muda o hash mesmo quando nenhuma linha
-     * remanescente mudou.
+     * remanescente mudou. A parcela entra pelo resumo do cronograma do
+     * contrato, que muda com qualquer parcela incluída, removida ou alterada.
      */
     public function fingerprint(): string
     {
+        $contractsWithSchedule = array_keys($this->installmentDigests);
+        sort($contractsWithSchedule);
+
         return CanonicalDigest::of([
             'units' => $this->sorted($this->unitRows),
             'unit_values' => $this->flattened($this->valueRows),
             'exchanges' => $this->flattened($this->exchangeRows),
             'contracts' => $this->sorted($this->contractRows),
-            'installments' => $this->flattened($this->installmentRows),
+            'installment_schedules' => $this->scheduleRows($contractsWithSchedule),
             'policies' => $this->policyRows,
         ]);
     }
@@ -84,14 +100,11 @@ readonly class SalesBoardSourceObservation extends BaseDTO
     {
         $contractIds = $this->contractIdsByUnit[$unitId] ?? [];
         $contracts = [];
-        $installments = [];
 
         foreach ($contractIds as $contractId) {
             if (isset($this->contractRows[$contractId])) {
                 $contracts[] = $this->contractRows[$contractId];
             }
-
-            $installments = [...$installments, ...($this->installmentRows[$contractId] ?? [])];
         }
 
         return CanonicalDigest::of([
@@ -99,7 +112,7 @@ readonly class SalesBoardSourceObservation extends BaseDTO
             'unit_values' => $this->valueRows[$unitId] ?? [],
             'exchanges' => $this->exchangeRows[$unitId] ?? [],
             'contracts' => $contracts,
-            'installments' => $installments,
+            'installment_schedules' => $this->scheduleRows($contractIds),
         ]);
     }
 
@@ -125,12 +138,34 @@ readonly class SalesBoardSourceObservation extends BaseDTO
             ]),
             SalesBoardMovementType::Settlement => CanonicalDigest::of([
                 'contract' => $contract,
-                'installments' => $this->installmentRows[$contractId] ?? [],
+                'installment_schedules' => $this->scheduleRows([$contractId]),
             ]),
             SalesBoardMovementType::Cancellation => CanonicalDigest::of([
                 'contract' => $contract,
             ]),
         };
+    }
+
+    /**
+     * O cronograma de cada contrato como uma linha canônica, na ordem dada.
+     *
+     * Contrato sem parcela não produz linha -- a mesma ausência que existia
+     * quando as parcelas entravam uma a uma.
+     *
+     * @param  list<int>  $contractIds
+     * @return list<string>
+     */
+    private function scheduleRows(array $contractIds): array
+    {
+        $rows = [];
+
+        foreach ($contractIds as $contractId) {
+            if (isset($this->installmentDigests[$contractId])) {
+                $rows[] = CanonicalDigest::row([$contractId, $this->installmentDigests[$contractId]]);
+            }
+        }
+
+        return $rows;
     }
 
     /**
