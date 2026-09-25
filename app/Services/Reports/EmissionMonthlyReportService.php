@@ -6,6 +6,7 @@ namespace App\Services\Reports;
 
 use App\DTOs\ConstructionProgressData;
 use App\DTOs\Guarantees\GuaranteePositionData;
+use App\DTOs\SalesBoards\ConstructionSalesPosition;
 use App\DTOs\SalesBoards\EmissionSalesPosition;
 use App\Enums\GuaranteeType;
 use App\Enums\LegalInstrumentFieldKey;
@@ -286,7 +287,10 @@ class EmissionMonthlyReportService
             'expenses_history' => $this->buildExpensesHistory($emission, $monthEnd),
             'delinquency' => $this->buildDelinquency($receivable),
             'receivables' => $this->buildReceivablesSummary($receivable),
-            'units' => $this->buildUnits($salesPositions->get($monthStart->format('Y-m'))),
+            'units' => $this->buildUnits(
+                $salesPositions->get($monthStart->format('Y-m')),
+                $emission->automationCovers($monthStart),
+            ),
             'units_history' => $this->buildUnitsHistory($unitsHistoryCompetences, $salesPositions),
             'negotiations' => $negotiationsData,
             'negotiations_history' => $this->buildNegotiationsHistory($emission, $monthEnd),
@@ -670,7 +674,7 @@ class EmissionMonthlyReportService
      *
      * @return array<string, mixed>
      */
-    private function buildUnits(?EmissionSalesPosition $position): array
+    private function buildUnits(?EmissionSalesPosition $position, bool $automationCoversMonth): array
     {
         if ($position === null || ! $position->hasData()) {
             return ['has_data' => false, 'empty_message' => self::NO_DATA];
@@ -687,6 +691,60 @@ class EmissionMonthlyReportService
             ],
             'composition' => $this->unitsComposition($position),
             'coverage' => $position->coverage(),
+            'coverage_summary' => $this->unitsCoverageSummary($position, $automationCoversMonth),
+        ];
+    }
+
+    /**
+     * Cobertura da posição em texto, para o PDF.
+     *
+     * O painel soma os empreendimentos com a última posição conhecida de cada
+     * um. Sem esta legenda, uma soma parcial (empreendimento sem quadro) ou
+     * transportada (quadro de competência anterior) sai no relatório como se
+     * fosse a posição completa da competência. Na competência coberta pela
+     * automação, a posição incompleta é a que ainda aguarda publicação.
+     *
+     * @return array{
+     *     label: string,
+     *     complete: bool,
+     *     awaiting_publication: bool,
+     *     constructions: list<array{name: string, month: string, status: string}>,
+     *     carried_forward: list<array{name: string, month: string}>,
+     *     missing: list<string>
+     * }
+     */
+    private function unitsCoverageSummary(EmissionSalesPosition $position, bool $automationCoversMonth): array
+    {
+        $complete = $position->isFullyCovered() && ! $position->hasCarryForward();
+        $name = fn (ConstructionSalesPosition $construction): string => filled($construction->constructionName)
+            ? (string) $construction->constructionName
+            : 'Empreendimento #'.$construction->constructionId;
+
+        return [
+            'label' => sprintf(
+                '%d de %d %s com posição',
+                $position->constructionsCovered,
+                $position->constructionsExpected,
+                $position->constructionsExpected === 1 ? 'empreendimento' : 'empreendimentos',
+            ),
+            'complete' => $complete,
+            'awaiting_publication' => $automationCoversMonth && ! $complete,
+            'constructions' => array_map(
+                fn (ConstructionSalesPosition $construction): array => [
+                    'name' => $name($construction),
+                    'month' => $construction->referenceMonthUsedLabel() ?? '—',
+                    'status' => $construction->status->label(),
+                ],
+                $position->positions,
+            ),
+            'carried_forward' => array_map(
+                fn (ConstructionSalesPosition $construction): array => [
+                    'name' => $name($construction),
+                    'month' => (string) $construction->referenceMonthUsedLabel(),
+                ],
+                $position->carriedForwardPositions(),
+            ),
+            'missing' => array_map($name, $position->missingPositions()),
         ];
     }
 

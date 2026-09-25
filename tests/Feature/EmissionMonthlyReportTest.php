@@ -1,6 +1,7 @@
 <?php
 
 use App\DTOs\ConstructionProgressData;
+use App\Enums\SalesBoardSource;
 use App\Filament\Pages\Reports;
 use App\Filament\Resources\EmissionMonthlyReportNotes\EmissionMonthlyReportNoteResource;
 use App\Filament\Resources\EmissionMonthlyReportNotes\Pages\CreateEmissionMonthlyReportNote;
@@ -25,6 +26,7 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 uses(RefreshDatabase::class);
 
@@ -702,6 +704,118 @@ it('reports the units panel as empty when no construction has a position yet', f
 
     expect($data['units']['has_data'])->toBeFalse()
         ->and($data['units'])->not->toHaveKey('rows');
+});
+
+it('renders the coverage of a partial and carried-forward position in the PDF', function () {
+    // The panel sums every development with its last known position. Without
+    // the coverage next to the sum, a development stuck in 12/2025 and another
+    // that never sent a board would print as a complete 07/2026 position.
+    $emission = Emission::factory()->create();
+    $updated = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Alfa']);
+    $stale = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Beta']);
+    Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Gama']);
+
+    foreach ([[$updated, '2026-06-01', 10], [$updated, '2026-07-01', 9], [$stale, '2025-12-01', 50]] as [$construction, $month, $stock]) {
+        SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create([
+            'reference_month' => $month,
+            'stock_units' => $stock,
+            'financed_units' => 0,
+            'paid_units' => 0,
+            'exchanged_units' => 0,
+        ]);
+    }
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-07-01'));
+
+    expect($data['units']['coverage_summary']['label'])->toBe('2 de 3 empreendimentos com posição')
+        ->and($data['units']['coverage_summary']['complete'])->toBeFalse()
+        ->and($data['units']['coverage_summary']['carried_forward'])->toBe([['name' => 'Residencial Beta', 'month' => '12/2025']])
+        ->and($data['units']['coverage_summary']['missing'])->toBe(['Residencial Gama']);
+
+    $html = view('pdf.emission-monthly-report', $data)->render();
+    $unitsPanel = str($html)->after('Unidades / Quadro de Vendas')->before('Histórico de Unidades')->toString();
+
+    expect($unitsPanel)->toContain('Cobertura')
+        ->and($unitsPanel)->toContain('2 de 3 empreendimentos com posição')
+        ->and($unitsPanel)->toContain('Posição parcial ou transportada.')
+        ->and($unitsPanel)->toContain('Residencial Beta: última posição conhecida, quadro de 12/2025.')
+        ->and($unitsPanel)->toContain('Sem quadro de vendas, fora da soma: Residencial Gama.')
+        ->and($unitsPanel)->toContain('Posição por empreendimento')
+        ->and($unitsPanel)->toContain('Última posição conhecida')
+        ->and($unitsPanel)->toContain('Quadro da competência')
+        ->and($unitsPanel)->toContain('Sem quadro de vendas</td>');
+});
+
+it('flags an automated competence still waiting for publication in the PDF', function () {
+    // Two cycles delivered to Management, only one approved: the board of the
+    // second development does not exist yet, and the report must say so.
+    $emission = Emission::factory()->create([
+        'status' => 'active',
+        'sales_board_source' => SalesBoardSource::Automated,
+        'sales_board_automation_start_reference_month' => '2026-07-01',
+    ]);
+
+    $published = ManagementReviewFixture::submittedCycleOn($emission, '1');
+    ManagementReviewFixture::submittedCycleOn($emission, '2');
+
+    ManagementReviewFixture::approve(ManagementReviewFixture::open($published['cycle']));
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission->fresh(), CarbonImmutable::parse('2026-07-01'));
+
+    $html = view('pdf.emission-monthly-report', $data)->render();
+
+    expect($data['units']['coverage_summary']['label'])->toBe('1 de 2 empreendimentos com posição')
+        ->and($data['units']['coverage_summary']['awaiting_publication'])->toBeTrue()
+        ->and($html)->toContain('Posição parcial ou transportada.')
+        ->and($html)->toContain('Competência produzida pelo ciclo mensal automatizado: ainda não publicada para os empreendimentos acima.');
+});
+
+it('states a complete coverage without the partial position alert', function () {
+    $emission = Emission::factory()->create();
+
+    foreach (['Residencial Alfa', 'Residencial Beta'] as $name) {
+        $construction = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => $name]);
+
+        SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create(['reference_month' => '2026-07-01']);
+    }
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-07-01'));
+
+    $html = view('pdf.emission-monthly-report', $data)->render();
+
+    expect($data['units']['coverage_summary']['complete'])->toBeTrue()
+        ->and($html)->toContain('2 de 2 empreendimentos com posição')
+        ->and($html)->not->toContain('Posição parcial ou transportada.')
+        ->and($html)->toContain('Residencial Alfa')
+        ->and($html)->toContain('07/2026');
+});
+
+it('shows the coverage of every competence in the units history', function () {
+    $emission = Emission::factory()->create();
+    $updated = Construction::factory()->create(['emission_id' => $emission->id]);
+    $stale = Construction::factory()->create(['emission_id' => $emission->id]);
+    Construction::factory()->create(['emission_id' => $emission->id]);
+
+    foreach ([[$updated, '2026-06-01'], [$updated, '2026-07-01'], [$stale, '2025-12-01']] as [$construction, $month]) {
+        SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create(['reference_month' => $month]);
+    }
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-07-01'));
+
+    $html = view('pdf.emission-monthly-report', $data)->render();
+    $history = str($html)->after('Histórico de Unidades')->before('Negociações do Mês')->toString();
+
+    // 12/2025: only the stale development had a board (the updated one is not
+    // expected yet, the third never had one). 06 and 07/2026: two of three,
+    // one of them carried forward from 12/2025.
+    expect($history)->toContain('<th class="num">Cobertura</th>')
+        ->and($history)->toContain('<td class="num">1/2</td>')
+        ->and(substr_count($history, '<td class="num">2/3*</td>'))->toBe(2)
+        ->and($history)->toContain('* indica ao menos um empreendimento com a última posição conhecida');
 });
 
 it('omits the units history when there is a single competence', function () {

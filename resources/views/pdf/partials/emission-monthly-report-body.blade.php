@@ -218,13 +218,17 @@
     <p class="note">Série baseada nas competências de recebíveis cadastradas para a emissão.</p>
 @endif
 
-{{-- ===== Unidades / quadro de vendas ===== --}}
+{{-- ===== Unidades / quadro de vendas =====
+     Posição consolidada da emissão: soma dos empreendimentos, cada um com o quadro
+     da competência ou a última posição conhecida. A cobertura acompanha a soma
+     para que uma posição parcial ou transportada não pareça completa. --}}
 <div class="section-title">Unidades / Quadro de Vendas</div>
 @if ($units['has_data'])
     <table class="kv">
         @foreach ($units['rows'] as $row)
             <tr><td class="label">{{ $row['label'] }}</td><td class="value">{{ $row['value'] }}</td></tr>
         @endforeach
+        <tr><td class="label">Cobertura</td><td class="value">{{ $units['coverage_summary']['label'] }}</td></tr>
     </table>
     @if ($units['composition'] !== [])
         <table class="comp-bar">
@@ -238,6 +242,34 @@
         </table>
         <p class="comp-legend">Dourado: quitadas &middot; Azul: financiadas/vendidas &middot; Cinza: permutadas &middot; Claro: estoque.</p>
     @endif
+    @unless ($units['coverage_summary']['complete'])
+        <div class="coverage-alert">
+            <strong>Posição parcial ou transportada.</strong>
+            @foreach ($units['coverage_summary']['carried_forward'] as $carried)
+                {{ $carried['name'] }}: última posição conhecida, quadro de {{ $carried['month'] }}.
+            @endforeach
+            @if ($units['coverage_summary']['missing'] !== [])
+                Sem quadro de vendas, fora da soma: {{ implode(', ', $units['coverage_summary']['missing']) }}.
+            @endif
+            @if ($units['coverage_summary']['awaiting_publication'])
+                Competência produzida pelo ciclo mensal automatizado: ainda não publicada para os empreendimentos acima.
+            @endif
+        </div>
+    @endunless
+    <p class="note"><strong>Posição por empreendimento</strong></p>
+    <table class="data">
+        <thead><tr><th>Empreendimento</th><th>Quadro usado</th><th>Situação</th></tr></thead>
+        <tbody>
+            {{-- $construction já é o dado da seção Evolução da Obra; o laço não pode sobrescrevê-lo. --}}
+            @foreach ($units['coverage_summary']['constructions'] as $unitsPosition)
+                <tr>
+                    <td style="word-break: break-word;">{{ $unitsPosition['name'] }}</td>
+                    <td>{{ $unitsPosition['month'] }}</td>
+                    <td>{{ $unitsPosition['status'] }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
 @else
     <p class="no-data">{{ $units['empty_message'] }}</p>
 @endif
@@ -255,6 +287,7 @@
                 <th class="num">Permutadas</th>
                 <th class="num">Total</th>
                 <th class="num">Variação</th>
+                <th class="num">Cobertura</th>
                 <th>Composição</th>
             </tr>
         </thead>
@@ -268,6 +301,7 @@
                     <td class="num">{{ $row['exchanged'] }}</td>
                     <td class="num">{{ $row['total'] }}</td>
                     <td class="num">{{ $row['variation'] }}</td>
+                    <td class="num">{{ $row['coverage']['constructions_covered'] }}/{{ $row['coverage']['constructions_expected'] }}{{ $row['coverage']['carried_forward'] ? '*' : '' }}</td>
                     <td>
                         @if ($row['composition'] !== [])
                             <table class="comp-bar">
@@ -287,7 +321,7 @@
             @endforeach
         </tbody>
     </table>
-    <p class="comp-legend">Composição: dourado = quitadas &middot; azul = financiadas/vendidas &middot; cinza = permutadas &middot; claro = estoque. Variação refere-se ao total de unidades ante o mês anterior.</p>
+    <p class="comp-legend">Composição: dourado = quitadas &middot; azul = financiadas/vendidas &middot; cinza = permutadas &middot; claro = estoque. Variação refere-se ao total de unidades ante o mês anterior. Cobertura: empreendimentos com posição / esperados; * indica ao menos um empreendimento com a última posição conhecida de competência anterior.</p>
 @endif
 
 {{-- ===== Negociações — derivado automaticamente dos contratos (sale_date / cancellation_date) ===== --}}

@@ -78,6 +78,20 @@ it('renders each sales board form section on its own row', function () {
     ]);
 });
 
+it('writes the value criterion of each bucket on the legacy form', function () {
+    // The automated board values each bucket by its own source
+    // (SalesBoardDerivedLine::bucketValueCents). The manual form has to ask for
+    // the same thing, or the series changes meaning when the emission switches.
+    $this->actingAs(makeSalesBoardAdminUser());
+
+    Livewire::test(CreateSalesBoard::class)
+        ->assertSee('Informe cada valor pelo critério indicado no campo, o mesmo usado pelo Quadro de Vendas automatizado.')
+        ->assertSee('Soma: valor de referência (tabela) de cada unidade em estoque na competência.')
+        ->assertSee('Soma: preço de venda de cada contrato vendido e ainda não quitado. Não é o saldo devedor da carteira.')
+        ->assertSee('Soma: preço de venda de cada contrato já quitado.')
+        ->assertSee('Soma: valor atribuído a cada permuta.');
+});
+
 it('prefills the sales board numeric fields with zero on create', function () {
     $this->actingAs(makeSalesBoardAdminUser());
 

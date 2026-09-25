@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\SalesBoards\Schemas;
 
 use App\Concerns\MoneyFormatter;
+use App\Enums\SalesBoardUnitClassification;
 use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\SalesBoard;
@@ -214,17 +215,36 @@ class SalesBoardForm
             ->columns(['sm' => 1, 'md' => 2, 'lg' => 5, 'xl' => 5]);
     }
 
+    /**
+     * Valores por balde, com o critério de cada um escrito no campo.
+     *
+     * O critério é o mesmo que a automação usa para publicar o quadro
+     * ({@see SalesBoardUnitClassification::valueCriterion()}): sem ele, o
+     * registro manual pode ser preenchido com outra régua (saldo devedor no
+     * lugar do preço de venda, por exemplo) e a série muda de significado na
+     * competência em que a Emissão passa a ser automatizada.
+     */
     public static function valuesSection(): Section
     {
         return Section::make('Valores por Status')
+            ->description('Informe cada valor pelo critério indicado no campo, o mesmo usado pelo Quadro de Vendas automatizado.')
             ->columnSpanFull()
             ->schema([
-                static::moneyField('stock_value', 'Valor em estoque'),
-                static::moneyField('financed_value', 'Valor financiado'),
-                static::moneyField('paid_value', 'Valor quitado'),
-                static::moneyField('exchanged_value', 'Valor permutado'),
+                static::moneyField('stock_value', 'Valor em estoque')
+                    ->helperText(static::valueCriterionHelper(SalesBoardUnitClassification::Stock)),
+                static::moneyField('financed_value', 'Valor financiado')
+                    ->helperText(static::valueCriterionHelper(SalesBoardUnitClassification::Financed).' Não é o saldo devedor da carteira.'),
+                static::moneyField('paid_value', 'Valor quitado')
+                    ->helperText(static::valueCriterionHelper(SalesBoardUnitClassification::Settled)),
+                static::moneyField('exchanged_value', 'Valor permutado')
+                    ->helperText(static::valueCriterionHelper(SalesBoardUnitClassification::Exchanged)),
             ])
             ->columns(['sm' => 1, 'md' => 2, 'lg' => 4, 'xl' => 4]);
+    }
+
+    protected static function valueCriterionHelper(SalesBoardUnitClassification $classification): string
+    {
+        return 'Soma: '.mb_lcfirst($classification->valueCriterion()).'.';
     }
 
     protected static function quantityField(string $name, string $label): TextInput

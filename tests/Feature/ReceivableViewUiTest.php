@@ -208,7 +208,7 @@ it('conditionally displays sales and stock when a sales board is present for the
     // 1. Sem quadro de vendas para a competência -> seção de Vendas e Estoque oculta
     Livewire::test(ViewReceivable::class, ['record' => $receivable->getRouteKey()])
         ->assertSuccessful()
-        ->assertDontSee('TOTAL DO EMPREENDIMENTO (VGV)');
+        ->assertDontSee('TOTAL DA EMISSÃO (VGV)');
 
     // 2. Com quadro de vendas cadastrado para a mesma competência -> exibe Vendas e Estoque
     $construction = $receivable->emission->constructions->first();
@@ -227,11 +227,14 @@ it('conditionally displays sales and stock when a sales board is present for the
         'exchanged_value' => 0.00,
     ]);
 
+    // Os rótulos seguem a definição dos baldes (SalesBoardDerivedLine::bucketValueCents):
+    // o balde financiado é preço de venda de contrato não quitado, não carteira ativa.
     Livewire::test(ViewReceivable::class, ['record' => $receivable->getRouteKey()])
         ->assertSuccessful()
         ->assertSee('Vendas e Estoque')
-        ->assertSee('TOTAL DO EMPREENDIMENTO (VGV)')
-        ->assertSee('Financiadas (Carteira Ativa)')
-        ->assertSee('Estoque Disponível')
+        ->assertSee('TOTAL DA EMISSÃO (VGV)')
+        ->assertSee('Vendidas não quitadas')
+        ->assertSee('Preço de venda de cada contrato vendido e ainda não quitado')
+        ->assertDontSee('Carteira Ativa')
         ->assertSee('50.000.000,00'); // VGV total (12.5m + 30m + 7.5m)
 });
