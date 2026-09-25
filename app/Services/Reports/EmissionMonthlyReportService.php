@@ -71,9 +71,14 @@ class EmissionMonthlyReportService
      * Bloco de garantias do relatório (§48 do escopo).
      *
      * O relatório consome o resultado do módulo — não recalcula nada. A
-     * competência fechada tem prioridade sobre a apuração ao vivo: é o número
-     * que foi consolidado naquele mês, e reapurar poderia devolver outro depois
-     * de uma correção retroativa em recebíveis, estoque ou curva de PU.
+     * competência **fechada** tem prioridade sobre a apuração ao vivo: é o
+     * número que foi consolidado naquele mês, e reapurar poderia devolver outro
+     * depois de uma correção retroativa em recebíveis, estoque ou curva de PU.
+     *
+     * Snapshot aberto não é consolidado: é uma apuração intermediária, em geral
+     * gravada antes de o Quadro de Vendas do mês existir. Usá-lo congelaria no
+     * relatório um estoque que a própria seção de unidades já não mostra — por
+     * isso, sem fechamento, vale a apuração ao vivo, rotulada como tal.
      *
      * @return array<string, mixed>
      */
@@ -84,6 +89,7 @@ class EmissionMonthlyReportService
         /** @var GuaranteeSnapshot|null $snapshot */
         $snapshot = $emission->guaranteeSnapshots()
             ->whereDate('reference_month', $referenceMonth)
+            ->whereNotNull('closed_at')
             ->first();
 
         if ($snapshot !== null) {
@@ -94,6 +100,10 @@ class EmissionMonthlyReportService
 
         return [
             'consolidated' => false,
+            'closed_at' => null,
+            'sales_board_outdated' => false,
+            'partial_sales_board_position' => $position->hasSalesBoardGaps(),
+            'sales_board_gaps' => $position->salesBoardGapDescriptions(),
             'status' => $position->coverageStatus->label(),
             'outstanding_balance' => $this->guaranteeMoney($position->outstandingBalance),
             'gross_value' => $this->guaranteeMoney($position->totalGrossValue),
@@ -133,9 +143,14 @@ class EmissionMonthlyReportService
             ->whereDate('reference_month', $referenceMonth)
             ->get();
 
+        $salesBoardCoverage = $snapshot->salesBoardCoverage();
+
         return [
             'consolidated' => true,
             'closed_at' => $snapshot->closed_at?->format('d/m/Y H:i'),
+            'sales_board_outdated' => $snapshot->isSalesBoardOutdated(),
+            'partial_sales_board_position' => $salesBoardCoverage?->hasGaps() ?? false,
+            'sales_board_gaps' => $salesBoardCoverage?->gapDescriptions() ?? [],
             'status' => $snapshot->coverage_status?->label() ?? self::NOT_CONSOLIDATED,
             'outstanding_balance' => $this->guaranteeMoney($this->toFloat($snapshot->outstanding_balance)),
             'gross_value' => $this->guaranteeMoney($this->toFloat($snapshot->total_gross_value)),

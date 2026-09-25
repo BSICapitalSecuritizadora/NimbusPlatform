@@ -19,6 +19,7 @@ use App\Models\GuaranteeSnapshot;
 use App\Services\Guarantees\EmissionGuaranteeCoverageEngine;
 use App\Services\Guarantees\GuaranteeAlertBuilder;
 use App\Services\Guarantees\GuaranteeSnapshotWriter;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -26,12 +27,18 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Callout;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
 use Filament\Tables\Columns\TextColumn;
@@ -43,6 +50,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Aba de Garantias da emissão.
@@ -69,6 +77,16 @@ class GuaranteesRelationManager extends RelationManager
     /** @var Collection<int, GuaranteePositionData>|null */
     protected ?Collection $positionsByGuarantee = null;
 
+    /**
+     * Apurações das competências escolhidas nos modais, por mês (`Y-m-d`).
+     *
+     * @var array<string, EmissionGuaranteePositionData>
+     */
+    protected array $competencePositions = [];
+
+    /** @var array<string, string>|null */
+    protected ?array $closedCompetenceOptionsCache = null;
+
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
         return auth()->user()?->can(AccessPermission::GuaranteesView->value) ?? false;
@@ -94,9 +112,7 @@ class GuaranteesRelationManager extends RelationManager
             return null;
         }
 
-        return $ownerRecord->requiresMonthlyGuaranteeSnapshotUpdate()
-            ? 'A competência atual ainda não foi consolidada.'
-            : null;
+        return $ownerRecord->pendingGuaranteeSnapshotReason();
     }
 
     public function form(Schema $schema): Schema
@@ -287,6 +303,7 @@ class GuaranteesRelationManager extends RelationManager
             ->headerActions([
                 $this->makeUpdateCompetenceAction(),
                 $this->makeCloseCompetenceAction(),
+                $this->makeReopenCompetenceAction(),
                 CreateAction::make()
                     ->label('Cadastrar garantia')
                     ->modalHeading('Cadastrar garantia')
@@ -336,7 +353,9 @@ class GuaranteesRelationManager extends RelationManager
     }
 
     /**
-     * Posição consolidada da competência corrente, apurada uma vez por request.
+     * Posição consolidada da competência corrente (mês de negócio), apurada uma
+     * vez por request. É o que a aba exibe; atualizar e fechar escolhem a
+     * competência no próprio modal.
      */
     protected function position(): EmissionGuaranteePositionData
     {
@@ -440,7 +459,7 @@ class GuaranteesRelationManager extends RelationManager
             ->authorize(fn (): bool => $this->canUpdateValues())
             ->modalHeading('Informar valor da competência')
             ->fillForm(fn (): array => [
-                'reference_month' => GuaranteeSnapshot::formatReferenceMonthForDisplay(now()->startOfMonth()),
+                'reference_month' => GuaranteeSnapshot::formatReferenceMonthForDisplay(GuaranteeSnapshot::currentBusinessMonth()),
             ])
             ->form([
                 TextInput::make('reference_month')
@@ -451,12 +470,18 @@ class GuaranteesRelationManager extends RelationManager
                 $this->currencyInput('current_value', 'Valor da garantia')->required(),
             ])
             ->action(function (Guarantee $record, array $data): void {
-                app(GuaranteeSnapshotWriter::class)->recordManualValue(
-                    guarantee: $record,
-                    referenceMonth: $data['reference_month'],
-                    value: MoneyFormatter::normalizeDecimalValue($data['current_value']),
-                    actor: auth()->user(),
-                );
+                try {
+                    app(GuaranteeSnapshotWriter::class)->recordManualValue(
+                        guarantee: $record,
+                        referenceMonth: $data['reference_month'],
+                        value: MoneyFormatter::normalizeDecimalValue($data['current_value']),
+                        actor: auth()->user(),
+                    );
+                } catch (ValidationException $exception) {
+                    $this->notifyFailure('Não foi possível informar o valor.', $exception);
+
+                    return;
+                }
 
                 $this->resetPositionCache();
 
@@ -464,6 +489,11 @@ class GuaranteesRelationManager extends RelationManager
             });
     }
 
+    /**
+     * Grava a apuração de uma competência escolhida pelo usuário. O padrão é o
+     * mês de negócio anterior: o Quadro de Vendas de um mês só é publicado no
+     * seguinte, e a tela presa ao mês corrente gravava sempre o quadro velho.
+     */
     protected function makeUpdateCompetenceAction(): Action
     {
         return Action::make('update_competence')
@@ -471,22 +501,48 @@ class GuaranteesRelationManager extends RelationManager
             ->icon('heroicon-o-arrow-path')
             ->color('warning')
             ->authorize(fn (): bool => $this->canUpdateValues())
-            ->requiresConfirmation()
             ->modalHeading('Atualizar a posição da competência')
-            ->modalDescription('O sistema consolida saldo devedor, recebíveis, estoque, contas e avaliações da competência atual e grava o snapshot. Valores sem fonte automática permanecem pendentes de digitação.')
+            ->modalDescription('O sistema consolida saldo devedor, recebíveis, estoque, contas e avaliações da competência escolhida e grava o snapshot. Valores sem fonte automática permanecem pendentes de digitação.')
             ->modalSubmitActionLabel('Atualizar')
-            ->action(function (): void {
-                app(GuaranteeSnapshotWriter::class)->persist(
-                    emission: $this->getOwnerRecord(),
-                    actor: auth()->user(),
-                );
+            ->fillForm(fn (): array => [
+                'reference_month' => GuaranteeSnapshot::formatReferenceMonthForDisplay(GuaranteeSnapshot::previousBusinessMonth()),
+            ])
+            ->form([
+                $this->competenceInput(closedCompetenceMessage: 'A competência %s está fechada. Reabra-a antes de atualizar.'),
+            ])
+            ->action(function (array $data): void {
+                $referenceMonth = (string) GuaranteeSnapshot::normalizeReferenceMonth($data['reference_month']);
+
+                try {
+                    $snapshot = app(GuaranteeSnapshotWriter::class)->persist(
+                        emission: $this->getOwnerRecord(),
+                        referenceMonth: $referenceMonth,
+                        actor: auth()->user(),
+                    );
+                } catch (ValidationException $exception) {
+                    $this->notifyFailure('Não foi possível atualizar a competência.', $exception);
+
+                    return;
+                }
 
                 $this->resetPositionCache();
 
-                Notification::make()->title('Posição da competência atualizada.')->success()->send();
+                Notification::make()
+                    ->success()
+                    ->title(sprintf('Posição da competência %s atualizada.', $snapshot->formatted_reference_month))
+                    ->send();
             });
     }
 
+    /**
+     * Fecha uma competência escolhida pelo usuário.
+     *
+     * Com algum empreendimento das garantias de estoque sem o quadro do próprio
+     * mês, o modal lista os empreendimentos e o mês usado e exige a confirmação
+     * explícita. O que foi confirmado vai num campo oculto e o servidor compara
+     * com o que encontra ao gravar: um quadro publicado no meio invalida a
+     * confirmação.
+     */
     protected function makeCloseCompetenceAction(): Action
     {
         return Action::make('close_competence')
@@ -494,29 +550,298 @@ class GuaranteesRelationManager extends RelationManager
             ->icon('heroicon-o-lock-closed')
             ->color('gray')
             ->authorize(fn (): bool => $this->canCloseCompetence())
-            ->visible(fn (): bool => ! $this->isCompetenceClosed())
-            ->requiresConfirmation()
             ->modalHeading('Fechar a competência')
-            ->modalDescription('O indicador do mês passa a ser imutável e é o que os relatórios usarão. Reabrir depois exige permissão específica e fica registrado na auditoria.')
+            ->modalDescription('O indicador do mês passa a ser imutável e é o que os relatórios usarão. Reabrir depois exige permissão específica, motivo e fica registrado na auditoria.')
             ->modalSubmitActionLabel('Fechar competência')
-            ->action(function (): void {
-                app(GuaranteeSnapshotWriter::class)->close(
-                    emission: $this->getOwnerRecord(),
-                    referenceMonth: $this->position()->referenceMonth,
-                    actor: auth()->user(),
-                );
+            ->fillForm(fn (): array => [
+                'reference_month' => GuaranteeSnapshot::formatReferenceMonthForDisplay(GuaranteeSnapshot::previousBusinessMonth()),
+            ])
+            ->form([
+                $this->competenceInput(closedCompetenceMessage: 'A competência %s já está fechada.')
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(function (Set $set): void {
+                        $set('confirm_partial_coverage', false);
+                        $set('acknowledged_sales_board_gaps', null);
+                    }),
+
+                TextEntry::make('competence_summary')
+                    ->label('Apuração da competência')
+                    ->state(fn (Get $get): string => $this->competenceSummary($get('reference_month'))),
+
+                Callout::make('Posição do Quadro de Vendas incompleta')
+                    ->warning()
+                    ->description(fn (Get $get): ?string => $this->partialCoverageMessage($get('reference_month')))
+                    ->visible(fn (Get $get): bool => $this->competenceHasSalesBoardGaps($get('reference_month'))),
+
+                Checkbox::make('confirm_partial_coverage')
+                    ->label('Confirmo o fechamento com a posição parcial do Quadro de Vendas')
+                    ->accepted()
+                    ->live()
+                    ->visible(fn (Get $get): bool => $this->competenceHasSalesBoardGaps($get('reference_month')))
+                    ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
+                        $set(
+                            'acknowledged_sales_board_gaps',
+                            $state ? $this->competencePosition($get('reference_month'))?->salesBoardGapsFingerprint() : null,
+                        );
+                    })
+                    ->validationMessages([
+                        'accepted' => 'Confirme o fechamento com a posição parcial do Quadro de Vendas.',
+                    ]),
+
+                /**
+                 * Quais lacunas o usuário viu e aceitou. O servidor compara com
+                 * as que encontra na hora de fechar.
+                 */
+                Hidden::make('acknowledged_sales_board_gaps'),
+            ])
+            ->action(function (array $data): void {
+                $referenceMonth = (string) GuaranteeSnapshot::normalizeReferenceMonth($data['reference_month']);
+                $acknowledged = $data['acknowledged_sales_board_gaps'] ?? null;
+
+                try {
+                    $snapshot = app(GuaranteeSnapshotWriter::class)->close(
+                        emission: $this->getOwnerRecord(),
+                        referenceMonth: $referenceMonth,
+                        actor: auth()->user(),
+                        acknowledgedSalesBoardGaps: filled($acknowledged) ? (string) $acknowledged : null,
+                    );
+                } catch (ValidationException $exception) {
+                    $this->notifyFailure('Não foi possível fechar a competência.', $exception);
+
+                    return;
+                }
 
                 $this->resetPositionCache();
 
-                Notification::make()->title('Competência fechada.')->success()->send();
+                Notification::make()
+                    ->success()
+                    ->title(sprintf('Competência %s fechada.', $snapshot->formatted_reference_month))
+                    ->body($snapshot->hasPartialCoverageConfirmation()
+                        ? 'Fechada com a posição parcial do Quadro de Vendas confirmada.'
+                        : null)
+                    ->send();
             });
+    }
+
+    /**
+     * Reabre uma competência fechada, com motivo obrigatório e permissão própria.
+     */
+    protected function makeReopenCompetenceAction(): Action
+    {
+        return Action::make('reopen_competence')
+            ->label('Reabrir competência')
+            ->icon('heroicon-o-lock-open')
+            ->color('gray')
+            ->authorize(fn (): bool => $this->canReopenCompetence())
+            ->visible(fn (): bool => $this->closedCompetenceOptions() !== [])
+            ->modalHeading('Reabrir competência de garantias')
+            ->modalDescription('A competência volta a aceitar atualização e digitação de valores. O número fechado pode já ter saído em relatório: a reabertura e o motivo ficam registrados na auditoria.')
+            ->modalSubmitActionLabel('Reabrir competência')
+            ->fillForm(fn (): array => [
+                'reference_month' => $this->defaultCompetenceToReopen(),
+            ])
+            ->form([
+                Select::make('reference_month')
+                    ->label('Competência fechada')
+                    ->options(fn (): array => $this->closedCompetenceOptions())
+                    ->required()
+                    ->validationMessages([
+                        'required' => 'Escolha a competência a reabrir.',
+                    ]),
+                Textarea::make('reason')
+                    ->label('Motivo')
+                    ->required()
+                    ->rows(3)
+                    ->maxLength(1000)
+                    ->placeholder('Quadro de Vendas do mês publicado depois do fechamento, correção de recebíveis...')
+                    ->validationMessages([
+                        'required' => 'Informe o motivo da reabertura.',
+                    ]),
+            ])
+            ->action(function (array $data): void {
+                try {
+                    $snapshot = app(GuaranteeSnapshotWriter::class)->reopen(
+                        emission: $this->getOwnerRecord(),
+                        referenceMonth: (string) $data['reference_month'],
+                        actor: auth()->user(),
+                        reason: (string) $data['reason'],
+                    );
+                } catch (ValidationException $exception) {
+                    $this->notifyFailure('Não foi possível reabrir a competência.', $exception);
+
+                    return;
+                }
+
+                $this->resetPositionCache();
+
+                Notification::make()
+                    ->success()
+                    ->title(sprintf('Competência %s reaberta.', $snapshot->formatted_reference_month))
+                    ->body('Atualize a competência para apurar de novo e feche quando a posição estiver pronta.')
+                    ->send();
+            });
+    }
+
+    /**
+     * Competência escolhida no modal (MM/AAAA): precisa ser um mês válido, já
+     * iniciado no calendário de negócio e ainda aberto.
+     *
+     * @param  string  $closedCompetenceMessage  mensagem (sprintf com o mês) para competência fechada
+     */
+    protected function competenceInput(string $closedCompetenceMessage): TextInput
+    {
+        return TextInput::make('reference_month')
+            ->label('Competência')
+            ->placeholder('MM/AAAA')
+            ->mask('99/9999')
+            ->required()
+            ->rules([
+                fn (): Closure => function (string $attribute, mixed $value, Closure $fail) use ($closedCompetenceMessage): void {
+                    $message = $this->competenceValidationMessage($value, $closedCompetenceMessage);
+
+                    if ($message !== null) {
+                        $fail($message);
+                    }
+                },
+            ])
+            ->validationMessages([
+                'required' => 'Informe a competência.',
+            ]);
+    }
+
+    protected function competenceValidationMessage(mixed $value, string $closedCompetenceMessage): ?string
+    {
+        $referenceMonth = GuaranteeSnapshot::normalizeReferenceMonth($value);
+
+        if ($referenceMonth === null) {
+            return 'Informe a competência no formato MM/AAAA.';
+        }
+
+        $label = GuaranteeSnapshot::formatReferenceMonthForDisplay($referenceMonth);
+
+        if ($referenceMonth > GuaranteeSnapshot::currentBusinessMonth()) {
+            return sprintf('A competência %s ainda não começou.', $label);
+        }
+
+        if ($this->isCompetenceClosedFor($referenceMonth)) {
+            return sprintf($closedCompetenceMessage, $label);
+        }
+
+        return null;
+    }
+
+    /**
+     * Apuração da competência digitada no modal, ou nula enquanto ela não for um
+     * mês válido e já iniciado.
+     */
+    protected function competencePosition(mixed $value): ?EmissionGuaranteePositionData
+    {
+        $referenceMonth = GuaranteeSnapshot::normalizeReferenceMonth($value);
+
+        if ($referenceMonth === null || $referenceMonth > GuaranteeSnapshot::currentBusinessMonth()) {
+            return null;
+        }
+
+        return $this->competencePositions[$referenceMonth] ??= app(EmissionGuaranteeCoverageEngine::class)
+            ->buildPosition($this->getOwnerRecord(), $referenceMonth);
+    }
+
+    protected function competenceHasSalesBoardGaps(mixed $value): bool
+    {
+        return $this->competencePosition($value)?->hasSalesBoardGaps() ?? false;
+    }
+
+    protected function competenceSummary(mixed $value): string
+    {
+        $position = $this->competencePosition($value);
+
+        if ($position === null) {
+            return '—';
+        }
+
+        return sprintf(
+            '%s · cobertura %s · elegível %s',
+            $position->coverageStatus->label(),
+            $this->ratio($position->coverageRatio),
+            $this->money($position->totalEligibleValue),
+        );
+    }
+
+    protected function partialCoverageMessage(mixed $value): ?string
+    {
+        $position = $this->competencePosition($value);
+
+        if (! $position?->hasSalesBoardGaps()) {
+            return null;
+        }
+
+        return sprintf(
+            'As garantias de estoque de %s não têm o Quadro de Vendas da própria competência em todos os empreendimentos: %s. O fechamento congela esta posição.',
+            $position->referenceMonthLabel(),
+            implode('; ', $position->salesBoardGapDescriptions()),
+        );
+    }
+
+    /**
+     * Competências fechadas, da mais recente para a mais antiga.
+     *
+     * @return array<string, string>
+     */
+    protected function closedCompetenceOptions(): array
+    {
+        return $this->closedCompetenceOptionsCache ??= $this->getOwnerRecord()
+            ->guaranteeSnapshots()
+            ->whereNotNull('closed_at')
+            ->orderByDesc('reference_month')
+            ->get()
+            ->mapWithKeys(fn (GuaranteeSnapshot $snapshot): array => [
+                $snapshot->reference_month->toDateString() => $snapshot->isSalesBoardOutdated()
+                    ? $snapshot->formatted_reference_month.' · desatualizada pelo Quadro de Vendas'
+                    : $snapshot->formatted_reference_month,
+            ])
+            ->all();
+    }
+
+    /**
+     * A reabertura sugere primeiro a competência fechada que um quadro publicado
+     * desatualizou; sem nenhuma, a mais recente.
+     */
+    protected function defaultCompetenceToReopen(): ?string
+    {
+        $outdated = $this->getOwnerRecord()
+            ->guaranteeSnapshots()
+            ->whereNotNull('closed_at')
+            ->whereNotNull('sales_board_outdated_at')
+            ->orderByDesc('reference_month')
+            ->first();
+
+        if ($outdated instanceof GuaranteeSnapshot) {
+            return $outdated->reference_month->toDateString();
+        }
+
+        return array_key_first($this->closedCompetenceOptions());
+    }
+
+    protected function notifyFailure(string $title, ValidationException $exception): void
+    {
+        Notification::make()
+            ->danger()
+            ->title($title)
+            ->body(collect($exception->errors())->flatten()->first())
+            ->persistent()
+            ->send();
     }
 
     protected function isCompetenceClosed(): bool
     {
+        return $this->isCompetenceClosedFor($this->position()->referenceMonth);
+    }
+
+    protected function isCompetenceClosedFor(string $referenceMonth): bool
+    {
         return $this->getOwnerRecord()
             ->guaranteeSnapshots()
-            ->whereDate('reference_month', $this->position()->referenceMonth)
+            ->whereDate('reference_month', $referenceMonth)
             ->whereNotNull('closed_at')
             ->exists();
     }
@@ -525,6 +850,8 @@ class GuaranteesRelationManager extends RelationManager
     {
         $this->positionCache = null;
         $this->positionsByGuarantee = null;
+        $this->competencePositions = [];
+        $this->closedCompetenceOptionsCache = null;
         $this->getOwnerRecord()->unsetRelation('guaranteeSnapshots');
     }
 
@@ -683,6 +1010,11 @@ class GuaranteesRelationManager extends RelationManager
     protected function canCloseCompetence(): bool
     {
         return auth()->user()?->can(AccessPermission::GuaranteesCloseCompetence->value) ?? false;
+    }
+
+    protected function canReopenCompetence(): bool
+    {
+        return auth()->user()?->can(AccessPermission::GuaranteesReopenCompetence->value) ?? false;
     }
 
     protected function canManageValuations(): bool

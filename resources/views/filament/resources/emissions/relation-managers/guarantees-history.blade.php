@@ -18,7 +18,7 @@
             <div class="flex flex-col gap-1 xl:flex-row xl:items-center xl:justify-between">
                 <h3 class="text-base font-semibold text-[#fbfaf8]">Cobertura por Competência</h3>
                 <p class="text-xs text-slate-400">
-                    Snapshots consolidados e imutáveis gravados no fechamento de cada competência.
+                    Snapshots gravados por competência. Fechados são imutáveis; "Desatualizada" indica Quadro de Vendas registrado depois da apuração.
                 </p>
             </div>
         </div>
@@ -64,6 +64,23 @@
                                         <div class="mt-0.5 text-[10px] text-slate-400 flex items-center gap-1">
                                             <x-heroicon-m-lock-closed class="h-3 w-3 text-slate-400" />
                                             Fechada
+                                        </div>
+                                    @endif
+                                    @if ($snapshot->isSalesBoardOutdated())
+                                        <div class="mt-1 inline-flex items-center gap-1 rounded bg-amber-950/40 px-1.5 py-0.5 text-[10px] font-medium text-amber-300/90 border border-amber-500/30"
+                                             title="Quadro de Vendas registrado em {{ $snapshot->sales_board_outdated_at->format('d/m/Y H:i') }}, depois da apuração.">
+                                            <x-heroicon-m-exclamation-triangle class="h-3 w-3" />
+                                            Desatualizada
+                                        </div>
+                                    @endif
+                                    @if ($snapshot->hasPartialCoverageConfirmation())
+                                        <div class="mt-1 text-[10px] text-amber-200/80"
+                                             title="{{ implode('; ', $snapshot->partialCoverageDescriptions()) }}">
+                                            Posição parcial confirmada
+                                            @if ($snapshot->partialCoverageConfirmedBy)
+                                                por {{ $snapshot->partialCoverageConfirmedBy->name }}
+                                            @endif
+                                            em {{ $snapshot->partial_coverage_confirmed_at->format('d/m/Y') }}
                                         </div>
                                     @endif
                                 </td>

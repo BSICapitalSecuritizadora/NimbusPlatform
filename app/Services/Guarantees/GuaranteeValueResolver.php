@@ -2,13 +2,17 @@
 
 namespace App\Services\Guarantees;
 
+use App\DTOs\Guarantees\GuaranteeSalesBoardCoverage;
 use App\DTOs\Guarantees\ResolvedGuaranteeValue;
+use App\DTOs\SalesBoards\ConstructionSalesPosition;
 use App\Enums\GuaranteeValueSource;
+use App\Enums\SalesBoardPositionStatus;
 use App\Models\Guarantee;
 use App\Models\GuaranteeMonthlyPosition;
 use App\Models\Receivable;
 use App\Models\SalesBoard;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
 /**
@@ -133,17 +137,34 @@ class GuaranteeValueResolver
      * Quando a garantia aponta para um empreendimento específico, só ele entra —
      * somar a carteira inteira inflaria a cobertura de uma garantia que recai
      * sobre um único ativo.
+     *
+     * A origem de cada posição vai junto (`sales_board_coverage`): um
+     * empreendimento com posição transportada de mês anterior, sem quadro até a
+     * competência ou sem quadro algum deixa o valor `partial` — é a melhor
+     * posição conhecida, mas não é a da competência, e o fechamento exige
+     * confirmação explícita disso.
      */
     private function resolveFromSalesBoards(
         Guarantee $guarantee,
         string $referenceMonth,
         EmissionOperationalDataset $dataset,
     ): ResolvedGuaranteeValue {
-        $salesBoards = $dataset->salesBoardsForMonth($referenceMonth, $guarantee->construction_id);
+        $positions = $this->constructionPositionsInScope($guarantee, $referenceMonth, $dataset);
+        $coverage = GuaranteeSalesBoardCoverage::fromConstructionPositions(
+            emissionWide: $guarantee->construction_id === null,
+            positions: $positions,
+        );
+
+        $salesBoards = collect($positions)
+            ->filter(fn (ConstructionSalesPosition $position): bool => $position->isResolved())
+            ->map(fn (ConstructionSalesPosition $position): ?SalesBoard => $position->salesBoard)
+            ->filter(fn (?SalesBoard $salesBoard): bool => $salesBoard instanceof SalesBoard)
+            ->values();
 
         if ($salesBoards->isEmpty()) {
             return ResolvedGuaranteeValue::pending(GuaranteeValueSource::SalesBoard, [
                 'reason' => 'Sem quadro de vendas para a competência.',
+                'sales_board_coverage' => $coverage->toArray(),
             ]);
         }
 
@@ -156,13 +177,61 @@ class GuaranteeValueResolver
         $pledgedShare = $this->pledgedShare($guarantee);
         $value = round($stockValue * $pledgedShare, 2);
 
-        return ResolvedGuaranteeValue::automatic($value, GuaranteeValueSource::SalesBoard, [
+        $metadata = [
             'stock_value' => $stockValue,
             'stock_units' => $stockUnits,
             'pledged_share' => $pledgedShare,
             'sales_board_ids' => $salesBoards->pluck('id')->all(),
             'average_unit_value' => $stockUnits > 0 ? round($stockValue / $stockUnits, 2) : null,
-        ]);
+            'sales_board_coverage' => $coverage->toArray(),
+        ];
+
+        if (! $coverage->hasGaps()) {
+            return ResolvedGuaranteeValue::automatic($value, GuaranteeValueSource::SalesBoard, $metadata);
+        }
+
+        return ResolvedGuaranteeValue::partial($value, GuaranteeValueSource::SalesBoard, array_merge($metadata, [
+            'reason' => 'Posição parcial do quadro de vendas — '.implode('; ', $coverage->gapDescriptions()).'.',
+        ]));
+    }
+
+    /**
+     * Posições dos empreendimentos sobre os quais a garantia recai.
+     *
+     * A garantia amarrada a um empreendimento que o leitor não conhece (fora da
+     * emissão e sem quadro nela) aparece como "sem quadro" em vez de sumir: é
+     * isso que faz um quadro registrado depois para ele desatualizar o snapshot.
+     *
+     * @return list<ConstructionSalesPosition>
+     */
+    private function constructionPositionsInScope(
+        Guarantee $guarantee,
+        string $referenceMonth,
+        EmissionOperationalDataset $dataset,
+    ): array {
+        $positions = $dataset->salesPositionForMonth($referenceMonth)->positions;
+
+        if ($guarantee->construction_id === null) {
+            return $positions;
+        }
+
+        $constructionId = (int) $guarantee->construction_id;
+
+        $inScope = array_values(array_filter(
+            $positions,
+            fn (ConstructionSalesPosition $position): bool => $position->constructionId === $constructionId,
+        ));
+
+        if ($inScope !== []) {
+            return $inScope;
+        }
+
+        return [ConstructionSalesPosition::absent(
+            constructionId: $constructionId,
+            constructionName: $guarantee->construction?->development_name,
+            positionDate: CarbonImmutable::parse($referenceMonth),
+            status: SalesBoardPositionStatus::Unpositioned,
+        )];
     }
 
     /**

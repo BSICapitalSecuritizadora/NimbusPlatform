@@ -4,9 +4,11 @@ namespace App\Services\Guarantees;
 
 use App\DTOs\Guarantees\EmissionGuaranteePositionData;
 use App\DTOs\Guarantees\GuaranteePositionData;
+use App\DTOs\Guarantees\GuaranteeSalesBoardCoverage;
 use App\Enums\GuaranteeCoverageStatus;
 use App\Enums\GuaranteeRequirementBase;
 use App\Enums\GuaranteeRequirementBasis;
+use App\Enums\GuaranteeValueSource;
 use App\Models\Emission;
 use App\Models\Guarantee;
 use App\Models\GuaranteeMonthlyPosition;
@@ -42,13 +44,14 @@ class EmissionGuaranteeCoverageEngine
      * Posição consolidada da emissão numa competência.
      *
      * `$referenceMonth` aceita qualquer formato que
-     * {@see GuaranteeSnapshot::normalizeReferenceMonth()} entenda; o mês corrente
-     * é o padrão.
+     * {@see GuaranteeSnapshot::normalizeReferenceMonth()} entenda; o padrão é o
+     * mês corrente do calendário de negócio (America/Sao_Paulo) — nunca o mês
+     * UTC, que entre 21:00 e 23:59 do último dia já é o seguinte.
      */
     public function buildPosition(Emission $emission, ?string $referenceMonth = null): EmissionGuaranteePositionData
     {
-        $referenceMonth = GuaranteeSnapshot::normalizeReferenceMonth($referenceMonth ?? now()->startOfMonth()->toDateString())
-            ?? now()->startOfMonth()->toDateString();
+        $referenceMonth = GuaranteeSnapshot::normalizeReferenceMonth($referenceMonth ?? GuaranteeSnapshot::currentBusinessMonth())
+            ?? GuaranteeSnapshot::currentBusinessMonth();
 
         $dataset = new EmissionOperationalDataset($emission);
         $outstandingBalance = $this->outstandingBalanceResolver->resolveOrNull($emission, $referenceMonth);
@@ -85,6 +88,7 @@ class EmissionGuaranteeCoverageEngine
         }
 
         return $emission->guaranteeSnapshots()
+            ->with('partialCoverageConfirmedBy')
             ->orderByDesc('reference_month')
             ->get();
     }
@@ -178,6 +182,23 @@ class EmissionGuaranteeCoverageEngine
             ),
             activeGuaranteesCount: $contributing->count(),
             pendingSources: $this->collectPendingSources($contributing),
+            salesBoardCoverage: $this->collectSalesBoardCoverage($contributing),
+        );
+    }
+
+    /**
+     * Quadros de vendas que responderam pelas garantias de estoque que compõem
+     * a cobertura. Nulo quando nenhuma delas depende do quadro — aí não há
+     * posição parcial a confirmar nem publicação que desatualize o snapshot.
+     *
+     * @param  Collection<int, GuaranteePositionData>  $positions
+     */
+    private function collectSalesBoardCoverage(Collection $positions): ?GuaranteeSalesBoardCoverage
+    {
+        return GuaranteeSalesBoardCoverage::merge(
+            $positions
+                ->filter(fn (GuaranteePositionData $position): bool => $position->value->source === GuaranteeValueSource::SalesBoard)
+                ->map(fn (GuaranteePositionData $position): ?GuaranteeSalesBoardCoverage => $position->value->salesBoardCoverage()),
         );
     }
 
