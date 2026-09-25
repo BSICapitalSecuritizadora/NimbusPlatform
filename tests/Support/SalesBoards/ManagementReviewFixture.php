@@ -95,6 +95,7 @@ final class ManagementReviewFixture
         SalesDiscountPolicy::factory()
             ->forConstruction($construction)
             ->effectiveFrom('2020-01-01')
+            ->closedPeriod()
             ->allowing('10.00')
             ->create();
 

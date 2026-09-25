@@ -68,7 +68,12 @@ final class IntegerMoney
      * "5" e "5,00" viram 500; "4.25" vira 425. Percentuais com mais de duas
      * casas são recusados em vez de arredondados: a política é gravada em
      * `decimal(5,2)`, e aceitar 4,255% aqui esconderia um dado que o banco
-     * truncaria depois.
+     * arredondaria depois. Casas além da segunda só passam quando são zeros --
+     * "4.250" é 4,25%, e é assim que um `float` chega depois de renderizado.
+     *
+     * Percentual não tem agrupamento de milhar: o único separador aceito é o
+     * decimal, ponto ou vírgula. Pela leitura dos valores monetários, "4.255"
+     * seria quatro mil duzentos e cinquenta e cinco.
      */
     public static function basisPoints(mixed $percent): ?int
     {
@@ -84,21 +89,26 @@ final class IntegerMoney
             $percent = sprintf('%.4F', $percent);
         }
 
-        $percent = trim((string) $percent);
+        $percent = trim(str_replace('%', '', (string) $percent));
 
-        if ($percent === '') {
+        if (preg_match('/^([+-]?)(\d*)(?:[.,](\d*))?$/', $percent, $matches) !== 1) {
             return null;
         }
 
-        $percent = str_replace('%', '', $percent);
+        $units = $matches[2];
+        $fraction = $matches[3] ?? '';
 
-        $basisPoints = self::parseDecimalString($percent);
-
-        if ($basisPoints === null) {
+        if (($units === '') && ($fraction === '')) {
             return null;
         }
 
-        return $basisPoints;
+        if (rtrim(substr($fraction, 2), '0') !== '') {
+            return null;
+        }
+
+        $basisPoints = ((int) $units * 100) + (int) str_pad(substr($fraction, 0, 2), 2, '0');
+
+        return ($matches[1] === '-') ? -$basisPoints : $basisPoints;
     }
 
     /**

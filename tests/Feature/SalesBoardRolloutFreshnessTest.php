@@ -100,7 +100,14 @@ function changeAfterApproval(string $change, array $scenario): void
         'contract sale value' => $scenario['contract']->update(['sale_value' => '470000.00']),
         'installment payment' => $scenario['installment']->update(['payment_date' => '2026-07-20', 'paid_value' => '480000.00']),
         'unit value' => $scenario['unitValue']->update(['value' => '550000.00']),
-        'discount policy' => $scenario['policy']->update(['maximum_discount_percent' => '1.00']),
+        // A política é append-only: mudar o limite é registrar outra, que
+        // substitui a vigente antes da venda do cenário.
+        'discount policy' => SalesDiscountPolicy::factory()
+            ->forConstruction($scenario['policy']->construction)
+            ->effectiveFrom('2026-07-01')
+            ->closedPeriod()
+            ->allowing('1.00')
+            ->create(),
         'exchange' => ConstructionUnitExchange::factory()->create([
             'construction_unit_id' => $scenario['stockUnitA']->id,
             'exchange_value' => '700000.00',
@@ -123,7 +130,8 @@ function changeAfterApproval(string $change, array $scenario): void
         'records touched' => [
             $scenario['contract']->touch(),
             $scenario['unitValue']->touch(),
-            $scenario['policy']->touch(),
+            // O model recusa até o `touch()`; o carimbo muda por fora dele.
+            SalesDiscountPolicy::query()->whereKey($scenario['policy']->id)->update(['updated_at' => now()]),
             $scenario['legacyBoard']->fresh()->touch(),
         ],
         'construction renamed' => $scenario['constructions'][1]->update(['development_name' => 'Residencial Renomeado']),

@@ -98,7 +98,7 @@ final class AutomationFixture
         ]);
 
         SalesDiscountPolicy::factory()->forConstruction($construction)
-            ->effectiveFrom('2020-01-01')->allowing('10.00')->create();
+            ->effectiveFrom('2020-01-01')->closedPeriod()->allowing('10.00')->create();
 
         DerivationFixture::unit($construction, $unitPrefix.'01');
         DerivationFixture::unit($construction, $unitPrefix.'02');
@@ -117,7 +117,7 @@ final class AutomationFixture
         ]);
 
         SalesDiscountPolicy::factory()->forConstruction($construction)
-            ->effectiveFrom('2020-01-01')->allowing('10.00')->create();
+            ->effectiveFrom('2020-01-01')->closedPeriod()->allowing('10.00')->create();
 
         DerivationFixture::unit($construction, $unitPrefix.'01');
 

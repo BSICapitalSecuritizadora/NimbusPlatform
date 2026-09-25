@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\SalesBoards\SalesDiscountPolicyRegistrar;
 use App\Services\SalesBoards\SalesDiscountPolicyResolver;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -9,6 +10,9 @@ use Database\Factories\SalesDiscountPolicyFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * Desconto comercial máximo que a BSI autorizava para um empreendimento num
@@ -16,7 +20,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * Append-only, como o histórico de valores das unidades: a pergunta que estas
  * linhas respondem é "o que estava autorizado quando aquela venda aconteceu", e
- * editar a linha apagaria a resposta.
+ * editar a linha apagaria a resposta. O model recusa edição e exclusão; mudar o
+ * limite ou corrigir um erro é registrar outra política, pelo
+ * {@see SalesDiscountPolicyRegistrar}.
  *
  * Vigência fechada `[effective_from, effective_until]`, os dois dias incluídos.
  * Uma política nova substitui a anterior a partir do próprio início, e a
@@ -31,7 +37,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class SalesDiscountPolicy extends Model
 {
     /** @use HasFactory<SalesDiscountPolicyFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     public const MINIMUM_DISCOUNT_PERCENT = 0;
 
@@ -46,6 +52,22 @@ class SalesDiscountPolicy extends Model
         'created_by_id',
     ];
 
+    /**
+     * Sem esta guarda, a regra append-only valia só enquanto a tela não
+     * oferecesse edição: uma correção por tinker, comando ou importação mudaria
+     * o limite de uma política já usada, e as próximas derivações responderiam
+     * "o que a BSI autorizava naquela data" com um valor que nunca foi aprovado.
+     */
+    protected static function booted(): void
+    {
+        $appendOnly = function (): never {
+            throw new LogicException('Sales discount policies are append-only: register a new policy instead.');
+        };
+
+        static::updating($appendOnly);
+        static::deleting($appendOnly);
+    }
+
     protected function casts(): array
     {
         return [
@@ -53,6 +75,19 @@ class SalesDiscountPolicy extends Model
             'effective_from' => 'date',
             'effective_until' => 'date',
         ];
+    }
+
+    /**
+     * Trilha no log do Quadro de Vendas, que a retenção protege: a política
+     * decide a conformidade de vendas que viram posição publicada.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('sales_board')
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     public function construction(): BelongsTo
