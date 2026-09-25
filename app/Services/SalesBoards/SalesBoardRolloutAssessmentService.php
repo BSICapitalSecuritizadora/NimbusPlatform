@@ -103,31 +103,41 @@ class SalesBoardRolloutAssessmentService
         )->startOfMonth();
         $startMonth = $homologation->startsAt();
 
-        /**
-         * Derivação e observação da fonte numa transação só, pelo mesmo motivo
-         * da geração: comparar um snapshot de um instante com um resumo de fonte
-         * de outro acusaria diferenças que nunca existiram ao mesmo tempo.
-         */
-        [$positions, $observations] = DB::transaction(fn (): array => [
-            $this->derivationService->deriveForConstructions($constructions, $comparisonMonth),
-            $this->fingerprintService->observeForConstructions($constructions, $comparisonMonth),
-        ]);
-
         $legacyBoards = $this->legacyBoardsAtOrAfter($constructions, $startMonth);
         $cycles = $this->cyclesAtOrAfter($constructions, $startMonth);
 
-        $rows = [];
+        /**
+         * Derivação e observação da fonte numa transação só, pelo mesmo motivo
+         * da geração: comparar um snapshot de um instante com um resumo de fonte
+         * de outro acusaria diferenças que nunca existiram ao mesmo tempo. A
+         * transação cobre a Emissão inteira, então todos os empreendimentos
+         * saem da mesma leitura.
+         *
+         * Dentro dela, um empreendimento de cada vez. Abrir, reavaliar, aprovar
+         * e ativar rodam na requisição web, e derivar a Emissão inteira num
+         * lote só mantinha as parcelas de todas as obras em memória ao mesmo
+         * tempo: três obras maduras, que cabem sozinhas, estouravam juntas os
+         * 256 MB. Do empreendimento sobra só a linha reduzida que a homologação
+         * grava -- posição e observação são soltas antes do próximo --, e o
+         * pico passa a ser o do maior empreendimento, não o da soma. O custo é
+         * pagar as leituras da derivação por obra, num ato raro e deliberado.
+         */
+        $rows = DB::transaction(function () use ($constructions, $comparisonMonth, $legacyBoards, $cycles): array {
+            $rows = [];
 
-        foreach ($constructions as $constructionId => $construction) {
-            $rows[$constructionId] = $this->constructionAssessment(
-                construction: $construction,
-                position: $positions[$constructionId],
-                observation: $observations[$constructionId] ?? null,
-                comparisonMonth: $comparisonMonth,
-                legacyBoards: $legacyBoards->get($constructionId, collect()),
-                cycles: $cycles->get($constructionId, collect()),
-            );
-        }
+            foreach ($constructions as $constructionId => $construction) {
+                $rows[$constructionId] = $this->constructionAssessment(
+                    construction: $construction,
+                    position: $this->derivationService->deriveForConstruction($construction, $comparisonMonth),
+                    observation: $this->fingerprintService->observeForConstruction($construction, $comparisonMonth),
+                    comparisonMonth: $comparisonMonth,
+                    legacyBoards: $legacyBoards->get($constructionId, collect()),
+                    cycles: $cycles->get($constructionId, collect()),
+                );
+            }
+
+            return $rows;
+        });
 
         return new SalesBoardRolloutObservation(
             emissionId: (int) $emission->getKey(),
