@@ -44,15 +44,22 @@ use Illuminate\Support\Facades\DB;
  *    só existe depois que esse dia passou no calendário de negócio. Um ciclo
  *    congelado antes disso deixaria de fora as vendas e quitações dos últimos
  *    dias e viraria, para a automação, "o ciclo da competência";
- * 3. **Competência fora da automação não gera.** O ciclo é o caminho do modo
- *    automatizado: uma Emissão legada, ou uma competência anterior à ativação do
- *    rollout, tem a posição registrada à mão. Publicar um ciclo ali congelaria
- *    uma competência que ninguém homologou e que o legado não conseguiria mais
- *    corrigir (decisão do dono do produto de 25/09/2026);
- * 4. **Ciclo existente não regera.** Gerar duas vezes a mesma competência é
+ * 3. **Ciclo existente não regera.** Gerar duas vezes a mesma competência é
  *    inofensivo por construção -- a segunda execução não escreve, não recalcula
  *    e devolve o ciclo que já existia. Recalcular é outra operação, explícita e
  *    com motivo;
+ * 4. **Competência fora da automação não gera.** O ciclo é o caminho do modo
+ *    automatizado: uma Emissão legada, ou uma competência anterior à ativação do
+ *    rollout, tem a posição registrada à mão. Publicar um ciclo ali congelaria
+ *    uma competência que ninguém homologou e que o legado não conseguiria mais
+ *    corrigir (decisão do dono do produto de 25/09/2026).
+ *
+ *    A cobertura vem depois do ciclo existente porque ela decide se um ciclo
+ *    pode *nascer*, não se o que já nasceu é informado. Uma Emissão que voltou
+ *    ao legado continua com os ciclos gerados enquanto era automatizada -- o
+ *    retorno não cancela nada --, e responder "modo legado" a quem pede uma
+ *    dessas competências esconderia um ciclo que existe. É a mesma ordem da
+ *    automação, que reconhece o ciclo existente antes de pedir a geração;
  * 5. **Prontidão bloqueada não persiste nada.** Nenhum ciclo, nenhuma versão,
  *    nenhuma linha. Um ciclo incompleto "para preencher depois" seria lido como
  *    posição pela primeira pessoa que abrisse a tela.
@@ -131,7 +138,7 @@ class SalesBoardGenerationService
         EloquentCollection::make($constructions->values()->all())->load('emission');
 
         $results = [];
-        $eligible = collect();
+        $candidates = collect();
         $openCompetenceReason = CompetenceCalendar::isClosed($month)
             ? null
             : $this->openCompetenceReason($month, $positionDate);
@@ -154,24 +161,22 @@ class SalesBoardGenerationService
                 continue;
             }
 
-            $refusal = $openCompetenceReason ?? $this->coverageRefusal($construction, $month);
-
-            if ($refusal !== null) {
-                $results[$constructionId] = $this->blocked($construction, $month, $positionDate, $refusal, dryRun: $dryRun);
+            if ($openCompetenceReason !== null) {
+                $results[$constructionId] = $this->blocked($construction, $month, $positionDate, $openCompetenceReason, dryRun: $dryRun);
 
                 continue;
             }
 
-            $eligible->put($constructionId, $construction);
+            $candidates->put($constructionId, $construction);
         }
 
-        $existing = $eligible->isEmpty() ? [] : $this->existingCycles($eligible->keys()->all(), $month);
+        $existing = $candidates->isEmpty() ? [] : $this->existingCycles($candidates->keys()->all(), $month);
 
-        foreach ($eligible as $constructionId => $construction) {
+        foreach ($candidates as $constructionId => $construction) {
             $constructionId = (int) $constructionId;
 
-            $results[$constructionId] = isset($existing[$constructionId])
-                ? new SalesBoardGenerationResult(
+            if (isset($existing[$constructionId])) {
+                $results[$constructionId] = new SalesBoardGenerationResult(
                     outcome: SalesBoardGenerationOutcome::AlreadyExists,
                     constructionId: $constructionId,
                     constructionName: $construction->development_name,
@@ -180,8 +185,16 @@ class SalesBoardGenerationService
                     cycle: $existing[$constructionId],
                     baseline: $existing[$constructionId]->currentBaseline,
                     dryRun: $dryRun,
-                )
-                : $this->generateOne($construction, $month, $positionDate, $actor, $dryRun);
+                );
+
+                continue;
+            }
+
+            $coverageRefusal = $this->coverageRefusal($construction, $month);
+
+            $results[$constructionId] = $coverageRefusal === null
+                ? $this->generateOne($construction, $month, $positionDate, $actor, $dryRun)
+                : $this->blocked($construction, $month, $positionDate, $coverageRefusal, dryRun: $dryRun);
         }
 
         return $constructions->keys()

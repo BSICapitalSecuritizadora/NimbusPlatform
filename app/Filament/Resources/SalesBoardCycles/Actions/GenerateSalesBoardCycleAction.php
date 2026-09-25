@@ -39,6 +39,19 @@ class GenerateSalesBoardCycleAction
 {
     public static function make(string $name = 'generateCycle'): Action
     {
+        /**
+         * Respondido uma vez por montagem da ação, e não por processo: a ação é
+         * montada de novo a cada requisição do Livewire, então a resposta vale
+         * pela requisição, e `disabled()` e `tooltip()` dividem uma consulta só
+         * em vez de pagar uma cada um a cada renderização do cabeçalho.
+         */
+        $hasCoveredConstructions = null;
+        $isUnavailable = function () use (&$hasCoveredConstructions): bool {
+            $hasCoveredConstructions ??= self::coveredConstructions()->exists();
+
+            return ! $hasCoveredConstructions;
+        };
+
         return Action::make($name)
             ->label('Congelar competência')
             ->icon('heroicon-o-camera')
@@ -48,8 +61,8 @@ class GenerateSalesBoardCycleAction
             ->modalDescription('A posição é apurada a partir de contratos, parcelas, tabelas de preço, políticas e permutas. Nada é digitado, e nada é gravado se faltar dado para explicar algum número.')
             ->modalSubmitActionLabel('Congelar')
             ->visible(fn (): bool => SalesBoardCycleResource::canGenerate())
-            ->disabled(fn (): bool => self::coveredConstructions()->doesntExist())
-            ->tooltip(fn (): ?string => self::coveredConstructions()->doesntExist()
+            ->disabled(fn (): bool => $isUnavailable())
+            ->tooltip(fn (): ?string => $isUnavailable()
                 ? 'Nenhuma Emissão está com a automação do Quadro ativa. O ciclo mensal só existe para competências cobertas pela automação; nas Emissões legadas a posição é registrada em Quadro de Vendas.'
                 : null)
             ->schema([

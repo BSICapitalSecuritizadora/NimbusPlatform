@@ -17,12 +17,15 @@ use App\Support\SalesBoards\ReferenceMonthInput;
 use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Testing\TestAction;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\SalesBoards\AutomationFixture;
 use Tests\Support\SalesBoards\CycleFixture;
 use Tests\Support\SalesBoards\DerivationFixture;
+use Tests\Support\SalesBoards\RolloutFixture;
 
 uses(RefreshDatabase::class);
 
@@ -227,6 +230,36 @@ describe('cobertura da automação', function () {
             ->and(SalesBoardCycle::query()->count())->toBe(0);
     });
 
+    it('reports the cycle frozen while automated instead of calling the competence legacy after the return', function () {
+        $scenario = RolloutFixture::emission(1);
+        $construction = $scenario['constructions'][0];
+        RolloutFixture::legacyBoard($construction);
+        RolloutFixture::activate($scenario['emission'], RolloutFixture::approvedHomologation($scenario['emission']));
+
+        $frozen = CycleFixture::generate($construction, RolloutFixture::START_MONTH);
+
+        expect($frozen->outcome)->toBe(SalesBoardGenerationOutcome::Generated);
+
+        RolloutFixture::returnToLegacy($scenario['emission']);
+
+        $baselines = SalesBoardCycleBaseline::query()->count();
+        $again = CycleFixture::generate($construction, RolloutFixture::START_MONTH);
+
+        expect($again->outcome)->toBe(SalesBoardGenerationOutcome::AlreadyExists)
+            ->and($again->blockedReason)->toBeNull()
+            ->and($again->cycle?->is($frozen->cycle))->toBeTrue()
+            ->and($again->baseline?->is($frozen->baseline))->toBeTrue()
+            ->and(SalesBoardCycle::query()->count())->toBe(1)
+            ->and(SalesBoardCycleBaseline::query()->count())->toBe($baselines);
+
+        // Sem ciclo, a competência continua recusada pelo modo legado.
+        $withoutCycle = CycleFixture::generate($construction, RolloutFixture::COMPARISON_MONTH);
+
+        expect($withoutCycle->outcome)->toBe(SalesBoardGenerationOutcome::Blocked)
+            ->and($withoutCycle->blockedReason)->toContain('modo legado')
+            ->and(SalesBoardCycle::query()->count())->toBe(1);
+    });
+
     it('refuses a legacy emission through the command', function () {
         $construction = legacyReadyConstruction();
 
@@ -292,6 +325,35 @@ describe('cobertura da automação', function () {
             ->assertActionDisabled(TestAction::make('generateCycle'));
 
         expect(SalesBoardCycle::query()->count())->toBe(0);
+    });
+
+    it('asks the database once per request whether some emission has the automation on', function () {
+        actingAsCycleAdmin();
+        CycleFixture::readyConstruction(2);
+
+        $coverageQueries = 0;
+
+        DB::listen(function (QueryExecuted $query) use (&$coverageQueries): void {
+            if (str_contains($query->sql, 'sales_board_automation_start_reference_month') && str_contains($query->sql, 'constructions')) {
+                $coverageQueries++;
+            }
+        });
+
+        $page = Livewire::test(ListSalesBoardCycles::class)
+            ->assertActionEnabled(TestAction::make('generateCycle'))
+            ->assertSee('Congelar competência');
+
+        expect($coverageQueries)->toBe(1);
+
+        // A resposta vale pela requisição, não pelo processo: a seguinte pergunta de novo.
+        Emission::query()->update([
+            'sales_board_source' => SalesBoardSource::Legacy->value,
+            'sales_board_automation_start_reference_month' => null,
+        ]);
+
+        $page->call('$refresh')->assertActionDisabled(TestAction::make('generateCycle'));
+
+        expect($coverageQueries)->toBe(2);
     });
 
     it('does not let the freeze action pick a competence before the activation', function () {
