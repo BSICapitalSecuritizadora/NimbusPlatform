@@ -93,7 +93,9 @@ it('refuses to publish over a position registered by hand for the same competenc
     $scenario = ManagementReviewFixture::submittedCycle();
     $cycle = $scenario['cycle']->fresh();
 
-    $manual = SalesBoard::factory()->create([
+    // Digitado enquanto a Emissão ainda era legada: depois da ativação o guard
+    // de escrita já não deixaria esse quadro nascer.
+    $manual = CycleFixture::whileLegacy($cycle->emission_id, fn (): SalesBoard => SalesBoard::factory()->create([
         'emission_id' => $cycle->emission_id,
         'construction_id' => $cycle->construction_id,
         'reference_month' => $cycle->reference_month->toDateString(),
@@ -105,7 +107,7 @@ it('refuses to publish over a position registered by hand for the same competenc
         'financed_value' => '0.00',
         'paid_value' => '0.00',
         'exchanged_value' => '0.00',
-    ]);
+    ]));
 
     $review = ManagementReviewFixture::open($cycle);
 
@@ -130,11 +132,11 @@ it('detects the conflict even when the manual board belongs to another emission'
     // publicar ao lado criaria duas posições para o mesmo mês.
     $otherEmission = Emission::factory()->create(['status' => 'active']);
 
-    SalesBoard::factory()->create([
+    CycleFixture::whileLegacy($cycle->emission_id, fn (): SalesBoard => SalesBoard::factory()->create([
         'emission_id' => $otherEmission->id,
         'construction_id' => $cycle->construction_id,
         'reference_month' => $cycle->reference_month->toDateString(),
-    ]);
+    ]));
 
     $review = ManagementReviewFixture::open($cycle);
 

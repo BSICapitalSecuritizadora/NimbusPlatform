@@ -205,7 +205,10 @@ it('catches up on every competence due since activation', function () {
     $construction = AutomationFixture::readyConstruction();
     AutomationFixture::enable([$construction], '2026-08-01');
 
-    // O scheduler ficou fora do ar: só volta em 15/11.
+    // O scheduler ficou fora do ar: só volta em 15/11. O relógio também está em
+    // 15/11 -- a geração só congela competência já encerrada no dia de hoje.
+    $this->travelTo(CarbonImmutable::parse('2026-11-15 12:00:00', 'UTC'));
+
     $run = AutomationFixture::run('2026-11-15');
 
     expect($run->targets_discovered)->toBe(3)

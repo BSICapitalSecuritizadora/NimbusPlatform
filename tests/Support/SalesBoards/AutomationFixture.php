@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Support\SalesBoards;
 
 use App\Enums\SalesBoardAutomationRunTrigger;
+use App\Enums\SalesBoardSource;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\Emission;
@@ -70,6 +71,46 @@ final class AutomationFixture
             ],
             array_values($constructions),
         ));
+
+        self::coverEmissionsFrom($constructions, $startReferenceMonth);
+    }
+
+    /**
+     * Faz a Emissão de cada empreendimento cobrir a competência inicial.
+     *
+     * A geração só congela competência coberta pela automação da Emissão, e o
+     * provider de configuração não olha a Emissão. Sem isto o motor descobriria
+     * o alvo e a geração o recusaria. Uma Emissão que já cubra desde antes fica
+     * como está: adiantar a competência inicial dela recusaria ciclos que o
+     * cenário já gerou.
+     *
+     * @param  array<int, Construction|int>  $constructions
+     */
+    private static function coverEmissionsFrom(array $constructions, string $startReferenceMonth): void
+    {
+        $start = CarbonImmutable::parse($startReferenceMonth)->startOfMonth();
+
+        $constructionIds = array_map(
+            fn (Construction|int $construction): int => $construction instanceof Construction
+                ? (int) $construction->getKey()
+                : $construction,
+            array_values($constructions),
+        );
+
+        $emissions = Emission::query()
+            ->whereIn('id', Construction::query()->whereKey($constructionIds)->select('emission_id'))
+            ->get();
+
+        foreach ($emissions as $emission) {
+            if ($emission->automationCovers($start)) {
+                continue;
+            }
+
+            $emission->forceFill([
+                'sales_board_source' => SalesBoardSource::Automated,
+                'sales_board_automation_start_reference_month' => $start->toDateString(),
+            ])->save();
+        }
     }
 
     public static function disable(): void
@@ -94,7 +135,7 @@ final class AutomationFixture
     public static function readyConstruction(string $unitPrefix = '1'): Construction
     {
         $construction = Construction::factory()->create([
-            'emission_id' => Emission::factory()->create(['status' => 'active'])->id,
+            'emission_id' => Emission::factory()->withAutomatedSalesBoard(self::DEFAULT_MONTH)->create(['status' => 'active'])->id,
         ]);
 
         SalesDiscountPolicy::factory()->forConstruction($construction)
@@ -113,7 +154,7 @@ final class AutomationFixture
     public static function blockedConstruction(string $unitPrefix = '2'): Construction
     {
         $construction = Construction::factory()->create([
-            'emission_id' => Emission::factory()->create(['status' => 'active'])->id,
+            'emission_id' => Emission::factory()->withAutomatedSalesBoard(self::DEFAULT_MONTH)->create(['status' => 'active'])->id,
         ]);
 
         SalesDiscountPolicy::factory()->forConstruction($construction)

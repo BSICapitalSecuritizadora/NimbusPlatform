@@ -60,7 +60,7 @@ afterEach(function () {
  */
 function salesBoardCycleRaceScenario(): array
 {
-    $emission = Emission::factory()->create(['status' => 'active']);
+    $emission = Emission::factory()->withAutomatedSalesBoard()->create(['status' => 'active']);
     $construction = Construction::factory()->create(['emission_id' => $emission->id]);
 
     SalesDiscountPolicy::factory()

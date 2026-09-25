@@ -74,7 +74,7 @@ it('reports an already existing cycle instead of recalculating it', function () 
 });
 
 it('generates the ready constructions of an emission and reports the blocked one', function () {
-    $emission = Emission::factory()->create(['status' => 'active']);
+    $emission = Emission::factory()->withAutomatedSalesBoard()->create(['status' => 'active']);
 
     $ready = [];
 

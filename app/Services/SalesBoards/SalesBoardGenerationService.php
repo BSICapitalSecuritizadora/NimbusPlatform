@@ -16,8 +16,12 @@ use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleBaseline;
 use App\Models\User;
 use App\Support\Dates\InclusiveDateBound;
+use App\Support\SalesBoards\CompetenceCalendar;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -31,18 +35,30 @@ use Illuminate\Support\Facades\DB;
  * estoque, financiado, quitado ou permutado aqui seria a segunda resposta para a
  * mesma pergunta, e o Quadro passou três fases eliminando exatamente isso.
  *
- * Três portas, nesta ordem:
+ * Cinco portas, nesta ordem:
  *
  * 1. **Emissão em elaboração não gera.** É a fase em que a posição inicial ainda
  *    está sendo composta, permutas inclusive. Congelar ali criaria uma "V1" que
  *    é rascunho, e o baseline mensal existe justamente para ser o oposto disso;
- * 2. **Ciclo existente não regera.** Gerar duas vezes a mesma competência é
+ * 2. **Competência aberta não gera.** A posição é a do último dia do mês, e ela
+ *    só existe depois que esse dia passou no calendário de negócio. Um ciclo
+ *    congelado antes disso deixaria de fora as vendas e quitações dos últimos
+ *    dias e viraria, para a automação, "o ciclo da competência";
+ * 3. **Competência fora da automação não gera.** O ciclo é o caminho do modo
+ *    automatizado: uma Emissão legada, ou uma competência anterior à ativação do
+ *    rollout, tem a posição registrada à mão. Publicar um ciclo ali congelaria
+ *    uma competência que ninguém homologou e que o legado não conseguiria mais
+ *    corrigir (decisão do dono do produto de 25/09/2026);
+ * 4. **Ciclo existente não regera.** Gerar duas vezes a mesma competência é
  *    inofensivo por construção -- a segunda execução não escreve, não recalcula
  *    e devolve o ciclo que já existia. Recalcular é outra operação, explícita e
  *    com motivo;
- * 3. **Prontidão bloqueada não persiste nada.** Nenhum ciclo, nenhuma versão,
+ * 5. **Prontidão bloqueada não persiste nada.** Nenhum ciclo, nenhuma versão,
  *    nenhuma linha. Um ciclo incompleto "para preencher depois" seria lido como
  *    posição pela primeira pessoa que abrisse a tela.
+ *
+ * As portas valem para toda entrada -- ação da tela, comando e automação --
+ * porque moram aqui, e não em quem chama.
  *
  * Venda fora da política não bloqueia: ela é um fato apurado, não um dado
  * faltando, e é congelada como tal no movimento.
@@ -72,12 +88,21 @@ class SalesBoardGenerationService
     }
 
     /**
-     * Gera os ciclos de vários empreendimentos com carregamento em lote.
+     * Gera os ciclos de vários empreendimentos, um de cada vez.
      *
-     * Cada empreendimento continua tendo o seu próprio ciclo e a sua própria
-     * transação: numa emissão em que A e C estão prontos e B não, A e C são
-     * gerados e B é reportado. Não existe "ciclo da emissão" a ser segurado pelo
-     * pior empreendimento da carteira.
+     * Cada empreendimento tem o seu próprio ciclo, a sua própria leitura e a sua
+     * própria transação: numa emissão em que A e C estão prontos e B não, A e C
+     * são gerados e B é reportado. Não existe "ciclo da emissão" a ser segurado
+     * pelo pior empreendimento da carteira.
+     *
+     * A apuração **não** é feita em lote. Derivar e observar a emissão inteira de
+     * uma vez carrega como models as parcelas de todos os contratos da carteira,
+     * duas vezes, e o pico de memória vira a soma dos empreendimentos -- numa
+     * emissão média o processo morria antes de gravar o primeiro ciclo. Um por
+     * vez, o pico é o do maior empreendimento, e o que já foi gravado fica
+     * gravado se o seguinte falhar. As consultas a mais custam pouco perto disso.
+     *
+     * O resultado sai na ordem em que os empreendimentos chegaram.
      *
      * @param  iterable<Construction>  $constructions
      * @return array<int, SalesBoardGenerationResult> indexado por `construction_id`
@@ -98,12 +123,18 @@ class SalesBoardGenerationService
             return [];
         }
 
-        $constructions->each(fn (Construction $construction) => $construction->loadMissing('emission'));
+        /**
+         * A Emissão é relida aqui, e não aproveitada de quem chamou: o modo do
+         * Quadro decide se a competência pode ser congelada, e uma relação
+         * carregada antes de um retorno ao legado responderia pelo modo antigo.
+         */
+        EloquentCollection::make($constructions->values()->all())->load('emission');
 
         $results = [];
-        $candidates = collect();
-
-        $existing = $this->existingCycles($constructions->keys()->all(), $month);
+        $eligible = collect();
+        $openCompetenceReason = CompetenceCalendar::isClosed($month)
+            ? null
+            : $this->openCompetenceReason($month, $positionDate);
 
         foreach ($constructions as $constructionId => $construction) {
             $constructionId = (int) $constructionId;
@@ -123,8 +154,24 @@ class SalesBoardGenerationService
                 continue;
             }
 
-            if (isset($existing[$constructionId])) {
-                $results[$constructionId] = new SalesBoardGenerationResult(
+            $refusal = $openCompetenceReason ?? $this->coverageRefusal($construction, $month);
+
+            if ($refusal !== null) {
+                $results[$constructionId] = $this->blocked($construction, $month, $positionDate, $refusal, dryRun: $dryRun);
+
+                continue;
+            }
+
+            $eligible->put($constructionId, $construction);
+        }
+
+        $existing = $eligible->isEmpty() ? [] : $this->existingCycles($eligible->keys()->all(), $month);
+
+        foreach ($eligible as $constructionId => $construction) {
+            $constructionId = (int) $constructionId;
+
+            $results[$constructionId] = isset($existing[$constructionId])
+                ? new SalesBoardGenerationResult(
                     outcome: SalesBoardGenerationOutcome::AlreadyExists,
                     constructionId: $constructionId,
                     constructionName: $construction->development_name,
@@ -133,17 +180,26 @@ class SalesBoardGenerationService
                     cycle: $existing[$constructionId],
                     baseline: $existing[$constructionId]->currentBaseline,
                     dryRun: $dryRun,
-                );
-
-                continue;
-            }
-
-            $candidates->put($constructionId, $construction);
+                )
+                : $this->generateOne($construction, $month, $positionDate, $actor, $dryRun);
         }
 
-        if ($candidates->isEmpty()) {
-            return $results;
-        }
+        return $constructions->keys()
+            ->mapWithKeys(fn (mixed $constructionId): array => [(int) $constructionId => $results[(int) $constructionId]])
+            ->all();
+    }
+
+    /**
+     * Apura e, se estiver pronto, congela um único empreendimento.
+     */
+    private function generateOne(
+        Construction $construction,
+        CarbonImmutable $month,
+        CarbonImmutable $positionDate,
+        ?User $actor,
+        bool $dryRun,
+    ): SalesBoardGenerationResult {
+        $constructionId = (int) $construction->getKey();
 
         /**
          * As doze leituras -- seis da derivação, seis da observação da fonte --
@@ -161,60 +217,93 @@ class SalesBoardGenerationService
          * esta leitura veja um mundo só. Se a fonte mudar logo depois, quem
          * responde é a detecção de alterações.
          */
-        [$positions, $observations] = DB::transaction(fn (): array => [
-            $this->derivationService->deriveForConstructions($candidates, $month),
-            $this->fingerprintService->observeForConstructions($candidates, $month),
+        [$position, $observation] = DB::transaction(fn (): array => [
+            $this->derivationService->deriveForConstruction($construction, $month),
+            $this->fingerprintService->observeForConstruction($construction, $month),
         ]);
 
-        foreach ($candidates as $constructionId => $construction) {
-            $constructionId = (int) $constructionId;
-            $position = $positions[$constructionId];
-            $readiness = $this->readinessService->fromPosition($construction, $position);
+        $readiness = $this->readinessService->fromPosition($construction, $position);
 
-            if (! $readiness->isReady()) {
-                $results[$constructionId] = $this->blocked(
-                    $construction,
-                    $month,
-                    $positionDate,
-                    'A fonte da competência está incompleta: '.$this->blockerSummary($readiness),
-                    $readiness,
-                    $position,
-                    $dryRun,
-                );
-
-                continue;
-            }
-
-            if ($dryRun) {
-                $results[$constructionId] = new SalesBoardGenerationResult(
-                    outcome: SalesBoardGenerationOutcome::Generated,
-                    constructionId: $constructionId,
-                    constructionName: $construction->development_name,
-                    referenceMonth: $month,
-                    positionDate: $positionDate,
-                    readiness: $readiness,
-                    position: $position,
-                    dryRun: true,
-                );
-
-                continue;
-            }
-
-            $comparable = SalesBoardComparableSnapshot::fromDerived($position, $observations[$constructionId]);
-
-            $results[$constructionId] = $this->persist(
-                construction: $construction,
-                month: $month,
-                positionDate: $positionDate,
-                comparable: $comparable,
-                sourceFingerprint: $observations[$constructionId]->fingerprint(),
-                readiness: $readiness,
-                position: $position,
-                actor: $actor,
+        if (! $readiness->isReady()) {
+            return $this->blocked(
+                $construction,
+                $month,
+                $positionDate,
+                'A fonte da competência está incompleta: '.$this->blockerSummary($readiness),
+                $readiness,
+                $position,
+                $dryRun,
             );
         }
 
-        return $results;
+        if ($dryRun) {
+            return new SalesBoardGenerationResult(
+                outcome: SalesBoardGenerationOutcome::Generated,
+                constructionId: $constructionId,
+                constructionName: $construction->development_name,
+                referenceMonth: $month,
+                positionDate: $positionDate,
+                readiness: $readiness,
+                position: $position,
+                dryRun: true,
+            );
+        }
+
+        return $this->persist(
+            construction: $construction,
+            month: $month,
+            positionDate: $positionDate,
+            comparable: SalesBoardComparableSnapshot::fromDerived($position, $observation),
+            sourceFingerprint: $observation->fingerprint(),
+            readiness: $readiness,
+            position: $position,
+            actor: $actor,
+        );
+    }
+
+    /**
+     * Por que uma competência ainda aberta não é congelada.
+     */
+    private function openCompetenceReason(CarbonImmutable $month, CarbonImmutable $positionDate): string
+    {
+        return sprintf(
+            'A competência %s ainda não terminou no calendário de negócio: o último dia é %s. Só se congela competência encerrada; a mais recente hoje é %s.',
+            $month->format('m/Y'),
+            $positionDate->format('d/m/Y'),
+            CompetenceCalendar::lastClosedMonth()->format('m/Y'),
+        );
+    }
+
+    /**
+     * Por que a competência não está coberta pela automação, ou `null` quando está.
+     */
+    private function coverageRefusal(Construction $construction, CarbonImmutable $month): ?string
+    {
+        $emission = $construction->emission;
+
+        if (! $emission instanceof Emission) {
+            return 'O empreendimento não está vinculado a uma Emissão, e o ciclo mensal só existe para competências cobertas pela automação de uma Emissão.';
+        }
+
+        if ($emission->automationCovers($month)) {
+            return null;
+        }
+
+        $start = $emission->automationStartsAt();
+
+        if (! $emission->usesAutomatedSalesBoard() || $start === null) {
+            return sprintf(
+                'A Emissão "%s" registra o Quadro de Vendas manualmente (modo legado). O ciclo mensal só existe para competências cobertas pela automação, depois da homologação e da ativação do rollout da Emissão.',
+                (string) $emission->name,
+            );
+        }
+
+        return sprintf(
+            'A competência %s é anterior à ativação da automação da Emissão "%s", que cobre a partir de %s. Competências anteriores continuam no registro manual.',
+            $month->format('m/Y'),
+            (string) $emission->name,
+            $start->format('m/Y'),
+        );
     }
 
     /**
@@ -267,8 +356,15 @@ class SalesBoardGenerationService
              * Outro processo criou o ciclo desta competência entre a checagem e
              * a escrita. A unique do banco é quem decide, e o perdedor relê em
              * vez de devolver um erro de SQL para quem clicou num botão.
+             *
+             * A releitura é **com lock**. Quem chama de dentro de uma transação
+             * -- a automação, que já leu o ciclo antes de gerar -- tem o
+             * snapshot do `REPEATABLE READ` fixado naquela primeira leitura, e
+             * um SELECT comum não enxerga o ciclo que o vencedor commitou depois
+             * dela: o alvo ficaria satisfeito sem saber por qual ciclo. Leitura
+             * com lock ignora o snapshot e lê a versão commitada mais recente.
              */
-            $winner = $this->existingCycles([(int) $construction->getKey()], $month)[(int) $construction->getKey()] ?? null;
+            $winner = $this->existingCycles([(int) $construction->getKey()], $month, lockForUpdate: true)[(int) $construction->getKey()] ?? null;
 
             return new SalesBoardGenerationResult(
                 outcome: SalesBoardGenerationOutcome::AlreadyExists,
@@ -298,9 +394,10 @@ class SalesBoardGenerationService
 
     /**
      * @param  list<int>  $constructionIds
+     * @param  bool  $lockForUpdate  lê a versão commitada mais recente, fora do snapshot
      * @return array<int, SalesBoardCycle>
      */
-    private function existingCycles(array $constructionIds, CarbonImmutable $month): array
+    private function existingCycles(array $constructionIds, CarbonImmutable $month, bool $lockForUpdate = false): array
     {
         /**
          * Faixa em vez de igualdade: uma coluna `date` gravada pelo Eloquent
@@ -312,7 +409,8 @@ class SalesBoardGenerationService
         return SalesBoardCycle::query()
             ->whereIn('construction_id', $constructionIds)
             ->whereBetween('reference_month', [$month->toDateString(), InclusiveDateBound::upperBound($month)])
-            ->with('currentBaseline')
+            ->when($lockForUpdate, fn (Builder $query): Builder => $query->lockForUpdate())
+            ->with(['currentBaseline' => fn (BelongsTo $query): BelongsTo => $lockForUpdate ? $query->sharedLock() : $query])
             ->get()
             ->keyBy(fn (SalesBoardCycle $cycle): int => (int) $cycle->construction_id)
             ->all();
