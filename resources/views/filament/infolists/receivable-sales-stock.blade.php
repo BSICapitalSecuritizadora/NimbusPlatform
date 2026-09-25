@@ -62,7 +62,7 @@
                 {{ $position->constructionsCovered }} de {{ $position->constructionsExpected }}
                 {{ $position->constructionsExpected === 1 ? 'empreendimento' : 'empreendimentos' }} com posição.
                 @if ($isComplete)
-                    Todos com o quadro da própria competência.
+                    Todos os empreendimentos esperados com o quadro da própria competência.
                 @endif
             </p>
 
@@ -81,7 +81,7 @@
             @endif
 
             @if ($automationCoversMonth && ! $isComplete)
-                <p>A competência é produzida pelo ciclo mensal automatizado: os empreendimentos acima ainda aguardam a publicação pela Gestão.</p>
+                <p>Competência produzida pelo ciclo mensal automatizado: ainda não publicada para os empreendimentos acima.</p>
             @endif
         </div>
 

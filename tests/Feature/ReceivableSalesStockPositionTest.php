@@ -187,7 +187,48 @@ it('flags a partial publication of an automated competence', function () {
         ->and($html)->toContain('1 de 2')
         ->and($html)->toContain('data-coverage="partial"')
         ->and($html)->toContain('Ciclo automatizado')
-        ->and($html)->toContain('aguardam a publicação pela Gestão');
+        ->and($html)->toContain('Competência produzida pelo ciclo mensal automatizado: ainda não publicada para os empreendimentos acima.')
+        ->and($html)->not->toContain('pela Gestão');
+});
+
+it('speaks of the expected constructions when a not-yet-positioned one is listed', function () {
+    // Beta só tem quadro a partir de 09/2026: em 08/2026 não é esperado, a
+    // cobertura fica completa (1 de 1) e a tabela ainda o lista como "Sem quadro
+    // até a competência". A caixa fala dos esperados, não de "todos".
+    ['emission' => $emission, 'alfa' => $alfa, 'beta' => $beta] = receivableSalesStockEmission();
+
+    receivableSalesStockAlfaBoard($alfa, '2026-08-01');
+    receivableSalesStockBetaBoard($beta, '2026-09-01');
+
+    $html = receivableSalesStockHtml($emission, '2026-08-01');
+
+    expect($html)->toContain('data-coverage="complete"')
+        ->and($html)->toContain('1 de 1')
+        ->and($html)->toContain('Todos os empreendimentos esperados com o quadro da própria competência.')
+        ->and($html)->not->toContain('Todos com o quadro da própria competência.')
+        ->and($html)->toContain('data-construction-id="'.$beta->id.'"')
+        ->and($html)->toContain('Sem quadro até a competência');
+});
+
+it('lists the constructions by name, numbered stages included', function () {
+    // O Reader "ordenava" com closures de um argumento, que a Collection chama
+    // como comparadores: o nome virava o resultado da comparação, convertido no
+    // seu número inicial, e 1ª, 2ª, 3ª saíam como 2ª, 3ª, 1ª.
+    $emission = Emission::factory()->create();
+    $third = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => '3ª Etapa']);
+    $first = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => '1ª Etapa']);
+    $second = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => '2ª Etapa']);
+
+    foreach ([$third, $first, $second] as $construction) {
+        receivableSalesStockAlfaBoard($construction, '2026-08-01');
+    }
+
+    $html = receivableSalesStockHtml($emission, '2026-08-01');
+    $rowOffset = fn (Construction $construction): int|false => strpos($html, 'data-construction-id="'.$construction->id.'"');
+
+    expect($rowOffset($first))->toBeInt()
+        ->and($rowOffset($first))->toBeLessThan($rowOffset($second))
+        ->and($rowOffset($second))->toBeLessThan($rowOffset($third));
 });
 
 it('marks a manually registered board as such', function () {
