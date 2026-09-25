@@ -4,6 +4,7 @@ use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\SalesBoardRolloutHomologation;
 use App\Models\SalesDiscountPolicy;
+use App\Services\SalesBoards\ContractSettlementResolver;
 use App\Services\SalesBoards\SalesBoardDerivationService;
 use App\Services\SalesBoards\SalesBoardFingerprintService;
 use App\Services\SalesBoards\SalesBoardRolloutAssessmentService;
@@ -11,6 +12,7 @@ use App\Services\SalesBoards\SalesBoardStaleDetectionService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\PerformanceProbe;
 use Tests\Support\SalesBoards\CycleFixture;
 
 uses(RefreshDatabase::class);
@@ -52,7 +54,11 @@ beforeEach(function () {
  *   fração do da derivação (medido: ~0,06 KB no SQLite, ~0,11 KB no MySQL);
  * - a derivação, a geração e a verificação ainda carregam as parcelas no
  *   resolvedor de quitação (medido: ~2,0 KB por parcela) -- o teto delas é o
- *   que mantém 57.600 parcelas longe dos 256 MB;
+ *   que mantém 57.600 parcelas longe dos 256 MB. É um teto frouxo de
+ *   propósito: enquanto {@see ContractSettlementResolver} hidratar cada
+ *   parcela, a folga cobre a variação entre SQLite e MySQL, e uma regressão de
+ *   até ~25% passa. Quando o resolvedor passar a ler linhas simples, este teto
+ *   desce para 1,0 a 1,5 KB;
  * - tempo por parcela (medido: ~0,08 ms no par derivação e observação);
  * - a avaliação do rollout percorre a Emissão empreendimento a empreendimento:
  *   o pico dela acompanha o maior empreendimento, não a soma deles (medido:
@@ -197,6 +203,15 @@ function volumeConstruction(Emission $emission, string $prefix, int $units = 800
 
 /**
  * Mede uma seção: tempo de parede e pico de memória acima do uso de partida.
+ *
+ * É o mesmo instrumento de {@see PerformanceProbe::measure()} (pico zerado
+ * antes, `hrtime` em volta), numa passada só. O probe não serve aqui: ele roda
+ * o alvo uma vez para aquecer, outra com o log de consultas ligado e mais
+ * `$runs` vezes para a mediana. No volume desta massa, isso seria sete
+ * derivações de 57.600 parcelas por seção, no padrão, e a geração, que grava o
+ * ciclo, ainda pediria um `$reset` entre as passadas. O que se mede aqui é
+ * memória e ordem de grandeza de tempo, e não a contagem de consultas, que os
+ * outros benchmarks já cobrem.
  *
  * @return array{ms: float, peak_mb: float, result: mixed}
  */
