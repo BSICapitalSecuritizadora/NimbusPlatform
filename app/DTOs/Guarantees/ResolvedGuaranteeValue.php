@@ -32,6 +32,15 @@ readonly class ResolvedGuaranteeValue extends BaseDTO
         return new self($amount, $source, GuaranteeValueStatus::Automatic, $metadata);
     }
 
+    /**
+     * Apurado com posição incompleta da fonte (quadro transportado ou
+     * empreendimento sem quadro): entra na soma, mas sinalizado.
+     */
+    public static function partial(float $amount, GuaranteeValueSource $source, array $metadata = []): self
+    {
+        return new self($amount, $source, GuaranteeValueStatus::Partial, $metadata);
+    }
+
     public static function manual(float $amount, array $metadata = []): self
     {
         return new self($amount, GuaranteeValueSource::Manual, GuaranteeValueStatus::Manual, $metadata);
@@ -52,6 +61,14 @@ readonly class ResolvedGuaranteeValue extends BaseDTO
     public function isResolved(): bool
     {
         return $this->amount !== null && $this->status->isResolved();
+    }
+
+    /**
+     * De quais quadros de vendas o valor saiu, quando a fonte é o quadro.
+     */
+    public function salesBoardCoverage(): ?GuaranteeSalesBoardCoverage
+    {
+        return GuaranteeSalesBoardCoverage::fromArray($this->metadata['sales_board_coverage'] ?? null);
     }
 
     /** Bloqueia o fechamento da competência por dado faltante? */

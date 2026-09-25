@@ -695,27 +695,62 @@ class Emission extends Model
         return $this->hasOne(ObligationGenerationRun::class)->latestOfMany();
     }
 
+    /**
+     * A aba de garantias pede ação? Ver {@see self::pendingGuaranteeSnapshotReason()}.
+     */
     public function requiresMonthlyGuaranteeSnapshotUpdate(?CarbonInterface $referenceDate = null): bool
     {
+        return $this->pendingGuaranteeSnapshotReason($referenceDate) !== null;
+    }
+
+    /**
+     * Por que a competência de garantias precisa de ação, ou `null` se nada
+     * está pendente.
+     *
+     * - Uma competência apurada antes de um Quadro de Vendas publicado depois
+     *   está desatualizada — aberta ou fechada, o número gravado não é mais o
+     *   que o motor apuraria;
+     * - a competência que se espera consolidar é o mês de negócio anterior
+     *   (America/Sao_Paulo): o quadro de um mês só existe no seguinte, e cobrar
+     *   o mês corrente empurrava a consolidação para antes do quadro existir.
+     *
+     * `$referenceDate` é um instante; o mês é o do calendário de negócio, nunca
+     * o mês UTC.
+     */
+    public function pendingGuaranteeSnapshotReason(?CarbonInterface $referenceDate = null): ?string
+    {
         if (! self::hasGuaranteeSnapshotsTable()) {
-            return false;
+            return null;
         }
 
-        $referenceDate ??= now();
+        $outdatedMonths = $this->guaranteeSnapshots()
+            ->whereNotNull('sales_board_outdated_at')
+            ->orderBy('reference_month')
+            ->pluck('reference_month')
+            ->map(fn (mixed $referenceMonth): string => GuaranteeSnapshot::formatReferenceMonthForDisplay($referenceMonth))
+            ->all();
 
-        $latestSnapshot = $this->guaranteeSnapshots()
-            ->latest('reference_month')
-            ->first();
-
-        if (! $latestSnapshot instanceof GuaranteeSnapshot) {
-            return true;
+        if ($outdatedMonths !== []) {
+            return sprintf(
+                'Quadro de Vendas publicado depois da apuração de %s. Atualize a competência (ou reabra, se fechada).',
+                implode(', ', $outdatedMonths),
+            );
         }
 
-        if ($latestSnapshot->reference_month === null) {
-            return true;
+        $expectedCompetence = GuaranteeSnapshot::previousBusinessMonth($referenceDate ?? now());
+
+        $isConsolidated = $this->guaranteeSnapshots()
+            ->whereDate('reference_month', $expectedCompetence)
+            ->exists();
+
+        if ($isConsolidated) {
+            return null;
         }
 
-        return $latestSnapshot->reference_month->lt($referenceDate->copy()->startOfMonth());
+        return sprintf(
+            'A competência %s ainda não foi consolidada.',
+            GuaranteeSnapshot::formatReferenceMonthForDisplay($expectedCompetence),
+        );
     }
 
     public static function hasGuaranteeSnapshotsTable(): bool

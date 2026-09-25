@@ -5,7 +5,6 @@ namespace App\Services\Guarantees;
 use App\Models\Emission;
 use App\Models\IntegralizationHistory;
 use App\Models\PuHistory;
-use App\Services\GuaranteeCoverageCalculator;
 use Carbon\Carbon;
 
 /**
@@ -13,8 +12,7 @@ use Carbon\Carbon;
  *
  * Fonte única do número (§16 do escopo): a regra é a que o módulo de PU já
  * usava — último PU registrado dentro do mês multiplicado pela quantidade
- * integralizada acumulada até o fim do mês. {@see GuaranteeCoverageCalculator}
- * delega para cá em vez de manter uma segunda implementação.
+ * integralizada acumulada até o fim do mês.
  *
  * O booleano de retorno distingue "saldo zero porque nada foi integralizado"
  * de "não há PU no mês": o primeiro é um saldo legítimo, o segundo é dado

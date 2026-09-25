@@ -12,6 +12,13 @@ enum GuaranteeValueStatus: string
 {
     case Automatic = 'automatic';
     case Manual = 'manual';
+
+    /**
+     * Valor apurado, mas sem o Quadro de Vendas da própria competência em algum
+     * empreendimento (posição transportada ou ausente). Entra na soma — é a
+     * melhor posição conhecida —, mas nunca passa por completo.
+     */
+    case Partial = 'partial';
     case Pending = 'pending';
     case NotApplicable = 'not_applicable';
 
@@ -20,6 +27,7 @@ enum GuaranteeValueStatus: string
         return match ($this) {
             self::Automatic => 'Automática',
             self::Manual => 'Informado manualmente',
+            self::Partial => 'Parcial',
             self::Pending => 'Pendente',
             self::NotApplicable => 'Não aplicável',
         };
@@ -28,7 +36,7 @@ enum GuaranteeValueStatus: string
     /** O valor pode entrar no somatório da cobertura? */
     public function isResolved(): bool
     {
-        return $this === self::Automatic || $this === self::Manual;
+        return $this === self::Automatic || $this === self::Manual || $this === self::Partial;
     }
 
     public function color(): string
@@ -36,6 +44,7 @@ enum GuaranteeValueStatus: string
         return match ($this) {
             self::Automatic => 'success',
             self::Manual => 'info',
+            self::Partial => 'warning',
             self::Pending => 'warning',
             self::NotApplicable => 'gray',
         };

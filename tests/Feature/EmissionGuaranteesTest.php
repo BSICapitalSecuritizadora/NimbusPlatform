@@ -248,8 +248,10 @@ it('consolidates the competence and stores the snapshot from the relation manage
         'unit_value' => 100,
     ]);
 
+    // A competência é escolhida no modal (o padrão é o mês anterior); aqui o
+    // teste consolida o próprio mês de maio, que é o que tem PU.
     guaranteesRelationManager($emission)
-        ->callTableAction('update_competence')
+        ->callTableAction('update_competence', data: ['reference_month' => '05/2026'])
         ->assertHasNoTableActionErrors();
 
     $snapshot = GuaranteeSnapshot::query()
