@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\MoneyFormatter;
 use App\Observers\SalesBoardObserver;
+use App\Services\SalesBoards\SalesBoardWriteGuard;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Database\Factories\SalesBoardFactory;
@@ -61,6 +62,24 @@ class SalesBoard extends Model
             $salesBoard->reference_month = self::normalizeReferenceMonth($salesBoard->reference_month);
             $salesBoard->total_units = $salesBoard->calculateTotalUnits();
         });
+    }
+
+    /**
+     * Grava o quadro, a versão do histórico e o log de atividade numa transação
+     * só.
+     *
+     * Não é só atomicidade. O {@see SalesBoardWriteGuard}, chamado pelo observer
+     * antes do INSERT/UPDATE, trava a Emissão em modo compartilhado quando há
+     * transação aberta -- e o lock só protege alguma coisa se durar até a
+     * gravação commitar. Sem esta transação a tela, que não usa as transações do
+     * painel, soltaria o lock no fim da própria leitura, e uma ativação da
+     * automação poderia começar entre a conferência do guard e o INSERT.
+     *
+     * @param  array<string, mixed>  $options
+     */
+    public function save(array $options = []): bool
+    {
+        return $this->getConnection()->transaction(fn (): bool => parent::save($options));
     }
 
     protected function casts(): array

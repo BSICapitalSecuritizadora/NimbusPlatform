@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use App\Enums\SalesBoardRolloutComparisonStatus;
+use App\Enums\SalesBoardRolloutHomologationStatus;
 use Database\Factories\SalesBoardRolloutHomologationConstructionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
 
 /**
  * O que a homologação encontrou num empreendimento.
@@ -52,6 +54,65 @@ class SalesBoardRolloutHomologationConstruction extends Model
         'has_cancelled_cycle_at_or_after_start',
         'latest_legacy_board_month',
     ];
+
+    /**
+     * As linhas são o retrato que a Gestão revisou, e valem o que vale a
+     * homologação: enquanto ela é rascunho, a reavaliação e o aceite reescrevem
+     * as linhas; depois de aprovada, rejeitada ou substituída, nenhuma linha é
+     * criada, alterada ou apagada.
+     *
+     * O status é relido do banco, e não da relação carregada: quem grava pode
+     * estar segurando uma instância da homologação lida antes da aprovação, e é
+     * justamente esse o caso que o guard existe para pegar. Dentro de transação
+     * a releitura trava a homologação em modo compartilhado, para esperar uma
+     * aprovação em andamento em vez de enxergar o rascunho que ela está
+     * encerrando.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $row): void {
+            $row->assertHomologationIsDraft();
+        });
+
+        static::deleting(function (self $row): void {
+            $row->assertHomologationIsDraft();
+        });
+    }
+
+    /**
+     * A homologação de origem e a de destino, se a linha trocar de homologação,
+     * precisam ser rascunho.
+     */
+    private function assertHomologationIsDraft(): void
+    {
+        $homologationIds = collect([
+            $this->getOriginal('sales_board_rollout_homologation_id'),
+            $this->sales_board_rollout_homologation_id,
+        ])
+            ->filter()
+            ->map(fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $query = SalesBoardRolloutHomologation::query()->whereKey($homologationIds)->orderBy('id');
+
+        if ($query->getConnection()->transactionLevel() > 0) {
+            $query->sharedLock();
+        }
+
+        $statuses = $query->pluck('status');
+
+        $allDrafts = $homologationIds !== []
+            && $statuses->count() === count($homologationIds)
+            && $statuses->every(
+                fn (mixed $status): bool => $status === SalesBoardRolloutHomologationStatus::Draft
+            );
+
+        if (! $allDrafts) {
+            throw new LogicException('Rows of a finished sales board rollout homologation are immutable.');
+        }
+    }
 
     protected function casts(): array
     {

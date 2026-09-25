@@ -7,11 +7,14 @@ use App\Enums\SalesBoardSource;
 use App\Filament\Resources\SalesBoardCycles\SalesBoardCycleResource;
 use App\Models\Emission;
 use App\Models\SalesBoard;
+use App\Models\SalesBoardHistory;
 use App\Models\SalesBoardPublication;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
+use WeakMap;
 
 /**
  * Reading of a sales board as an evolution: how the construction entered the
@@ -20,6 +23,16 @@ use Filament\Schemas\Schema;
  */
 class SalesBoardInfolist
 {
+    /**
+     * Posição inicial já resolvida para cada quadro renderizado. A seção lê a
+     * mesma posição em uma dúzia de campos, e cada leitura seria uma consulta;
+     * o mapa fraco morre com a instância do quadro, sem sobreviver à
+     * requisição. `false` marca "consultado e ausente".
+     *
+     * @var WeakMap<SalesBoard, SalesBoardHistory|false>|null
+     */
+    private static ?WeakMap $initialPositions = null;
+
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
@@ -112,88 +125,138 @@ class SalesBoardInfolist
             ]);
     }
 
+    /**
+     * O início da operação é do empreendimento, e não de cada quadro.
+     *
+     * A consolidação marca a versão vigente dos quadros que existem quando a
+     * emissão deixa "Em Elaboração"; os quadros registrados depois -- as
+     * atualizações mensais, os publicados pelo ciclo -- nunca são marcados.
+     * Perguntar a cada quadro pela própria posição inicial fazia esses quadros
+     * anunciarem para sempre uma consolidação que já aconteceu, e fazia cada
+     * competência da elaboração mostrar um início diferente. A seção mostra a
+     * posição inicial do empreendimento nesta operação, seja qual for o quadro
+     * aberto, e só fala em consolidação futura enquanto a emissão ainda está em
+     * elaboração.
+     */
     protected static function initialPositionSection(): Section
     {
         return Section::make('Início da Operação')
-            ->description('Posição inicial da operação, consolidada quando a emissão deixou o status "Em Elaboração". Imutável.')
+            ->description(fn (SalesBoard $record): string => match (true) {
+                static::constructionInitialPosition($record) !== null => 'Posição inicial da operação, consolidada quando a emissão deixou o status "Em Elaboração". Imutável.',
+                static::emissionInDraft($record) => 'Posição inicial da operação, consolidada quando a emissão deixar o status "Em Elaboração".',
+                default => 'Posição inicial do empreendimento nesta operação.',
+            })
             ->icon('heroicon-o-lock-closed')
             ->columnSpanFull()
             ->schema([
                 TextEntry::make('initial_position_pending')
                     ->label('Status de Consolidação')
-                    ->state(fn (SalesBoard $record): string => $record->hasInitialPosition()
-                        ? ($record->initialPosition?->created_at?->format('d/m/Y \à\s H:i') ?? '—')
-                        : 'Será consolidada quando a emissão deixar "Em Elaboração".')
-                    ->color(fn (SalesBoard $record): string => $record->hasInitialPosition() ? 'success' : 'warning')
-                    ->badge(fn (SalesBoard $record): bool => ! $record->hasInitialPosition())
-                    ->icon(fn (SalesBoard $record): string => $record->hasInitialPosition() ? 'heroicon-m-check-circle' : 'heroicon-m-clock')
-                    ->helperText(fn (SalesBoard $record): ?string => $record->hasInitialPosition() ? null : 'Aguardando consolidação')
-                    ->visible(fn (SalesBoard $record): bool => ! $record->hasInitialPosition())
+                    ->state(fn (SalesBoard $record): string => static::emissionInDraft($record)
+                        ? 'Será consolidada quando a emissão deixar "Em Elaboração".'
+                        : 'Sem posição inicial consolidada para este empreendimento nesta operação.')
+                    ->color(fn (SalesBoard $record): string => static::emissionInDraft($record) ? 'warning' : 'gray')
+                    ->badge(fn (SalesBoard $record): bool => static::emissionInDraft($record))
+                    ->icon(fn (SalesBoard $record): string => static::emissionInDraft($record) ? 'heroicon-m-clock' : 'heroicon-m-information-circle')
+                    ->helperText(fn (SalesBoard $record): string => static::emissionInDraft($record)
+                        ? 'Aguardando consolidação'
+                        : 'A posição inicial é consolidada quando a emissão deixa "Em Elaboração" e alcança apenas os quadros registrados até ali.')
+                    ->visible(fn (SalesBoard $record): bool => static::constructionInitialPosition($record) === null)
                     ->columnSpanFull(),
 
                 Grid::make(['default' => 1, 'sm' => 2, 'md' => 4])
-                    ->visible(fn (SalesBoard $record): bool => $record->hasInitialPosition())
+                    ->visible(fn (SalesBoard $record): bool => static::constructionInitialPosition($record) !== null)
                     ->schema([
                         TextEntry::make('initial_reference_month')
                             ->label('Competência')
-                            ->state(fn (SalesBoard $record): string => SalesBoard::formatReferenceMonthForDisplay($record->initialPosition?->reference_month))
+                            ->state(fn (SalesBoard $record): string => SalesBoard::formatReferenceMonthForDisplay(static::constructionInitialPosition($record)?->reference_month))
                             ->badge()
                             ->icon('heroicon-m-calendar')
                             ->columnSpan(['default' => 1, 'sm' => 1, 'md' => 2]),
 
                         TextEntry::make('initial_consolidated_at')
                             ->label('Consolidado em')
-                            ->state(fn (SalesBoard $record): string => $record->initialPosition?->created_at?->format('d/m/Y \à\s H:i') ?? '—')
+                            ->state(fn (SalesBoard $record): string => static::constructionInitialPosition($record)?->created_at?->format('d/m/Y \à\s H:i') ?? '—')
                             ->icon('heroicon-m-clock')
                             ->columnSpan(['default' => 1, 'sm' => 1, 'md' => 2]),
 
                         TextEntry::make('initial_stock_units')
                             ->label('Estoque')
-                            ->state(fn (SalesBoard $record): string => (string) ($record->initialPosition?->stock_units ?? 0))
+                            ->state(fn (SalesBoard $record): string => (string) (static::constructionInitialPosition($record)?->stock_units ?? 0))
                             ->suffix(' un.')
                             ->weight('semibold'),
                         TextEntry::make('initial_financed_units')
                             ->label('Financiado')
-                            ->state(fn (SalesBoard $record): string => (string) ($record->initialPosition?->financed_units ?? 0))
+                            ->state(fn (SalesBoard $record): string => (string) (static::constructionInitialPosition($record)?->financed_units ?? 0))
                             ->suffix(' un.')
                             ->weight('semibold'),
                         TextEntry::make('initial_paid_units')
                             ->label('Quitado')
-                            ->state(fn (SalesBoard $record): string => (string) ($record->initialPosition?->paid_units ?? 0))
+                            ->state(fn (SalesBoard $record): string => (string) (static::constructionInitialPosition($record)?->paid_units ?? 0))
                             ->suffix(' un.')
                             ->weight('semibold'),
                         TextEntry::make('initial_exchanged_units')
                             ->label('Permutado')
-                            ->state(fn (SalesBoard $record): string => (string) ($record->initialPosition?->exchanged_units ?? 0))
+                            ->state(fn (SalesBoard $record): string => (string) (static::constructionInitialPosition($record)?->exchanged_units ?? 0))
                             ->suffix(' un.')
                             ->weight('semibold'),
 
                         TextEntry::make('initial_stock_value')
                             ->label('Valor em Estoque')
-                            ->state(fn (SalesBoard $record): string => static::money($record->initialPosition?->stock_value))
+                            ->state(fn (SalesBoard $record): string => static::money(static::constructionInitialPosition($record)?->stock_value))
                             ->weight('semibold'),
                         TextEntry::make('initial_financed_value')
                             ->label('Valor Financiado')
-                            ->state(fn (SalesBoard $record): string => static::money($record->initialPosition?->financed_value))
+                            ->state(fn (SalesBoard $record): string => static::money(static::constructionInitialPosition($record)?->financed_value))
                             ->weight('semibold'),
                         TextEntry::make('initial_paid_value')
                             ->label('Valor Quitado')
-                            ->state(fn (SalesBoard $record): string => static::money($record->initialPosition?->paid_value))
+                            ->state(fn (SalesBoard $record): string => static::money(static::constructionInitialPosition($record)?->paid_value))
                             ->weight('semibold'),
                         TextEntry::make('initial_exchanged_value')
                             ->label('Valor Permutado')
-                            ->state(fn (SalesBoard $record): string => static::money($record->initialPosition?->exchanged_value))
+                            ->state(fn (SalesBoard $record): string => static::money(static::constructionInitialPosition($record)?->exchanged_value))
                             ->weight('semibold'),
 
                         TextEntry::make('initial_total_units')
                             ->label('Quantidade Total')
-                            ->state(fn (SalesBoard $record): string => "{$record->initialPosition?->total_units} unidades")
+                            ->state(fn (SalesBoard $record): string => static::constructionInitialPosition($record)?->total_units.' unidades')
                             ->weight('bold')
                             ->badge()
                             ->color('warning')
                             ->columnSpanFull(),
                     ]),
             ]);
+    }
+
+    /**
+     * A posição inicial do empreendimento nesta operação.
+     *
+     * Uma competência só da elaboração também recebe a marca na consolidação,
+     * então o empreendimento pode ter mais de uma versão marcada; o início da
+     * operação é a mais recente delas, a posição em vigor quando a emissão
+     * deixou "Em Elaboração".
+     */
+    protected static function constructionInitialPosition(SalesBoard $record): ?SalesBoardHistory
+    {
+        static::$initialPositions ??= new WeakMap;
+
+        if (! isset(static::$initialPositions[$record])) {
+            static::$initialPositions[$record] = SalesBoardHistory::query()
+                ->initial()
+                ->whereHas('salesBoard', fn (Builder $query): Builder => $query
+                    ->where('emission_id', $record->emission_id)
+                    ->where('construction_id', $record->construction_id))
+                ->orderByDesc('reference_month')
+                ->orderByDesc('id')
+                ->first() ?? false;
+        }
+
+        return static::$initialPositions[$record] ?: null;
+    }
+
+    protected static function emissionInDraft(SalesBoard $record): bool
+    {
+        return $record->emission?->isInDraft() ?? false;
     }
 
     protected static function currentPositionSection(): Section
