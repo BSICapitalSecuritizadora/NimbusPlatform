@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Emissions;
 
+use App\Actions\Emissions\SendObligationDueNotificationsAction;
 use App\Filament\RelationManagers\ActivitiesRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\GuaranteeDetectionsRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\GuaranteesRelationManager;
@@ -302,8 +303,10 @@ class EmissionResource extends Resource
      * edição, e para quem só tem `emissions.view` esse link seria um 403. Em
      * vez de corrigir link por link, a URL da edição cai na página de
      * visualização -- o mesmo dossiê, com as mesmas abas (`?relation=`) --
-     * quando o usuário autenticado não pode editar. Sem usuário (e-mail
-     * montado num job), nada muda: quem recebe entra pela edição se puder.
+     * quando o usuário autenticado não pode editar. Sem usuário autenticado
+     * nada muda: quem monta o link fora de uma requisição escolhe a página --
+     * o e-mail de obrigações escolhe pelo destinatário
+     * ({@see SendObligationDueNotificationsAction::resolveActionUrl()}).
      */
     public static function getUrl(?string $name = null, array $parameters = [], bool $isAbsolute = true, ?string $panel = null, ?Model $tenant = null, bool $shouldGuessMissingParameters = false, ?string $configuration = null): string
     {

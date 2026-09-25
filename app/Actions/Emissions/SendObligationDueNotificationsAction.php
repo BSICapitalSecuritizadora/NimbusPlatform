@@ -197,7 +197,7 @@ class SendObligationDueNotificationsAction
         string $type,
         string $recipient,
     ): ?bool {
-        $actionUrl = $this->resolveActionUrl($obligation);
+        $actionUrl = $this->resolveActionUrl($obligation, $recipient);
         $notification = $this->claimNotification($obligation, $milestone, $type, $recipient);
 
         if ($notification === null) {
@@ -282,10 +282,28 @@ class SendObligationDueNotificationsAction
         }
     }
 
-    protected function resolveActionUrl(Obligation $obligation): string
+    /**
+     * O link leva à Emissão pela página que o destinatário consegue abrir.
+     *
+     * A edição exige `emissions.update`; quem só vê a Emissão entra pelo
+     * dossiê, a página de visualização. O e-mail é montado pelo agendador, sem
+     * usuário autenticado, então quem decide é o responsável da obrigação. O
+     * endereço de fallback não é um usuário conhecido: recebe o dossiê, que
+     * todo perfil com acesso à Emissão abre e de onde quem pode editar segue
+     * para a edição.
+     */
+    protected function resolveActionUrl(Obligation $obligation, string $recipient): string
     {
+        $responsibleUser = $obligation->responsibleUser;
+
+        $page = (($responsibleUser !== null)
+            && (mb_strtolower(trim((string) $responsibleUser->email)) === $recipient)
+            && $responsibleUser->can('emissions.update'))
+            ? 'edit'
+            : 'view';
+
         try {
-            return EmissionResource::getUrl('edit', ['record' => $obligation->emission_id], panel: 'admin');
+            return EmissionResource::getUrl($page, ['record' => $obligation->emission_id], panel: 'admin');
         } catch (\Throwable) {
             return (string) config('app.url', '/');
         }

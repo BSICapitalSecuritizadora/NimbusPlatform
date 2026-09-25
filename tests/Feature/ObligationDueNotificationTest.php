@@ -1,14 +1,17 @@
 <?php
 
 use App\Actions\Emissions\SendObligationDueNotificationsAction;
+use App\Filament\Resources\Emissions\EmissionResource;
 use App\Mail\ObligationDueNotificationMail;
 use App\Models\Emission;
 use App\Models\Obligation;
 use App\Models\ObligationNotification;
 use App\Models\User;
 use Carbon\CarbonInterface;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
 
@@ -181,4 +184,46 @@ it('registers the command in the scheduler', function () {
     $this->artisan('schedule:list')
         ->expectsOutputToContain('obligations:send-due-notifications')
         ->assertSuccessful();
+});
+
+/**
+ * A edição da Emissão exige `emissions.update`. O link do e-mail é montado sem
+ * usuário autenticado, então a página é escolhida pelo destinatário: quem só vê
+ * a Emissão recebe o dossiê em vez de um 403.
+ */
+it('links the email to the emission page the recipient can open', function (?string $role, ?array $permissions, bool $opensEdition) {
+    $this->seed(RolesAndPermissionsSeeder::class);
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    $user = User::factory()->create(['email' => 'resp@bsi.test']);
+
+    if ($role !== null) {
+        $user->assignRole($role);
+    }
+
+    if ($permissions !== null) {
+        $user->givePermissionTo($permissions);
+    }
+
+    $obligation = makeObligationFor('a_vencer', now()->addDays(7), $user);
+    $expectedUrl = EmissionResource::getUrl($opensEdition ? 'edit' : 'view', ['record' => $obligation->emission_id], panel: 'admin');
+
+    runNotifications();
+
+    Mail::assertSent(ObligationDueNotificationMail::class, fn (ObligationDueNotificationMail $mail): bool => $mail->actionUrl === $expectedUrl);
+})->with([
+    'editor' => ['editor', null, true],
+    'super-admin' => ['super-admin', null, true],
+    'somente visualização' => [null, ['emissions.view'], false],
+]);
+
+it('links the fallback mailbox to the emission dossier', function () {
+    config(['obligations.notifications.fallback_email' => 'ops@bsi.test']);
+    $obligation = makeObligationFor('a_vencer', now()->addDays(7), null);
+    $expectedUrl = EmissionResource::getUrl('view', ['record' => $obligation->emission_id], panel: 'admin');
+
+    runNotifications();
+
+    Mail::assertSent(ObligationDueNotificationMail::class, fn (ObligationDueNotificationMail $mail): bool => $mail->hasTo('ops@bsi.test')
+        && $mail->actionUrl === $expectedUrl);
 });

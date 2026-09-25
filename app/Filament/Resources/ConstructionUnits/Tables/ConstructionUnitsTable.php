@@ -164,10 +164,14 @@ class ConstructionUnitsTable
                         ->icon('heroicon-o-pencil-square')
                         ->visible(fn (ConstructionUnit $record): bool => ConstructionUnitResource::canEdit($record)),
 
+                    /**
+                     * Autorizada pela policy, pela autorização padrão da
+                     * página. Um `visible()` com `canDelete()` repetiria a
+                     * consulta das guardas a cada linha.
+                     */
                     DeleteAction::make()
                         ->label('Excluir')
-                        ->modalHeading('Excluir unidade')
-                        ->visible(fn (ConstructionUnit $record): bool => ConstructionUnitResource::canDelete($record)),
+                        ->modalHeading('Excluir unidade'),
                 ])
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->tooltip('Ações da unidade'),

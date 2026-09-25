@@ -14,6 +14,7 @@ use App\Filament\Resources\Contracts\Pages\EditContract;
 use App\Filament\Resources\Contracts\Pages\ListContracts;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
+use App\Filament\Resources\Emissions\Pages\ListEmissions;
 use App\Filament\Resources\SalesBoards\Pages\ListSalesBoards;
 use App\Filament\Resources\SalesBoards\SalesBoardResource;
 use App\Models\Construction;
@@ -31,7 +32,9 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -217,6 +220,8 @@ it('keeps a frozen contract out of the bulk deletion, for the super-admin too', 
     sourceAuthorizationFreeze($frozen->constructionUnit, $frozen);
 
     Livewire::test(ListContracts::class)
+        ->assertTableActionHidden('delete', $frozen)
+        ->assertTableActionVisible('delete', $free)
         ->callTableBulkAction('delete', [$frozen, $free]);
 
     expect($frozen->fresh()->trashed())->toBeFalse()
@@ -489,3 +494,124 @@ it('sends whoever cannot edit the emission to its dossier instead of a forbidden
 
     expect(EmissionResource::getUrl('edit', ['record' => $emission]))->toBe($editUrl);
 });
+
+it('shows the emission deletion disabled, with the reason, instead of hiding it', function (string $profile) {
+    $this->actingAs(sourceAuthorizationUser($profile));
+
+    $construction = sourceAuthorizationConstruction();
+    sourceAuthorizationLegacyBoard($construction);
+    $emission = $construction->emission;
+
+    $page = Livewire::test(ListEmissions::class)
+        ->assertTableActionVisible('delete', $emission)
+        ->assertTableActionDisabled('delete', $emission);
+
+    $action = $page->instance()->getTable()->getAction('delete')->record($emission);
+
+    expect($action->getTooltip())->toBe('A emissão não pode ser excluída: tem Quadro de Vendas registrado.');
+
+    $page->callTableAction('delete', $emission);
+
+    expect(Emission::query()->whereKey($emission->id)->exists())->toBeTrue();
+})->with(['super-admin', 'admin']);
+
+it('keeps the emission deletion out of sight for whoever lacks emissions.delete', function (string $profile) {
+    $this->actingAs(sourceAuthorizationUser($profile));
+
+    $emission = Emission::factory()->create(['type' => 'CRI', 'status' => 'active']);
+
+    Livewire::test(ListEmissions::class)
+        ->assertTableActionHidden('delete', $emission);
+
+    expect(Emission::query()->whereKey($emission->id)->exists())->toBeTrue();
+})->with(['editor', 'viewer']);
+
+/**
+ * A resposta guardada na renderização não pode decidir o clique seguinte: se a
+ * Emissão ganhou história entre uma requisição e outra, a exclusão é recusada.
+ */
+it('asks the emission policy again on the request that runs the deletion', function () {
+    $this->actingAs(sourceAuthorizationUser('admin'));
+
+    $construction = sourceAuthorizationConstruction();
+    $emission = $construction->emission;
+
+    $page = Livewire::test(ListEmissions::class)
+        ->assertTableActionEnabled('delete', $emission);
+
+    sourceAuthorizationLegacyBoard($construction);
+
+    $page->callTableAction('delete', $emission);
+
+    expect(Emission::query()->whereKey($emission->id)->exists())->toBeTrue();
+});
+
+/**
+ * Conta as consultas que tocam uma tabela durante a renderização da lista.
+ */
+function sourceAuthorizationCountProbeQueries(string $table, Closure $render): int
+{
+    $count = 0;
+
+    DB::listen(function (QueryExecuted $query) use ($table, &$count): void {
+        if (str_contains($query->sql, $table)) {
+            $count++;
+        }
+    });
+
+    $render();
+
+    return $count;
+}
+
+/**
+ * As guardas de integridade consultam o banco a cada linha da lista. O Filament
+ * pergunta a autorização de uma ação de linha mais de uma vez -- visibilidade,
+ * estado desabilitado, tooltip --; a guarda roda no máximo uma vez por linha.
+ */
+it('runs the source guards at most once per listed row', function (string $page, string $probeTable, Closure $makeRows, bool $onlyTrashed = false) {
+    $this->actingAs(sourceAuthorizationUser('admin'));
+
+    $rows = $makeRows();
+
+    $count = sourceAuthorizationCountProbeQueries($probeTable, function () use ($page, $rows, $onlyTrashed): void {
+        $list = Livewire::test($page);
+
+        if ($onlyTrashed) {
+            $list->filterTable('trashed', false);
+        }
+
+        $list->assertCanSeeTableRecords($rows);
+    });
+
+    expect($count)->toBeGreaterThan(0)->toBeLessThanOrEqual(count($rows));
+})->with([
+    'contratos' => [ListContracts::class, 'sales_board_cycle_movements', fn (): array => [
+        sourceAuthorizationContract(),
+        sourceAuthorizationContract(),
+        sourceAuthorizationContract(),
+    ]],
+    'contratos excluídos' => [ListContracts::class, 'sales_board_cycle_movements', function (): array {
+        $contracts = [sourceAuthorizationContract(), sourceAuthorizationContract(), sourceAuthorizationContract()];
+
+        foreach ($contracts as $contract) {
+            $contract->delete();
+        }
+
+        return $contracts;
+    }, true],
+    'parcelas' => [ListContractInstallments::class, 'sales_board_cycle_movements', function (): array {
+        $contract = sourceAuthorizationContract();
+
+        return ContractInstallment::factory()->forContract($contract)->count(3)->create()->all();
+    }],
+    'unidades' => [ListConstructionUnits::class, 'construction_unit_exchanges', fn (): array => ConstructionUnit::factory()
+        ->forConstruction(sourceAuthorizationConstruction())
+        ->count(3)
+        ->create()
+        ->all()],
+    'emissões' => [ListEmissions::class, 'sales_board_rollout_recipients', fn (): array => Emission::factory()
+        ->count(3)
+        ->create(['type' => 'CRI', 'status' => 'active'])
+        ->all()],
+]);

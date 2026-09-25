@@ -230,11 +230,16 @@ class ContractsTable
                         ->icon('heroicon-o-pencil-square')
                         ->visible(fn (Contract $record): bool => ContractResource::canEdit($record)),
 
+                    /**
+                     * Exclusão e restauração são autorizadas pela policy, pela
+                     * autorização padrão da página. Um `visible()` com
+                     * `canDelete()` ou `canRestore()` repetiria a consulta das
+                     * guardas a cada linha.
+                     */
                     DeleteAction::make()
                         ->label('Excluir')
                         ->modalHeading('Excluir contrato')
-                        ->modalDescription(ContractResource::DELETE_MODAL_DESCRIPTION)
-                        ->visible(fn (Contract $record): bool => ContractResource::canDelete($record)),
+                        ->modalDescription(ContractResource::DELETE_MODAL_DESCRIPTION),
 
                     RestoreAction::make()
                         ->label('Restaurar')
@@ -265,8 +270,7 @@ class ContractsTable
                                 ->send();
 
                             $action->halt();
-                        })
-                        ->visible(fn (Contract $record): bool => ContractResource::canRestore($record)),
+                        }),
                 ])
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->tooltip('Ações do contrato'),

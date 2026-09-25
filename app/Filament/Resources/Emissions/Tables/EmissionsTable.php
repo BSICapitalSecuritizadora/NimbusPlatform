@@ -158,10 +158,16 @@ class EmissionsTable
                         ->icon('heroicon-o-pencil-square')
                         ->visible(fn (): bool => auth()->user()->can('emissions.update')),
 
+                    /**
+                     * Quem pode excluir vê a ação mesmo quando a Emissão tem
+                     * história protegida: desabilitada, com o motivo da
+                     * policy no tooltip, em vez de sumir sem explicação.
+                     */
                     DeleteAction::make()
                         ->label('Excluir Operação')
                         ->icon('heroicon-o-trash')
-                        ->visible(fn (): bool => auth()->user()->can('emissions.delete')),
+                        ->visible(fn (): bool => auth()->user()->can('emissions.delete'))
+                        ->authorizationTooltip(),
                 ])
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->tooltip('Ações da operação'),
