@@ -3,14 +3,24 @@
 namespace App\Filament\Resources\Receivables\Schemas;
 
 use App\Concerns\MoneyFormatter;
+use App\DTOs\SalesBoards\EmissionSalesPosition;
 use App\Models\Receivable;
+use App\Models\SalesBoard;
+use App\Models\SalesBoardPublication;
+use App\Services\SalesBoards\SalesBoardPositionReader;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ViewEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use WeakMap;
 
 class ReceivableInfolist
 {
+    /**
+     * @var WeakMap<Receivable, EmissionSalesPosition>|null
+     */
+    private static ?WeakMap $salesPositions = null;
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -170,17 +180,16 @@ class ReceivableInfolist
                             ->view('filament.infolists.receivable-aging-projections-table'),
                     ]),
 
-                // 7. Vendas e Estoque (Exibido apenas quando houver Quadro de Vendas na competência)
+                // 7. Vendas e Estoque (exibido quando a Emissão tem posição do Quadro de Vendas na competência)
                 Section::make('Vendas e Estoque')
-                    ->description('Unidades em estoque, financiadas, quitadas e VGV do empreendimento.')
+                    ->description('Posição consolidada da Emissão: soma dos empreendimentos, cada um com o quadro da competência ou a última posição conhecida.')
                     ->columnSpanFull()
-                    ->visible(fn (Receivable $record): bool => (bool) $record->emission?->salesBoards()
-                        ->whereDate('reference_month', $record->reference_month)
-                        ->exists())
+                    ->visible(fn (Receivable $record): bool => static::salesPosition($record)?->hasData() ?? false)
                     ->schema([
                         ViewEntry::make('sales_stock')
                             ->label('')
-                            ->view('filament.infolists.receivable-sales-stock'),
+                            ->view('filament.infolists.receivable-sales-stock')
+                            ->viewData(fn (Receivable $record): array => static::salesStockViewData($record)),
                     ]),
 
                 // 8. Observações e Detalhes da Carteira
@@ -195,6 +204,54 @@ class ReceivableInfolist
                             ->columnSpanFull(),
                     ]),
             ]);
+    }
+
+    /**
+     * Posição do Quadro de Vendas da Emissão na competência do Recebível.
+     *
+     * Lida pelo {@see SalesBoardPositionReader}, a mesma regra do relatório
+     * mensal e das garantias: soma por empreendimento, com a última posição
+     * conhecida de quem não atualizou o quadro. A tela pegava um único quadro
+     * da competência exata com `first()`; numa Emissão com mais de um
+     * empreendimento mostrava só um deles como se fosse o total, e o mês sem
+     * quadro exato escondia a seção mesmo com posição conhecida.
+     *
+     * A seção pergunta duas vezes (visibilidade e conteúdo). O mapa fraco
+     * guarda a leitura por instância do registro, sem prendê-lo na memória.
+     */
+    public static function salesPosition(Receivable $record): ?EmissionSalesPosition
+    {
+        if (($record->emission === null) || ($record->reference_month === null)) {
+            return null;
+        }
+
+        self::$salesPositions ??= new WeakMap;
+
+        return self::$salesPositions[$record] ??= app(SalesBoardPositionReader::class)
+            ->forEmission($record->emission, $record->reference_month);
+    }
+
+    /**
+     * @return array{position: EmissionSalesPosition|null, automatedSalesBoardIds: list<int>, automationCoversMonth: bool}
+     */
+    protected static function salesStockViewData(Receivable $record): array
+    {
+        $position = static::salesPosition($record);
+        $salesBoardIds = $position?->salesBoards()
+            ->map(fn (SalesBoard $salesBoard): int => (int) $salesBoard->getKey())
+            ->all() ?? [];
+
+        return [
+            'position' => $position,
+            'automatedSalesBoardIds' => $salesBoardIds === []
+                ? []
+                : SalesBoardPublication::query()
+                    ->whereIn('sales_board_id', $salesBoardIds)
+                    ->pluck('sales_board_id')
+                    ->map(fn (mixed $salesBoardId): int => (int) $salesBoardId)
+                    ->all(),
+            'automationCoversMonth' => ($position !== null) && (bool) $record->emission?->automationCovers($position->positionDate),
+        ];
     }
 
     protected static function formatMoney(mixed $value): string

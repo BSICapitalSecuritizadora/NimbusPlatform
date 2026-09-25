@@ -10,6 +10,7 @@ use App\Filament\Resources\Receivables\Schemas\ReceivableForm;
 use App\Filament\Resources\Receivables\Schemas\ReceivableInfolist;
 use App\Filament\Resources\Receivables\Tables\ReceivablesTable;
 use App\Models\Receivable;
+use App\Services\SalesBoards\SalesBoardPositionReader;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -59,12 +60,17 @@ class ReceivableResource extends Resource
         ];
     }
 
+    /**
+     * Os quadros de vendas não entram no eager load: a seção "Vendas e
+     * Estoque" lê a posição pelo {@see SalesBoardPositionReader}, só na página
+     * de visualização, e carregar todos os quadros de cada Emissão em toda
+     * listagem só crescia com o histórico.
+     */
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with([
             'emission.constructions',
             'emission.operations',
-            'emission.salesBoards',
         ]);
     }
 

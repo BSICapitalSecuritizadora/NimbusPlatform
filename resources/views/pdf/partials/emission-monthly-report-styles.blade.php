@@ -19,6 +19,7 @@
     table.data tr.total td { font-weight: bold; border-top: 2px solid #a06e28; background: #faf6ef; }
     .note { font-size: 10px; color: #888; margin-top: 6px; }
     .no-data { font-size: 11px; color: #777; background: #f7f7f5; border-left: 3px solid #cfcfcf; padding: 8px 12px; margin: 4px 0 8px; }
+    .coverage-alert { font-size: 10px; color: #5a3d12; background: #faf6ef; border-left: 3px solid #a06e28; padding: 6px 10px; margin: 6px 0 8px; page-break-inside: avoid; }
     table.data tr, table.kv tr { page-break-inside: avoid; }
     .note-card, .cards { page-break-inside: avoid; }
     .note-card { border: 1px solid #eee; border-left: 3px solid #a06e28; padding: 8px 12px; margin-bottom: 8px; background: #fcfbf9; }

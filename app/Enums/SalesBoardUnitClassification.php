@@ -2,6 +2,8 @@
 
 namespace App\Enums;
 
+use App\DTOs\SalesBoards\SalesBoardDerivedLine;
+
 /**
  * Em que balde do Quadro de Vendas uma unidade caiu numa data.
  *
@@ -41,6 +43,25 @@ enum SalesBoardUnitClassification: string
             self::Settled => 'success',
             self::Exchanged => 'warning',
             self::Undetermined => 'danger',
+        };
+    }
+
+    /**
+     * Critério do valor que a unidade leva para o seu balde.
+     *
+     * É a definição de {@see SalesBoardDerivedLine::bucketValueCents()} em
+     * texto: as telas e o formulário legado repetem esta frase para que o
+     * número registrado à mão e o publicado pela automação signifiquem a mesma
+     * coisa. O balde financiado não é saldo devedor da carteira.
+     */
+    public function valueCriterion(): string
+    {
+        return match ($this) {
+            self::Stock => 'Valor de referência (tabela) de cada unidade em estoque na competência',
+            self::Financed => 'Preço de venda de cada contrato vendido e ainda não quitado',
+            self::Settled => 'Preço de venda de cada contrato já quitado',
+            self::Exchanged => 'Valor atribuído a cada permuta',
+            self::Undetermined => 'Sem valor: a unidade fica fora dos quatro grupos até ser resolvida',
         };
     }
 
