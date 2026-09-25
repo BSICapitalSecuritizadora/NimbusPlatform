@@ -8,12 +8,12 @@ use App\Models\SalesBoardCycleMovement;
 use App\Models\SalesBoardManagementNonconformity;
 use App\Models\SalesBoardManagementReview;
 use App\Models\SalesBoardPublication;
-use App\Models\User;
 use App\Support\Money\IntegerMoney;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\SalesBoards\CycleFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 uses(RefreshDatabase::class);
@@ -197,7 +197,7 @@ it('persists every nonconformity origin without truncation', function () {
 it('round-trips the enums, fingerprints and decision text of the management trail', function () {
     $scenario = ManagementReviewFixture::submittedCycleWithNonConformSale();
     $review = ManagementReviewFixture::open($scenario['cycle']);
-    $manager = User::factory()->create();
+    $manager = GovernanceFixture::approver();
 
     ManagementReviewFixture::decide(
         $review->nonconformities->sole(),

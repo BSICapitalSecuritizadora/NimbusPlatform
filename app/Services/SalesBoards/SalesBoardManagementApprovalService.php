@@ -22,6 +22,7 @@ use App\Models\SalesBoardManagementNonconformity;
 use App\Models\SalesBoardManagementReview;
 use App\Models\SalesBoardPublication;
 use App\Models\User;
+use App\Support\SalesBoards\SalesBoardApprovalAuthority;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -73,6 +74,8 @@ class SalesBoardManagementApprovalService
         if ($actor === null) {
             throw SalesBoardManagementReviewException::actorRequired();
         }
+
+        SalesBoardApprovalAuthority::assertMayApproveManagementReview($actor, $review);
 
         if (! $declarationAccepted) {
             throw SalesBoardManagementReviewException::declarationRequired();

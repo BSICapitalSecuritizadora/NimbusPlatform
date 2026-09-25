@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Concurrency;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\CommittedRowsSweeper;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\RolloutFixture;
 
 /**
@@ -74,7 +75,7 @@ function rolloutRaceScenario(): array
     return [
         'emission' => (int) $scenario['emission']->getKey(),
         'homologation' => (int) $homologation->getKey(),
-        'actor' => (int) User::factory()->create()->getKey(),
+        'actor' => (int) GovernanceFixture::approver()->getKey(),
     ];
 }
 
@@ -290,7 +291,7 @@ it('never approves the same homologation twice', function () {
     $instruction = [
         'emission' => (int) $scenario['emission']->getKey(),
         'homologation' => (int) $homologation->getKey(),
-        'actor' => (int) User::factory()->create()->getKey(),
+        'actor' => (int) GovernanceFixture::approver()->getKey(),
     ];
 
     $markers = rolloutRaceMarkers('approve');

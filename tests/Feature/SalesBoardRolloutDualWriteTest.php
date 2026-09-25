@@ -7,8 +7,8 @@ use App\Models\Emission;
 use App\Models\SalesBoard;
 use App\Models\SalesBoardHistory;
 use App\Models\SalesBoardPublication;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 use Tests\Support\SalesBoards\RolloutFixture;
 
@@ -101,7 +101,7 @@ it('lets the publication service write in automated mode', function () {
     ])->save();
 
     $review = ManagementReviewFixture::open($scenario['cycle']);
-    $result = ManagementReviewFixture::approve($review, User::factory()->create());
+    $result = ManagementReviewFixture::approve($review, GovernanceFixture::approver());
 
     $board = $result->salesBoard;
 

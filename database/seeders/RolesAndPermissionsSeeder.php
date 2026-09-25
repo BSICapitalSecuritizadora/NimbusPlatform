@@ -28,6 +28,13 @@ class RolesAndPermissionsSeeder extends Seeder
         $superAdmin->syncPermissions($permissions);
         $admin->syncPermissions($permissions);
 
+        /**
+         * `sales-boards.approve` fica fora desta lista de propósito: é a
+         * autoridade da Gestão sobre o Quadro de Vendas (decidir, aprovar,
+         * publicar, ativar), e o editor é quem opera a competência. Listá-la aqui
+         * desfaria a segregação de funções que a migration
+         * `2026_09_25_141236_grant_sales_boards_approve_permission` instituiu.
+         */
         $editor->syncPermissions([
             'investors.view', 'investors.create', 'investors.update',
             'emissions.view', 'emissions.create', 'emissions.update',

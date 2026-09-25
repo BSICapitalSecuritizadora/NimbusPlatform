@@ -7,16 +7,19 @@ use App\Enums\SalesBoardApprovalOutcome;
 use App\Enums\SalesBoardManagementReviewStatus;
 use App\Enums\SalesBoardNonconformityDecision;
 use App\Enums\SalesBoardStaleImpact;
+use App\Exceptions\SalesBoardMakerCheckerException;
 use App\Exceptions\SalesBoardManagementReviewException;
 use App\Filament\Resources\SalesBoardCycles\SalesBoardCycleResource;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardManagementNonconformity;
 use App\Models\SalesBoardManagementReview;
+use App\Models\User;
 use App\Services\SalesBoards\SalesBoardManagementApprovalService;
 use App\Services\SalesBoards\SalesBoardManagementDecisionService;
 use App\Services\SalesBoards\SalesBoardManagementReturnService;
 use App\Services\SalesBoards\SalesBoardManagementReviewWorkspaceBuilder;
 use App\Support\Money\IntegerMoney;
+use App\Support\SalesBoards\SalesBoardApprovalAuthority;
 use App\Support\SalesBoards\SalesBoardCycleNextAction;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
@@ -234,10 +237,42 @@ class ManagementReviewWorkspace extends Page
             ->all();
     }
 
+    /**
+     * Decidir, devolver e aprovar são da Gestão: exigem a permissão própria de
+     * aprovação, e não a de quem opera a competência. É o que impede a mesma
+     * pessoa de preparar a validação e concluir a análise sobre ela.
+     */
     public function canDecide(): bool
     {
-        return SalesBoardCycleResource::canRecalculate()
+        return SalesBoardCycleResource::canApprove()
             && ($this->currentReview()?->isEditable() ?? false);
+    }
+
+    /**
+     * A rodada está aberta, mas quem está na tela não tem a autoridade da
+     * Gestão. A tela diz a quem pedir em vez de simplesmente não mostrar botão.
+     */
+    public function awaitsGestao(): bool
+    {
+        return ! SalesBoardCycleResource::canApprove()
+            && ($this->currentReview()?->isEditable() ?? false);
+    }
+
+    /**
+     * Por que "Aprovar e publicar" está à vista mas indisponível para quem está
+     * na tela: quem enviou a validação da construtora desta rodada não aprova a
+     * publicação dela. O serviço confere de novo ao aprovar.
+     */
+    public function approvalConflict(): ?string
+    {
+        $user = auth()->user();
+        $review = $this->currentReview();
+
+        if (! $user instanceof User || $review === null) {
+            return null;
+        }
+
+        return SalesBoardApprovalAuthority::managementApprovalConflict($user, $review)?->getMessage();
     }
 
     /**
@@ -258,6 +293,7 @@ class ManagementReviewWorkspace extends Page
             ->modalHeading('Registrar a decisão da Gestão')
             ->modalDescription('A posição apurada não é alterada. A decisão fica registrada com o seu nome e será preservada na trilha da publicação.')
             ->modalSubmitActionLabel('Registrar decisão')
+            ->visible(fn (): bool => $this->canDecide())
             ->schema(fn (array $arguments): array => $this->decisionForm((int) $arguments['nonconformity']))
             ->action(function (array $arguments, array $data): void {
                 $this->run(function () use ($arguments, $data): void {
@@ -286,6 +322,7 @@ class ManagementReviewWorkspace extends Page
             ->requiresConfirmation()
             ->modalHeading('Desfazer esta decisão')
             ->modalDescription('A pendência volta a "pendente" e o motivo registrado é descartado.')
+            ->visible(fn (): bool => $this->canDecide())
             ->action(function (array $arguments): void {
                 $this->run(function () use ($arguments): void {
                     app(SalesBoardManagementDecisionService::class)->decide(
@@ -363,6 +400,13 @@ class ManagementReviewWorkspace extends Page
              * que falta.
              */
             ->visible(fn (): bool => $this->canDecide() && ($this->workspace()?->isReadyToPublish() ?? false))
+            /**
+             * Maker/checker não esconde o botão: ele continua à vista para quem
+             * tem a permissão, desabilitado e dizendo a quem pedir. Desabilitada,
+             * a ação nem monta -- e o serviço recusa de qualquer forma.
+             */
+            ->disabled(fn (): bool => $this->approvalConflict() !== null)
+            ->tooltip(fn (): ?string => $this->approvalConflict())
             ->schema(function (): array {
                 $workspace = $this->workspace();
 
@@ -492,7 +536,7 @@ class ManagementReviewWorkspace extends Page
     {
         try {
             return $callback();
-        } catch (SalesBoardManagementReviewException $exception) {
+        } catch (SalesBoardManagementReviewException|SalesBoardMakerCheckerException $exception) {
             Notification::make()
                 ->title('Não foi possível concluir')
                 ->body($exception->getMessage())

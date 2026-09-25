@@ -11,6 +11,7 @@ use App\Models\Emission;
 use App\Models\SalesBoardRolloutEvent;
 use App\Models\SalesBoardRolloutHomologation;
 use App\Models\User;
+use App\Support\SalesBoards\SalesBoardApprovalAuthority;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -53,6 +54,8 @@ class SalesBoardRolloutActivationService
         if ($actor === null) {
             throw SalesBoardRolloutException::actorRequired();
         }
+
+        SalesBoardApprovalAuthority::assertMayActivate($actor, $homologation);
 
         $reason = $this->normalizeReason($reason);
 
@@ -133,6 +136,8 @@ class SalesBoardRolloutActivationService
         if ($actor === null) {
             throw SalesBoardRolloutException::actorRequired();
         }
+
+        SalesBoardApprovalAuthority::authorize($actor);
 
         $reason = $this->normalizeReason($reason);
 

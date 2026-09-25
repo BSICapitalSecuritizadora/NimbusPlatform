@@ -8,13 +8,13 @@ use App\Models\Emission;
 use App\Models\SalesBoard;
 use App\Models\SalesBoardHistory;
 use App\Models\SalesBoardPublication;
-use App\Models\User;
 use App\Services\SalesBoards\SalesBoardPositionReader;
 use App\Services\SalesBoards\SalesBoardPublicationProjection;
 use App\Support\Money\IntegerMoney;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\SalesBoards\CycleFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 uses(RefreshDatabase::class);
@@ -212,7 +212,7 @@ it('never lets a publication be edited or deleted', function () {
 it('never lets an approved management review be edited or deleted', function () {
     $scenario = ManagementReviewFixture::submittedCycle();
     $review = ManagementReviewFixture::open($scenario['cycle']);
-    ManagementReviewFixture::approve($review, User::factory()->create());
+    ManagementReviewFixture::approve($review, GovernanceFixture::approver());
 
     $approved = $review->fresh();
 

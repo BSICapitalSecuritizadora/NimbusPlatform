@@ -11,6 +11,7 @@ use App\Models\Emission;
 use App\Models\SalesBoardRolloutHomologation;
 use App\Models\SalesBoardRolloutHomologationConstruction;
 use App\Models\User;
+use App\Support\SalesBoards\SalesBoardApprovalAuthority;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -170,6 +171,8 @@ class SalesBoardRolloutHomologationService
             throw SalesBoardRolloutException::actorRequired();
         }
 
+        SalesBoardApprovalAuthority::authorize($actor);
+
         $this->assertEditable($homologation);
 
         $homologation->forceFill([
@@ -196,6 +199,8 @@ class SalesBoardRolloutHomologationService
         if ($actor === null) {
             throw SalesBoardRolloutException::actorRequired();
         }
+
+        SalesBoardApprovalAuthority::assertMayApproveHomologation($actor, $homologation);
 
         $reason = $this->normalizeReason($reason);
 

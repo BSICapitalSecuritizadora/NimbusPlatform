@@ -14,11 +14,11 @@ use App\Exceptions\SalesBoardManagementReviewException;
 use App\Models\ContractInstallment;
 use App\Models\SalesBoard;
 use App\Models\SalesBoardPublication;
-use App\Models\User;
 use App\Services\SalesBoards\SalesBoardManagementApprovalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\SalesBoards\BuilderReviewFixture;
 use Tests\Support\SalesBoards\CycleFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 uses(RefreshDatabase::class);
@@ -26,7 +26,7 @@ uses(RefreshDatabase::class);
 it('approves and publishes a clean position', function () {
     $scenario = ManagementReviewFixture::submittedCycle();
     $review = ManagementReviewFixture::open($scenario['cycle']);
-    $manager = User::factory()->create();
+    $manager = GovernanceFixture::approver();
 
     $baseline = CycleFixture::currentBaseline($scenario['cycle']);
     $result = ManagementReviewFixture::approve($review, $manager);
@@ -185,7 +185,7 @@ it('blocks approval without an identified manager', function () {
 it('is idempotent: approving twice publishes exactly one board', function () {
     $scenario = ManagementReviewFixture::submittedCycle();
     $review = ManagementReviewFixture::open($scenario['cycle']);
-    $manager = User::factory()->create();
+    $manager = GovernanceFixture::approver();
 
     $first = ManagementReviewFixture::approve($review, $manager);
     $second = ManagementReviewFixture::approve($review, $manager);

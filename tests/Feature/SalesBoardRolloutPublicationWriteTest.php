@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Tests\Support\SalesBoards\BuilderReviewFixture;
 use Tests\Support\SalesBoards\DerivationFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 use Tests\Support\SalesBoards\RolloutFixture;
 
@@ -74,20 +75,21 @@ function automatedCycleInManagement(): array
     ]);
 
     // O legado registrou só o estoque; a diferença é analisada, como no rollout real.
-    $actor = User::factory()->create();
-    $homologation = RolloutFixture::open($scenario['emission'], $actor);
+    $operator = User::factory()->create();
+    $approver = GovernanceFixture::approver();
+    $homologation = RolloutFixture::open($scenario['emission'], $operator);
 
     foreach ($homologation->constructions as $row) {
         if ($row->requiresAcknowledgement()) {
             app(SalesBoardRolloutHomologationService::class)
-                ->acceptDifference($row, 'O quadro manual não registrava financiados, quitados e permutas.', $actor);
+                ->acceptDifference($row, 'O quadro manual não registrava financiados, quitados e permutas.', $operator);
         }
     }
 
-    RolloutFixture::recipients($scenario['emission'], $actor);
-    RolloutFixture::reviewImpacts($homologation, $actor);
-    $homologation = RolloutFixture::approve($homologation, $actor);
-    RolloutFixture::activate($scenario['emission'], $homologation, $actor);
+    RolloutFixture::recipients($scenario['emission'], $operator);
+    RolloutFixture::reviewImpacts($homologation, $approver);
+    $homologation = RolloutFixture::approve($homologation, $approver);
+    RolloutFixture::activate($scenario['emission'], $homologation, $approver);
 
     // Fase F: a competência de agosto vence em 13/09.
     RolloutFixture::enableGlobalAutomation();
