@@ -41,7 +41,7 @@ uses(RefreshDatabase::class);
  */
 it('refuses to freeze a baseline when a sale has no applicable discount policy', function () {
     $construction = Construction::factory()->create([
-        'emission_id' => Emission::factory()->create(['status' => 'active'])->id,
+        'emission_id' => Emission::factory()->withAutomatedSalesBoard()->create(['status' => 'active'])->id,
     ]);
 
     // Política só a partir de setembro: a venda de julho fica sem política.
@@ -68,7 +68,7 @@ it('refuses to freeze a baseline when a sale has no applicable discount policy',
 
 it('refuses to freeze a baseline when a sale has no unit reference value', function () {
     $construction = Construction::factory()->create([
-        'emission_id' => Emission::factory()->create(['status' => 'active'])->id,
+        'emission_id' => Emission::factory()->withAutomatedSalesBoard()->create(['status' => 'active'])->id,
     ]);
 
     SalesDiscountPolicy::factory()->forConstruction($construction)

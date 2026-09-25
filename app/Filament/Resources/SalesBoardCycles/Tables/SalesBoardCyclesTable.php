@@ -31,7 +31,7 @@ class SalesBoardCyclesTable
             ->defaultPaginationPageOption(25)
             ->paginationPageOptions([10, 25, 50, 100])
             ->emptyStateHeading('Nenhum ciclo gerado')
-            ->emptyStateDescription('Nenhuma competência foi congelada ainda, ou nenhuma corresponde aos filtros aplicados. Use “Congelar competência” para apurar a posição de um empreendimento.')
+            ->emptyStateDescription('Nenhuma competência foi congelada ainda, ou nenhuma corresponde aos filtros aplicados. Use “Congelar competência” para apurar a posição de um empreendimento de Emissão com a automação ativa.')
             ->emptyStateIcon('heroicon-o-camera')
             ->columns([
                 TextColumn::make('construction.development_name')

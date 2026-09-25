@@ -65,7 +65,7 @@ afterEach(function () {
  */
 function builderReviewRaceScenario(): array
 {
-    $emission = Emission::factory()->create(['status' => 'active']);
+    $emission = Emission::factory()->withAutomatedSalesBoard()->create(['status' => 'active']);
     $construction = Construction::factory()->create(['emission_id' => $emission->id]);
 
     SalesDiscountPolicy::factory()->forConstruction($construction)->effectiveFrom('2020-01-01')->allowing('20.00')->create();

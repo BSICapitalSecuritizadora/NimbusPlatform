@@ -90,6 +90,10 @@ final class ManagementReviewFixture
      */
     public static function submittedCycleOn(Emission $emission, string $unitPrefix = '2'): array
     {
+        if (! $emission->usesAutomatedSalesBoard()) {
+            CycleFixture::automate($emission);
+        }
+
         $construction = Construction::factory()->create(['emission_id' => $emission->getKey()]);
 
         SalesDiscountPolicy::factory()

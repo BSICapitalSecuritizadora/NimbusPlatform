@@ -23,14 +23,19 @@ use Illuminate\Support\Collection;
  * Com `--emission`, cada empreendimento continua tendo o seu próprio ciclo e a
  * sua própria transação. Se A e C estão prontos e B não, A e C são gerados e B é
  * reportado, com o motivo. Não existe "ciclo da emissão" a ser segurado pelo pior
- * empreendimento da carteira.
+ * empreendimento da carteira. A apuração também é um empreendimento por vez, e é
+ * isso que mantém a memória do processo no tamanho do maior deles, e não da soma.
+ *
+ * Sem `--reference-month`, a competência é a última encerrada no calendário de
+ * negócio. Competência aberta e competência fora da automação da Emissão são
+ * recusadas pela geração, com o motivo, como qualquer outro bloqueio.
  */
 class GenerateSalesBoardCycleCommand extends Command
 {
     protected $signature = 'sales-boards:generate-cycle
                             {--construction= : Empreendimento a congelar (id)}
                             {--emission= : Congela todos os empreendimentos da emissão (id)}
-                            {--reference-month= : Competência no formato mm/aaaa ou aaaa-mm (padrão: mês anterior)}
+                            {--reference-month= : Competência no formato mm/aaaa ou aaaa-mm (padrão: último mês encerrado no calendário de negócio)}
                             {--dry-run : Apura e informa o que aconteceria, sem gravar nada}
                             {--json : Devolve o resultado como JSON}';
 

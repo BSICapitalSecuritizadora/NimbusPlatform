@@ -50,12 +50,14 @@ final class ReferenceMonthInput
      * A competência informada, ou o mês anterior.
      *
      * O padrão é o mês fechado, nunca o corrente: uma posição do mês em curso
-     * seria tirada antes de o mês acabar.
+     * seria tirada antes de o mês acabar. "Mês anterior" é o do calendário de
+     * negócio, e quem responde é o {@see CompetenceCalendar} -- sem o
+     * transbordo do dia 31 e sem o dia UTC que já virou às 21h de Brasília.
      */
     public static function parseOrPreviousMonth(mixed $value): ?CarbonImmutable
     {
         if (blank($value)) {
-            return CarbonImmutable::now()->subMonth()->startOfMonth();
+            return CompetenceCalendar::lastClosedMonth();
         }
 
         return self::parse($value);

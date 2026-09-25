@@ -19,6 +19,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Concurrency;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\SalesBoards\AutomationFixture;
 
 /**
  * As corridas da automação, em conexões reais.
@@ -58,7 +59,7 @@ afterEach(function () {
 function automationRaceConstruction(): Construction
 {
     $construction = Construction::factory()->create([
-        'emission_id' => Emission::factory()->create(['status' => 'active'])->id,
+        'emission_id' => Emission::factory()->withAutomatedSalesBoard()->create(['status' => 'active'])->id,
     ]);
 
     SalesDiscountPolicy::factory()->forConstruction($construction)
@@ -172,11 +173,62 @@ it('never duplicates the cycle when a manual generation races the scheduler', fu
         automationTask(['action' => 'run', 'construction_id' => $construction->id]),
     ]);
 
+    $target = SalesBoardAutomationTarget::query()->sole();
+
     expect(collect($results)->where('success', true))->toHaveCount(2)
         ->and(SalesBoardCycle::query()->count())->toBe(1)
         ->and(SalesBoardCycleBaseline::query()->count())->toBe(1)
-        ->and(SalesBoardAutomationTarget::query()->sole()->status)
-        ->toBe(SalesBoardAutomationTargetStatus::Satisfied);
+        ->and($target->status)->toBe(SalesBoardAutomationTargetStatus::Satisfied)
+        // Quem perdeu a corrida sabe por qual ciclo o alvo ficou satisfeito.
+        ->and($target->sales_board_cycle_id)->toBe(SalesBoardCycle::query()->sole()->id);
+})->group('mysql');
+
+/**
+ * A mesma corrida, com a intercalação forçada em vez de sorteada.
+ *
+ * A automação lê o ciclo da competência antes de gerar, e sob `REPEATABLE READ`
+ * essa leitura fixa o snapshot da transação do alvo. O ciclo manual é commitado
+ * por outra conexão exatamente entre essa leitura e o INSERT da automação: o
+ * INSERT perde para a unique, e a releitura do vencedor precisa enxergar uma
+ * linha que o snapshot não enxerga.
+ */
+it('links the target to the cycle a manual generation committed while the scheduler was deriving', function () {
+    $construction = automationRaceConstruction();
+    AutomationFixture::enable([$construction]);
+
+    config()->set('database.connections.manual_side', config('database.connections.mysql'));
+
+    $manualCycleId = null;
+
+    SalesBoardCycle::creating(function () use (&$manualCycleId, $construction): void {
+        if ($manualCycleId !== null) {
+            return;
+        }
+
+        $manualCycleId = (int) DB::connection('manual_side')->table('sales_board_cycles')->insertGetId([
+            'emission_id' => $construction->emission_id,
+            'construction_id' => $construction->id,
+            'reference_month' => '2026-08-01',
+            'position_date' => '2026-08-31',
+            'status' => 'gerado',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    });
+
+    AutomationFixture::run();
+
+    DB::connection('manual_side')->disconnect();
+
+    $target = SalesBoardAutomationTarget::query()->sole();
+    $attempt = SalesBoardAutomationAttempt::query()->sole();
+
+    expect($manualCycleId)->not->toBeNull()
+        ->and(SalesBoardCycle::query()->count())->toBe(1)
+        ->and($target->status)->toBe(SalesBoardAutomationTargetStatus::Satisfied)
+        ->and($target->satisfied_via)->toBe(SalesBoardAutomationSatisfiedVia::Existing)
+        ->and($target->sales_board_cycle_id)->toBe($manualCycleId)
+        ->and($attempt->sales_board_cycle_id)->toBe($manualCycleId);
 })->group('mysql');
 
 it('records every attempt honestly while keeping one cycle', function () {
