@@ -102,9 +102,16 @@ class Construction extends Model
         );
     }
 
+    /**
+     * The development anchors measurements, units and the Sales Board of its
+     * emission; moving it or changing it changes what those read. The trail goes
+     * to the protected `constructions` log instead of `default`, which is
+     * discarded in one year.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('constructions')
             ->logFillable()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();

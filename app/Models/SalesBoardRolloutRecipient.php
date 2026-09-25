@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * Quem recebe os avisos da automação de uma Emissão.
@@ -19,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class SalesBoardRolloutRecipient extends Model
 {
     /** @use HasFactory<SalesBoardRolloutRecipientFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'emission_id',
@@ -33,6 +35,22 @@ class SalesBoardRolloutRecipient extends Model
         return [
             'role' => SalesBoardRolloutRecipientRole::class,
         ];
+    }
+
+    /**
+     * Quem entrou e quem saiu da lista de avisos, e quem fez a mudança.
+     *
+     * A remoção apaga a linha. Sem esta trilha não sobraria registro de que a
+     * pessoa um dia recebeu os avisos de governança da Emissão, nem de quem a
+     * tirou. Grava em `sales_board`, a categoria protegida do módulo.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('sales_board')
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     public function emission(): BelongsTo

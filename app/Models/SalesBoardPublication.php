@@ -59,9 +59,13 @@ class SalesBoardPublication extends Model
         ];
     }
 
+    /**
+     * Grava em `sales_board`, a categoria protegida do módulo.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('sales_board')
             ->logFillable()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();

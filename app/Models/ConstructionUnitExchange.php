@@ -49,9 +49,15 @@ class ConstructionUnitExchange extends Model
         ];
     }
 
+    /**
+     * A permuta decide a classificação "permutado" do Quadro de Vendas. A
+     * trilha grava em `construction_unit_exchanges`, categoria protegida, e não
+     * em `default`, que é descartado em um ano.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('construction_unit_exchanges')
             ->logFillable()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();

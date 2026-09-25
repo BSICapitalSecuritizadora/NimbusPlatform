@@ -7,6 +7,8 @@ use Database\Factories\SalesBoardRolloutHomologationConstructionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * O que a homologação encontrou num empreendimento.
@@ -20,7 +22,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class SalesBoardRolloutHomologationConstruction extends Model
 {
     /** @use HasFactory<SalesBoardRolloutHomologationConstructionFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
+
+    /**
+     * Só a atualização é registrada: a linha nasce sempre sem aceite, e o
+     * retrato gravado na criação é derivado.
+     *
+     * @var list<string>
+     */
+    protected static $recordEvents = ['updated'];
 
     /**
      * A versão do formato das posições persistidas.
@@ -69,6 +79,24 @@ class SalesBoardRolloutHomologationConstruction extends Model
             'has_cancelled_cycle_at_or_after_start' => 'boolean',
             'latest_legacy_board_month' => 'immutable_date',
         ];
+    }
+
+    /**
+     * O aceite da diferença, e nada além dele.
+     *
+     * A reavaliação zera o aceite quando a fonte muda, e a linha passa a dizer
+     * apenas que ninguém aceitou. Quem tinha aceitado, e com qual motivo,
+     * sobrevive no `properties.old` desta trilha, em `sales_board`. O retrato
+     * recalculado a cada reavaliação fica de fora: é derivado, e registrá-lo
+     * transformaria a trilha em ruído.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('sales_board')
+            ->logOnly(['accepted_difference', 'difference_reason', 'accepted_at', 'accepted_by_user_id'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     public function homologation(): BelongsTo
