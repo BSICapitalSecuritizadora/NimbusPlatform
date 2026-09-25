@@ -1,7 +1,5 @@
 <?php
 
-use App\Enums\SalesBoardSource;
-use App\Services\SalesBoards\SalesBoardPositionReader;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -18,7 +16,7 @@ return new class extends Migration
      * explícito, com homologação, e acontece uma Emissão por vez.
      *
      * `sales_board_source` responde "quem escreve os próximos quadros", **não**
-     * "de onde o leitor lê". O {@see SalesBoardPositionReader}
+     * "de onde o leitor lê". O `SalesBoardPositionReader`
      * continua lendo `sales_boards` nos dois modos -- é essa fronteira que
      * mantém Garantias e Relatório sem saber que o rollout existe.
      *
@@ -35,8 +33,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('emissions', function (Blueprint $table) {
+            /**
+             * O literal, e não `SalesBoardSource::Legacy->value`: uma migration
+             * publicada é congelada, e o default que ela grava não pode mudar
+             * porque alguém renomeou um enum depois.
+             */
             $table->string('sales_board_source', 20)
-                ->default(SalesBoardSource::Legacy->value)
+                ->default('legacy')
                 ->after('status');
 
             $table->date('sales_board_automation_start_reference_month')

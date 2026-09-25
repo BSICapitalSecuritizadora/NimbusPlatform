@@ -79,7 +79,7 @@
         ],
         "test:parity": [
             "Composer\\Config::disableProcessTimeout",
-            "./scripts/parity-check.sh"
+            "bash ./scripts/parity-check.sh"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
