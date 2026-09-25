@@ -26,6 +26,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\SalesBoards\DerivationFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\RolloutFixture;
 
 uses(RefreshDatabase::class);
@@ -154,18 +155,19 @@ function homologateAndApprove(Emission $emission): SalesBoardRolloutHomologation
 
 function approveAttempt(SalesBoardRolloutHomologation $homologation): SalesBoardRolloutHomologation
 {
-    $actor = User::factory()->create();
+    $operator = User::factory()->create();
+    $approver = GovernanceFixture::approver();
     $service = app(SalesBoardRolloutHomologationService::class);
 
     foreach ($homologation->fresh()->constructions as $row) {
         if ($row->requiresAcknowledgement()) {
-            $service->acceptDifference($row, 'Diferença entendida com a operação antes do rollout.', $actor);
+            $service->acceptDifference($row, 'Diferença entendida com a operação antes do rollout.', $operator);
         }
     }
 
-    RolloutFixture::reviewImpacts($homologation->fresh(), $actor);
+    RolloutFixture::reviewImpacts($homologation->fresh(), $approver);
 
-    return RolloutFixture::approve($homologation, $actor);
+    return RolloutFixture::approve($homologation, $approver);
 }
 
 /**
@@ -408,7 +410,7 @@ it('keeps governance out of the assessment hash', function () {
         }
     }
 
-    RolloutFixture::reviewImpacts($homologation, $actor);
+    RolloutFixture::reviewImpacts($homologation, GovernanceFixture::approver());
 
     // Aceites e atestações mudaram; os fatos não.
     expect(rolloutAssessment()->assessmentHash($homologation->fresh()))->toBe($hash)

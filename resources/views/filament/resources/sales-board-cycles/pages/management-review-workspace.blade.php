@@ -383,6 +383,11 @@
                         </p>
                     @endif
                 </div>
+            @elseif ($this->awaitsGestao())
+                <p class="mt-6 text-sm text-gray-600 dark:text-gray-300">
+                    <span class="font-medium">Decidir, devolver e publicar são da Gestão:</span>
+                    peça a quem tem a permissão de aprovação do Quadro de Vendas.
+                </p>
             @endif
         </x-filament::section>
 

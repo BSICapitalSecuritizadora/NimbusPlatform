@@ -19,6 +19,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Concurrency;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 /**
@@ -153,7 +154,7 @@ it('never opens two management reviews for the same cycle', function () {
 
 it('never publishes two boards for the same cycle', function () {
     $scenario = ManagementReviewFixture::submittedCycle();
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::approver();
     $review = ManagementReviewFixture::open($scenario['cycle'], $actor);
 
     $marker = temporaryTestFilePath('management-approve-lock', 'lock');
@@ -190,7 +191,7 @@ it('never publishes two boards for the same cycle', function () {
 
 it('never publishes a baseline other than the approved one when a recalculation races it', function () {
     $scenario = ManagementReviewFixture::submittedCycle();
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::approver();
     $review = ManagementReviewFixture::open($scenario['cycle'], $actor);
 
     // A fonte muda: o recálculo concorrente vai produzir uma V2 material.
@@ -230,7 +231,7 @@ it('never publishes a baseline other than the approved one when a recalculation 
 
 it('refuses a recalculation that races an approval and loses', function () {
     $scenario = ManagementReviewFixture::submittedCycle();
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::approver();
     $review = ManagementReviewFixture::open($scenario['cycle'], $actor);
 
     $scenario['contracts']['financed']->update(['sale_value' => '910000.00']);
@@ -267,7 +268,7 @@ it('refuses a recalculation that races an approval and loses', function () {
 
 it('never ends with a returned review next to an approved cycle', function () {
     $scenario = ManagementReviewFixture::submittedCycle();
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::approver();
     $review = ManagementReviewFixture::open($scenario['cycle'], $actor);
 
     $marker = temporaryTestFilePath('management-return-lock', 'lock');
@@ -305,7 +306,7 @@ it('never ends with a returned review next to an approved cycle', function () {
 
 it('never lets two managers decide the same nonconformity into different conclusions', function () {
     $scenario = ManagementReviewFixture::submittedCycleWithNonConformSale();
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::approver();
     $review = ManagementReviewFixture::open($scenario['cycle'], $actor);
     $item = $review->nonconformities->sole();
 

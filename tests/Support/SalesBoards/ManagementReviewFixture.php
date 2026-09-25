@@ -228,6 +228,10 @@ final class ManagementReviewFixture
         return app(SalesBoardManagementReviewOpeningService::class)->open($cycle->fresh(), $actor);
     }
 
+    /**
+     * Sem ator informado, decide alguém da Gestão: decidir exige a permissão de
+     * aprovação.
+     */
     public static function decide(
         SalesBoardManagementNonconformity $nonconformity,
         SalesBoardNonconformityDecision $decision,
@@ -235,7 +239,7 @@ final class ManagementReviewFixture
         ?User $actor = null,
     ): SalesBoardManagementNonconformity {
         return app(SalesBoardManagementDecisionService::class)
-            ->decide($nonconformity, $decision, $reason, $actor);
+            ->decide($nonconformity, $decision, $reason, $actor ?? GovernanceFixture::approver());
     }
 
     /**
@@ -246,6 +250,8 @@ final class ManagementReviewFixture
      */
     public static function decideAll(SalesBoardManagementReview $review, ?User $actor = null): void
     {
+        $actor ??= GovernanceFixture::approver();
+
         foreach ($review->fresh()->nonconformities as $item) {
             self::decide(
                 $item,
@@ -259,13 +265,17 @@ final class ManagementReviewFixture
         }
     }
 
+    /**
+     * Sem ator informado, aprova alguém da Gestão que não é quem enviou a
+     * validação -- a segregação que o serviço impõe.
+     */
     public static function approve(
         SalesBoardManagementReview $review,
         ?User $actor = null,
         ?string $sourceChangeReason = null,
         bool $declaration = true,
     ): SalesBoardApprovalResult {
-        $actor ??= User::factory()->create();
+        $actor ??= GovernanceFixture::approver();
 
         return app(SalesBoardManagementApprovalService::class)
             ->approve($review->fresh(), $actor, $declaration, $sourceChangeReason);
@@ -279,7 +289,7 @@ final class ManagementReviewFixture
         ?User $actor = null,
         string $reason = 'Precisamos da confirmação do contrato da unidade 102.',
     ): array {
-        $actor ??= User::factory()->create();
+        $actor ??= GovernanceFixture::approver();
 
         return app(SalesBoardManagementReturnService::class)
             ->returnToBuilder($review->fresh(), $actor, $reason);

@@ -9,9 +9,9 @@ use App\Enums\SalesBoardUnitClassification;
 use App\Exceptions\SalesBoardManagementReviewException;
 use App\Models\SalesBoardManagementNonconformity;
 use App\Models\SalesBoardManagementReview;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\SalesBoards\BuilderReviewFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 uses(RefreshDatabase::class);
@@ -62,7 +62,7 @@ function systemNonconformity(): array
 
 it('lets the management dismiss a builder declaration', function () {
     $context = declaredNonconformity();
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::approver();
 
     $decided = ManagementReviewFixture::decide(
         $context['item'],
@@ -168,7 +168,7 @@ it('lets the management change its mind while the review is a draft', function (
 
 it('clears authorship and reason when a decision is taken back to pending', function () {
     $context = declaredNonconformity();
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::approver();
 
     ManagementReviewFixture::decide(
         $context['item'],

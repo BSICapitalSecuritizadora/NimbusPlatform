@@ -9,6 +9,7 @@ use App\Exceptions\SalesBoardManagementReviewException;
 use App\Models\SalesBoardManagementNonconformity;
 use App\Models\SalesBoardManagementReview;
 use App\Models\User;
+use App\Support\SalesBoards\SalesBoardApprovalAuthority;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -47,6 +48,8 @@ class SalesBoardManagementDecisionService
         ?string $reason,
         ?User $actor = null,
     ): SalesBoardManagementNonconformity {
+        SalesBoardApprovalAuthority::authorize($actor);
+
         return DB::transaction(function () use ($nonconformity, $decision, $reason, $actor): SalesBoardManagementNonconformity {
             $nonconformity = SalesBoardManagementNonconformity::query()
                 ->whereKey($nonconformity->getKey())

@@ -20,12 +20,12 @@ use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardManagementNonconformity;
 use App\Models\SalesBoardPublication;
 use App\Models\SalesDiscountPolicy;
-use App\Models\User;
 use App\Services\SalesBoards\SalesBoardManagementReviewWorkspaceBuilder;
 use App\Services\SalesBoards\SalesBoardStaleDetectionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\SalesBoards\CycleFixture;
 use Tests\Support\SalesBoards\DerivationFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 uses(RefreshDatabase::class);
@@ -139,7 +139,7 @@ it('accepts only a correction for an undetermined sale', function () {
     $scenario = ManagementReviewFixture::submittedCycleWithUndeterminedSale();
     $review = ManagementReviewFixture::open($scenario['cycle']);
     $item = ManagementReviewFixture::nonconformityOf($review, SalesBoardNonconformityOrigin::SystemSaleUndetermined);
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::approver();
 
     $decided = ManagementReviewFixture::decide(
         $item,

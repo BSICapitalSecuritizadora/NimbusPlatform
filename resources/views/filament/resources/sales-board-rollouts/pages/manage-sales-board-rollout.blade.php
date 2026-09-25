@@ -11,6 +11,7 @@
         $gate = $this->gate();
         $recipients = $this->recipients();
         $canManage = $this->canManage();
+        $canApproveRollout = $this->canApproveRollout();
         $isAutomated = $emission->usesAutomatedSalesBoard();
         $globalEnabled = $this->globalAutomationEnabled();
         $scopeDrift = $this->hasScopeDrift();
@@ -126,7 +127,7 @@
                     : [$this->openHomologationAction, $this->activateAction, $this->returnToLegacyAction])
                     ->filter(fn ($modeAction): bool => $modeAction->isVisible());
             @endphp
-            @if ($canManage && $modeActions->isNotEmpty())
+            @if ($modeActions->isNotEmpty())
                 <div class="bsi-rollout-mode-actions mt-6 flex flex-wrap gap-3">
                     @foreach ($modeActions as $modeAction)
                         {{ $modeAction }}
@@ -196,7 +197,7 @@
                 </p>
             @endif
 
-            @if ($canManage && $homologation->isEditable())
+            @if (($canManage || $canApproveRollout) && $homologation->isEditable())
                 <div class="bsi-rollout-draft-actions flex flex-wrap gap-3">
                     @foreach ([$this->reassessAction, $this->markGuaranteesReviewedAction, $this->markMonthlyReportReviewedAction] as $draftAction)
                         @if ($draftAction->isVisible())
@@ -443,21 +444,30 @@
                 Aprovar e rejeitar só existem no rascunho. A condição usa o portão
                 já lido acima -- a mesma de `visible()` -- para não refazer a
                 leitura viva do portão só para decidir se imprime o botão.
+                Aprovar é da Gestão; rejeitar continua com quem conduz a
+                homologação.
             --}}
-            @if ($canManage && $homologation->isEditable())
+            @if (($canManage || $canApproveRollout) && $homologation->isEditable())
                 <div class="bsi-rollout-gate-actions mt-6 flex flex-wrap items-center gap-3">
-                    @if ($gate['ready'])
+                    @if ($gate['ready'] && $canApproveRollout)
                         {{ $this->approveAction }}
                     @endif
 
-                    {{ $this->rejectAction }}
+                    @if ($canManage)
+                        {{ $this->rejectAction }}
+                    @endif
 
-                    @unless ($gate['ready'])
+                    @if (! $gate['ready'])
                         <p class="text-sm text-gray-600 dark:text-gray-300">
                             <span class="font-medium">Aprovar homologação indisponível:</span>
                             {{ implode('; ', $this->failedGateChecks($gate)) }}.
                         </p>
-                    @endunless
+                    @elseif (! $canApproveRollout)
+                        <p class="text-sm text-gray-600 dark:text-gray-300">
+                            <span class="font-medium">Pronta para aprovação.</span>
+                            Aprovar e ativar são da Gestão: peça a quem tem a permissão de aprovação do Quadro de Vendas.
+                        </p>
+                    @endif
                 </div>
             @endif
         </x-filament::section>
