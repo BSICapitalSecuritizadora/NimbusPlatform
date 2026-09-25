@@ -349,8 +349,20 @@ it('refuses a confirmation that no longer matches the policy being substituted',
         ->fillForm(['confirm_substitution' => true]);
 
     // Enquanto o formulário estava aberto, outra pessoa substituiu a política
-    // vigente. A confirmação dada valia para outra situação.
-    $intervening = periodTestRegister($construction, '2026-09-20', '2026-12-31', $current->id, '4.00');
+    // vigente. A confirmação dada valia para outra situação. O início dela é
+    // anterior a hoje, então ela confirmou também o alcance retroativo.
+    $intervening = app(SalesDiscountPolicyRegistrar::class)->register(
+        $construction,
+        [
+            'maximum_discount_percent' => '4.00',
+            'effective_from' => '2026-09-20',
+            'effective_until' => '2026-12-31',
+            'reason' => 'Revisão comercial',
+        ],
+        $current->id,
+        null,
+        confirmedRetroactiveThrough: '2026-09-24',
+    );
 
     $form->callMountedAction()
         ->assertNotified('Não foi possível registrar a política.');
@@ -538,7 +550,8 @@ it('keeps the fingerprint row of a legacy policy unchanged and adds the end only
     $sale = DerivationFixture::contract($units[0], '2026-07-05', '600000.00');
     DerivationFixture::installment($sale, '001', '2026-08-05', '600000.00');
 
-    $legacy = SalesDiscountPolicy::query()->where('construction_id', $construction->id)->sole();
+    // O fixture registra política com fim, como a tela; a legada vem à parte.
+    $legacy = SalesDiscountPolicy::factory()->forConstruction($construction)->effectiveFrom('2020-01-01')->allowing('10.00')->create();
     $bounded = SalesDiscountPolicy::factory()->forConstruction($construction)->during('2026-07-01', '2026-12-31')->allowing('4.00')->create();
 
     $observe = fn (): array => app(SalesBoardFingerprintService::class)
@@ -551,7 +564,9 @@ it('keeps the fingerprint row of a legacy policy unchanged and adds the end only
         ->and($rows)->toContain(CanonicalDigest::row([$legacy->id, $construction->id, 1000, $legacy->effective_from]))
         ->and($rows)->toContain(CanonicalDigest::row([$bounded->id, $construction->id, 400, $bounded->effective_from, $bounded->effective_until]));
 
-    $bounded->forceFill(['effective_until' => '2026-07-31'])->save();
+    // O model recusa a edição; o fingerprint ainda precisa notar uma mudança
+    // feita por fora dele.
+    SalesDiscountPolicy::query()->whereKey($bounded->id)->update(['effective_until' => '2026-07-31']);
 
     expect($observe())->not->toBe($rows);
 });

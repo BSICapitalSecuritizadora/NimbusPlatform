@@ -212,6 +212,9 @@ it('reports an unknown current value instead of zero', function () {
 });
 
 it('registers a discount policy from the construction page', function () {
+    // Antes do início: uma política retroativa pede a confirmação do alcance.
+    $this->travelTo('2026-06-15 12:00:00');
+
     $construction = Construction::factory()->create();
 
     Livewire::test(SalesDiscountPoliciesRelationManager::class, [
