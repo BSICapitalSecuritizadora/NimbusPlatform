@@ -10,6 +10,7 @@ use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\Contract;
 use App\Models\Emission;
+use App\Support\BusinessTime;
 use App\Support\Contracts\ContractOccupancyOverlap;
 use App\Support\Contracts\ContractOccupancyPeriod;
 use App\Support\Contracts\ContractOccupancyTimeline;
@@ -259,7 +260,13 @@ class ContractForm
             ->required()
             ->native(false)
             ->displayFormat('d/m/Y')
-            ->maxDate(now()->endOfDay())
+            /**
+             * Today in the business calendar, the bound the spreadsheet import
+             * applies too. The UTC day runs ahead of São Paulo from 21:00 on,
+             * and in that window a UTC bound accepted a sale dated tomorrow
+             * that the import refuses.
+             */
+            ->maxDate(static fn (): string => BusinessTime::dateString())
             /**
              * The sale cannot begin while the unit is still held by the contract
              * before it. Reported here when this contract is the one starting
@@ -278,7 +285,7 @@ class ContractForm
             })
             ->validationMessages([
                 'required' => 'Informe a data da venda.',
-                'max' => 'A data da venda não pode ser futura.',
+                'before_or_equal' => 'A data da venda não pode ser futura.',
             ]);
     }
 
