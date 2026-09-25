@@ -24,9 +24,13 @@
 # refuses to run against anything else.
 #
 # Usage:
-#   ./scripts/parity-check.sh                 # inside the app container / CI
-#   ./vendor/bin/sail exec laravel.test ./scripts/parity-check.sh
+#   bash ./scripts/parity-check.sh            # inside the app container / CI
+#   ./vendor/bin/sail exec laravel.test bash ./scripts/parity-check.sh
 #   composer test:parity
+#
+# Always through `bash`: callers must not depend on the executable bit, which a
+# checkout, a copy or a mounted volume can silently drop (exit 126 before any
+# test runs). The bit is versioned too, for anyone who calls it directly.
 #
 # Creating and dropping a database needs more rights than running tests does, so
 # the two use separate credentials: an admin account for the DDL (root by

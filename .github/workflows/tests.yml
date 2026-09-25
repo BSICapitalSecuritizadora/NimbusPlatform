@@ -123,6 +123,12 @@ jobs:
 
       # The script creates and drops its own database, so the credentials here
       # only have to reach the service container.
+      #
+      # Invoked through `bash` rather than as `./scripts/parity-check.sh`: the
+      # checkout recreates the file mode stored in git, and for weeks the script
+      # was stored without the executable bit, so this step died with exit 126
+      # before running a single test and nobody could tell that red from a real
+      # regression. The bit is set now too, but the job must not depend on it.
       - name: Run parity tests on MySQL
         env:
           PARITY_DB_HOST: 127.0.0.1
@@ -131,4 +137,4 @@ jobs:
           PARITY_DB_PASSWORD: password
           PARITY_ADMIN_USERNAME: root
           PARITY_ADMIN_PASSWORD: password
-        run: ./scripts/parity-check.sh
+        run: bash ./scripts/parity-check.sh
