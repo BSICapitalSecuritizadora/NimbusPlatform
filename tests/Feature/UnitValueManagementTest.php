@@ -111,7 +111,12 @@ it('refuses a reference date without its base value', function () {
     expect(ConstructionUnit::count())->toBe(0);
 });
 
-it('accepts a zero base value as an informed amount', function () {
+/**
+ * Zero used to be accepted as "an informed amount". Used as the "no price yet"
+ * placeholder it made every sale of the unit conform and the stock publish at
+ * R$ 0,00 with no finding, so a base value, when informed, must be positive.
+ */
+it('refuses a zero base value', function () {
     $emission = Emission::factory()->create();
     $construction = Construction::factory()->create(['emission_id' => $emission->id]);
 
@@ -125,9 +130,9 @@ it('accepts a zero base value as an informed amount', function () {
             'base_value_reference_date' => '2026-01-01',
         ])
         ->call('create')
-        ->assertHasNoFormErrors();
+        ->assertHasFormErrors(['base_value' => 'min']);
 
-    expect(ConstructionUnit::sole()->base_value)->toBe('0.00');
+    expect(ConstructionUnit::count())->toBe(0);
 });
 
 it('does not overwrite the base value when a new value is recorded', function () {
@@ -171,6 +176,27 @@ it('requires a reason to update a value', function () {
             'reason' => null,
         ])
         ->assertHasActionErrors(['reason']);
+
+    expect(ConstructionUnitValue::count())->toBe(0);
+});
+
+/**
+ * Zero is not a table price: used as the "no price yet" placeholder, it made
+ * every sale of the unit conform and the stock publish at R$ 0,00.
+ */
+it('refuses a zero value in the value history', function () {
+    $unit = ConstructionUnit::factory()->create();
+
+    Livewire::test(ConstructionUnitValuesRelationManager::class, [
+        'ownerRecord' => $unit,
+        'pageClass' => ViewConstructionUnit::class,
+    ])
+        ->callAction(TestAction::make('updateValue')->table(), [
+            'value' => '0,00',
+            'effective_from' => '2026-07-01',
+            'reason' => 'Sem preço',
+        ])
+        ->assertHasActionErrors(['value' => 'min']);
 
     expect(ConstructionUnitValue::count())->toBe(0);
 });

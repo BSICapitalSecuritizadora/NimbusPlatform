@@ -31,7 +31,14 @@ class ImportConstructionUnitsFromSpreadsheet
         $validRows = $analysis->validRows();
         $constructionIds = $validRows->pluck('construction_id')->unique()->values();
 
-        DB::transaction(function () use ($validRows): void {
+        /**
+         * A data de referência vai no mesmo formato que o cast `date` do model
+         * grava, para que o SQLite da suíte guarde o mesmo texto que um cadastro
+         * manual guardaria.
+         */
+        $model = new ConstructionUnit;
+
+        DB::transaction(function () use ($validRows, $model): void {
             $now = now();
 
             $validRows
@@ -49,7 +56,9 @@ class ImportConstructionUnitsFromSpreadsheet
                     'base_value' => $row['base_value'] === null
                         ? null
                         : IntegerMoney::decimalString((int) $row['base_value']),
-                    'base_value_reference_date' => $row['base_value_reference_date'],
+                    'base_value_reference_date' => $row['base_value_reference_date'] === null
+                        ? null
+                        : $model->fromDateTime($row['base_value_reference_date']),
                     'created_at' => $now,
                     'updated_at' => $now,
                 ])

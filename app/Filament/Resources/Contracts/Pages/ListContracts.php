@@ -10,6 +10,9 @@ use App\Exceptions\ContractImportConcurrencyException;
 use App\Filament\Resources\Contracts\ContractResource;
 use App\Filament\Resources\ImportRuns\ImportRunResource;
 use App\Models\ImportRun;
+use App\Services\SalesBoards\RegisteredCompetenceIndex;
+use App\Support\Dates\SpreadsheetDate;
+use App\Support\Reconciliation\ValueComparator;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
@@ -254,6 +257,10 @@ class ListContracts extends ListRecords
             $lines[] = 'Revendas na mesma unidade: <b>'.$analysis->resaleCount().'</b>';
         }
 
+        if ($analysis->registeredCompetenceCount() > 0) {
+            $lines[] = 'Alteram competência já registrada no Quadro de Vendas: <b>'.$analysis->registeredCompetenceCount().'</b>';
+        }
+
         if ($analysis->emptyLineCount() > 0) {
             $lines[] = 'Linhas vazias ignoradas: <b>'.$analysis->emptyLineCount().'</b>';
         }
@@ -264,6 +271,16 @@ class ListContracts extends ListRecords
             $analysis->hasCriticalUpdates() => '<p class="fi-color-warning"><b>Há alterações críticas nesta planilha. Revise as linhas destacadas antes de confirmar.</b></p>',
             default => '<p class="fi-color-success"><b>Planilha pronta: '.$analysis->writeCount().' registro(s) serão gravados.</b></p>',
         };
+
+        /**
+         * Never blocking: correcting the source after a competence was
+         * registered is legitimate. But the registered position is a snapshot
+         * that guarantees and the monthly report keep reading, and it does not
+         * follow the correction on its own.
+         */
+        if ($analysis->registeredCompetenceCount() > 0) {
+            $verdict .= '<p class="fi-color-warning"><b>'.$analysis->registeredCompetenceCount().' linha(s) alteram fatos de competências já registradas no Quadro de Vendas (marcadas com ⚑). A posição registrada não muda sozinha: depois de confirmar, verifique essas competências no Quadro de Vendas.</b></p>';
+        }
 
         return '<div class="fi-ta-text-item-label">'.implode(' &nbsp;·&nbsp; ', $lines).'</div>'.$verdict;
     }
@@ -286,6 +303,12 @@ class ListContracts extends ListRecords
                 $detail = '⚠ '.$detail;
             }
 
+            $registeredWarning = RegisteredCompetenceIndex::describe($row['registered_competences'] ?? []);
+
+            if ($registeredWarning !== null) {
+                $detail .= '<br><span class="fi-color-warning">⚑ '.e($registeredWarning).'</span>';
+            }
+
             return '<tr>'
                 /**
                  * The lines of a contract with several buyers were collapsed into
@@ -297,6 +320,14 @@ class ListContracts extends ListRecords
                 .'<td style="padding:.25rem .5rem;">'.e((string) $row['unit_label']).'</td>'
                 .'<td style="padding:.25rem .5rem;">'.e((string) ($row['client_label'] ?? '—')).'</td>'
                 .'<td style="padding:.25rem .5rem;">'.e((string) $row['code']).'</td>'
+                /**
+                 * The date and value as the import understood them, not as
+                 * the file wrote them: a year read with two digits or an
+                 * amount read a thousand times over is caught here, before
+                 * it is written.
+                 */
+                .'<td style="padding:.25rem .5rem;">'.e(SpreadsheetDate::display($row['sale_date'] ?? null)).'</td>'
+                .'<td style="padding:.25rem .5rem;text-align:right;white-space:nowrap;">'.e(ValueComparator::formatMoney($row['sale_value'] ?? null) ?? '—').'</td>'
                 .'<td style="padding:.25rem .5rem;"><b>'.e($outcome->label()).'</b></td>'
                 .'<td style="padding:.25rem .5rem;">'.$detail.'</td>'
                 .'</tr>';
@@ -319,6 +350,8 @@ class ListContracts extends ListRecords
             .'<th style="text-align:left;padding:.25rem .5rem;">Unidade</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Compradores</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Contrato</th>'
+            .'<th style="text-align:left;padding:.25rem .5rem;">Data da venda</th>'
+            .'<th style="text-align:right;padding:.25rem .5rem;">Valor da venda</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Resultado</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Diferenças</th>'
             .'</tr></thead><tbody>'.$renderedRows.'</tbody></table></div>'

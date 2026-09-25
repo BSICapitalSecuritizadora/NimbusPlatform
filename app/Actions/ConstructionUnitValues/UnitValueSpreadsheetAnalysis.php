@@ -113,6 +113,17 @@ class UnitValueSpreadsheetAnalysis
     }
 
     /**
+     * Linhas que, gravadas, alcançam competência já registrada no Quadro de
+     * Vendas. Aviso da conferência, nunca bloqueio.
+     */
+    public function registeredCompetenceCount(): int
+    {
+        return $this->collect()
+            ->filter(fn (array $row): bool => ($row['registered_competences'] ?? []) !== [])
+            ->count();
+    }
+
+    /**
      * @return Collection<int, array<string, mixed>>
      */
     public function writableRows(): Collection

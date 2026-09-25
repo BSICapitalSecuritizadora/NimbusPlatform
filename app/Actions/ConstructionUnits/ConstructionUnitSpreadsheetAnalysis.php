@@ -82,6 +82,17 @@ class ConstructionUnitSpreadsheetAnalysis
         return $this->errorCount() + $this->alreadyRegisteredCount() + $this->duplicatedInFileCount();
     }
 
+    /**
+     * New units of a development that already has positions registered on the
+     * Sales Board. Shown on the preview, never blocking.
+     */
+    public function registeredCompetenceCount(): int
+    {
+        return $this->collect()
+            ->filter(fn (array $row): bool => ($row['registered_competences'] ?? []) !== [])
+            ->count();
+    }
+
     public function canImport(): bool
     {
         return ($this->fileErrors === [])

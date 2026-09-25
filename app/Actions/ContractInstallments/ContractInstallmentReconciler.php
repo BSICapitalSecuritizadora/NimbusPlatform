@@ -21,8 +21,11 @@ use App\Support\Reconciliation\ValueComparator;
  *   source writes an unpaid installment as an empty cell or a zero, so a
  *   reverted payment and an installment that was never paid arrive identical.
  *   Clearing on that basis would let one incomplete export wipe real receipts,
- *   so the stored payment stays and the row reads as unchanged. Reverting a
- *   receipt is done by editing the installment, where it is audited on its own.
+ *   so the stored payment stays. It is not silent either: the row reads as an
+ *   informative divergence, because a receipt reverted at the source (a cheque
+ *   returned, a payment undone) would otherwise keep the contract settled with
+ *   nobody the wiser. Reverting a receipt is done by editing the installment,
+ *   where it is audited on its own.
  * - The same reasoning covers a cancelamento already on the record: the column
  *   exists in the file and the source never fills it, so an empty cell carries
  *   no information about it.
@@ -94,10 +97,10 @@ class ContractInstallmentReconciler
             return null;
         }
 
-        // Nothing in the file where a payment is recorded: no information, not
-        // an instruction to erase one.
+        // Nothing in the file where a payment is recorded: not an instruction to
+        // erase it, but a difference worth showing.
         if (blank($row['payment_date'])) {
-            return null;
+            return $this->missingReceipt($installment);
         }
 
         return new FieldChange(
@@ -108,6 +111,26 @@ class ContractInstallmentReconciler
             // A first receipt is routine; moving one already recorded is not.
             severity: blank($installment->payment_date) ? ChangeSeverity::Normal : ChangeSeverity::Critical,
             value: $row['payment_date'],
+        );
+    }
+
+    /**
+     * The receipt on record that the file no longer carries, reported once for
+     * the pair -- date and value travel together, in the file and on the record.
+     */
+    private function missingReceipt(ContractInstallment $installment): FieldChange
+    {
+        $recorded = implode(' · ', array_filter([
+            ValueComparator::formatDate($installment->payment_date),
+            ValueComparator::formatMoney($installment->paid_value),
+        ]));
+
+        return new FieldChange(
+            field: 'payment_date',
+            label: 'Recebimento',
+            current: $recorded,
+            new: 'não consta na planilha (mantido; para estornar, edite a parcela)',
+            severity: ChangeSeverity::Informative,
         );
     }
 

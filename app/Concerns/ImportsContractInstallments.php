@@ -8,7 +8,8 @@ use App\Actions\ContractInstallments\ImportContractInstallmentsFromSpreadsheet;
 use App\Enums\ReconciliationOutcome;
 use App\Filament\Resources\ImportRuns\ImportRunResource;
 use App\Models\ImportRun;
-use Carbon\Carbon;
+use App\Services\SalesBoards\RegisteredCompetenceIndex;
+use App\Support\Dates\SpreadsheetDate;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
@@ -231,16 +232,34 @@ trait ImportsContractInstallments
             'Conflitos: <b>'.($analysis->conflictCount() + $analysis->errorCount() + $analysis->duplicatedInFileCount()).'</b>',
         ];
 
+        if ($analysis->informativeDivergenceCount() > 0) {
+            $lines[] = 'Divergências informativas: <b>'.$analysis->informativeDivergenceCount().'</b>';
+        }
+
+        if ($analysis->registeredCompetenceCount() > 0) {
+            $lines[] = 'Alteram competência já registrada no Quadro de Vendas: <b>'.$analysis->registeredCompetenceCount().'</b>';
+        }
+
         if ($analysis->emptyLineCount() > 0) {
             $lines[] = 'Linhas vazias ignoradas: <b>'.$analysis->emptyLineCount().'</b>';
         }
 
         $verdict = match (true) {
             ! $analysis->canImport() => '<p class="fi-color-danger"><b>Corrija as inconsistências antes de confirmar. A importação só é liberada quando nenhuma linha estiver em conflito.</b></p>',
+            ($analysis->writeCount() === 0) && ($analysis->informativeDivergenceCount() > 0) => '<p class="fi-color-warning"><b>Nada a gravar, mas a planilha diverge do registrado em '.$analysis->informativeDivergenceCount().' linha(s). Confira as divergências informativas.</b></p>',
             $analysis->writeCount() === 0 => '<p class="fi-color-gray"><b>Nada a atualizar: a posição da planilha já é a posição registrada.</b></p>',
             $analysis->hasCriticalUpdates() => '<p class="fi-color-warning"><b>Há alterações críticas nesta planilha. Revise as linhas destacadas antes de confirmar.</b></p>',
             default => '<p class="fi-color-success"><b>Planilha pronta: '.$analysis->writeCount().' registro(s) serão gravados.</b></p>',
         };
+
+        /**
+         * Never blocking: a receipt arriving after a competence was registered
+         * is the ordinary course of things. But the registered position is a
+         * snapshot, and it does not follow the source on its own.
+         */
+        if ($analysis->registeredCompetenceCount() > 0) {
+            $verdict .= '<p class="fi-color-warning"><b>'.$analysis->registeredCompetenceCount().' linha(s) alteram fatos de competências já registradas no Quadro de Vendas (marcadas com ⚑). A posição registrada não muda sozinha: depois de confirmar, verifique essas competências no Quadro de Vendas.</b></p>';
+        }
 
         return '<div class="fi-ta-text-item-label">'.implode(' &nbsp;·&nbsp; ', $lines).'</div>'.$verdict;
     }
@@ -260,24 +279,34 @@ trait ImportsContractInstallments
             $outcome = $row['outcome'];
             $detail = filled($row['message'] ?? null) ? e((string) $row['message']) : '—';
 
-            if ($outcome === ReconciliationOutcome::CriticalUpdate) {
+            if (in_array($outcome, [ReconciliationOutcome::CriticalUpdate, ReconciliationOutcome::InformativeDivergence], true)) {
                 $detail = '⚠ '.$detail;
             }
 
-            $dueDate = filled($row['due_date'] ?? null)
-                ? Carbon::parse((string) $row['due_date'])->format('d/m/Y')
-                : '—';
+            $registeredWarning = RegisteredCompetenceIndex::describe($row['registered_competences'] ?? []);
 
-            $expectedValue = filled($row['expected_value'] ?? null)
-                ? 'R$ '.MoneyFormatter::formatCurrencyForDisplay($row['expected_value'])
-                : '—';
+            if ($registeredWarning !== null) {
+                $detail .= '<br><span class="fi-color-warning">⚑ '.e($registeredWarning).'</span>';
+            }
+
+            /**
+             * Dates and amounts as the import understood them, not as the file
+             * wrote them: a year read with two digits or an amount read a
+             * thousand times over is caught here, before it is written.
+             */
+            $dueDate = SpreadsheetDate::display($row['due_date'] ?? null);
+            $expectedValue = $this->formatInstallmentMoney($row['expected_value'] ?? null);
+            $paymentDate = SpreadsheetDate::display($row['payment_date'] ?? null);
+            $paidValue = $this->formatInstallmentMoney($row['paid_value'] ?? null);
 
             return '<tr>'
                 .'<td style="padding:.25rem .5rem;">'.$row['line'].'</td>'
                 .'<td style="padding:.25rem .5rem;">'.e((string) ($row['contract_code'] ?? '—')).'</td>'
                 .'<td style="padding:.25rem .5rem;">'.e((string) ($row['number'] ?? '—')).'</td>'
                 .'<td style="padding:.25rem .5rem;">'.e($dueDate).'</td>'
-                .'<td style="padding:.25rem .5rem;text-align:right;">'.e($expectedValue).'</td>'
+                .'<td style="padding:.25rem .5rem;text-align:right;white-space:nowrap;">'.e($expectedValue).'</td>'
+                .'<td style="padding:.25rem .5rem;">'.e($paymentDate).'</td>'
+                .'<td style="padding:.25rem .5rem;text-align:right;white-space:nowrap;">'.e($paidValue).'</td>'
                 .'<td style="padding:.25rem .5rem;"><b>'.e($outcome->label()).'</b></td>'
                 .'<td style="padding:.25rem .5rem;">'.$detail.'</td>'
                 .'</tr>';
@@ -300,10 +329,17 @@ trait ImportsContractInstallments
             .'<th style="text-align:left;padding:.25rem .5rem;">Parcela</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Vencimento</th>'
             .'<th style="text-align:right;padding:.25rem .5rem;">Previsto</th>'
+            .'<th style="text-align:left;padding:.25rem .5rem;">Pagamento</th>'
+            .'<th style="text-align:right;padding:.25rem .5rem;">Pago</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Resultado</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Diferenças</th>'
             .'</tr></thead><tbody>'.$renderedRows.'</tbody></table></div>'
             .($notes === [] ? '' : '<p>'.implode(' ', $notes).'</p>');
+    }
+
+    private function formatInstallmentMoney(mixed $value): string
+    {
+        return blank($value) ? '—' : 'R$ '.MoneyFormatter::formatCurrencyForDisplay($value);
     }
 
     private function analyzeInstallments(?string $path, ?int $contractId): ?ContractInstallmentSpreadsheetAnalysis

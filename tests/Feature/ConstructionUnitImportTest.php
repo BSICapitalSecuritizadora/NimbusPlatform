@@ -9,6 +9,7 @@ use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\ConstructionUnitValue;
 use App\Models\Emission;
+use App\Models\SalesBoard;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -153,7 +154,12 @@ it('rejects an unreadable base value or reference date', function (string $baseV
     'invalid date' => ['900.000,00', '31/02/2026', 'Data de referência do valor base inválida'],
 ]);
 
-it('accepts a zero base value as an informed amount', function () {
+/**
+ * Zero used to be accepted as "an informed amount". Used as the "no price yet"
+ * placeholder it made every sale of the unit conform and the stock publish at
+ * R$ 0,00 with no finding, so a base value, when informed, must be positive.
+ */
+it('refuses a zero base value', function () {
     $emission = Emission::factory()->create(['name' => 'CRI Alfa']);
     Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Alfa']);
 
@@ -161,12 +167,10 @@ it('accepts a zero base value as an informed amount', function () {
         ['CRI Alfa', 'Residencial Alfa', '01', '101', '0,00', '01/01/2026'],
     ]));
 
-    app(ImportConstructionUnitsFromSpreadsheet::class)->handle($analysis);
-
-    $unit = ConstructionUnit::sole();
-
-    expect($unit->base_value)->toBe('0.00')
-        ->and($unit->hasBaseValue())->toBeTrue();
+    expect($analysis->canImport())->toBeFalse()
+        ->and($analysis->errorCount())->toBe(1)
+        ->and($analysis->collect()->first()['message'])->toContain('O valor base precisa ser maior que zero.')
+        ->and(ConstructionUnit::count())->toBe(0);
 });
 
 it('never writes value history when importing units', function () {
@@ -382,4 +386,113 @@ it('does not import through the wizard when the spreadsheet has errors', functio
 
     expect($construction->units()->count())->toBe(0)
         ->and(Activity::query()->where('log_name', 'importacao-unidades')->count())->toBe(0);
+});
+
+describe('leitura estrita da data de referência', function () {
+    /**
+     * Anything outside dd/mm/aaaa used to fall into Carbon::parse(), which reads
+     * slashes month first: "01/07/26" became 7 de janeiro and the base value
+     * was placed six months away from where the operator put it.
+     */
+    it('refuses a two digit year and an implausible year', function (string $referenceDate) {
+        $emission = Emission::factory()->create(['name' => 'CRI Alfa']);
+        Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Alfa']);
+
+        $analysis = app(AnalyzeConstructionUnitSpreadsheet::class)->handle(unitSpreadsheetWithBaseValue([
+            ['CRI Alfa', 'Residencial Alfa', '01', '101', '400.000,00', $referenceDate],
+        ]));
+
+        expect($analysis->canImport())->toBeFalse()
+            ->and($analysis->collect()->first()['message'])
+            ->toBe('Data de referência do valor base inválida. Utilize o formato dd/mm/aaaa, com o ano completo (a partir de 1990).');
+    })->with([
+        'two digit year' => ['01/07/26'],
+        'implausible year' => ['01/07/0026'],
+        'dashes' => ['01-07-26'],
+    ]);
+
+    it('reads the time an export appends as the same day, never month first', function () {
+        $emission = Emission::factory()->create(['name' => 'CRI Alfa']);
+        Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Alfa']);
+
+        $analysis = app(AnalyzeConstructionUnitSpreadsheet::class)->handle(unitSpreadsheetWithBaseValue([
+            ['CRI Alfa', 'Residencial Alfa', '01', '101', '400.000,00', '01/07/2026 00:00:00'],
+        ]));
+
+        expect($analysis->collect()->first()['base_value_reference_date'])->toBe('2026-07-01');
+    });
+
+    it('shows the interpreted base value and reference date on the conference', function () {
+        $this->actingAs(makeAdminUser());
+
+        $emission = Emission::factory()->create(['name' => 'CRI Alfa']);
+        Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Alfa']);
+
+        $path = unitSpreadsheetWithBaseValue([
+            ['CRI Alfa', 'Residencial Alfa', '01', '101', '400.000,00', '01/07/2026 00:00:00'],
+        ]);
+        $storedPath = 'imports/construction-units/'.basename($path);
+        Storage::disk('local')->put($storedPath, file_get_contents($path));
+
+        $component = Livewire::test(ListConstructionUnits::class)->instance();
+        $preview = (fn (): string => $this->renderPreview($storedPath)->toHtml())->call($component);
+
+        expect($preview)
+            ->toContain('<th style="text-align:right;padding:.25rem .5rem;">Valor base</th>')
+            ->toContain('R$ 400.000,00')
+            ->toContain('01/07/2026');
+    });
+});
+
+/**
+ * The development used to be looked up by name across every emission, and only
+ * then checked against the emission of the row. A homonym of another series
+ * found first made the right row read "não pertence à emissão".
+ */
+it('resolves the development inside the emission of the row', function () {
+    $firstSeries = Emission::factory()->create(['name' => 'CRI Alfa 1ª Série']);
+    Construction::factory()->create(['emission_id' => $firstSeries->id, 'development_name' => 'Residencial Alfa']);
+
+    $secondSeries = Emission::factory()->create(['name' => 'CRI Alfa 2ª Série']);
+    $construction = Construction::factory()->create(['emission_id' => $secondSeries->id, 'development_name' => 'Residencial Alfa']);
+
+    $analysis = analyzeUnitSpreadsheet([['CRI Alfa 2ª Série', 'Residencial Alfa', '01', '101']]);
+
+    expect($analysis->canImport())->toBeTrue()
+        ->and($analysis->collect()->first()['construction_id'])->toBe($construction->id);
+
+    Construction::factory()->create(['emission_id' => $secondSeries->id, 'development_name' => ' residencial alfa']);
+
+    expect(analyzeUnitSpreadsheet([['CRI Alfa 2ª Série', 'Residencial Alfa', '01', '101']])->collect()->first()['message'])
+        ->toBe('Há mais de um empreendimento com este nome nesta emissão. Diferencie os nomes antes de importar.');
+});
+
+it('flags new units of a development that already has registered Sales Board competences', function () {
+    $this->actingAs(makeAdminUser());
+
+    [$emission, $construction] = unitEmissionAndConstruction();
+    [, $otherConstruction] = unitEmissionAndConstruction('CRI Outra', 'Outro Empreendimento');
+
+    foreach (['2026-05-01', '2026-06-01'] as $month) {
+        SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create(['reference_month' => $month]);
+    }
+
+    $analysis = analyzeUnitSpreadsheet([
+        ['CRI Conviva', 'Conviva Camboinhas', '01', '101'],
+        ['CRI Outra', 'Outro Empreendimento', '01', '101'],
+    ]);
+
+    expect($analysis->canImport())->toBeTrue()
+        ->and($analysis->registeredCompetenceCount())->toBe(1)
+        ->and($analysis->collect()->firstWhere('construction_id', $construction->id)['registered_competences'])->toBe(['2026-05', '2026-06'])
+        ->and($analysis->collect()->firstWhere('construction_id', $otherConstruction->id)['registered_competences'])->toBe([]);
+
+    $path = unitSpreadsheet([['CRI Conviva', 'Conviva Camboinhas', '01', '101']]);
+    $storedPath = 'imports/construction-units/'.basename($path);
+    Storage::disk('local')->put($storedPath, file_get_contents($path));
+
+    $component = Livewire::test(ListConstructionUnits::class)->instance();
+    $preview = (fn (): string => $this->renderPreview($storedPath)->toHtml())->call($component);
+
+    expect($preview)->toContain('Altera fatos de 2 competências já registradas no Quadro de Vendas (05/2026 a 06/2026).');
 });
