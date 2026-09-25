@@ -277,6 +277,11 @@ class SalesDiscountPoliciesRelationManager extends RelationManager
                      * O `step` é só atributo HTML. A coluna é `decimal(5,2)` e
                      * arredondaria uma terceira casa; o registrador também a
                      * recusa, mas aqui o erro aparece no campo.
+                     *
+                     * A tela é mais estrita que o registrador de propósito: ele
+                     * aceita zeros à direita (`4.2500` = 4,25%), que não mudam
+                     * o valor e podem vir de outros chamadores; quem digita não
+                     * precisa deles.
                      */
                     ->rule('decimal:0,2')
                     ->placeholder('5,00')
@@ -473,10 +478,14 @@ class SalesDiscountPoliciesRelationManager extends RelationManager
                             : null,
                     );
                 } catch (SalesDiscountPolicyPeriodException $exception) {
+                    $withdrew = $this->withdrawConfirmations();
+
                     Notification::make()
                         ->danger()
                         ->title('Não foi possível registrar a política.')
-                        ->body($exception->getMessage())
+                        ->body($withdrew
+                            ? $exception->getMessage().' As confirmações foram desmarcadas: marque-as de novo depois de revisar.'
+                            : $exception->getMessage())
                         ->persistent()
                         ->send();
 
@@ -555,6 +564,44 @@ class SalesDiscountPoliciesRelationManager extends RelationManager
         $set('confirmed_substitution_id', null);
         $set('confirm_retroactive', false);
         $set('confirmed_retroactive_through', null);
+    }
+
+    /**
+     * Desmarca as confirmações do formulário aberto depois de uma recusa do
+     * registrador.
+     *
+     * A recusa quer dizer que o servidor encontrou outra situação -- o dia de
+     * negócio virou e o alcance cresceu, outra política foi registrada no meio
+     * --, e o que foi confirmado valia para a de antes. Sem isto a caixa
+     * continuaria marcada com a confirmação velha, e só desmarcar e marcar de
+     * novo a atualizaria. As avaliações em memória também saem: a tela precisa
+     * mostrar o que o servidor acabou de encontrar.
+     *
+     * Devolve se alguma confirmação estava marcada, para a mensagem avisar que
+     * ela precisa ser dada de novo.
+     */
+    protected function withdrawConfirmations(): bool
+    {
+        $this->periodAssessments = [];
+        $this->positionContext = null;
+
+        $statePath = $this->getMountedActionSchema()?->getStatePath();
+
+        if (blank($statePath)) {
+            return false;
+        }
+
+        $wasConfirmed = ((bool) data_get($this, "{$statePath}.confirm_substitution"))
+            || ((bool) data_get($this, "{$statePath}.confirm_retroactive"));
+
+        $this->fill([
+            "{$statePath}.confirm_substitution" => false,
+            "{$statePath}.confirmed_substitution_id" => null,
+            "{$statePath}.confirm_retroactive" => false,
+            "{$statePath}.confirmed_retroactive_through" => null,
+        ]);
+
+        return $wasConfirmed;
     }
 
     /**

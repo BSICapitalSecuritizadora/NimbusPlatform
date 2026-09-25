@@ -88,7 +88,7 @@ function retroactiveTestRegister(
     );
 }
 
-function approvedCycleFor(Construction $construction, string $month, SalesBoardCycleStatus $status = SalesBoardCycleStatus::Approved): SalesBoardCycle
+function retroactiveTestApprovedCycle(Construction $construction, string $month, SalesBoardCycleStatus $status = SalesBoardCycleStatus::Approved): SalesBoardCycle
 {
     return SalesBoardCycle::factory()
         ->forConstruction($construction)
@@ -241,8 +241,8 @@ it('refuses a confirmation given for a reach that grew when the business day tur
 
 it('refuses a period that reaches a competence already approved and published', function () {
     $construction = retroactiveTestConstruction();
-    approvedCycleFor($construction, '2026-07-01');
-    approvedCycleFor($construction, '2026-08-01');
+    retroactiveTestApprovedCycle($construction, '2026-07-01');
+    retroactiveTestApprovedCycle($construction, '2026-08-01');
 
     retroactiveTestManager($construction)
         ->mountAction(TestAction::make('newPolicy')->table())
@@ -272,8 +272,8 @@ it('refuses a period that reaches a competence already approved and published', 
 
 it('only counts approved competences of the same construction', function (SalesBoardCycleStatus $status) {
     $construction = retroactiveTestConstruction();
-    approvedCycleFor($construction, '2026-08-01', $status);
-    approvedCycleFor(Construction::factory()->create(), '2026-07-01');
+    retroactiveTestApprovedCycle($construction, '2026-08-01', $status);
+    retroactiveTestApprovedCycle(Construction::factory()->create(), '2026-07-01');
 
     $policy = retroactiveTestRegister($construction, '2026-07-01', '2026-12-31', '2026-09-24');
 
@@ -291,7 +291,7 @@ it('keeps the verdict of a sale in a published competence when a looser policy i
 
     $unit = DerivationFixture::unit($construction, '101', '1000000.00');
     DerivationFixture::contract($unit, '2026-07-10', '900000.00');
-    approvedCycleFor($construction, '2026-07-01');
+    retroactiveTestApprovedCycle($construction, '2026-07-01');
 
     $verdict = fn (): SalesPriceConformityStatus => DerivationFixture::derive($construction->fresh(), '2026-07-01')
         ->movements->sales[0]->conformity->status;
@@ -301,4 +301,195 @@ it('keeps the verdict of a sale in a published competence when a looser policy i
         ->toThrow(SalesDiscountPolicyPeriodException::class, 'competência já aprovada e publicada desta obra (07/2026)')
         ->and($verdict())->toBe(SalesPriceConformityStatus::NonConform)
         ->and(SalesDiscountPolicy::count())->toBe(1);
+});
+
+function retroactiveTestNotificationBody(string $title): ?string
+{
+    $notification = collect(session()->get('filament.claimed_notifications') ?? session()->get('filament.notifications') ?? [])
+        ->first(fn (array $notification): bool => ((string) ($notification['title'] ?? '')) === $title);
+
+    return $notification === null ? null : (string) ($notification['body'] ?? '');
+}
+
+/**
+ * A substituída não volta a valer depois do fim da nova. Corrigir um mês
+ * passado deixa sem política as vendas feitas entre o fim da correção e o fim
+ * que a substituída teria -- inclusive as de uma competência já publicada.
+ */
+it('refuses a past correction whose gap after it reaches an approved competence', function (string $from, string $until, string $confirmedThrough, string $gap) {
+    $construction = DerivationFixture::construction();
+    $current = SalesDiscountPolicy::factory()->forConstruction($construction)->during('2026-01-01', '2026-12-31')->allowing('10.00')->create();
+
+    $unit = DerivationFixture::unit($construction, '101', '1000000.00');
+    DerivationFixture::contract($unit, '2026-08-10', '950000.00');
+    retroactiveTestApprovedCycle($construction, '2026-08-01');
+
+    $verdict = fn (): SalesPriceConformityStatus => DerivationFixture::derive($construction->fresh(), '2026-08-01')
+        ->movements->sales[0]->conformity->status;
+
+    expect($verdict())->toBe(SalesPriceConformityStatus::Conform);
+
+    $expectedMessage = "O registro alcança competência já aprovada e publicada desta obra (08/2026): como a política de 10,00% (01/01/2026 a 31/12/2026) não volta a valer depois de {$gap} ficariam sem política vigente. A conformidade das vendas de uma competência publicada não é rejulgada: o início precisa ser posterior a 31/08/2026.";
+
+    retroactiveTestManager($construction)
+        ->mountAction(TestAction::make('newPolicy')->table())
+        ->fillForm([
+            'maximum_discount_percent' => '8.00',
+            'effective_from' => $from,
+            'effective_until' => $until,
+            'reason' => 'Correção de um mês passado',
+        ])
+        ->assertHasActionErrors(['effective_from'])
+        ->assertMountedActionModalSee($expectedMessage)
+        ->assertMountedActionModalDontSee('Confirmo que a política alcança essas vendas')
+        ->fillForm(['confirm_substitution' => true])
+        ->callMountedAction()
+        ->assertHasActionErrors(['effective_from']);
+
+    // Nem a confirmação do período da nova nem a do alcance inteiro destravam.
+    expect(fn () => retroactiveTestRegister($construction, $from, $until, $until, $current->id, '8.00'))
+        ->toThrow(SalesDiscountPolicyPeriodException::class, $expectedMessage)
+        ->and(fn () => retroactiveTestRegister($construction, $from, $until, $confirmedThrough, $current->id, '8.00'))
+        ->toThrow(SalesDiscountPolicyPeriodException::class, $expectedMessage)
+        ->and(SalesDiscountPolicy::count())->toBe(1)
+        ->and($verdict())->toBe(SalesPriceConformityStatus::Conform);
+})->with([
+    'correção de março' => ['2026-03-01', '2026-03-31', '2026-09-24', '31/03/2026, as vendas feitas de 01/04/2026 a 24/09/2026'],
+    'correção com o mesmo início' => ['2026-01-01', '2026-01-31', '2026-09-24', '31/01/2026, as vendas feitas de 01/02/2026 a 24/09/2026'],
+]);
+
+it('lists the past sales a correction leaves without policy and binds the confirmation to the end of that gap', function () {
+    $construction = retroactiveTestConstruction();
+    $current = SalesDiscountPolicy::factory()->forConstruction($construction)->during('2026-01-01', '2026-12-31')->allowing('5.00')->create();
+
+    $assessment = app(SalesDiscountPolicyRegistrar::class)
+        ->assess($construction->id, CarbonImmutable::parse('2026-06-01'), CarbonImmutable::parse('2026-06-30'));
+
+    expect($assessment->retroactiveThrough?->toDateString())->toBe('2026-06-30')
+        ->and($assessment->uncoveredThrough?->toDateString())->toBe('2026-09-24')
+        ->and($assessment->retroactiveThroughDate())->toBe('2026-09-24')
+        ->and($assessment->reachesApprovedCompetence())->toBeFalse();
+
+    $expectedMessage = 'A política passará a decidir a conformidade das vendas feitas de 01/06/2026 a 30/06/2026: 06/2026 (1 venda). Como a política de 5,00% não volta a valer depois de 30/06/2026, as vendas feitas de 01/07/2026 a 24/09/2026 ficarão sem política vigente e sem veredito de conformidade: 07/2026 (2 vendas), 08/2026 (nenhuma venda) e 09/2026 (1 venda). Ciclos ainda não aprovados com vendas nesses períodos ficarão desatualizados e precisarão ser recalculados.';
+
+    expect($assessment->retroactivityMessage())->toContain($expectedMessage)
+        // Confirmar só o período da nova não é confirmar as vendas que ficam sem política.
+        ->and(fn () => retroactiveTestRegister($construction, '2026-06-01', '2026-06-30', '2026-06-30', $current->id))
+        ->toThrow(SalesDiscountPolicyPeriodException::class, 'confirme o alcance retroativo')
+        ->and(SalesDiscountPolicy::count())->toBe(1);
+
+    retroactiveTestManager($construction)
+        ->mountAction(TestAction::make('newPolicy')->table())
+        ->fillForm([
+            'maximum_discount_percent' => '8.00',
+            'effective_from' => '2026-06-01',
+            'effective_until' => '2026-06-30',
+            'reason' => 'Correção de junho',
+        ])
+        ->assertMountedActionModalSee($expectedMessage)
+        ->fillForm(['confirm_substitution' => true, 'confirm_retroactive' => true])
+        ->assertSchemaStateSet(['confirmed_retroactive_through' => '2026-09-24'])
+        ->callMountedAction()
+        ->assertHasNoActionErrors();
+
+    expect(SalesDiscountPolicy::count())->toBe(2);
+});
+
+it('ends the gap where the substituted policy would already have stopped answering', function (Closure $existing, string $uncoveredThrough) {
+    $construction = retroactiveTestConstruction();
+    $substituted = $existing($construction);
+    retroactiveTestApprovedCycle($construction, '2026-08-01');
+
+    $assessment = app(SalesDiscountPolicyRegistrar::class)
+        ->assess($construction->id, CarbonImmutable::parse('2026-06-01'), CarbonImmutable::parse('2026-06-30'));
+
+    expect($assessment->uncoveredThrough?->toDateString())->toBe($uncoveredThrough)
+        ->and($assessment->reachesApprovedCompetence())->toBeFalse();
+
+    $policy = retroactiveTestRegister($construction, '2026-06-01', '2026-06-30', $uncoveredThrough, $substituted->id);
+
+    expect($policy->exists)->toBeTrue();
+})->with([
+    'fim registrado da substituída' => [
+        fn (Construction $construction): SalesDiscountPolicy => SalesDiscountPolicy::factory()->forConstruction($construction)->during('2026-01-01', '2026-07-15')->create(),
+        '2026-07-15',
+    ],
+    'substituída já encerrada por uma sucessora' => [
+        function (Construction $construction): SalesDiscountPolicy {
+            $substituted = SalesDiscountPolicy::factory()->forConstruction($construction)->during('2026-01-01', '2026-12-31')->create();
+            SalesDiscountPolicy::factory()->forConstruction($construction)->during('2026-08-01', '2026-12-31')->create();
+
+            return $substituted;
+        },
+        '2026-07-31',
+    ],
+]);
+
+it('refuses the gap left by a correction when it ends inside an approved competence', function () {
+    $construction = retroactiveTestConstruction();
+    $substituted = SalesDiscountPolicy::factory()->forConstruction($construction)->during('2026-01-01', '2026-07-15')->create();
+    retroactiveTestApprovedCycle($construction, '2026-07-01');
+
+    expect(fn () => retroactiveTestRegister($construction, '2026-06-01', '2026-06-30', '2026-07-15', $substituted->id))
+        ->toThrow(SalesDiscountPolicyPeriodException::class, 'as vendas feitas de 01/07/2026 a 15/07/2026 ficariam sem política vigente')
+        ->and(SalesDiscountPolicy::count())->toBe(1);
+});
+
+it('extends the gap of a legacy policy without end up to today', function () {
+    $construction = retroactiveTestConstruction();
+    $legacy = SalesDiscountPolicy::factory()->forConstruction($construction)->effectiveFrom('2026-01-01')->create();
+
+    $assessment = app(SalesDiscountPolicyRegistrar::class)
+        ->assess($construction->id, CarbonImmutable::parse('2026-03-01'), CarbonImmutable::parse('2026-03-31'));
+
+    expect($legacy->effective_until)->toBeNull()
+        ->and($assessment->uncoveredThrough?->toDateString())->toBe('2026-09-24')
+        ->and($assessment->retroactiveThroughDate())->toBe('2026-09-24');
+});
+
+it('does not count a gap that only starts after today', function () {
+    $construction = retroactiveTestConstruction();
+    SalesDiscountPolicy::factory()->forConstruction($construction)->during('2026-01-01', '2026-12-31')->create();
+
+    $assessment = app(SalesDiscountPolicyRegistrar::class)
+        ->assess($construction->id, CarbonImmutable::parse('2026-09-01'), CarbonImmutable::parse('2026-09-30'));
+
+    expect($assessment->retroactiveThrough?->toDateString())->toBe('2026-09-24')
+        ->and($assessment->uncoveredThrough)->toBeNull()
+        ->and($assessment->retroactiveThroughDate())->toBe('2026-09-24')
+        ->and($assessment->retroactivityMessage())->not->toContain('sem política vigente');
+});
+
+it('unchecks the confirmations the server refused so they can be given again', function () {
+    $construction = retroactiveTestConstruction();
+
+    $form = retroactiveTestManager($construction)
+        ->mountAction(TestAction::make('newPolicy')->table())
+        ->fillForm([
+            'maximum_discount_percent' => '15.00',
+            'effective_from' => '2026-07-01',
+            'effective_until' => '2026-12-31',
+            'reason' => 'Correção comercial',
+        ])
+        ->fillForm(['confirm_retroactive' => true])
+        ->assertSchemaStateSet(['confirmed_retroactive_through' => '2026-09-24']);
+
+    // O dia de negócio virou entre a confirmação e o envio.
+    $this->travelTo(CarbonImmutable::parse('2026-09-25 12:00:00'));
+
+    $form->callMountedAction()
+        ->assertSchemaStateSet(['confirm_retroactive' => false, 'confirmed_retroactive_through' => null])
+        ->assertMountedActionModalSee('das vendas feitas de 01/07/2026 a 25/09/2026');
+
+    expect(retroactiveTestNotificationBody('Não foi possível registrar a política.'))
+        ->toContain('Revise o período e confirme o alcance retroativo.')
+        ->toContain('As confirmações foram desmarcadas: marque-as de novo depois de revisar.')
+        ->and(SalesDiscountPolicy::count())->toBe(0);
+
+    $form->fillForm(['confirm_retroactive' => true])
+        ->assertSchemaStateSet(['confirmed_retroactive_through' => '2026-09-25'])
+        ->callMountedAction()
+        ->assertHasNoActionErrors();
+
+    expect(SalesDiscountPolicy::count())->toBe(1);
 });

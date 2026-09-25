@@ -35,6 +35,11 @@ use Throwable;
  * sobre as competências e vendas alcançadas, e é recusado quando alcança uma
  * competência já aprovada e publicada da obra: o veredito publicado não é
  * rejulgado.
+ *
+ * O alcance não para no fim da nova. A substituída não volta a valer depois
+ * dele, então, se ela ainda valeria ali, as vendas desse intervalo já vividas
+ * perdem a política -- e o veredito delas muda tanto quanto o das vendas que a
+ * nova passa a decidir.
  */
 class SalesDiscountPolicyRegistrar
 {
@@ -59,7 +64,8 @@ class SalesDiscountPolicyRegistrar
     {
         $from = CarbonImmutable::parse($from->toDateString());
         $until = CarbonImmutable::parse($until->toDateString());
-        $retroactiveThrough = self::retroactiveThrough($from, $until);
+        $today = CarbonImmutable::parse(BusinessTime::dateString());
+        $retroactiveThrough = self::retroactiveThrough($from, $until, $today);
 
         $timeline = $this->timeline($constructionId);
 
@@ -70,22 +76,32 @@ class SalesDiscountPolicyRegistrar
          * registro seja bloqueado.
          */
         $substituted = $this->salesDiscountPolicyResolver->forConstructionId($constructionId, $from)->policy;
+        $substitutedEffectiveUntil = $substituted instanceof SalesDiscountPolicy
+            ? $timeline->effectiveUntil($substituted)
+            : null;
+
+        $uncoveredThrough = (($retroactiveThrough !== null) && ($substituted instanceof SalesDiscountPolicy))
+            ? self::uncoveredThrough($until, $substitutedEffectiveUntil, $today)
+            : null;
+        $reachThrough = $uncoveredThrough ?? $retroactiveThrough;
 
         return new SalesDiscountPolicyPeriodAssessment(
             from: $from,
             until: $until,
             blockingPolicy: $timeline->firstStartingAfterUpTo($from, $until),
             substitutedPolicy: $substituted,
-            substitutedEffectiveUntil: $substituted instanceof SalesDiscountPolicy
-                ? $timeline->effectiveUntil($substituted)
-                : null,
+            substitutedEffectiveUntil: $substitutedEffectiveUntil,
             retroactiveThrough: $retroactiveThrough,
             reachedCompetences: $retroactiveThrough === null
                 ? []
                 : $this->reachedCompetences($constructionId, $from, $retroactiveThrough),
-            approvedCompetences: $retroactiveThrough === null
+            approvedCompetences: $reachThrough === null
                 ? []
-                : $this->approvedCompetences($constructionId, $from, $retroactiveThrough),
+                : $this->approvedCompetences($constructionId, $from, $reachThrough),
+            uncoveredThrough: $uncoveredThrough,
+            uncoveredCompetences: $uncoveredThrough === null
+                ? []
+                : $this->reachedCompetences($constructionId, $until->addDay(), $uncoveredThrough),
         );
     }
 
@@ -151,10 +167,8 @@ class SalesDiscountPolicyRegistrar
      * negócio de hoje -- uma política que começa hoje ou depois não rejulga
      * nada que já tenha sido apurado.
      */
-    private static function retroactiveThrough(CarbonImmutable $from, CarbonImmutable $until): ?CarbonImmutable
+    private static function retroactiveThrough(CarbonImmutable $from, CarbonImmutable $until, CarbonImmutable $today): ?CarbonImmutable
     {
-        $today = CarbonImmutable::parse(BusinessTime::dateString());
-
         if (! $from->lessThan($today)) {
             return null;
         }
@@ -163,9 +177,25 @@ class SalesDiscountPolicyRegistrar
     }
 
     /**
-     * Competências do alcance retroativo, da primeira à última, com as vendas
-     * que cada uma tem dentro dele -- inclusive as que não têm nenhuma, para que
-     * a lista mostre o período inteiro.
+     * Último dia já vivido que a substituição deixa sem política depois do fim
+     * da nova: o fim efetivo da substituída, limitado a hoje (sem prazo = até
+     * hoje). Nulo quando a substituída já terminaria até o fim da nova, ou
+     * quando o fim da nova ainda não chegou -- a lacuna, se houver, é futura e
+     * não rejulga nada.
+     */
+    private static function uncoveredThrough(CarbonImmutable $until, ?CarbonImmutable $substitutedEffectiveUntil, CarbonImmutable $today): ?CarbonImmutable
+    {
+        $lastCoveredDay = (($substitutedEffectiveUntil === null) || $substitutedEffectiveUntil->greaterThan($today))
+            ? $today
+            : $substitutedEffectiveUntil;
+
+        return $lastCoveredDay->greaterThan($until) ? $lastCoveredDay : null;
+    }
+
+    /**
+     * Competências de `[from, through]`, da primeira à última, com as vendas que
+     * cada uma tem dentro dele -- inclusive as que não têm nenhuma, para que a
+     * lista mostre o período inteiro.
      *
      * @return list<array{month: CarbonImmutable, sales: int}>
      */
@@ -191,8 +221,9 @@ class SalesDiscountPolicyRegistrar
     }
 
     /**
-     * Competências do alcance retroativo que já têm posição aprovada e
-     * publicada para a obra, da mais antiga para a mais recente.
+     * Competências do alcance retroativo -- inclusive a lacuna que a
+     * substituição deixa no passado -- que já têm posição aprovada e publicada
+     * para a obra, da mais antiga para a mais recente.
      *
      * O quadro legado, digitado à mão, fica de fora: ele não carrega veredito
      * de conformidade, então não há o que uma política nova rejulgue nele.

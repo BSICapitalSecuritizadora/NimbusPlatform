@@ -31,6 +31,13 @@ use Illuminate\Support\Arr;
  * `substitutedEffectiveUntil` é o último dia em que a substituída valeria sem a
  * nova (nulo = sem prazo). Se passa do fim da nova, o intervalo entre os dois
  * fica sem política vigente, e a tela precisa dizer isso.
+ *
+ * Quando esse intervalo já começou (`uncoveredThrough`), ele também rejulga
+ * vendas feitas: elas perdem a política que as decidia e ficam sem veredito. O
+ * alcance do registro vai então até o fim dele, e é sobre esse alcance inteiro
+ * que a confirmação é dada e que a competência aprovada é procurada -- senão
+ * uma correção de um mês passado deixaria sem política, calada, uma
+ * competência publicada depois dele.
  */
 readonly class SalesDiscountPolicyPeriodAssessment extends BaseDTO
 {
@@ -43,8 +50,10 @@ readonly class SalesDiscountPolicyPeriodAssessment extends BaseDTO
 
     /**
      * @param  CarbonImmutable|null  $retroactiveThrough  último dia já vivido que a política alcança; nulo quando o início não é anterior a hoje
-     * @param  list<array{month: CarbonImmutable, sales: int}>  $reachedCompetences  competências do alcance retroativo, com as vendas de cada uma dentro dele
-     * @param  list<CarbonImmutable>  $approvedCompetences  competências do alcance retroativo já aprovadas e publicadas para a obra
+     * @param  list<array{month: CarbonImmutable, sales: int}>  $reachedCompetences  competências de `[from, retroactiveThrough]`, com as vendas de cada uma dentro dele
+     * @param  list<CarbonImmutable>  $approvedCompetences  competências do alcance inteiro (`[from, reachThrough()]`) já aprovadas e publicadas para a obra
+     * @param  CarbonImmutable|null  $uncoveredThrough  último dia já vivido que a substituição deixa sem política depois do fim da nova; nulo quando ela não deixa lacuna no passado
+     * @param  list<array{month: CarbonImmutable, sales: int}>  $uncoveredCompetences  competências de `[until + 1, uncoveredThrough]`, com as vendas de cada uma dentro dele
      */
     public function __construct(
         public CarbonImmutable $from,
@@ -55,6 +64,8 @@ readonly class SalesDiscountPolicyPeriodAssessment extends BaseDTO
         public ?CarbonImmutable $retroactiveThrough = null,
         public array $reachedCompetences = [],
         public array $approvedCompetences = [],
+        public ?CarbonImmutable $uncoveredThrough = null,
+        public array $uncoveredCompetences = [],
     ) {}
 
     public function isBlocked(): bool
@@ -93,13 +104,32 @@ readonly class SalesDiscountPolicyPeriodAssessment extends BaseDTO
     }
 
     /**
+     * Último dia já vivido que o registro muda: o fim do alcance da própria
+     * política ou, se a substituição deixa lacuna no passado, o fim dela.
+     */
+    public function reachThrough(): ?CarbonImmutable
+    {
+        return $this->uncoveredThrough ?? $this->retroactiveThrough;
+    }
+
+    /**
+     * A substituição deixa sem política vendas já feitas depois do fim da nova.
+     */
+    public function leavesPastSalesUncovered(): bool
+    {
+        return $this->uncoveredThrough instanceof CarbonImmutable;
+    }
+
+    /**
      * O que a tela guarda como confirmação do alcance e o servidor compara na
      * hora de gravar: se o dia de negócio virou entre as duas coisas, o alcance
-     * cresceu e a confirmação dada valia para outro.
+     * cresceu e a confirmação dada valia para outro. Inclui a lacuna que a
+     * substituição deixa no passado -- confirmar só o período da nova não é
+     * confirmar as vendas que ficam sem política.
      */
     public function retroactiveThroughDate(): ?string
     {
-        return $this->retroactiveThrough?->toDateString();
+        return $this->reachThrough()?->toDateString();
     }
 
     public function blockingMessage(): ?string
@@ -124,15 +154,38 @@ readonly class SalesDiscountPolicyPeriodAssessment extends BaseDTO
             return null;
         }
 
-        return sprintf(
-            'O início, %s, é anterior a hoje. A política passará a decidir a conformidade das vendas feitas de %s a %s: %s. Ciclos ainda não aprovados com vendas nesse período ficarão desatualizados e precisarão ser recalculados.',
+        $message = sprintf(
+            'O início, %s, é anterior a hoje. A política passará a decidir a conformidade das vendas feitas de %s a %s: %s.',
             $this->from->format('d/m/Y'),
             $this->from->format('d/m/Y'),
             $this->retroactiveThrough->format('d/m/Y'),
-            $this->describeReachedCompetences(),
+            self::describeCompetences($this->reachedCompetences),
+        );
+
+        if (! $this->leavesPastSalesUncovered()) {
+            return $message.' Ciclos ainda não aprovados com vendas nesse período ficarão desatualizados e precisarão ser recalculados.';
+        }
+
+        return sprintf(
+            '%s Como a política de %s não volta a valer depois de %s, as vendas feitas de %s a %s ficarão sem política vigente e sem veredito de conformidade: %s. Ciclos ainda não aprovados com vendas nesses períodos ficarão desatualizados e precisarão ser recalculados.',
+            $message,
+            $this->substitutedPolicy?->formatted_maximum_discount_percent,
+            $this->until->format('d/m/Y'),
+            $this->until->addDay()->format('d/m/Y'),
+            $this->uncoveredThrough?->format('d/m/Y'),
+            self::describeCompetences($this->uncoveredCompetences),
         );
     }
 
+    /**
+     * Quando a competência aprovada está na lacuna que a substituição deixa, e
+     * não no período da nova, a mensagem diz por quê: o usuário corrigiu um mês
+     * passado e não reconheceria a competência posterior como alcançada.
+     *
+     * A saída é a mesma nos dois casos: o alcance sempre começa no início da
+     * nova, e alongar o fim não o encurta -- as vendas da lacuna passariam a ser
+     * decididas pela nova em vez de ficar sem política.
+     */
     public function approvedCompetenceMessage(): ?string
     {
         if ($this->approvedCompetences === []) {
@@ -141,8 +194,8 @@ readonly class SalesDiscountPolicyPeriodAssessment extends BaseDTO
 
         $latest = $this->approvedCompetences[array_key_last($this->approvedCompetences)];
 
-        return sprintf(
-            'O período alcança %s desta obra (%s). A conformidade das vendas de uma competência publicada não é rejulgada: o início precisa ser posterior a %s.',
+        $competences = sprintf(
+            '%s desta obra (%s)',
             count($this->approvedCompetences) === 1
                 ? 'competência já aprovada e publicada'
                 : 'competências já aprovadas e publicadas',
@@ -151,8 +204,44 @@ readonly class SalesDiscountPolicyPeriodAssessment extends BaseDTO
                 ', ',
                 ' e ',
             ),
+        );
+
+        $reason = $this->approvedCompetenceIsUncovered()
+            ? sprintf(
+                'O registro alcança %s: como a política de %s (%s) não volta a valer depois de %s, as vendas feitas de %s a %s ficariam sem política vigente.',
+                $competences,
+                $this->substitutedPolicy?->formatted_maximum_discount_percent,
+                $this->substitutedPolicy instanceof SalesDiscountPolicy ? self::describeRegisteredPeriod($this->substitutedPolicy) : '—',
+                $this->until->format('d/m/Y'),
+                $this->until->addDay()->format('d/m/Y'),
+                $this->uncoveredThrough?->format('d/m/Y'),
+            )
+            : sprintf('O período alcança %s.', $competences);
+
+        return sprintf(
+            '%s A conformidade das vendas de uma competência publicada não é rejulgada: o início precisa ser posterior a %s.',
+            $reason,
             $latest->endOfMonth()->format('d/m/Y'),
         );
+    }
+
+    /**
+     * Alguma competência aprovada tem dias na lacuna que a substituição deixa
+     * no passado.
+     */
+    private function approvedCompetenceIsUncovered(): bool
+    {
+        if (! $this->leavesPastSalesUncovered()) {
+            return false;
+        }
+
+        foreach ($this->approvedCompetences as $month) {
+            if ($month->endOfMonth()->startOfDay()->greaterThan($this->until)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function substitutionMessage(): ?string
@@ -210,18 +299,21 @@ readonly class SalesDiscountPolicyPeriodAssessment extends BaseDTO
         );
     }
 
-    private function describeReachedCompetences(): string
+    /**
+     * @param  list<array{month: CarbonImmutable, sales: int}>  $competences
+     */
+    private static function describeCompetences(array $competences): string
     {
-        if (count($this->reachedCompetences) > self::LISTED_COMPETENCES_LIMIT) {
-            $first = $this->reachedCompetences[0]['month'];
-            $last = $this->reachedCompetences[array_key_last($this->reachedCompetences)]['month'];
+        if (count($competences) > self::LISTED_COMPETENCES_LIMIT) {
+            $first = $competences[0]['month'];
+            $last = $competences[array_key_last($competences)]['month'];
 
             return sprintf(
                 '%d competências, de %s a %s, com %s no total',
-                count($this->reachedCompetences),
+                count($competences),
                 $first->format('m/Y'),
                 $last->format('m/Y'),
-                self::describeSales(array_sum(array_column($this->reachedCompetences, 'sales'))),
+                self::describeSales(array_sum(array_column($competences, 'sales'))),
             );
         }
 
@@ -232,7 +324,7 @@ readonly class SalesDiscountPolicyPeriodAssessment extends BaseDTO
                     $competence['month']->format('m/Y'),
                     self::describeSales($competence['sales']),
                 ),
-                $this->reachedCompetences,
+                $competences,
             ),
             ', ',
             ' e ',
