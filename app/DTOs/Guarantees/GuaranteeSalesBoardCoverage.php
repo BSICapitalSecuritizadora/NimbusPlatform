@@ -6,6 +6,7 @@ namespace App\DTOs\Guarantees;
 
 use App\DTOs\BaseDTO;
 use App\DTOs\SalesBoards\ConstructionSalesPosition;
+use App\DTOs\SalesBoards\EmissionSalesPosition;
 use App\Enums\SalesBoardPositionStatus;
 use Carbon\CarbonImmutable;
 
@@ -130,8 +131,14 @@ readonly class GuaranteeSalesBoardCoverage extends BaseDTO
     }
 
     /**
-     * Empreendimentos sem o quadro da própria competência: posição transportada,
-     * sem quadro até a competência ou sem quadro algum.
+     * Empreendimentos sem o quadro da própria competência: posição transportada
+     * ou sem quadro algum.
+     *
+     * O empreendimento cujo primeiro quadro é posterior à competência não é
+     * lacuna — é a mesma leitura de {@see EmissionSalesPosition::isFullyCovered()}:
+     * cobrar uma posição que ainda não existia inventaria uma falta. Ele
+     * continua registrado em `constructions`, sem mês usado, e por isso um quadro
+     * retroativo dele ainda desatualiza a apuração ({@see self::dependsOn()}).
      *
      * @return list<array{construction_id: int, construction_name: string|null, status: string, reference_month_used: string|null}>
      */
@@ -139,7 +146,33 @@ readonly class GuaranteeSalesBoardCoverage extends BaseDTO
     {
         return array_values(array_filter(
             $this->constructions,
-            fn (array $entry): bool => $entry['status'] !== SalesBoardPositionStatus::Current->value,
+            fn (array $entry): bool => self::isGap($entry),
+        ));
+    }
+
+    /**
+     * Lacunas cuja posição foi transportada de um quadro anterior.
+     *
+     * @return list<array{construction_id: int, construction_name: string|null, status: string, reference_month_used: string|null}>
+     */
+    public function carriedForwardGaps(): array
+    {
+        return array_values(array_filter(
+            $this->gaps(),
+            fn (array $entry): bool => $entry['status'] === SalesBoardPositionStatus::CarriedForward->value,
+        ));
+    }
+
+    /**
+     * Lacunas sem posição nenhuma: o empreendimento nunca teve quadro.
+     *
+     * @return list<array{construction_id: int, construction_name: string|null, status: string, reference_month_used: string|null}>
+     */
+    public function unpositionedGaps(): array
+    {
+        return array_values(array_filter(
+            $this->gaps(),
+            fn (array $entry): bool => $entry['status'] !== SalesBoardPositionStatus::CarriedForward->value,
         ));
     }
 
@@ -203,12 +236,28 @@ readonly class GuaranteeSalesBoardCoverage extends BaseDTO
     }
 
     /**
+     * Um status desconhecido conta como lacuna: na dúvida, o fechamento pede
+     * confirmação em vez de passar calado.
+     *
+     * @param  array{construction_id: int, construction_name: string|null, status: string, reference_month_used: string|null}  $entry
+     */
+    private static function isGap(array $entry): bool
+    {
+        $status = SalesBoardPositionStatus::tryFrom($entry['status']);
+
+        if ($status === SalesBoardPositionStatus::Current) {
+            return false;
+        }
+
+        return $status?->isExpected() ?? true;
+    }
+
+    /**
      * @param  array{construction_id: int, construction_name: string|null, status: string, reference_month_used: string|null}  $entry
      */
     public static function describeEntry(array $entry): string
     {
-        $name = $entry['construction_name'] ?? null;
-        $name = filled($name) ? $name : sprintf('Empreendimento #%d', $entry['construction_id']);
+        $name = self::constructionLabel($entry);
 
         $status = SalesBoardPositionStatus::tryFrom($entry['status']);
         $label = $status?->label() ?? 'Sem quadro de vendas';
@@ -223,5 +272,33 @@ readonly class GuaranteeSalesBoardCoverage extends BaseDTO
             mb_strtolower($label),
             CarbonImmutable::parse($entry['reference_month_used'])->format('m/Y'),
         );
+    }
+
+    /**
+     * Só o empreendimento e o mês do quadro usado: "Residencial Alfa (08/2026)".
+     *
+     * @param  array{construction_id: int, construction_name: string|null, status: string, reference_month_used: string|null}  $entry
+     */
+    public static function describeMonthUsed(array $entry): string
+    {
+        if ($entry['reference_month_used'] === null) {
+            return self::describeEntry($entry);
+        }
+
+        return sprintf(
+            '%s (%s)',
+            self::constructionLabel($entry),
+            CarbonImmutable::parse($entry['reference_month_used'])->format('m/Y'),
+        );
+    }
+
+    /**
+     * @param  array{construction_id: int, construction_name: string|null, status: string, reference_month_used: string|null}  $entry
+     */
+    private static function constructionLabel(array $entry): string
+    {
+        $name = $entry['construction_name'] ?? null;
+
+        return filled($name) ? $name : sprintf('Empreendimento #%d', $entry['construction_id']);
     }
 }

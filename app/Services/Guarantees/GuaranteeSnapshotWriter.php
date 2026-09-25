@@ -26,10 +26,16 @@ use Illuminate\Validation\ValidationException;
  * Competência fechada é imutável: reabri-la exige permissão própria, motivo e
  * fica auditada, porque o número já saiu em relatório.
  *
- * A apuração que é gravada acontece dentro da transação, depois de travar o
- * snapshot existente: um Quadro de Vendas publicado no meio espera a gravação
- * e só então marca a competência como desatualizada, em vez de a gravação
- * apagar a marca com um número calculado antes do quadro.
+ * A apuração que é gravada acontece dentro da transação, depois de travar a
+ * emissão e o snapshot existente — nesta ordem. O invalidador
+ * ({@see GuaranteeSnapshotSalesBoardInvalidator}) trava a mesma emissão em
+ * modo compartilhado antes de procurar snapshots, e a própria FK do quadro na
+ * emissão já faz isso na criação. Por isso a gravação e um Quadro de Vendas
+ * publicado ao mesmo tempo se serializam, mesmo quando ainda não existe
+ * snapshot da competência para travar: ou a apuração espera o quadro e o
+ * inclui, ou o quadro espera a gravação e marca a competência como
+ * desatualizada. O que não acontece mais é a gravação apagar a marca, ou nem
+ * chegar a recebê-la, com um número calculado antes do quadro.
  */
 class GuaranteeSnapshotWriter
 {
@@ -54,13 +60,15 @@ class GuaranteeSnapshotWriter
         $referenceMonth = $this->resolveCompetence($referenceMonth ?? GuaranteeSnapshot::currentBusinessMonth());
 
         return DB::transaction(function () use ($emission, $referenceMonth, $actor): GuaranteeSnapshot {
-            $this->assertOpen($emission, $referenceMonth);
+            $locked = $this->lockEmission($emission);
 
-            $position = $this->engine->buildPosition($this->freshEmission($emission), $referenceMonth);
+            $this->assertOpen($locked, $referenceMonth);
 
-            $this->persistPositions($emission, $position, $actor);
+            $position = $this->engine->buildPosition($locked, $referenceMonth);
 
-            return $this->persistSnapshot($emission, $position, $actor);
+            $this->persistPositions($locked, $position, $actor);
+
+            return $this->persistSnapshot($locked, $position, $actor);
         });
     }
 
@@ -88,7 +96,7 @@ class GuaranteeSnapshotWriter
         $emission = $guarantee->emission;
 
         return DB::transaction(function () use ($guarantee, $emission, $referenceMonth, $value, $actor): GuaranteeMonthlyPosition {
-            $this->assertOpen($emission, $referenceMonth);
+            $this->assertOpen($this->lockEmission($emission), $referenceMonth);
 
             $previous = $guarantee->monthlyPositions()
                 ->whereDate('reference_month', $referenceMonth)
@@ -143,15 +151,17 @@ class GuaranteeSnapshotWriter
         $referenceMonth = $this->resolveCompetence($referenceMonth);
 
         return DB::transaction(function () use ($emission, $referenceMonth, $actor, $acknowledgedSalesBoardGaps): GuaranteeSnapshot {
-            $this->assertOpen($emission, $referenceMonth);
+            $locked = $this->lockEmission($emission);
 
-            $position = $this->engine->buildPosition($this->freshEmission($emission), $referenceMonth);
+            $this->assertOpen($locked, $referenceMonth);
+
+            $position = $this->engine->buildPosition($locked, $referenceMonth);
 
             $this->assertPartialCoverageAcknowledged($position, $acknowledgedSalesBoardGaps);
 
-            $this->persistPositions($emission, $position, $actor);
+            $this->persistPositions($locked, $position, $actor);
 
-            $snapshot = $this->persistSnapshot($emission, $position, $actor);
+            $snapshot = $this->persistSnapshot($locked, $position, $actor);
 
             $confirmation = $position->hasSalesBoardGaps()
                 ? ['gaps' => $position->salesBoardCoverage->gaps()]
@@ -209,7 +219,7 @@ class GuaranteeSnapshotWriter
 
         return DB::transaction(function () use ($emission, $referenceMonth, $actor, $reason): GuaranteeSnapshot {
             /** @var GuaranteeSnapshot|null $snapshot */
-            $snapshot = $emission->guaranteeSnapshots()
+            $snapshot = $this->lockEmission($emission)->guaranteeSnapshots()
                 ->whereDate('reference_month', $referenceMonth)
                 ->lockForUpdate()
                 ->first();
@@ -278,13 +288,21 @@ class GuaranteeSnapshotWriter
     }
 
     /**
-     * A emissão relida do banco, sem relações carregadas por quem chamou: a
-     * apuração gravada tem de ver os quadros e recebíveis de agora, não os que
-     * a tela carregou ao abrir.
+     * Trava a emissão até o fim da transação e a devolve relida do banco, sem
+     * as relações carregadas por quem chamou: a apuração gravada tem de ver os
+     * quadros e recebíveis de agora, não os que a tela carregou ao abrir.
+     *
+     * É a primeira trava de toda escrita de competência (emissão, depois
+     * snapshot). Com ela, a leitura da apuração só começa depois de qualquer
+     * publicação de quadro em andamento terminar — a publicação segura a
+     * emissão em modo compartilhado até o commit.
      */
-    private function freshEmission(Emission $emission): Emission
+    private function lockEmission(Emission $emission): Emission
     {
-        return $emission->fresh() ?? $emission;
+        return Emission::query()
+            ->whereKey($emission->getKey())
+            ->lockForUpdate()
+            ->firstOrFail();
     }
 
     private function assertPartialCoverageAcknowledged(
@@ -321,7 +339,7 @@ class GuaranteeSnapshotWriter
 
     /**
      * Trava o snapshot existente até o fim da transação e recusa competência
-     * fechada.
+     * fechada. Quem chama já travou a emissão ({@see self::lockEmission()}).
      *
      * @return GuaranteeSnapshot|null o snapshot existente, quando houver
      */

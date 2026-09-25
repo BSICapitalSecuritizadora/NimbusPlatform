@@ -3,6 +3,7 @@
 namespace App\Services\Guarantees;
 
 use App\DTOs\Guarantees\EmissionGuaranteePositionData;
+use App\DTOs\Guarantees\GuaranteeSalesBoardCoverage;
 use App\Enums\GuaranteeCoverageStatus;
 use App\Enums\GuaranteeDetectionStatus;
 use App\Enums\GuaranteeLegalStatus;
@@ -12,6 +13,7 @@ use App\Models\ExtractedGuarantee;
 use App\Models\Guarantee;
 use App\Models\GuaranteeSnapshot;
 use App\Models\GuaranteeValuation;
+use App\Support\BusinessTime;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -107,7 +109,7 @@ class GuaranteeAlertBuilder
                 'description' => sprintf(
                     'A competência %s foi apurada antes de um Quadro de Vendas registrado em %s. %s',
                     $snapshot->formatted_reference_month,
-                    $snapshot->sales_board_outdated_at->format('d/m/Y H:i'),
+                    BusinessTime::at($snapshot->sales_board_outdated_at)->format('d/m/Y H:i'),
                     $snapshot->isClosed()
                         ? 'Reabra e atualize a competência para refletir a posição publicada.'
                         : 'Atualize a competência para refletir a posição publicada.',
@@ -121,11 +123,49 @@ class GuaranteeAlertBuilder
      * Garantias de estoque apuradas sem o quadro da própria competência em
      * algum empreendimento. O valor é a melhor posição conhecida, não a do mês.
      *
+     * Na competência corrente, a posição transportada é o esperado: o quadro do
+     * mês só é publicado depois de o mês acabar. Avisar isso como pendência
+     * deixaria o alerta aceso o tempo todo em toda emissão com estoque — e um
+     * aviso que nunca apaga ensina a ignorar os reais. Ali ela vira nota
+     * informativa, com o mês usado por empreendimento à vista. O empreendimento
+     * que nunca teve quadro continua pendência em qualquer competência, e nas
+     * competências passadas — as que se atualizam e fecham — a posição
+     * transportada também.
+     *
      * @param  Collection<int, array<string, mixed>>  $alerts
      */
     private function addSalesBoardCoverageAlert(Collection $alerts, EmissionGuaranteePositionData $position): void
     {
-        if (! $position->hasSalesBoardGaps()) {
+        $coverage = $position->salesBoardCoverage;
+
+        if (! $coverage?->hasGaps()) {
+            return;
+        }
+
+        $pendingGaps = $coverage->gaps();
+
+        if ($position->referenceMonth >= GuaranteeSnapshot::currentBusinessMonth()) {
+            $pendingGaps = $coverage->unpositionedGaps();
+            $carriedForward = $coverage->carriedForwardGaps();
+
+            if ($carriedForward !== []) {
+                $alerts->push([
+                    'severity' => self::SEVERITY_INFO,
+                    'title' => 'Quadro de Vendas do mês ainda não publicado',
+                    'description' => sprintf(
+                        'O quadro de %s só é publicado depois do fim do mês; até lá, vale a última posição conhecida de cada empreendimento: %s.',
+                        $position->referenceMonthLabel(),
+                        implode('; ', array_map(
+                            fn (array $entry): string => GuaranteeSalesBoardCoverage::describeMonthUsed($entry),
+                            $carriedForward,
+                        )),
+                    ),
+                    'guarantee_id' => null,
+                ]);
+            }
+        }
+
+        if ($pendingGaps === []) {
             return;
         }
 
@@ -135,10 +175,21 @@ class GuaranteeAlertBuilder
             'description' => sprintf(
                 'Em %s: %s.',
                 $position->referenceMonthLabel(),
-                implode('; ', $position->salesBoardGapDescriptions()),
+                $this->describeSalesBoardGaps($pendingGaps),
             ),
             'guarantee_id' => null,
         ]);
+    }
+
+    /**
+     * @param  list<array{construction_id: int, construction_name: string|null, status: string, reference_month_used: string|null}>  $gaps
+     */
+    private function describeSalesBoardGaps(array $gaps): string
+    {
+        return implode('; ', array_map(
+            fn (array $entry): string => GuaranteeSalesBoardCoverage::describeEntry($entry),
+            $gaps,
+        ));
     }
 
     /**

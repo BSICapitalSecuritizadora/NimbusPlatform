@@ -551,7 +551,7 @@ class GuaranteesRelationManager extends RelationManager
             ->color('gray')
             ->authorize(fn (): bool => $this->canCloseCompetence())
             ->modalHeading('Fechar a competência')
-            ->modalDescription('O indicador do mês passa a ser imutável e é o que os relatórios usarão. Reabrir depois exige permissão específica, motivo e fica registrado na auditoria.')
+            ->modalDescription('O indicador do mês passa a ser imutável e é o que os relatórios usarão. Reabrir depois exige permissão específica e motivo, e fica registrado na auditoria.')
             ->modalSubmitActionLabel('Fechar competência')
             ->fillForm(fn (): array => [
                 'reference_month' => GuaranteeSnapshot::formatReferenceMonthForDisplay(GuaranteeSnapshot::previousBusinessMonth()),

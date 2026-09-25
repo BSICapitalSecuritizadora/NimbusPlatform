@@ -2,6 +2,7 @@
 
 namespace App\Services\Guarantees;
 
+use App\Models\Emission;
 use App\Models\GuaranteeSnapshot;
 use App\Models\SalesBoard;
 
@@ -19,6 +20,16 @@ use App\Models\SalesBoard;
  *
  * Roda dentro da escrita do quadro (observer), na mesma transação: se a
  * publicação desfizer, a marca desfaz junto.
+ *
+ * Antes de procurar snapshots, trava a emissão em modo compartilhado — a mesma
+ * trava que a FK do quadro na emissão já pega ao criá-lo — e lê os snapshots
+ * com `FOR UPDATE`, que enxerga o que já foi commitado e não a fotografia do
+ * início da transação. O {@see GuaranteeSnapshotWriter} trava a emissão em
+ * modo exclusivo antes de apurar. Assim, uma gravação de competência em
+ * andamento (mesmo sem snapshot prévio, quando não haveria linha a travar)
+ * termina antes de o invalidador procurar, e o snapshot que ela criar é
+ * encontrado e marcado. Dois quadros publicados ao mesmo tempo não disputam a
+ * emissão: o modo compartilhado é compatível entre eles.
  */
 class GuaranteeSnapshotSalesBoardInvalidator
 {
@@ -58,11 +69,17 @@ class GuaranteeSnapshotSalesBoardInvalidator
             return 0;
         }
 
+        Emission::query()
+            ->whereKey((int) $emissionId)
+            ->sharedLock()
+            ->value('id');
+
         $snapshots = GuaranteeSnapshot::query()
             ->where('emission_id', (int) $emissionId)
             ->whereDate('reference_month', '>=', $referenceMonth)
             ->whereNotNull('sales_board_coverage')
             ->whereNull('sales_board_outdated_at')
+            ->lockForUpdate()
             ->get();
 
         $marked = 0;

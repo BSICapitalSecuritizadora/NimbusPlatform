@@ -68,7 +68,7 @@
                                     @endif
                                     @if ($snapshot->isSalesBoardOutdated())
                                         <div class="mt-1 inline-flex items-center gap-1 rounded bg-amber-950/40 px-1.5 py-0.5 text-[10px] font-medium text-amber-300/90 border border-amber-500/30"
-                                             title="Quadro de Vendas registrado em {{ $snapshot->sales_board_outdated_at->format('d/m/Y H:i') }}, depois da apuração.">
+                                             title="Quadro de Vendas registrado em {{ \App\Support\BusinessTime::at($snapshot->sales_board_outdated_at)->format('d/m/Y H:i') }}, depois da apuração.">
                                             <x-heroicon-m-exclamation-triangle class="h-3 w-3" />
                                             Desatualizada
                                         </div>
@@ -80,7 +80,7 @@
                                             @if ($snapshot->partialCoverageConfirmedBy)
                                                 por {{ $snapshot->partialCoverageConfirmedBy->name }}
                                             @endif
-                                            em {{ $snapshot->partial_coverage_confirmed_at->format('d/m/Y') }}
+                                            em {{ \App\Support\BusinessTime::at($snapshot->partial_coverage_confirmed_at)->format('d/m/Y') }}
                                         </div>
                                     @endif
                                 </td>

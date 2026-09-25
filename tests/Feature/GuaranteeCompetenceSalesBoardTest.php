@@ -121,6 +121,16 @@ function augustSnapshot(Emission $emission): ?GuaranteeSnapshot
         ->first();
 }
 
+/**
+ * Fuso técnico de produção e do CI. O `.env` local usa o fuso de negócio, e
+ * com ele um horário formatado sem conversão sairia certo por acaso.
+ */
+function pinUtcApplicationTimezone(): void
+{
+    config(['app.timezone' => 'UTC']);
+    date_default_timezone_set('UTC');
+}
+
 it('offers the previous business month as the competence to update and close', function (): void {
     Carbon::setTestNow('2026-09-15 10:00:00');
     [$emission] = stockGuaranteeEmission();
@@ -592,6 +602,7 @@ it('drops the partial-coverage confirmation of the undone closing and refuses a 
 });
 
 it('uses only a closed competence as the consolidated guarantees of the monthly report', function (): void {
+    pinUtcApplicationTimezone();
     Carbon::setTestNow('2026-08-28 10:00:00');
     [$emission, $construction] = stockGuaranteeEmission();
     $admin = makeAdminUser();
@@ -615,11 +626,141 @@ it('uses only a closed competence as the consolidated guarantees of the monthly 
     $report = app(EmissionMonthlyReportService::class)->build($emission->fresh(), CarbonImmutable::parse('2026-08-01'));
 
     expect($report['guarantees']['consolidated'])->toBeTrue()
-        ->and($report['guarantees']['closed_at'])->toBe('15/09/2026 10:00')
+        // Fechada às 10:00 UTC: o relatório mostra o horário de Brasília.
+        ->and($report['guarantees']['closed_at'])->toBe('15/09/2026 07:00')
         ->and($report['guarantees']['sales_board_outdated'])->toBeFalse()
         ->and($report['guarantees']['eligible_value'])->toBe('R$ 6.000.000,00');
 });
 
 it('keeps a single valuation rule for guarantees, without the legacy coverage calculator', function (): void {
     expect(class_exists('App\\Services\\GuaranteeCoverageCalculator'))->toBeFalse();
+});
+
+it('keeps the carried-forward stock of the current month as a note, not as a pending alert', function (): void {
+    Carbon::setTestNow('2026-09-15 10:00:00');
+    [$emission, $construction] = stockGuaranteeEmission();
+    registerAugustBoard($emission, $construction, stockValue: 20_000_000);
+    $admin = makeAdminUser();
+
+    app(GuaranteeSnapshotWriter::class)->close($emission, '2026-08-01', $admin);
+
+    // A aba mostra setembro: o quadro de setembro só existe em outubro.
+    $position = app(EmissionGuaranteeCoverageEngine::class)->buildPosition($emission->fresh());
+    $alerts = app(GuaranteeAlertBuilder::class)->build($emission->fresh(), $position);
+    $notice = $alerts->firstWhere('title', 'Quadro de Vendas do mês ainda não publicado');
+
+    expect($position->referenceMonth)->toBe('2026-09-01')
+        ->and($position->hasSalesBoardGaps())->toBeTrue()
+        ->and($alerts->pluck('title'))->not->toContain('Posição parcial do Quadro de Vendas')
+        ->and($notice['severity'])->toBe(GuaranteeAlertBuilder::SEVERITY_INFO)
+        ->and($notice['description'])->toContain('Residencial Alfa (08/2026)')
+        ->and($alerts->where('severity', '!=', GuaranteeAlertBuilder::SEVERITY_INFO)->pluck('title')->all())->toBe([])
+        ->and(GuaranteesRelationManager::getBadge($emission->fresh(), EditEmission::class))->toBeNull();
+
+    $this->actingAs($admin);
+
+    competenceGuaranteesTab($emission->fresh())
+        ->assertSee('Nenhuma pendência ou inconformidade detectada para esta competência.')
+        ->assertSee('Quadro de Vendas do mês ainda não publicado')
+        ->assertDontSee('Posição parcial do Quadro de Vendas');
+
+    // Um empreendimento que nunca teve quadro continua pendência, mesmo no mês corrente.
+    $never = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Beta']);
+    Guarantee::factory()
+        ->effectiveBetween()
+        ->ofType(GuaranteeType::Inventory)
+        ->create([
+            'emission_id' => $emission->id,
+            'construction_id' => $never->id,
+            'legal_status' => GuaranteeLegalStatus::Active,
+        ]);
+
+    $position = app(EmissionGuaranteeCoverageEngine::class)->buildPosition($emission->fresh());
+    $alerts = app(GuaranteeAlertBuilder::class)->build($emission->fresh(), $position);
+    $warning = $alerts->firstWhere('title', 'Posição parcial do Quadro de Vendas');
+
+    expect($warning['severity'])->toBe(GuaranteeAlertBuilder::SEVERITY_WARNING)
+        ->and($warning['description'])->toBe('Em 09/2026: Residencial Beta: sem quadro de vendas.')
+        ->and($alerts->firstWhere('title', 'Quadro de Vendas do mês ainda não publicado')['description'])
+        ->toContain('Residencial Alfa (08/2026)');
+});
+
+it('does not count a construction whose first board is later than the competence as a gap', function (): void {
+    Carbon::setTestNow('2026-09-15 10:00:00');
+    $emission = Emission::factory()->create();
+    $admin = makeAdminUser();
+    $alfa = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Alfa']);
+    $beta = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Beta']);
+
+    registerAugustBoard($emission, $alfa, stockValue: 4_000_000);
+
+    // O primeiro quadro do Beta é de setembro: em agosto ele ainda não tinha posição.
+    SalesBoard::factory()->forEmissionAndConstruction($emission, $beta)->create([
+        'reference_month' => '2026-09-01',
+        'stock_units' => 5,
+        'stock_value' => 2_000_000,
+    ]);
+
+    Guarantee::factory()
+        ->effectiveBetween()
+        ->ofType(GuaranteeType::Inventory)
+        ->create(['emission_id' => $emission->id, 'legal_status' => GuaranteeLegalStatus::Active]);
+
+    $position = app(EmissionGuaranteeCoverageEngine::class)->buildPosition($emission->fresh(), '2026-08-01');
+    $stock = $position->positions->sole();
+    $betaEntry = collect($position->salesBoardCoverage->constructions)->firstWhere('construction_id', $beta->id);
+
+    expect($position->hasSalesBoardGaps())->toBeFalse()
+        ->and($stock->value->status)->toBe(GuaranteeValueStatus::Automatic)
+        ->and($stock->value->amount)->toBe(4_000_000.0)
+        ->and($betaEntry['status'])->toBe(SalesBoardPositionStatus::NotYetPositioned->value)
+        ->and($betaEntry['reference_month_used'])->toBeNull();
+
+    // Fecha sem pedir confirmação de posição parcial.
+    $snapshot = app(GuaranteeSnapshotWriter::class)->close($emission, '2026-08-01', $admin);
+
+    expect($snapshot->isClosed())->toBeTrue()
+        ->and($snapshot->hasPartialCoverageConfirmation())->toBeFalse();
+
+    // Um quadro retroativo do Beta para agosto ainda desatualiza a competência.
+    SalesBoard::factory()->forEmissionAndConstruction($emission, $beta)->create(['reference_month' => '2026-08-01']);
+
+    expect(augustSnapshot($emission)->isSalesBoardOutdated())->toBeTrue();
+});
+
+it('shows the outdated and confirmation instants in the business timezone', function (): void {
+    pinUtcApplicationTimezone();
+
+    // 02:30 UTC de 16/09 = 23:30 de 15/09 em Brasília.
+    Carbon::setTestNow(Carbon::parse('2026-09-16 02:30:00', 'UTC'));
+    [$emission, $construction] = stockGuaranteeEmission();
+    $admin = makeAdminUser();
+
+    app(GuaranteeSnapshotWriter::class)->close(
+        $emission,
+        '2026-08-01',
+        $admin,
+        app(EmissionGuaranteeCoverageEngine::class)->buildPosition($emission, '2026-08-01')->salesBoardGapsFingerprint(),
+    );
+
+    // 13:00 UTC = 10:00 em Brasília.
+    Carbon::setTestNow(Carbon::parse('2026-09-16 13:00:00', 'UTC'));
+    registerAugustBoard($emission, $construction);
+
+    $position = app(EmissionGuaranteeCoverageEngine::class)->buildPosition($emission->fresh());
+    $outdated = app(GuaranteeAlertBuilder::class)
+        ->build($emission->fresh(), $position)
+        ->firstWhere('title', 'Competência desatualizada pelo Quadro de Vendas');
+
+    expect($outdated['description'])->toContain('registrado em 16/09/2026 10:00')
+        ->and(app(EmissionMonthlyReportService::class)->build($emission->fresh(), CarbonImmutable::parse('2026-08-01'))['guarantees']['closed_at'])
+        ->toBe('15/09/2026 23:30');
+
+    $this->actingAs($admin);
+
+    competenceGuaranteesTab($emission->fresh())
+        ->assertSee('Quadro de Vendas registrado em 16/09/2026 10:00, depois da apuração.')
+        ->assertDontSee('16/09/2026 13:00')
+        // Confirmada às 23:30 de 15/09 em Brasília, não no dia 16 do UTC.
+        ->assertSeeInOrder(['Posição parcial confirmada', 'em 15/09/2026']);
 });

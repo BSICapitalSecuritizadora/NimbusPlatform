@@ -27,6 +27,7 @@ use App\Services\ConstructionProgressProvider;
 use App\Services\Guarantees\EmissionGuaranteeCoverageEngine;
 use App\Services\LegalInstruments\InstrumentPositionResolver;
 use App\Services\SalesBoards\SalesBoardPositionReader;
+use App\Support\BusinessTime;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -147,7 +148,7 @@ class EmissionMonthlyReportService
 
         return [
             'consolidated' => true,
-            'closed_at' => $snapshot->closed_at?->format('d/m/Y H:i'),
+            'closed_at' => $snapshot->closed_at === null ? null : BusinessTime::at($snapshot->closed_at)->format('d/m/Y H:i'),
             'sales_board_outdated' => $snapshot->isSalesBoardOutdated(),
             'partial_sales_board_position' => $salesBoardCoverage?->hasGaps() ?? false,
             'sales_board_gaps' => $salesBoardCoverage?->gapDescriptions() ?? [],
