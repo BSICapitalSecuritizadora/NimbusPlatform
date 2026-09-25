@@ -65,10 +65,14 @@ class SalesBoardRolloutAssessmentService
          * avaliação não podem continuar contando como revisadas. Elas são
          * apagadas -- e não marcadas -- porque a homologação é rascunho: o que
          * ela afirma é o retrato atual, e o histórico das tentativas anteriores
-         * continua nas outras attempts.
+         * continua nas outras attempts. Uma a uma, pelo model: um delete em
+         * massa não dispara evento, e o aceite de diferença que a linha
+         * carregava sumiria sem deixar trilha.
          */
         $homologation->constructions()
             ->whereNotIn('construction_id', array_keys($observation->constructionRows))
+            ->get()
+            ->each
             ->delete();
 
         $homologation->forceFill([

@@ -29,6 +29,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\Models\Activity;
+use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Permission\Models\Role;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 use Tests\Support\SalesBoards\RolloutFixture;
@@ -36,24 +37,27 @@ use Tests\Support\SalesBoards\RolloutFixture;
 uses(RefreshDatabase::class);
 
 /**
- * Os models do módulo que gravam trilha.
+ * Os models do módulo que gravam trilha, descobertos na pasta e não listados à
+ * mão: um model novo do Quadro que ganhe `LogsActivity` entra na checagem de
+ * política sem que alguém precise lembrar de acrescentá-lo aqui.
  *
  * @return list<class-string>
  */
 function salesBoardAuditedModels(): array
 {
-    return [
-        SalesBoard::class,
-        SalesBoardHistory::class,
-        SalesBoardCycle::class,
-        SalesBoardBuilderReview::class,
-        SalesBoardManagementReview::class,
-        SalesBoardManagementNonconformity::class,
-        SalesBoardPublication::class,
-        SalesBoardRolloutHomologation::class,
-        SalesBoardRolloutHomologationConstruction::class,
-        SalesBoardRolloutRecipient::class,
-    ];
+    $models = [];
+
+    foreach (glob(dirname(__DIR__, 2).'/app/Models/Sales*.php') ?: [] as $file) {
+        $model = 'App\\Models\\'.basename($file, '.php');
+
+        if (class_exists($model) && in_array(LogsActivity::class, class_uses_recursive($model), true)) {
+            $models[] = $model;
+        }
+    }
+
+    sort($models);
+
+    return $models;
 }
 
 /**
@@ -99,6 +103,23 @@ it('files every audited Sales Board model under the protected sales_board log', 
     expect((new $model)->getActivitylogOptions()->logName)->toBe('sales_board')
         ->and(config('audit.protected_logs'))->toContain('sales_board');
 })->with(fn (): array => salesBoardAuditedModels());
+
+it('finds every audited Sales Board model by scanning the models folder', function () {
+    // Sem esta âncora, uma varredura que voltasse vazia deixaria a checagem de
+    // política verde sem conferir model nenhum.
+    expect(salesBoardAuditedModels())->toContain(
+        SalesBoard::class,
+        SalesBoardHistory::class,
+        SalesBoardCycle::class,
+        SalesBoardBuilderReview::class,
+        SalesBoardManagementReview::class,
+        SalesBoardManagementNonconformity::class,
+        SalesBoardPublication::class,
+        SalesBoardRolloutHomologation::class,
+        SalesBoardRolloutHomologationConstruction::class,
+        SalesBoardRolloutRecipient::class,
+    );
+});
 
 it('files every Sales Board source under its own protected log', function (string $model, string $logName) {
     expect((new $model)->getActivitylogOptions()->logName)->toBe($logName)
@@ -299,6 +320,43 @@ it('keeps an accepted difference that a reassessment discarded', function () {
         ->and(data_get($discarded->properties, 'old.difference_reason'))->toBe('O quadro legado contava um bloco que foi desmembrado.')
         ->and(data_get($discarded->properties, 'old.accepted_by_user_id'))->toBe($operator->id)
         ->and(data_get($discarded->properties, 'attributes.accepted_difference'))->toBeFalse();
+});
+
+it('keeps an accepted difference whose construction left the Emission', function () {
+    $scenario = RolloutFixture::emission();
+    RolloutFixture::legacyBoard($scenario['constructions'][0], stockUnits: 9);
+    RolloutFixture::legacyBoard($scenario['constructions'][1]);
+    $operator = salesBoardAuditActor();
+    $this->actingAs($operator);
+
+    $homologation = RolloutFixture::open($scenario['emission'], $operator);
+    $service = app(SalesBoardRolloutHomologationService::class);
+    $row = $homologation->constructions->firstWhere('construction_id', $scenario['constructions'][0]->id);
+
+    $service->acceptDifference($row, 'O quadro legado contava um bloco que foi desmembrado.', $operator);
+
+    // A saída é montada por baixo dos eventos: pelo model, a guarda das fontes
+    // do Quadro recusaria trocar de Emissão uma obra com quadro registrado.
+    DB::table('constructions')
+        ->where('id', $scenario['constructions'][0]->id)
+        ->update(['emission_id' => Emission::factory()->create(['status' => 'active'])->id]);
+
+    $service->reassess($homologation);
+
+    expect($row->fresh())->toBeNull();
+
+    salesBoardAuditPurgeDisposableWindow();
+
+    $removal = salesBoardAuditTrailOf($row)->last();
+
+    expect($removal->event)->toBe('deleted')
+        ->and($removal->log_name)->toBe('sales_board')
+        ->and($removal->causer_id)->toBe($operator->id)
+        ->and(data_get($removal->properties, 'old.sales_board_rollout_homologation_id'))->toBe($homologation->id)
+        ->and(data_get($removal->properties, 'old.construction_id'))->toBe($scenario['constructions'][0]->id)
+        ->and(data_get($removal->properties, 'old.accepted_difference'))->toBeTrue()
+        ->and(data_get($removal->properties, 'old.difference_reason'))->toBe('O quadro legado contava um bloco que foi desmembrado.')
+        ->and(data_get($removal->properties, 'old.accepted_by_user_id'))->toBe($operator->id);
 });
 
 it('records who added and who removed a rollout recipient', function () {

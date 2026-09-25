@@ -25,12 +25,13 @@ class SalesBoardRolloutHomologationConstruction extends Model
     use HasFactory, LogsActivity;
 
     /**
-     * Só a atualização é registrada: a linha nasce sempre sem aceite, e o
-     * retrato gravado na criação é derivado.
+     * Atualização e exclusão são registradas: a linha nasce sempre sem aceite,
+     * e o retrato gravado na criação é derivado. A exclusão acontece quando o
+     * empreendimento sai da Emissão, e leva junto o aceite que houvesse.
      *
      * @var list<string>
      */
-    protected static $recordEvents = ['updated'];
+    protected static $recordEvents = ['updated', 'deleted'];
 
     /**
      * A versão do formato das posições persistidas.
@@ -86,15 +87,26 @@ class SalesBoardRolloutHomologationConstruction extends Model
      *
      * A reavaliação zera o aceite quando a fonte muda, e a linha passa a dizer
      * apenas que ninguém aceitou. Quem tinha aceitado, e com qual motivo,
-     * sobrevive no `properties.old` desta trilha, em `sales_board`. O retrato
-     * recalculado a cada reavaliação fica de fora: é derivado, e registrá-lo
-     * transformaria a trilha em ruído.
+     * sobrevive no `properties.old` desta trilha, em `sales_board`. Quando o
+     * empreendimento sai da Emissão, a linha é apagada, e o mesmo aceite fica
+     * no `properties.old` do evento de exclusão, com a homologação e o
+     * empreendimento a que pertencia. Os dois identificadores nunca mudam,
+     * então a atualização, que só registra o que mudou, continua mostrando
+     * apenas o aceite. O retrato recalculado a cada reavaliação fica de fora:
+     * é derivado, e registrá-lo transformaria a trilha em ruído.
      */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
             ->useLogName('sales_board')
-            ->logOnly(['accepted_difference', 'difference_reason', 'accepted_at', 'accepted_by_user_id'])
+            ->logOnly([
+                'sales_board_rollout_homologation_id',
+                'construction_id',
+                'accepted_difference',
+                'difference_reason',
+                'accepted_at',
+                'accepted_by_user_id',
+            ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
     }
