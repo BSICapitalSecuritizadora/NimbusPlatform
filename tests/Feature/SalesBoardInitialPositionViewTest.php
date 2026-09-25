@@ -1,6 +1,7 @@
 <?php
 
 use App\Filament\Resources\SalesBoards\Pages\ViewSalesBoard;
+use App\Filament\Resources\SalesBoards\RelationManagers\SalesBoardHistoriesRelationManager;
 use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\SalesBoard;
@@ -128,4 +129,46 @@ it('still announces the pending consolidation while the emission is in elaborati
         ->assertSee('Posição inicial da operação, consolidada quando a emissão deixar o status "Em Elaboração".')
         ->assertSee('Será consolidada quando a emissão deixar "Em Elaboração".')
         ->assertSee('Aguardando consolidação');
+});
+
+it('labels on the history only the version the section shows as the start of the operation', function () {
+    $emission = Emission::factory()->create(['status' => Emission::STATUS_DRAFT]);
+    $construction = Construction::factory()->create(['emission_id' => $emission->id]);
+
+    $june = initialPositionBoard($emission, $construction, '2026-06-01', 52);
+    $july = initialPositionBoard($emission, $construction, '2026-07-01', 41);
+
+    $emission->update(['status' => 'active']);
+
+    // As duas competências da elaboração saem marcadas; o início é a de 07/2026.
+    expect($june->refresh()->hasInitialPosition())->toBeTrue()
+        ->and($july->refresh()->hasInitialPosition())->toBeTrue()
+        ->and($june->constructionInitialPosition()?->is($july->initialPosition))->toBeTrue();
+
+    Livewire::test(SalesBoardHistoriesRelationManager::class, [
+        'ownerRecord' => $june,
+        'pageClass' => ViewSalesBoard::class,
+    ])
+        ->assertSee('Vigente')
+        ->assertDontSee('Início da Operação');
+
+    Livewire::test(SalesBoardHistoriesRelationManager::class, [
+        'ownerRecord' => $july,
+        'pageClass' => ViewSalesBoard::class,
+    ])
+        ->assertSee('Início da Operação');
+});
+
+it('does not label any history version of a construction without a consolidated start', function () {
+    [$emission] = consolidatedEmissionWithInitialBoard();
+
+    $newcomer = Construction::factory()->create(['emission_id' => $emission->id]);
+    $board = initialPositionBoard($emission, $newcomer, '2026-09-01', 12);
+
+    Livewire::test(SalesBoardHistoriesRelationManager::class, [
+        'ownerRecord' => $board,
+        'pageClass' => ViewSalesBoard::class,
+    ])
+        ->assertSee('Vigente')
+        ->assertDontSee('Início da Operação');
 });

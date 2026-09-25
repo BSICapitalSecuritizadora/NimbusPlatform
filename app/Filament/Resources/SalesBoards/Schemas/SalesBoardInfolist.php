@@ -13,7 +13,6 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Illuminate\Database\Eloquent\Builder;
 use WeakMap;
 
 /**
@@ -229,26 +228,16 @@ class SalesBoardInfolist
     }
 
     /**
-     * A posição inicial do empreendimento nesta operação.
-     *
-     * Uma competência só da elaboração também recebe a marca na consolidação,
-     * então o empreendimento pode ter mais de uma versão marcada; o início da
-     * operação é a mais recente delas, a posição em vigor quando a emissão
-     * deixou "Em Elaboração".
+     * A posição inicial do empreendimento nesta operação -- o critério mora em
+     * {@see SalesBoard::constructionInitialPosition()}, que o histórico abaixo
+     * também usa para o selo "Início da Operação".
      */
     protected static function constructionInitialPosition(SalesBoard $record): ?SalesBoardHistory
     {
         static::$initialPositions ??= new WeakMap;
 
         if (! isset(static::$initialPositions[$record])) {
-            static::$initialPositions[$record] = SalesBoardHistory::query()
-                ->initial()
-                ->whereHas('salesBoard', fn (Builder $query): Builder => $query
-                    ->where('emission_id', $record->emission_id)
-                    ->where('construction_id', $record->construction_id))
-                ->orderByDesc('reference_month')
-                ->orderByDesc('id')
-                ->first() ?? false;
+            static::$initialPositions[$record] = $record->constructionInitialPosition() ?? false;
         }
 
         return static::$initialPositions[$record] ?: null;

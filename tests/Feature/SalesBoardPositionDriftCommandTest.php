@@ -4,6 +4,7 @@ use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\SalesBoard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -119,9 +120,9 @@ it('reports the same construction and competence recorded in more than one emiss
     $scenario = driftConstructionMovedBetweenEmissions();
 
     $this->artisan('sales-boards:position-drift')
-        ->expectsOutputToContain('Empreendimentos com a mesma competência registrada em mais de uma Emissão')
+        ->expectsOutputToContain('Mais de um quadro para o mesmo empreendimento na mesma competência')
         ->expectsOutputToContain($scenario['orphan']->id.', '.$scenario['duplicate']->id)
-        ->expectsOutputToContain('Empreendimentos com a mesma competência em mais de uma Emissão: 1')
+        ->expectsOutputToContain('Empreendimentos com mais de um quadro na mesma competência: 1')
         ->assertSuccessful();
 });
 
@@ -134,7 +135,7 @@ it('does not blame first() alone for a divergence caused by a misplaced board', 
 
     $this->artisan('sales-boards:position-drift', ['--emission' => [$scenario['b']->id]])
         ->expectsOutputToContain('Quadros fora da Emissão do empreendimento: 1')
-        ->expectsOutputToContain('Empreendimentos com a mesma competência em mais de uma Emissão: 1')
+        ->expectsOutputToContain('Empreendimentos com mais de um quadro na mesma competência: 1')
         ->assertSuccessful();
 });
 
@@ -147,7 +148,7 @@ it('keeps an emission unrelated to the misplaced board out of the integrity sect
 
     $this->artisan('sales-boards:position-drift', ['--emission' => [$unrelated->id]])
         ->expectsOutputToContain('Quadros fora da Emissão do empreendimento: 0')
-        ->expectsOutputToContain('Empreendimentos com a mesma competência em mais de uma Emissão: 0')
+        ->expectsOutputToContain('Empreendimentos com mais de um quadro na mesma competência: 0')
         ->doesntExpectOutputToContain('Quadros gravados sob uma Emissão diferente da atual do empreendimento')
         ->assertSuccessful();
 });
@@ -162,7 +163,71 @@ it('confirms a base without misplaced or duplicated boards', function () {
 
     $this->artisan('sales-boards:position-drift')
         ->expectsOutputToContain('Quadros fora da Emissão do empreendimento: 0')
-        ->expectsOutputToContain('Empreendimentos com a mesma competência em mais de uma Emissão: 0')
-        ->expectsOutputToContain('Nenhum quadro fora da Emissão do empreendimento e nenhuma competência registrada em duas Emissões.')
+        ->expectsOutputToContain('Empreendimentos com mais de um quadro na mesma competência: 0')
+        ->expectsOutputToContain('Nenhum quadro fora da Emissão do empreendimento e nenhuma competência com mais de um quadro.')
+        ->assertSuccessful();
+});
+
+it('reports the misplaced board when filtering by the construction current emission without boards of its own', function () {
+    $emissionA = Emission::factory()->create(['status' => 'active']);
+    $emissionB = Emission::factory()->create(['status' => 'active']);
+    $moved = Construction::factory()->create(['emission_id' => $emissionA->id, 'development_name' => 'Residencial Muda']);
+
+    $orphan = SalesBoard::factory()->forEmissionAndConstruction($emissionA, $moved)->create([
+        'reference_month' => '2026-07-01',
+    ]);
+
+    // O empreendimento vai para a B, que não tem nenhum quadro próprio.
+    Construction::query()->whereKey($moved->id)->update(['emission_id' => $emissionB->id]);
+
+    $this->artisan('sales-boards:position-drift', ['--emission' => [$emissionB->id]])
+        ->doesntExpectOutputToContain('Nenhuma emissão com quadro de vendas encontrada nesta base.')
+        ->expectsOutputToContain('Quadros gravados sob uma Emissão diferente da atual do empreendimento')
+        ->expectsOutputToContain('Residencial Muda (#'.$moved->id.')')
+        ->expectsOutputToContain('Emissões analisadas: 0')
+        ->expectsOutputToContain('Quadros fora da Emissão do empreendimento: 1')
+        ->assertSuccessful();
+
+    expect($orphan->fresh()->emission_id)->toBe($emissionA->id);
+});
+
+it('still reports an empty base when the filtered emission has no board on either side', function () {
+    $emission = Emission::factory()->create(['status' => 'active']);
+    Construction::factory()->create(['emission_id' => $emission->id]);
+
+    $this->artisan('sales-boards:position-drift', ['--emission' => [$emission->id]])
+        ->expectsOutputToContain('Nenhuma emissão com quadro de vendas encontrada nesta base.')
+        ->assertSuccessful();
+});
+
+it('groups the duplicated competences by month even when a board was stored with another day', function () {
+    $scenario = driftConstructionMovedBetweenEmissions();
+
+    // Carga feita por fora do model: o dia não foi normalizado para 01.
+    DB::table('sales_boards')->where('id', $scenario['orphan']->id)->update(['reference_month' => '2026-07-15']);
+
+    $this->artisan('sales-boards:position-drift')
+        ->expectsOutputToContain('Mais de um quadro para o mesmo empreendimento na mesma competência')
+        ->expectsOutputToContain($scenario['orphan']->id.', '.$scenario['duplicate']->id)
+        ->expectsOutputToContain('Empreendimentos com mais de um quadro na mesma competência: 1')
+        ->assertSuccessful();
+});
+
+it('reports two boards of the same month inside one emission when a day escaped the normalization', function () {
+    $emission = Emission::factory()->create(['status' => 'active']);
+    $construction = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Repetido']);
+
+    $first = SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create(['reference_month' => '2026-07-01']);
+    $second = SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create(['reference_month' => '2026-08-01']);
+
+    DB::table('sales_boards')->where('id', $second->id)->update(['reference_month' => '2026-07-20']);
+
+    $this->artisan('sales-boards:position-drift')
+        ->expectsTable(
+            ['Empreendimento', 'Competência', 'Emissão do empreendimento', 'Emissões dos quadros', 'Quadros'],
+            [['Residencial Repetido (#'.$construction->id.')', '07/2026', $emission->id, (string) $emission->id, $first->id.', '.$second->id]],
+        )
+        ->expectsOutputToContain('Quadros fora da Emissão do empreendimento: 0')
+        ->expectsOutputToContain('Empreendimentos com mais de um quadro na mesma competência: 1')
         ->assertSuccessful();
 });
