@@ -75,6 +75,7 @@ final class PuBaselineReadinessService
             $homologationEndDate,
             $calendarDiagnostics['technical_coverage_satisfied'],
             $indexSourceDiagnostics,
+            $emission->puParameter()->value('index_rate_calendar_code'),
         );
         $eventDiagnostics = $this->eventRequirements->evaluate(
             $emission,
@@ -409,6 +410,10 @@ final class PuBaselineReadinessService
     }
 
     /**
+     * Snapshots que a configuração exige. O calendário de divulgação do índice
+     * não é campo contratual: é a escolha gravada na configuração, e sem ela a
+     * defasagem segue o calendário contratual, como antes.
+     *
      * @param  array<string, mixed>  $indexSource
      * @return array<string, mixed>
      */
@@ -417,6 +422,7 @@ final class PuBaselineReadinessService
         CarbonImmutable $requestedEndDate,
         bool $calendarTechnicallyReady,
         array $indexSource,
+        ?string $indexRateCalendarCode,
     ): array {
         $curveStartDate = $this->date($candidate->configuration['curve_start_date'] ?? null);
         $base = [
@@ -462,6 +468,7 @@ final class PuBaselineReadinessService
         $parameterAttributes = Arr::except($candidate->configuration, ['index_percentage']);
         $parameterAttributes['curve_start_date'] = $curveStartDate;
         $parameterAttributes['curve_end_date'] = $homologationEndDate;
+        $parameterAttributes['index_rate_calendar_code'] = $indexRateCalendarCode;
         $parameter = new EmissionPuParameter($parameterAttributes);
         $this->indexRateLookup->flushCache();
         $requirements = collect($this->rateRequirementResolver

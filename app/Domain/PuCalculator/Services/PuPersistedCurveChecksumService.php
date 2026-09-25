@@ -36,14 +36,24 @@ class PuPersistedCurveChecksumService
      */
     public function checksum(EmissionPuCurveVersion $version): string
     {
-        $rows = $version->dailyCurves()
+        return $this->fingerprints->curveChecksum($this->persistedRows($version));
+    }
+
+    /**
+     * Linhas persistidas reconstruídas com a mesma normalização do checksum, em
+     * ordem de data. Permite comparar dia a dia com uma curva recalculada.
+     *
+     * @return list<PuDailyCurveRowData>
+     */
+    public function persistedRows(EmissionPuCurveVersion $version): array
+    {
+        return $version->dailyCurves()
             ->orderBy('curve_date')
             ->orderBy('id')
             ->get()
             ->map(fn (EmissionPuDailyCurve $row): PuDailyCurveRowData => $this->rowData($row))
+            ->values()
             ->all();
-
-        return $this->fingerprints->curveChecksum($rows);
     }
 
     /**

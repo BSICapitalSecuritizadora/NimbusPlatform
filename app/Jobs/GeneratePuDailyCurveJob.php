@@ -155,6 +155,7 @@ class GeneratePuDailyCurveJob implements ShouldQueue
             'method_version' => $parameter->resolvedCalculationMethod()->engineVersion(),
             'business_day_basis' => $parameter->business_day_basis,
             'calendar_code' => $parameter->calendar_code,
+            'index_rate_calendar_code' => $parameter->index_rate_calendar_code,
             'index_rate_lookup_mode' => $parameter->index_rate_lookup_mode,
             'index_rate_lag_business_days' => $parameter->index_rate_lag_business_days,
             'first_coupon_pre_integralization_premium_enabled' => $parameter->first_coupon_pre_integralization_premium_enabled,

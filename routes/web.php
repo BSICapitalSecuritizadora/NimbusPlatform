@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\JobApplicationResumeController;
 use App\Http\Controllers\Admin\MeasurementAssetDownloadController;
 use App\Http\Controllers\Admin\MeasurementCycleReportExportController;
 use App\Http\Controllers\Admin\MeasurementFileDownloadController;
+use App\Http\Controllers\Admin\MeasurementPaymentSupportDownloadController;
 use App\Http\Controllers\Admin\MeasurementReceiptDownloadController;
 use App\Http\Controllers\Admin\ObligationEvidenceDownloadController;
 use App\Http\Controllers\Admin\PaymentTemplateDownloadController;
@@ -228,9 +229,13 @@ Route::middleware(['auth', 'approved'])->group(function () {
     Route::get('/admin/emissions/{emission}/relatorio-mensal', EmissionMonthlyReportController::class)
         ->name('admin.emissions.monthly-report.pdf')
         ->middleware('throttle:30,1');
+    Route::redirect('/admin/configuracoes', '/admin/settings');
+    Route::redirect('/admin/configuracoes/templates', '/admin/settings/templates');
 });
 
 Route::middleware(['auth', 'approved', EnsureTwoFactorEnabled::class])->group(function () {
+    Route::get('/admin/measurements/payments/{payment}/financial-support', MeasurementPaymentSupportDownloadController::class)
+        ->name('admin.measurements.financial-support.download')->middleware('throttle:60,1');
     Route::get('/admin/measurements/assets/{asset}/download', MeasurementAssetDownloadController::class)
         ->name('admin.measurements.assets.download')
         ->middleware('throttle:60,1');

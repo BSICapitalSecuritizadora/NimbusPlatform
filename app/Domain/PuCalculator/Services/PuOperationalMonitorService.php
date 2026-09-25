@@ -176,7 +176,27 @@ class PuOperationalMonitorService
             $issues[] = sprintf('%d emissao(oes) com CDI obrigatorio faltante.', $missing);
         }
 
+        if (($diverged = $this->divergedGovernedCurveCount()) > 0) {
+            $issues[] = sprintf(
+                '%d curva(s) homologada(s) ou promovida(s) com o passado divergente: a extensao diaria esta suspensa ate o reprocessamento manual.',
+                $diverged,
+            );
+        }
+
         return $issues;
+    }
+
+    /**
+     * Curvas vigentes governadas cujo recálculo deixou de reproduzir o trecho
+     * gravado: a rotina não as troca sozinha, então alguém precisa decidir.
+     */
+    public function divergedGovernedCurveCount(): int
+    {
+        return EmissionPuCurveVersion::query()
+            ->operational()
+            ->whereNotNull('extension_diverged_at')
+            ->where('status', '!=', PuCurveStatus::Obsolete->value)
+            ->count();
     }
 
     /**

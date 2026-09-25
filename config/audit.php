@@ -23,6 +23,7 @@ return [
     //   grep -rn "useLogName(" app/Models
     //   grep -rn "activity('" app | grep -o "activity('[a-z_-]*')" | sort -u
     'protected_logs' => [
+        'measurement_financial_rules',
         'measurement_evidence',      // MeasurementReceiptEvidenceService — versões e decisões documentais
         'measurement_workflow',      // MeasurementWorkflow::audit() — aprovação, recusa, pausa, retomada, pagamento, comprovante, finalização
         'measurement_file_access',   // controllers de download — asset, arquivo da medição e comprovante, com sha256

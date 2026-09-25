@@ -81,7 +81,7 @@ class MeasurementInfolist
 
             // 3. Condição e Conciliação Financeira (Full Width)
             Section::make('Condição e Conciliação Financeira')
-                ->description('Referência financeira desta competência, ancorada no snapshot da Engenharia. A divergência avisa e não bloqueia.')
+                ->description('Referência aprovada pela Engenharia. Novas divergências exigem justificativa e aceite explícito do Finalizador.')
                 ->columnSpanFull()
                 ->visible(fn (Measurement $record): bool => is_array($record->engineering_snapshot)
                     && ($record->engineering_snapshot['plan_sets'] ?? []) !== [])
@@ -89,6 +89,8 @@ class MeasurementInfolist
                     ViewEntry::make('financial_reconciliation')
                         ->label('')
                         ->view('filament.infolists.measurement-financial-reconciliation'),
+                    ViewEntry::make('financial_assessments')->label('Regras e justificativas dos pagamentos')
+                        ->view('filament.infolists.measurement-financial-assessments'),
                 ]),
 
             // 4. Pagamentos e Comprovações (Full Width)

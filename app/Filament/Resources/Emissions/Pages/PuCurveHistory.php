@@ -10,6 +10,7 @@ use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 use Filament\Resources\Pages\Page;
 use Filament\Support\Enums\Width;
 use Illuminate\Support\Collection;
+use Spatie\Activitylog\Models\Activity;
 
 class PuCurveHistory extends Page
 {
@@ -19,7 +20,11 @@ class PuCurveHistory extends Page
 
     protected string $view = 'filament.resources.emissions.pages.pu-curve-history';
 
-    protected static ?string $title = 'Historico da Curva PU';
+    protected static ?string $title = 'Histórico da Curva PU';
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-pu-curve-history-page',
+    ];
 
     public function mount(int|string $record): void
     {
@@ -33,7 +38,12 @@ class PuCurveHistory extends Page
 
     public function getTitle(): string
     {
-        return 'Historico e Auditoria da Curva PU';
+        return 'Histórico e Auditoria da Curva PU';
+    }
+
+    public function getSubheading(): ?string
+    {
+        return 'Acompanhe as versões geradas, o status de processamento e o histórico de alterações da curva de PU.';
     }
 
     /**
@@ -52,7 +62,7 @@ class PuCurveHistory extends Page
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, \Spatie\Activitylog\Models\Activity>
+     * @return Collection<int, Activity>
      */
     public function getActivities(): Collection
     {
@@ -68,16 +78,20 @@ class PuCurveHistory extends Page
     {
         return [
             Action::make('backToEmission')
-                ->label('Voltar para a Emissao')
+                ->label('Voltar para a Emissão')
                 ->icon('heroicon-o-arrow-left')
                 ->color('gray')
+                ->outlined()
+                ->extraAttributes(['class' => 'pua-btn-back'])
                 ->url(fn (): string => EmissionResource::getUrl('edit', ['record' => $this->getRecord()])),
             Action::make('viewDivergenceReport')
-                ->label('Ver Relatorio de Divergencias')
+                ->label('Ver Relatório de Divergências')
                 ->icon('heroicon-o-exclamation-triangle')
-                ->color('gray')
+                ->color('warning')
+                ->outlined()
+                ->extraAttributes(['class' => 'pua-btn-divergence'])
                 ->modalWidth(Width::SevenExtraLarge)
-                ->modalHeading('Ultimo Relatorio de Validacao')
+                ->modalHeading('Último Relatório de Validação')
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar')
                 ->modalContent(fn () => view('filament.emissions.pu-validation-report', [

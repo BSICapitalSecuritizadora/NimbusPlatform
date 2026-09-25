@@ -295,6 +295,7 @@ it('consolidates the audit trails and internal access inside Administração', f
         ->and(navigationChildLabels('Administração', 'Configurações'))->toBe([
             'Usuários',
             'Perfis de acesso',
+            'Templates de Planilhas',
         ]);
 });
 

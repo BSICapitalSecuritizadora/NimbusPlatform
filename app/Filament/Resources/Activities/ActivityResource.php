@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Activities;
 use App\Enums\WorkflowAuthorizationSource;
 use App\Filament\Exports\ActivityExporter;
 use App\Filament\Resources\Activities\Pages\ManageActivities;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\ResponsibilityDelegation;
 use App\Models\User;
 use BackedEnum;
@@ -197,7 +198,9 @@ class ActivityResource extends Resource
                         ->mapWithKeys(fn (string $name): array => [$name => self::friendlyLogName($name)])
                         ->all()
                     )
-                    ->searchable(),
+                    ->searchable()
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
                 SelectFilter::make('authorization_source')
                     ->label('Origem da Autorização')
                     ->options([
@@ -221,7 +224,9 @@ class ActivityResource extends Resource
                 SelectFilter::make('causer_id')
                     ->label('Usuário')
                     ->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())
-                    ->searchable(),
+                    ->searchable()
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
                 Filter::make('created_at')
                     ->form([
                         DatePicker::make('created_from')->label('Data Inicial'),

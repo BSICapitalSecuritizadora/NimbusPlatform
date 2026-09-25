@@ -7,7 +7,7 @@ use Filament\Forms\Components\Select;
 
 /**
  * Geometria compartilhada do dropdown dos filtros de "Emissão", "Empreendimento",
- * "Empresa de medição", "Operação", "Bloco", "Tipo", "Série", "Obrigação", "Solicitante", "Usuário do Portal", "Aplicação", "Prestador", "Categoria", "Criado por" e "Enviado por": o popup fica ancorado no trigger
+ * "Empresa de medição", "Operação", "Bloco", "Tipo", "Série", "Obrigação", "Solicitante", "Usuário do Portal", "Aplicação", "Prestador", "Categoria", "Criado por", "Enviado por", "Identificador do Log" e "Usuário": o popup fica ancorado no trigger
  * que o abriu. Vale para todo filtro renderizado pelo select JS do Filament (pesquisável
  * ou `native(false)`); filtros com `<select>` nativo não sofrem o defeito e ficam fora.
  *

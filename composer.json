@@ -81,6 +81,10 @@
             "Composer\\Config::disableProcessTimeout",
             "./scripts/parity-check.sh"
         ],
+        "test:measurements:mysql": [
+            "Composer\\Config::disableProcessTimeout",
+            "./scripts/parity-check.sh --compact --fail-on-skipped tests/Feature/MeasurementMysqlConcurrencyTest.php tests/Feature/MeasurementReceiptEvidenceMysqlConcurrencyTest.php"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi",
@@ -119,6 +123,7 @@
     "minimum-stability": "stable",
     "prefer-stable": true,
     "scripts-descriptions": {
-        "test:parity": "Roda o grupo 'parity' no MySQL, num banco temporario criado e removido pelo script."
+        "test:parity": "Roda os grupos 'parity' e 'mysql' em um banco temporário criado e removido pelo script.",
+        "test:measurements:mysql": "Roda os 10 cenários de concorrência de Medições no MySQL e falha se algum for ignorado."
     }
 }

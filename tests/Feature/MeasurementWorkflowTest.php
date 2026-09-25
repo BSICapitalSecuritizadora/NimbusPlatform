@@ -414,6 +414,7 @@ it('registers a payment then attaches a receipt and finalizes', function () {
     $payment = $workflow->registerPayment($measurement->fresh(), $actor, [
         'pay_date' => '2026-05-10',
         'amount' => 150000.50,
+        'financial_justification' => 'Pagamento parcial previsto para esta medição.',
         'method' => 'PIX',
     ]);
 
@@ -426,7 +427,7 @@ it('registers a payment then attaches a receipt and finalizes', function () {
     MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $actor);
     expect($payment->fresh()->hasReceipt())->toBeTrue();
 
-    $workflow->finalize($measurement->fresh(), $actor);
+    $workflow->finalize($measurement->fresh(), $actor, acceptFinancialExceptions: true);
     $measurement->refresh();
 
     expect($measurement->status)->toBe('finalized')

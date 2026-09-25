@@ -27,6 +27,7 @@
 #   ./scripts/parity-check.sh                 # inside the app container / CI
 #   ./vendor/bin/sail exec laravel.test ./scripts/parity-check.sh
 #   composer test:parity
+#   composer test:measurements:mysql         # only Measurement concurrency tests
 #
 # Creating and dropping a database needs more rights than running tests does, so
 # the two use separate credentials: an admin account for the DDL (root by
@@ -43,26 +44,31 @@ DB_HOST="${PARITY_DB_HOST:-${DB_HOST:-mysql}}"
 DB_PORT="${PARITY_DB_PORT:-${DB_PORT:-3306}}"
 DB_USERNAME="${PARITY_DB_USERNAME:-${DB_USERNAME:-sail}}"
 DB_PASSWORD="${PARITY_DB_PASSWORD:-${DB_PASSWORD:-password}}"
-DB_DATABASE="${PARITY_DB_DATABASE:-nimbus_parity_check}"
+DB_DATABASE="${PARITY_DB_DATABASE:-nimbus_parity_check_$(date +%Y%m%d%H%M%S)_$$}"
 ADMIN_USERNAME="${PARITY_ADMIN_USERNAME:-root}"
 ADMIN_PASSWORD="${PARITY_ADMIN_PASSWORD:-$DB_PASSWORD}"
+DATABASE_CREATED=0
 
 # A guard, not decoration: this script drops the database it is pointed at, so it
 # only ever accepts a name that cannot be a real one.
-case "$DB_DATABASE" in
-    nimbus_parity_check*) ;;
-    *)
-        echo "Recusando: PARITY_DB_DATABASE deve comecar com 'nimbus_parity_check' (recebido: '$DB_DATABASE')." >&2
-        echo "O script apaga o banco ao final e nao deve poder apontar para um banco real." >&2
-        exit 1
-        ;;
-esac
+if [[ ! "$DB_DATABASE" =~ ^nimbus_parity_check[A-Za-z0-9_]*$ ]] || (( ${#DB_DATABASE} > 64 )); then
+    echo "Recusando: PARITY_DB_DATABASE deve comecar com 'nimbus_parity_check', conter somente letras, numeros e sublinhados e ter ate 64 caracteres." >&2
+    exit 1
+fi
+
+CONFIG_CACHE_DIRECTORY="$(mktemp -d "${TMPDIR:-/tmp}/nimbus-parity-config.XXXXXX")"
 
 mysql_admin() {
     mysql --host="$DB_HOST" --port="$DB_PORT" --user="$ADMIN_USERNAME" --password="$ADMIN_PASSWORD" --execute="$1"
 }
 
 cleanup() {
+    rmdir "$CONFIG_CACHE_DIRECTORY" || true
+
+    if [ "$DATABASE_CREATED" != "1" ]; then
+        return
+    fi
+
     if [ "${PARITY_KEEP_DATABASE:-0}" = "1" ]; then
         echo "==> Banco '$DB_DATABASE' preservado (PARITY_KEEP_DATABASE=1)."
         return
@@ -77,16 +83,20 @@ echo "==> Criando o banco '$DB_DATABASE' em $DB_HOST:$DB_PORT."
 # The default charset and collation mirror the application database on purpose:
 # running the parity check under friendlier settings than production would defeat
 # the point of running it at all.
-mysql_admin "DROP DATABASE IF EXISTS \`$DB_DATABASE\`;
-             CREATE DATABASE \`$DB_DATABASE\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-             GRANT ALL PRIVILEGES ON \`$DB_DATABASE\`.* TO '$DB_USERNAME'@'%';
+mysql_admin "CREATE DATABASE \`$DB_DATABASE\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+DATABASE_CREATED=1
+mysql_admin "GRANT ALL PRIVILEGES ON \`$DB_DATABASE\`.* TO '$DB_USERNAME'@'%';
              FLUSH PRIVILEGES;"
 
 echo "==> Rodando os grupos 'parity' e 'mysql' no MySQL."
+APP_ENV=testing \
+APP_CONFIG_CACHE="$CONFIG_CACHE_DIRECTORY/config.php" \
 DB_CONNECTION=mysql \
+DB_URL= \
+DB_SOCKET= \
 DB_HOST="$DB_HOST" \
 DB_PORT="$DB_PORT" \
 DB_DATABASE="$DB_DATABASE" \
 DB_USERNAME="$DB_USERNAME" \
 DB_PASSWORD="$DB_PASSWORD" \
-    php artisan test --group=parity --group=mysql "$@"
+    php artisan test "$@" --group=parity --group=mysql

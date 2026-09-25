@@ -5,7 +5,12 @@ namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Services\PuAuditLogService;
+use App\Domain\PuCalculator\Services\PuBaselineCandidateFactory;
+use App\Domain\PuCalculator\Services\PuContractualEventScheduleService;
 use App\Models\Emission;
+use App\Models\User;
+use Carbon\CarbonImmutable;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -16,6 +21,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
@@ -138,6 +144,19 @@ class PuEventsRelationManager extends RelationManager
                     ]),
             ])
             ->headerActions([
+                Action::make('generateContractualSchedule')
+                    ->label('Gerar eventos do cronograma contratual')
+                    ->icon('heroicon-m-calendar-days')
+                    ->color('gray')
+                    ->visible(fn (): bool => ! $this->isReadOnly()
+                        && (auth()->user()?->can('pu.parameters.configure') ?? false)
+                        && app(PuBaselineCandidateFactory::class)->supports($this->getOwnerRecord()))
+                    ->requiresConfirmation()
+                    ->modalIcon('heroicon-o-calendar-days')
+                    ->modalHeading('Gerar eventos do cronograma contratual')
+                    ->modalDescription(fn (): string => $this->contractualScheduleSummary())
+                    ->modalSubmitActionLabel('Gerar eventos')
+                    ->action(fn (): null => $this->generateContractualSchedule()),
                 CreateAction::make()
                     ->label('Novo Evento PU')
                     ->icon('heroicon-m-plus')
@@ -172,6 +191,94 @@ class PuEventsRelationManager extends RelationManager
                     ->visible(fn (): bool => auth()->user()?->can('pu.parameters.configure') ?? false)
                     ->after(fn (): null => $this->logEventChange('created')),
             ]);
+    }
+
+    /**
+     * Prévia do que a geração vai fazer, calculada só quando o modal abre.
+     */
+    private function contractualScheduleSummary(): string
+    {
+        $plan = app(PuContractualEventScheduleService::class)->plan($this->getOwnerRecord());
+
+        if (! $plan['available']) {
+            return (string) $plan['reason'];
+        }
+
+        $lines = [sprintf(
+            'O contrato prevê %d evento(s) até %s; %d já estão cadastrados.',
+            count($plan['contractual_events']),
+            $this->brazilianDate($plan['maturity_date']),
+            count($plan['present_events']),
+        )];
+        $lines[] = $plan['creatable_events'] === []
+            ? 'Nenhum evento novo a criar.'
+            : sprintf(
+                'Serão criados %d evento(s), de %s a %s, com a data efetiva no dia útil seguinte do calendário da curva.',
+                count($plan['creatable_events']),
+                $this->brazilianDate($plan['creatable_events'][0]['effective_date']),
+                $this->brazilianDate($plan['creatable_events'][array_key_last($plan['creatable_events'])]['effective_date']),
+            );
+
+        if ($plan['missing_in_calculated_period'] !== []) {
+            $lines[] = sprintf(
+                '%d evento(s) faltam dentro do período já calculado (até %s) e não serão criados aqui: cadastre-os e reprocesse a curva.',
+                count($plan['missing_in_calculated_period']),
+                $this->brazilianDate($plan['last_calculated_date']),
+            );
+        }
+
+        if ($plan['conflicting_events'] !== []) {
+            $lines[] = sprintf(
+                '%d evento(s) cadastrado(s) divergem do contrato e serão mantidos como estão.',
+                count($plan['conflicting_events']),
+            );
+        }
+
+        return implode(' ', $lines);
+    }
+
+    private function generateContractualSchedule(): null
+    {
+        /** @var User $actor */
+        $actor = auth()->user();
+        $result = app(PuContractualEventScheduleService::class)->write($this->getOwnerRecord(), $actor);
+
+        match ($result['action']) {
+            PuContractualEventScheduleService::ACTION_CREATED => Notification::make()
+                ->title(sprintf('%d evento(s) criado(s).', $result['created']))
+                ->body(sprintf(
+                    'Cronograma contratual cadastrado de %s a %s.',
+                    $this->brazilianDate($result['first_date']),
+                    $this->brazilianDate($result['last_date']),
+                ))
+                ->success()
+                ->send(),
+            PuContractualEventScheduleService::ACTION_NOTHING_TO_CREATE => Notification::make()
+                ->title('Nenhum evento novo a criar.')
+                ->body($result['plan']['missing_in_calculated_period'] === []
+                    ? 'O cronograma contratual já está cadastrado.'
+                    : 'Os eventos que faltam estão dentro do período já calculado: cadastre-os e reprocesse a curva.')
+                ->info()
+                ->send(),
+            PuContractualEventScheduleService::ACTION_CONCURRENT_CHANGE => Notification::make()
+                ->title('Os eventos mudaram durante a geração.')
+                ->body('Nenhum evento foi criado. Confira a lista e tente de novo.')
+                ->warning()
+                ->send(),
+            default => Notification::make()
+                ->title('Cronograma contratual indisponível.')
+                ->body((string) $result['plan']['reason'])
+                ->danger()
+                ->persistent()
+                ->send(),
+        };
+
+        return null;
+    }
+
+    private function brazilianDate(?string $date): string
+    {
+        return $date !== null ? CarbonImmutable::parse($date)->format('d/m/Y') : '—';
     }
 
     private function logEventChange(string $action): null

@@ -237,14 +237,27 @@ class PuCalculatorSimulator extends Page
     /**
      * Calendários oferecidos como hipótese de observação do índice.
      *
-     * A opção vazia é o padrão e significa "o mesmo calendário contratual da
-     * curva" -- nenhuma mudança silenciosa de semântica.
+     * A opção vazia é o padrão e significa "o que a configuração gravada usa":
+     * o calendário de divulgação salvo, quando existe, ou o calendário
+     * contratual da curva -- nenhuma mudança silenciosa de semântica.
      *
      * @return array<string, string>
      */
     public function indexRateCalendarOptions(): array
     {
-        return ['' => 'Mesmo calendário da curva (contratual)'] + BusinessCalendarRegistry::options();
+        $saved = $this->savedIndexRateCalendarCode();
+
+        return ['' => $saved !== null
+            ? sprintf('Configuração salva — %s', $saved)
+            : 'Mesmo calendário da curva (contratual)'] + BusinessCalendarRegistry::options();
+    }
+
+    /** Calendário de divulgação do CDI gravado na configuração, se houver. */
+    public function savedIndexRateCalendarCode(): ?string
+    {
+        $code = $this->record->puParameter?->index_rate_calendar_code;
+
+        return filled($code) ? (string) $code : null;
     }
 
     /**

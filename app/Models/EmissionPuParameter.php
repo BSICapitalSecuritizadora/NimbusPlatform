@@ -35,6 +35,7 @@ class EmissionPuParameter extends Model
         'rounding_policy',
         'business_day_basis',
         'calendar_code',
+        'index_rate_calendar_code',
         'index_rate_lookup_mode',
         'index_rate_lag_business_days',
         'first_coupon_pre_integralization_premium_enabled',

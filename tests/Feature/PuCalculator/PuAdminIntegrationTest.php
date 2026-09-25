@@ -402,3 +402,57 @@ function persistReferenceRowsForAdmin(Emission $emission, array $referenceRows, 
         EmissionPuDailyCurve::query()->insert($chunk);
     }
 }
+
+it('stores the CDI publication calendar apart from the curve calendar', function () {
+    $admin = makeAdminUser();
+    $this->actingAs($admin);
+    $emission = Emission::factory()->create();
+
+    Livewire::test(EditEmission::class, ['record' => $emission->getRouteKey()])
+        ->callAction('configurePuCalculation', [
+            'curve_start_date' => '2026-01-12',
+            'curve_end_date' => '2026-12-31',
+            'initial_unit_value' => '1000.00',
+            'indexer' => PuIndexer::Cdi->value,
+            'spread_rate' => '6.00',
+            'business_day_basis' => 252,
+            'calendar_code' => BusinessCalendarRegistry::BR_BANKING_ANBIMA,
+            'index_rate_lookup_mode' => PuIndexRateLookupMode::BusinessDayLagExact->value,
+            'index_rate_lag_business_days' => -5,
+            'index_rate_calendar_code' => BusinessCalendarRegistry::BR_BANKING_ANBIMA,
+            'legacy_projection_enabled' => false,
+        ])
+        ->assertHasNoActionErrors();
+
+    expect($emission->fresh()->puParameter)
+        ->calendar_code->toBe(BusinessCalendarRegistry::BR_BANKING_ANBIMA)
+        ->index_rate_calendar_code->toBe(BusinessCalendarRegistry::BR_BANKING_ANBIMA);
+
+    Livewire::test(EditEmission::class, ['record' => $emission->getRouteKey()])
+        ->mountAction('configurePuCalculation')
+        ->assertActionDataSet(['index_rate_calendar_code' => BusinessCalendarRegistry::BR_BANKING_ANBIMA]);
+});
+
+it('refuses a CDI publication calendar outside the financial catalog', function () {
+    $admin = makeAdminUser();
+    $this->actingAs($admin);
+    $emission = Emission::factory()->create();
+
+    Livewire::test(EditEmission::class, ['record' => $emission->getRouteKey()])
+        ->callAction('configurePuCalculation', [
+            'curve_start_date' => '2026-01-12',
+            'curve_end_date' => '2026-12-31',
+            'initial_unit_value' => '1000.00',
+            'indexer' => PuIndexer::Cdi->value,
+            'spread_rate' => '6.00',
+            'business_day_basis' => 252,
+            'calendar_code' => BusinessCalendarRegistry::BR_BANKING_ANBIMA,
+            'index_rate_lookup_mode' => PuIndexRateLookupMode::BusinessDayLagExact->value,
+            'index_rate_lag_business_days' => -5,
+            'index_rate_calendar_code' => BusinessCalendarRegistry::BR_FINANCIAL_MARKET,
+            'legacy_projection_enabled' => false,
+        ])
+        ->assertHasActionErrors(['index_rate_calendar_code']);
+
+    expect($emission->fresh()->puParameter)->toBeNull();
+});

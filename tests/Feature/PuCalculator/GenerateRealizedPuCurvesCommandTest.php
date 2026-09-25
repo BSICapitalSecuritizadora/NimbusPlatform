@@ -2,6 +2,7 @@
 
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
+use App\Jobs\ExtendPuDailyCurveJob;
 use App\Jobs\GeneratePuDailyCurveJob;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
@@ -58,20 +59,26 @@ it('preserves homologated curves by not reprocessing them automatically', functi
 
     $this->artisan('pu:curves:generate-realized')->assertSuccessful();
 
+    // A homologada não é reprocessada: recebe só a extensão, que anexa dias
+    // novos sem trocar a versão.
     Queue::assertNotPushed(GeneratePuDailyCurveJob::class);
+    Queue::assertPushed(ExtendPuDailyCurveJob::class, fn (ExtendPuDailyCurveJob $job): bool => $job->emissionId === $emission->id);
 });
 
 it('skips emissions whose curve already reaches the final date', function () {
     Queue::fake();
 
     $emission = makeCdiEmissionWithParameter(curveEnd: '2026-03-10');
+    $version = EmissionPuCurveVersion::factory()->create(['emission_id' => $emission->id]);
 
     EmissionPuDailyCurve::factory()->create([
         'emission_id' => $emission->id,
+        'curve_version_id' => $version->id,
         'curve_date' => '2026-03-10',
     ]);
 
     $this->artisan('pu:curves:generate-realized')->assertSuccessful();
 
     Queue::assertNotPushed(GeneratePuDailyCurveJob::class);
+    Queue::assertNotPushed(ExtendPuDailyCurveJob::class);
 });

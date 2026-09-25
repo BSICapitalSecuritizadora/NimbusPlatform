@@ -4,7 +4,7 @@ namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Actions\Emissions\ImportPuHistoriesFromSpreadsheet;
 use App\Actions\Emissions\PuHistorySpreadsheetTemplate;
-use App\Filament\Pages\Settings as SettingsPage;
+use App\Filament\Pages\SpreadsheetTemplates as SpreadsheetTemplatesPage;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -81,7 +81,7 @@ class PuHistoriesRelationManager extends RelationManager
                     ->icon('heroicon-o-cog-6-tooth')
                     ->color('gray')
                     ->tooltip('Configurar mapeamento de colunas do template')
-                    ->url(fn (): string => SettingsPage::getUrl(panel: 'admin'))
+                    ->url(fn (): string => SpreadsheetTemplatesPage::getUrl(panel: 'admin'))
                     ->visible(fn (): bool => auth()->user()?->can('settings.view') ?? false),
                 Action::make('import')
                     ->label('Importar Dados')

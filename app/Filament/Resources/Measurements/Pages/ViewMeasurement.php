@@ -14,6 +14,8 @@ use App\Models\MeasurementPaymentReceiptEvidence;
 use App\Models\MeasurementPlanSet;
 use App\Models\User;
 use App\Services\MeasurementFinancialReconciliationService;
+use App\Services\MeasurementFinancialRuleService;
+use App\Services\MeasurementPaymentFinancialService;
 use App\Services\MeasurementReceiptEvidenceService;
 use App\Services\MeasurementWorkflow;
 use Closure;
@@ -39,6 +41,7 @@ use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
+use Illuminate\Validation\ValidationException;
 
 class ViewMeasurement extends ViewRecord
 {
@@ -89,6 +92,7 @@ class ViewMeasurement extends ViewRecord
             $this->pauseAction(),
             $this->resumeAction(),
             $this->registerPaymentAction(),
+            $this->reassessPaymentAction(),
             $this->attachReceiptAction(),
             $this->attachReceiptAction(postFinalization: true),
             $this->reviewReceiptAction(),
@@ -140,6 +144,10 @@ class ViewMeasurement extends ViewRecord
     {
         try {
             $operation();
+        } catch (ValidationException $exception) {
+            $prefix = $this->getMountedActionSchema()->getStatePath();
+            throw ValidationException::withMessages(collect($exception->errors())
+                ->mapWithKeys(fn (array $messages, string $field): array => [str_starts_with($field, $prefix.'.') ? $field : $prefix.'.'.$field => $messages])->all());
         } catch (MeasurementWorkflowException $exception) {
             Notification::make()
                 ->danger()
@@ -367,15 +375,28 @@ class ViewMeasurement extends ViewRecord
                             'pay_date' => $data['pay_date'],
                             'method' => $data['method'] ?? null,
                             'notes' => $row['notes'] ?? null,
+                            'financial_rule_id' => $row['financial_rule_id'] ?? null,
+                            'financial_justification' => $row['financial_justification'] ?? null,
+                            'financial_support' => $row['financial_support'] ?? null,
                         ])
                         ->all();
 
-                    $created = $this->workflow()->registerPayments(
-                        $this->record,
-                        $this->actor(),
-                        $rows,
-                        expectedRevision: (int) $data['expected_revision'],
-                    );
+                    try {
+                        $created = $this->workflow()->registerPayments(
+                            $this->record,
+                            $this->actor(),
+                            $rows,
+                            expectedRevision: (int) $data['expected_revision'],
+                        );
+                    } catch (ValidationException $exception) {
+                        $keys = collect($rows)->filter(fn (array $row): bool => filled($row['amount']))->keys()->all();
+                        throw ValidationException::withMessages(collect($exception->errors())
+                            ->mapWithKeys(function (array $messages, string $field) use ($keys): array {
+                                $path = preg_replace_callback('/^payments\.(\d+)\./', fn (array $match): string => 'payments.'.($keys[(int) $match[1]] ?? $match[1]).'.', $field);
+
+                                return [$path => $messages];
+                            })->all());
+                    }
 
                     if ($created->isEmpty()) {
                         Notification::make()->warning()->title('Informe ao menos um valor de pagamento.')->send();
@@ -404,7 +425,7 @@ class ViewMeasurement extends ViewRecord
 
         return [
             Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),
-            DatePicker::make('pay_date')->label('Data do pagamento')->required()->default(now()),
+            DatePicker::make('pay_date')->label('Data do pagamento')->required()->default(now())->live(),
             TextInput::make('method')->label('Método')->placeholder('TED, PIX, Boleto...'),
             Repeater::make('payments')
                 ->label('Pagamento por empreendimento')
@@ -434,6 +455,10 @@ class ViewMeasurement extends ViewRecord
                         ->label('Conciliação')
                         ->columnSpanFull()
                         ->content(fn (Get $get): HtmlString => $this->paymentDivergenceContent($get('plan_set_id'), $get('amount'))),
+                    ...$this->financialExceptionFields(
+                        fn (Get $get): int => (int) $get('plan_set_id'),
+                        fn (Get $get): string => (string) ($get('../../pay_date') ?? now()->toDateString()),
+                    ),
                     Textarea::make('notes')->label('Observações')->rows(2)->columnSpanFull(),
                 ]),
         ];
@@ -533,6 +558,54 @@ class ViewMeasurement extends ViewRecord
             MeasurementReconciliationStatus::Over => "Divergência para mais — {$divergence} acima do saldo esperado.",
             MeasurementReconciliationStatus::ReferenceUnavailable => 'Sem referência financeira para comparar.',
         };
+    }
+
+    /** @return array<Component> */
+    private function financialExceptionFields(Closure $planSetId, Closure $paymentDate): array
+    {
+        return [
+            Select::make('financial_rule_id')->label('Regra financeira aplicável')->columnSpanFull()->searchable()
+                ->placeholder('Exceção sem regra cadastrada')
+                ->helperText('Somente regras da emissão e obra aprovadas, vigentes na data do pagamento. Selecionar uma regra não dispensa a conferência do Finalizador.')
+                ->options(fn (Get $get): array => app(MeasurementFinancialRuleService::class)
+                    ->availableFor($this->record, $planSetId($get), $paymentDate($get))->orderBy('name')->get()
+                    ->mapWithKeys(fn ($rule): array => [$rule->id => $rule->name.' · versão '.$rule->version])->all()),
+            Textarea::make('financial_justification')->label('Justificativa da divergência')->rows(3)->maxLength(5000)
+                ->helperText('Obrigatória quando o pagamento for diferente do saldo esperado, inclusive nos casos previstos por uma regra.')->columnSpanFull(),
+            FileUpload::make('financial_support')->label('Documento de suporte')->storeFiles(false)
+                ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png'])->maxSize(10240)
+                ->helperText('PDF, JPG ou PNG de até 10 MB. Obrigatório quando exigido pela regra.')->columnSpanFull(),
+        ];
+    }
+
+    private function reassessPaymentAction(): Action
+    {
+        return Action::make('reassessPayment')->label('Reavaliar enquadramento')->icon('heroicon-o-adjustments-horizontal')
+            ->visible(fn (): bool => $this->workflow()->canRegisterPayment($this->record, $this->actor()) && $this->record->payments()->exists())
+            ->modalDescription('Atualize a regra e a justificativa de um pagamento existente após uma devolução. O valor do pagamento permanece preservado.')
+            ->schema([
+                Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),
+                Select::make('payment_id')->label('Pagamento')->required()->live()
+                    ->options(fn (): array => $this->record->payments()->get()->mapWithKeys(fn (MeasurementPayment $payment): array => [
+                        $payment->id => '#'.$payment->id.' · '.MeasurementFinancialReconciliationService::formatCurrency($payment->amount),
+                    ])->all())
+                    ->afterStateUpdated(function (Set $set): void {
+                        $set('financial_rule_id', null);
+                        $set('financial_justification', null);
+                        $set('financial_support', null);
+                    }),
+                ...$this->financialExceptionFields(
+                    fn (Get $get): int => (int) $this->record->payments()->find($get('payment_id'))?->plan_set_id,
+                    fn (Get $get): string => $this->record->payments()->find($get('payment_id'))?->pay_date?->toDateString() ?? now()->toDateString(),
+                ),
+            ])
+            ->action(function (array $data): void {
+                $this->guarded(function () use ($data): void {
+                    $payment = $this->record->payments()->findOrFail($data['payment_id']);
+                    $this->workflow()->reassessPayment($payment, $this->actor(), $data, (int) $data['expected_revision']);
+                    $this->notify('Enquadramento financeiro atualizado para conferência do Finalizador.');
+                });
+            });
     }
 
     private function attachReceiptAction(bool $postFinalization = false): Action
@@ -662,6 +735,13 @@ class ViewMeasurement extends ViewRecord
             ->schema([
                 Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),
                 Hidden::make('expected_status')->default(fn (): string => (string) $this->record->status),
+                Placeholder::make('financial_review')->label('Conferência financeira')
+                    ->content(fn (): View => view('filament.infolists.measurement-financial-assessments', ['measurement' => $this->record])),
+                Checkbox::make('accept_financial_exceptions')
+                    ->label('Li as regras, justificativas e documentos e aceito expressamente as divergências financeiras.')
+                    ->default(false)
+                    ->visible(fn (): bool => app(MeasurementPaymentFinancialService::class)->requiresAcceptance($this->record))
+                    ->accepted(fn (): bool => app(MeasurementPaymentFinancialService::class)->requiresAcceptance($this->record)),
             ])
             ->action(function (array $data): void {
                 $this->guarded(function () use ($data): void {
@@ -670,6 +750,7 @@ class ViewMeasurement extends ViewRecord
                         $this->actor(),
                         expectedRevision: (int) $data['expected_revision'],
                         expectedStatus: (string) $data['expected_status'],
+                        acceptFinancialExceptions: (bool) ($data['accept_financial_exceptions'] ?? false),
                     );
                     $this->notify('Medição finalizada.');
                 });

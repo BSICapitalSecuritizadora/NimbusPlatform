@@ -1,0 +1,208 @@
+/* ══════════════════════════════════════════════════════════════════
+   Histórico e Auditoria da Curva PU — NimbusPlatform
+   Padrão institucional BSI (Azul-petróleo, Off-white, Dourado)
+   Scoped strictly to body.bsi-cockpit-page.bsi-pu-curve-history-page
+   ══════════════════════════════════════════════════════════════════ */
+
+body.bsi-cockpit-page.bsi-pu-curve-history-page {
+    --pua-navy-950: #06151c;
+    --pua-navy-900: #091b23;
+    --pua-navy-800: #12313b;
+    --pua-navy-700: #0d2530;
+    --pua-gold-500: #b7832f;
+    --pua-gold-600: #a06e28;
+    --pua-paper: #fbfaf8;
+    --pua-stone-50: #f8f7f4;
+    --pua-white: #e6e4e4;
+    --pua-border: rgb(18 49 59 / 0.14);
+    --pua-border-soft: rgb(18 49 59 / 0.08);
+    --pua-muted: #53646a;
+    --pua-text: #091b23;
+
+    & .fi-page,
+    & .fi-page-header-main-ctn,
+    & .fi-page-content,
+    & .fi-page-content > .fi-sc {
+        gap: 1.25rem;
+        min-width: 0;
+    }
+
+    & .fi-page {
+        overflow-x: clip;
+    }
+
+    /* ── Cabeçalho executivo institucional ─────────────────────────────── */
+    & .fi-header {
+        padding: 1.125rem 1.5rem;
+        background: linear-gradient(135deg, #091b23 0%, #0d2530 50%, #12313b 100%);
+        border: 1px solid rgb(183 131 47 / 0.22);
+        border-radius: 14px;
+        box-shadow: 0 10px 28px rgba(4, 14, 19, 0.28);
+    }
+
+    & .fi-header-heading {
+        font-size: 1.375rem;
+        font-weight: 700;
+        line-height: 1.25;
+        color: #fbfaf8;
+        letter-spacing: -0.01em;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    & .fi-header-subheading {
+        max-width: none;
+        margin-top: 0.375rem;
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        color: rgba(251, 250, 248, 0.76);
+        overflow-wrap: anywhere;
+    }
+
+    /* ── Breadcrumb institucional ──────────────────────────────────────── */
+    & .fi-breadcrumbs {
+        margin-bottom: 0.25rem;
+        font-size: 0.75rem;
+    }
+
+    & .fi-breadcrumbs-item-label {
+        color: rgba(251, 250, 248, 0.65);
+    }
+
+    & a.fi-breadcrumbs-item-label:hover {
+        color: #fbfaf8;
+    }
+
+    & .fi-breadcrumbs-item-separator {
+        color: rgb(183 131 47 / 0.6);
+    }
+
+    /* ── Ações superiores no header ────────────────────────────────────── */
+    & .fi-header-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.625rem;
+    }
+
+    /* Botão Voltar para a Emissão (Ação neutra / outline secundário) */
+    & .fi-header-actions a.fi-btn[href*="/edit"],
+    & .fi-header-actions .fi-btn[wire\:click*="backToEmission"],
+    & .fi-header-actions .pua-btn-back {
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(251, 250, 248, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 0.8125rem;
+        padding: 0.4375rem 0.875rem;
+        box-shadow: none;
+        transition: all 0.2s ease;
+    }
+
+    & .fi-header-actions a.fi-btn[href*="/edit"]:hover,
+    & .fi-header-actions .fi-btn[wire\:click*="backToEmission"]:hover,
+    & .fi-header-actions .pua-btn-back:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: #ffffff;
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Botão Ver Relatório de Divergências (Ação analítica com outline dourado) */
+    & .fi-header-actions button.fi-btn,
+    & .fi-header-actions .fi-btn[wire\:click*="viewDivergenceReport"],
+    & .fi-header-actions .pua-btn-divergence {
+        background: rgba(160, 110, 40, 0.12);
+        color: #e8c68a;
+        border: 1px solid rgba(183, 131, 47, 0.45);
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.8125rem;
+        padding: 0.4375rem 0.875rem;
+        box-shadow: none;
+        transition: all 0.2s ease;
+    }
+
+    & .fi-header-actions button.fi-btn:hover,
+    & .fi-header-actions .fi-btn[wire\:click*="viewDivergenceReport"]:hover,
+    & .fi-header-actions .pua-btn-divergence:hover {
+        background: rgba(160, 110, 40, 0.22);
+        color: #fff4dc;
+        border-color: rgba(183, 131, 47, 0.75);
+        box-shadow: 0 4px 14px rgba(160, 110, 40, 0.2);
+    }
+
+    /* ── Seções institucionais BSI ─────────────────────────────────────── */
+    & .fi-section {
+        background: var(--pua-paper);
+        border: 1px solid var(--pua-border);
+        border-radius: 14px;
+        box-shadow: none;
+        overflow: hidden;
+    }
+
+    & .fi-section > .fi-section-header {
+        padding: 0.875rem 1.375rem;
+        background: var(--pua-stone-50);
+        border-bottom: 1px solid var(--pua-border-soft);
+    }
+
+    & .fi-section-header-heading {
+        color: var(--pua-navy-900);
+        font-size: 0.875rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    & .fi-section-header-heading::before {
+        content: '';
+        display: inline-block;
+        width: 3px;
+        height: 12px;
+        background: var(--pua-gold-500);
+        border-radius: 2px;
+    }
+
+    & .fi-section-header-description {
+        color: var(--pua-muted);
+        font-size: 0.8125rem;
+        line-height: 1.4;
+        margin-top: 0.125rem;
+    }
+
+    & .fi-section-content {
+        padding: 1.25rem 1.375rem;
+    }
+}
+
+/* ── Dark Mode ─────────────────────────────────────────────────────── */
+.dark body.bsi-cockpit-page.bsi-pu-curve-history-page {
+    --pua-paper: #091b23;
+    --pua-stone-50: #0d2530;
+    --pua-border: rgba(255, 255, 255, 0.09);
+    --pua-border-soft: rgba(255, 255, 255, 0.06);
+    --pua-muted: rgba(230, 228, 228, 0.7);
+    --pua-text: #fbfaf8;
+
+    & .fi-section {
+        background: #091b23;
+        border-color: rgba(255, 255, 255, 0.09);
+    }
+
+    & .fi-section > .fi-section-header {
+        background: #0d2530;
+        border-bottom-color: rgba(255, 255, 255, 0.06);
+    }
+
+    & .fi-section-header-heading {
+        color: #fbfaf8;
+    }
+
+    & .fi-section-header-description {
+        color: rgba(230, 228, 228, 0.65);
+    }
+}

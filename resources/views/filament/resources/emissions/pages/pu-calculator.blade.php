@@ -490,6 +490,9 @@
                                 @if ($this->indexRateCalendarOverride())
                                     <span class="text-amber-300 font-medium">{{ $this->indexRateCalendarOverride() }}</span>
                                     <span class="text-[11px] text-gray-300">— Override</span>
+                                @elseif ($this->savedIndexRateCalendarCode())
+                                    <span class="text-[#E6E4E4]">{{ $this->savedIndexRateCalendarCode() }}</span>
+                                    <span class="text-[11px] text-gray-300">— configuração salva</span>
                                 @else
                                     <span class="text-gray-400">Mesmo calendário da curva</span>
                                 @endif

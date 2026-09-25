@@ -19,6 +19,7 @@ use App\Support\Delegations\ResponsibilityAuthorization;
 use App\Support\Delegations\ResponsibilityAuthorizationCapture;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -666,10 +667,13 @@ class MeasurementWorkflow
             $validated = Validator::make(['payments' => $rows], [
                 'payments' => ['required', 'array', 'min:1'],
                 'payments.*.pay_date' => ['required', 'date'],
-                'payments.*.amount' => ['required', 'numeric', 'gt:0'],
+                'payments.*.amount' => ['required', 'numeric', 'gt:0', 'decimal:0,2', 'max:9999999999999999.99'],
                 'payments.*.method' => ['nullable', 'string', 'max:255'],
                 'payments.*.notes' => ['nullable', 'string'],
                 'payments.*.plan_set_id' => ['nullable', 'integer'],
+                'payments.*.financial_rule_id' => ['nullable', 'integer'],
+                'payments.*.financial_justification' => ['nullable', 'string', 'max:5000'],
+                'payments.*.financial_support' => ['nullable', 'file', 'max:10240'],
             ])->validate()['payments'];
 
             $snapshotPlanSets = collect($locked->engineering_snapshot['plan_sets'] ?? []);
@@ -702,15 +706,28 @@ class MeasurementWorkflow
                 }
             }
 
-            $payments = collect($validated)->map(fn (array $row): MeasurementPayment => $locked->payments()->create([
-                'operation_id' => $locked->operation_id,
-                'plan_set_id' => $row['plan_set_id'] ?? $defaultPlanSetId,
-                'pay_date' => $row['pay_date'],
-                'amount' => $row['amount'],
-                'method' => $row['method'] ?? null,
-                'notes' => $row['notes'] ?? null,
-                'created_by' => $actor->getKey(),
-            ]))->values();
+            $payments = collect($validated)->map(function (array $row, int $index) use ($locked, $actor, $defaultPlanSetId): MeasurementPayment {
+                $row['plan_set_id'] ??= $defaultPlanSetId;
+                $row['pay_date'] = Carbon::parse($row['pay_date'])->toDateString();
+                try {
+                    $assessment = app(MeasurementPaymentFinancialService::class)->assess($locked, $row);
+                } catch (ValidationException $exception) {
+                    throw ValidationException::withMessages(collect($exception->errors())
+                        ->mapWithKeys(fn (array $messages, string $field): array => ["payments.{$index}.{$field}" => $messages])->all());
+                }
+
+                return $locked->payments()->create([
+                    'operation_id' => $locked->operation_id,
+                    'plan_set_id' => $row['plan_set_id'],
+                    'pay_date' => $row['pay_date'],
+                    'amount' => $row['amount'],
+                    'method' => $row['method'] ?? null,
+                    'notes' => $row['notes'] ?? null,
+                    'created_by' => $actor->getKey(),
+                    'financial_rule_id' => $assessment['rule']['id'] ?? null,
+                    'financial_assessment' => $assessment,
+                ]);
+            })->values();
 
             $this->audit($locked, $actor, 'measurement_payment_registered', [
                 'stage' => self::STAGE_PAYMENT,
@@ -751,6 +768,28 @@ class MeasurementWorkflow
         );
     }
 
+    /** @param array<string, mixed> $data */
+    public function reassessPayment(MeasurementPayment $payment, User $actor, array $data, int $expectedRevision): void
+    {
+        DB::transaction(function () use ($payment, $actor, $data, $expectedRevision): void {
+            $locked = $this->lockMeasurement($payment->measurement);
+            $this->assertExpectedState($locked, $expectedRevision, self::STAGE_PAYMENT, 'awaiting_payment');
+            if (! $this->authorization->canRegisterPayment($actor, $locked)) {
+                throw new AuthorizationException;
+            }
+            $this->ensureEngineeringSnapshotTopLevelIsIntact($locked);
+            $payment = $locked->payments()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
+            $assessment = app(MeasurementPaymentFinancialService::class)->assess($locked, array_merge($data, [
+                'plan_set_id' => $payment->plan_set_id, 'amount' => $payment->amount, 'pay_date' => $payment->pay_date->toDateString(),
+            ]), $payment);
+            $payment->update(['financial_rule_id' => $assessment['rule']['id'] ?? null, 'financial_assessment' => $assessment]);
+            $this->advanceRevision($locked);
+            $this->audit($locked, $actor, 'measurement_payment_reassessed', [
+                'payment_id' => $payment->id, 'assessment' => $assessment, 'responsibility' => 'payment_manager_user_id',
+            ]);
+        });
+    }
+
     public function deleteReceipt(
         MeasurementPayment $payment,
         User $actor,
@@ -769,11 +808,12 @@ class MeasurementWorkflow
         User $actor,
         ?int $expectedRevision = null,
         ?string $expectedStatus = null,
+        bool $acceptFinancialExceptions = false,
     ): void {
         $expectedRevision ??= (int) $measurement->workflow_revision;
         $expectedStatus ??= (string) $measurement->status;
 
-        $locked = DB::transaction(function () use ($measurement, $actor, $expectedRevision, $expectedStatus): Measurement {
+        $locked = DB::transaction(function () use ($measurement, $actor, $expectedRevision, $expectedStatus, $acceptFinancialExceptions): Measurement {
             $locked = $this->lockMeasurement($measurement);
 
             $this->assertExpectedState($locked, $expectedRevision, self::STAGE_FINALIZATION, $expectedStatus);
@@ -803,6 +843,8 @@ class MeasurementWorkflow
             $this->ensureEngineeringCoverageIsIntact($locked);
             $this->ensureStoredFilesAreIntact($locked);
 
+            $financialExceptions = app(MeasurementPaymentFinancialService::class)->acceptForFinalization($locked, $acceptFinancialExceptions);
+
             $fromStatus = $locked->status;
             $locked->reviews()->updateOrCreate(
                 ['stage' => self::STAGE_FINALIZATION],
@@ -822,6 +864,7 @@ class MeasurementWorkflow
             $this->advanceRevision($locked);
 
             $this->audit($locked, $actor, 'measurement_finalized', [
+                'financial_exceptions_accepted' => $financialExceptions,
                 'stage' => self::STAGE_FINALIZATION,
                 'from_status' => $fromStatus,
                 'to_status' => 'finalized',

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ImportRuns\Tables;
 
 use App\Filament\Resources\ImportRuns\ImportRunResource;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\ImportRun;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
@@ -139,7 +140,8 @@ class ImportRunsTable
                     ->label('Usuário')
                     ->relationship('user', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
 
                 Filter::make('created_at')
                     ->label('Período')

@@ -9,6 +9,7 @@ use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Exceptions\PuMakerCheckerException;
 use App\Domain\PuCalculator\Services\BusinessCalendarYearService;
+use App\Domain\PuCalculator\Services\BusinessDayCalendarService;
 use App\Domain\PuCalculator\Services\CdiSourceDossierGovernanceService;
 use App\Domain\PuCalculator\Services\NationalLegalCalendarReviewService;
 use App\Domain\PuCalculator\Services\NationalLegalHolidayMaterializationService;
@@ -22,6 +23,7 @@ use App\Enums\LegalInstrumentType;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Filament\Widgets\PuCalculator\PuBaselineReadinessWidget;
 use App\Models\BusinessCalendar;
+use App\Models\BusinessCalendarDate;
 use App\Models\BusinessCalendarImportRun;
 use App\Models\BusinessCalendarYear;
 use App\Models\Document;
@@ -39,6 +41,7 @@ use App\Models\Payment;
 use App\Models\PuHistory;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Filament\Forms\Components\Field;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -308,6 +311,38 @@ it('rejects snapshots loaded from a source other than the homologated one', func
         ->and($report->rateWindow['missing_rate_dates'])->not->toBe([])
         ->and($report->rateWindow['source_mismatch_dates'])->not->toBe([])
         ->and($report->requirement('index_snapshots_loaded')->status)->toBe(PuBaselineRequirementStatus::Blocking);
+});
+
+it('derives the snapshot window from the saved CDI publication calendar', function () {
+    $emission = cdiEmission();
+    proveContractualBaseline($emission);
+    prepareCandidatePrerequisites($emission);
+    BusinessCalendarDate::query()->create([
+        'calendar_code' => BusinessCalendarRegistry::BR_BANKING_ANBIMA,
+        'calendar_date' => '2026-06-04',
+        'is_business_day' => false,
+        'description' => 'Corpus Christi',
+        'data_origin' => 'imported',
+        'source' => 'ANBIMA',
+        'source_is_official' => true,
+    ]);
+    $asOf = CarbonImmutable::parse('2026-06-15');
+    $readiness = app(PuBaselineReadinessService::class);
+
+    $contractual = $readiness->evaluate($emission->fresh(), $asOf)->requirement('index_snapshots_loaded')->expected;
+
+    EmissionPuParameter::factory()->create([
+        'emission_id' => $emission->id,
+        'calendar_code' => BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS,
+        'index_rate_calendar_code' => BusinessCalendarRegistry::BR_BANKING_ANBIMA,
+    ]);
+    app(BusinessDayCalendarService::class)->flushCache();
+
+    $publication = $readiness->evaluate($emission->fresh(), $asOf)->requirement('index_snapshots_loaded')->expected;
+
+    expect($contractual)->toContain('2026-06-04')
+        ->and($publication)->not->toContain('2026-06-04')
+        ->and($publication)->toContain('2026-06-03');
 });
 
 it('allows numeric homologation without an external reference but never labels it externally validated', function () {
@@ -657,6 +692,95 @@ it('does not suggest an inferred curve start date in the configuration form', fu
         ]);
 });
 
+it('prefills calendar and premium evidence from the confirmed contractual clauses', function () {
+    foreach (['emissions.view', 'emissions.update', AccessPermission::PuParametersConfigure->value] as $permission) {
+        Permission::findOrCreate($permission);
+    }
+
+    $user = User::factory()->create();
+    $user->givePermissionTo(['emissions.view', 'emissions.update', AccessPermission::PuParametersConfigure->value]);
+    $this->actingAs($user);
+    $emission = cdiEmission();
+    $instrument = proveContractualBaseline($emission);
+    prepareCandidatePrerequisites($emission);
+    $clauses = [
+        'calendar_code' => ['Definição “Dia(s) Útil(eis)”', 8, 'Qualquer dia que não seja sábado, domingo ou feriado nacional.'],
+        'first_coupon_pre_integralization_premium_enabled' => ['4.1.8, observação (vii)', 26, 'Prêmio equivalente ao produtório de 2 Dias Úteis.'],
+    ];
+
+    foreach ($clauses as $fieldKey => [$clause, $page, $excerpt]) {
+        LegalInstrumentField::query()
+            ->whereBelongsTo($instrument, 'instrument')
+            ->where('field_key', $fieldKey)
+            ->update(['clause' => $clause, 'page' => $page, 'excerpt' => $excerpt]);
+    }
+
+    $documentTitle = 'Instrumento contratual da emissão '.$emission->id;
+    $reviewer = EmissionPuBaselineEvidence::query()->whereBelongsTo($emission)->firstOrFail()->reviewedBy->name;
+
+    Livewire::test(EditEmission::class, ['record' => $emission->getRouteKey()])
+        ->mountAction('configurePuCalculation')
+        ->assertActionDataSet([
+            'curve_start_date' => '2026-05-15',
+            'calendar_code' => BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS,
+            'calendar_evidence_document' => $documentTitle,
+            'calendar_evidence_clause' => 'Definição “Dia(s) Útil(eis)”',
+            'calendar_evidence_page' => '8',
+            'calendar_evidence_excerpt' => 'Qualquer dia que não seja sábado, domingo ou feriado nacional.',
+            'calendar_evidence_confirmed' => false,
+            'first_coupon_premium_evidence_document' => $documentTitle,
+            'first_coupon_premium_evidence_clause' => '4.1.8, observação (vii)',
+            'first_coupon_premium_evidence_page' => '26',
+            'first_coupon_premium_evidence_excerpt' => 'Prêmio equivalente ao produtório de 2 Dias Úteis.',
+            'first_coupon_premium_evidence_confirmed' => false,
+        ])
+        ->assertFormFieldExists('curve_start_date', fn (Field $field): bool => fieldHelperText($field) === sprintf(
+            'Comprovado por Extrato de liquidação B3 (Liquidação de 2026-05-15), aprovado por %s.',
+            $reviewer,
+        ))
+        ->assertFormFieldExists('calendar_evidence_document', fn (Field $field): bool => fieldHelperText($field)
+            === 'Preenchido com a cláusula confirmada em Instrumentos Jurídicos. Altere só se a fonte for outra.');
+});
+
+it('leaves the calendar evidence empty while the gate withholds the proven calendar', function () {
+    foreach (['emissions.view', 'emissions.update', AccessPermission::PuParametersConfigure->value] as $permission) {
+        Permission::findOrCreate($permission);
+    }
+
+    $user = User::factory()->create();
+    $user->givePermissionTo(['emissions.view', 'emissions.update', AccessPermission::PuParametersConfigure->value]);
+    $this->actingAs($user);
+    $emission = cdiEmission();
+    proveContractualBaseline($emission);
+    $document = Document::factory()->create(['title' => 'Boletim de Subscrição']);
+    $emission->documents()->attach($document);
+    EmissionPuBaselineEvidence::factory()->create([
+        'emission_id' => $emission->id,
+        'document_id' => $document->id,
+        'evidence_type' => PuBaselineEvidenceType::FirstIntegralizationDate,
+        'document_type' => 'subscription_bulletin',
+        'evidenced_value' => '2026-05-15',
+        'confidence' => 'medium',
+        'status' => PuBaselineEvidenceStatus::PendingReview,
+    ]);
+
+    Livewire::test(EditEmission::class, ['record' => $emission->getRouteKey()])
+        ->mountAction('configurePuCalculation')
+        ->assertActionDataSet([
+            'curve_start_date' => null,
+            'calendar_code' => null,
+            'calendar_evidence_document' => null,
+            'calendar_evidence_clause' => null,
+            'calendar_evidence_page' => null,
+            'calendar_evidence_excerpt' => null,
+            'first_coupon_premium_evidence_document' => 'Instrumento contratual da emissão '.$emission->id,
+        ])
+        ->assertFormFieldExists('curve_start_date', fn (Field $field): bool => fieldHelperText($field)
+            === '1 evidência da data de integralização aguarda revisão na aba "Evidências do baseline de PU". A data é preenchida aqui depois da aprovação.')
+        ->assertFormFieldExists('calendar_evidence_document', fn (Field $field): bool => fieldHelperText($field)
+            === 'Opcional. Informe somente quando houver evidência contratual ou normativa aplicável.');
+});
+
 it('keeps linked integralization evidence pending until an authorized reviewer explicitly approves it', function () {
     Permission::findOrCreate(AccessPermission::PuParametersConfigure->value);
     Permission::findOrCreate(AccessPermission::PuCalendarHomologationReview->value);
@@ -724,6 +848,17 @@ it('renders the readiness explanation with index source and calendar review fact
  * consulta nome, IF ou ISIN. Toda a configuração vem dos
  * `LegalInstrumentField` criados por `proveContractualBaseline()`.
  */
+/**
+ * Texto de ajuda do campo como o usuário o lê. No Filament v5 o `helperText()`
+ * vira um componente do schema abaixo do campo, sem getter próprio.
+ */
+function fieldHelperText(Field $field): string
+{
+    $html = (string) $field->getChildSchema(Field::BELOW_CONTENT_SCHEMA_KEY)?->toHtmlString();
+
+    return trim(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5));
+}
+
 function cdiEmission(): Emission
 {
     return Emission::factory()->create([
