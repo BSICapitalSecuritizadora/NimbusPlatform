@@ -271,9 +271,15 @@ class Emission extends Model
         return sprintf('BSI-%s-%04d', $referenceDate->format('Y'), $emission->getKey());
     }
 
+    /**
+     * A Emissão é o cadastro regulado do CRI e guarda o modo do Quadro de
+     * Vendas. A trilha grava em `emissions`, categoria protegida, e não em
+     * `default`, que é descartado em um ano.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('emissions')
             ->logOnlyDirty()
             ->logFillable()
             ->dontSubmitEmptyLogs();

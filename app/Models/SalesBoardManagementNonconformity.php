@@ -103,9 +103,18 @@ class SalesBoardManagementNonconformity extends Model
         ];
     }
 
+    /**
+     * Grava em `sales_board`, a categoria protegida do módulo.
+     *
+     * "Desfazer decisão" limpa motivo, autor e data da própria linha: enquanto
+     * a análise é rascunho, a linha guarda só a decisão vigente. A decisão
+     * desfeita sobrevive apenas no `properties.old` desta trilha, que por isso
+     * não pode cair no balde descartado em um ano.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('sales_board')
             ->logOnly(['decision', 'decision_reason', 'decided_at', 'decided_by_user_id'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();

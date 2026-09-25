@@ -140,10 +140,38 @@ class SalesBoardRolloutHomologation extends Model
         ];
     }
 
+    /**
+     * Grava em `sales_board`, a categoria protegida do módulo.
+     *
+     * Enquanto é rascunho a homologação muda de ideia, e a linha guarda só o
+     * estado vigente. Quem atestou o impacto, quem aprovou ou rejeitou e por
+     * qual motivo ficam aqui também -- não só as datas.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['status', 'attempt', 'proposed_start_reference_month', 'approved_at', 'activated_at', 'superseded_at'])
+            ->useLogName('sales_board')
+            ->logOnly([
+                'status',
+                'attempt',
+                'proposed_start_reference_month',
+                'comparison_reference_month',
+                'comparison_month_reason',
+                'auto_open_builder_review',
+                'guarantees_reviewed_at',
+                'guarantees_reviewed_by_user_id',
+                'monthly_report_reviewed_at',
+                'monthly_report_reviewed_by_user_id',
+                'approved_at',
+                'approved_by_user_id',
+                'approval_reason',
+                'rejected_at',
+                'rejected_by_user_id',
+                'rejection_reason',
+                'activated_at',
+                'superseded_at',
+                'superseded_reason',
+            ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
     }

@@ -79,9 +79,15 @@ class SalesBoardCycle extends Model
         ];
     }
 
+    /**
+     * Toda a governança do Quadro grava em `sales_board`, a categoria que o
+     * `audit:clean-filtered` retém por sete anos. No balde `default` ela seria
+     * descartada em um ano.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('sales_board')
             ->logFillable()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();

@@ -7,6 +7,8 @@ use Database\Factories\SalesBoardRolloutHomologationConstructionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * O que a homologação encontrou num empreendimento.
@@ -20,7 +22,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class SalesBoardRolloutHomologationConstruction extends Model
 {
     /** @use HasFactory<SalesBoardRolloutHomologationConstructionFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
+
+    /**
+     * Atualização e exclusão são registradas: a linha nasce sempre sem aceite,
+     * e o retrato gravado na criação é derivado. A exclusão acontece quando o
+     * empreendimento sai da Emissão, e leva junto o aceite que houvesse.
+     *
+     * @var list<string>
+     */
+    protected static $recordEvents = ['updated', 'deleted'];
 
     /**
      * A versão do formato das posições persistidas.
@@ -69,6 +80,35 @@ class SalesBoardRolloutHomologationConstruction extends Model
             'has_cancelled_cycle_at_or_after_start' => 'boolean',
             'latest_legacy_board_month' => 'immutable_date',
         ];
+    }
+
+    /**
+     * O aceite da diferença, e nada além dele.
+     *
+     * A reavaliação zera o aceite quando a fonte muda, e a linha passa a dizer
+     * apenas que ninguém aceitou. Quem tinha aceitado, e com qual motivo,
+     * sobrevive no `properties.old` desta trilha, em `sales_board`. Quando o
+     * empreendimento sai da Emissão, a linha é apagada, e o mesmo aceite fica
+     * no `properties.old` do evento de exclusão, com a homologação e o
+     * empreendimento a que pertencia. Os dois identificadores nunca mudam,
+     * então a atualização, que só registra o que mudou, continua mostrando
+     * apenas o aceite. O retrato recalculado a cada reavaliação fica de fora:
+     * é derivado, e registrá-lo transformaria a trilha em ruído.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('sales_board')
+            ->logOnly([
+                'sales_board_rollout_homologation_id',
+                'construction_id',
+                'accepted_difference',
+                'difference_reason',
+                'accepted_at',
+                'accepted_by_user_id',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     public function homologation(): BelongsTo

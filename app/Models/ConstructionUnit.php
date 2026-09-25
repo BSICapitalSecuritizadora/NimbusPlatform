@@ -42,9 +42,16 @@ class ConstructionUnit extends Model
         ];
     }
 
+    /**
+     * The unit is what the Sales Board counts, and its base value is the
+     * reference of the sale conformity check. The trail goes to the protected
+     * `construction_units` log instead of `default`, which is discarded in one
+     * year.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('construction_units')
             ->logFillable()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();

@@ -49,9 +49,16 @@ class SalesBoardHistory extends Model
         ];
     }
 
+    /**
+     * Mesma categoria do {@see SalesBoard}: o histórico de versões é indivisível.
+     * A cascata que apaga as versões junto com o quadro legado não dispara
+     * evento, então o `created` gravado aqui é o que resta da posição inicial
+     * consolidada -- e ele não pode expirar em um ano.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('sales_board')
             ->logOnly(['sales_board_id', 'is_initial', 'changed_by_id', 'change_reason', 'reference_month', 'stock_units', 'financed_units', 'paid_units', 'exchanged_units', 'stock_value', 'financed_value', 'paid_value', 'exchanged_value'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();

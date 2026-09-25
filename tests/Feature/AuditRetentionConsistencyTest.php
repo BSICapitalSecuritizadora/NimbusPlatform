@@ -2,11 +2,20 @@
 
 use App\Enums\OperationStatus;
 use App\Filament\Resources\Activities\ActivityResource;
+use App\Models\Construction;
+use App\Models\ConstructionUnit;
+use App\Models\ConstructionUnitExchange;
+use App\Models\Contract;
+use App\Models\ContractInstallment;
+use App\Models\Emission;
 use App\Models\Measurement;
 use App\Models\MeasurementPayment;
 use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use App\Models\ResponsibilityDelegation;
+use App\Models\SalesBoard;
+use App\Models\SalesBoardManagementNonconformity;
+use App\Models\SalesBoardRolloutRecipient;
 use App\Models\User;
 use App\Services\MeasurementWorkflow;
 use App\Services\OperationLifecycleService;
@@ -249,7 +258,10 @@ it('survives the disposable window in every category the aggregates now write to
     $this->artisan('audit:clean-filtered')->assertExitCode(0);
 
     expect(Activity::query()->whereKey($activity->getKey())->exists())->toBeTrue();
-})->with(['measurements', 'measurement_payments', 'delegations', 'operations', 'measurement_workflow', 'measurement_file_access']);
+})->with([
+    'measurements', 'measurement_payments', 'delegations', 'operations', 'measurement_workflow', 'measurement_file_access',
+    'sales_board', 'contracts', 'contract_installments', 'construction_units', 'construction_unit_exchanges', 'constructions', 'emissions',
+]);
 
 it('still discards the same-age generic trail', function () {
     $disposableDays = (int) config('audit.retention_disposable_days', 365);
@@ -300,6 +312,15 @@ it('protects the category every audited aggregate actually writes to', function 
     'MeasurementPayment' => [MeasurementPayment::class, 'measurement_payments'],
     'ResponsibilityDelegation' => [ResponsibilityDelegation::class, 'delegations'],
     'Operation' => [Operation::class, 'operations'],
+    'SalesBoard' => [SalesBoard::class, 'sales_board'],
+    'SalesBoardManagementNonconformity' => [SalesBoardManagementNonconformity::class, 'sales_board'],
+    'SalesBoardRolloutRecipient' => [SalesBoardRolloutRecipient::class, 'sales_board'],
+    'Contract' => [Contract::class, 'contracts'],
+    'ContractInstallment' => [ContractInstallment::class, 'contract_installments'],
+    'ConstructionUnit' => [ConstructionUnit::class, 'construction_units'],
+    'ConstructionUnitExchange' => [ConstructionUnitExchange::class, 'construction_unit_exchanges'],
+    'Construction' => [Construction::class, 'constructions'],
+    'Emission' => [Emission::class, 'emissions'],
 ]);
 
 it('reads the protected list from the config instead of a private copy', function () {
@@ -359,5 +380,12 @@ it('names every produced category in Portuguese instead of showing the raw slug'
     ['measurement_exports', 'Exportações de Medição'],
     ['delegations', 'Delegações de Responsabilidade'],
     ['operations', 'Operações'],
+    ['sales_board', 'Quadro de Vendas'],
+    ['contracts', 'Contratos'],
+    ['contract_installments', 'Parcelas de Contrato'],
+    ['construction_units', 'Unidades'],
+    ['construction_unit_exchanges', 'Permutas de Unidade'],
+    ['constructions', 'Empreendimentos'],
+    ['emissions', 'Emissões'],
     ['default', 'Geral'],
 ]);
