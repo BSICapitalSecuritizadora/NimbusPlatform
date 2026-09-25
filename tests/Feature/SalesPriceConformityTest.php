@@ -252,3 +252,13 @@ it('exposes the audit figures of an evaluated sale', function () {
         'undetermined_reason' => null,
     ]);
 });
+
+it('treats a zero reference value as unknown instead of a zero floor', function () {
+    $result = conformityEvaluator()->forContract(unitSoldFor('1.00', baseValue: '0.00'));
+
+    expect($result->status)->toBe(SalesPriceConformityStatus::Undetermined)
+        ->and($result->isConform())->toBeFalse()
+        ->and($result->reasonWhenUndetermined)->toContain('zerado')
+        ->and($result->referenceValueCents)->toBeNull()
+        ->and($result->minimumAuthorizedValueCents)->toBeNull();
+});

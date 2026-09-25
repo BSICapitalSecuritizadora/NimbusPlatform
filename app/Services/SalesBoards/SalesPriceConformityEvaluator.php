@@ -106,6 +106,22 @@ class SalesPriceConformityEvaluator
             );
         }
 
+        /**
+         * Valor de referência zerado não é preço de tabela: na prática é o
+         * marcador de "sem preço" de uma planilha. Avaliado, daria piso zero e
+         * toda venda sairia conforme -- conformidade inventada em cima de dado
+         * que não existe. Vale como ausência, e a referência sai nula para que
+         * o achado seja o de valor faltante, não o de política.
+         */
+        if ($unitValue->valueCents === 0) {
+            return SalesPriceConformityResult::undetermined(
+                evaluatedAt: $saleDate,
+                reason: 'A unidade tinha valor de referência zerado na data da venda, o que não é valor conhecido.',
+                saleValueCents: $saleValueCents,
+                authorizedDiscountBasisPoints: $policy->maximumDiscountBasisPoints,
+            );
+        }
+
         if ($policy->isAbsent()) {
             return SalesPriceConformityResult::undetermined(
                 evaluatedAt: $saleDate,

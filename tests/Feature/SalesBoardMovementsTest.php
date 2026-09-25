@@ -1,7 +1,10 @@
 <?php
 
+use App\DTOs\SalesBoards\SalesBoardSnapshot;
+use App\DTOs\SalesBoards\SalesBoardSnapshotMovement;
 use App\Enums\ContractStatus;
 use App\Enums\SalesBoardIssueCode;
+use App\Enums\SalesBoardMovementType;
 use App\Enums\SalesBoardUnitClassification;
 use App\Enums\SalesPriceConformityStatus;
 use App\Models\ConstructionUnitExchange;
@@ -230,4 +233,154 @@ it('still closes the inventory when some units are undetermined', function () {
         ->and($position->undeterminedUnits)->toBe(1)
         ->and($position->bucketsBalance())->toBeTrue()
         ->and($position->isComplete())->toBeFalse();
+});
+
+it('does not report a settlement for a contract cancelled in the month together with its open installments', function () {
+    $construction = DerivationFixture::construction();
+    $unit = DerivationFixture::unit($construction, '101');
+
+    // The distrato cancels the open installments on the same day: only the paid one is left.
+    $contract = DerivationFixture::contract($unit, '2026-01-10', '600000.00', cancellationDate: '2026-07-10', status: ContractStatus::Cancelled);
+    DerivationFixture::installment($contract, '001', '2026-02-10', '200000.00', '2026-02-10', '200000.00');
+    DerivationFixture::installment($contract, '002', '2026-08-10', '200000.00', cancellationDate: '2026-07-10');
+    DerivationFixture::installment($contract, '003', '2026-09-10', '200000.00', cancellationDate: '2026-07-10');
+
+    $position = DerivationFixture::derive($construction);
+
+    expect(DerivationFixture::lineFor($position, $unit)->classification)->toBe(SalesBoardUnitClassification::Stock)
+        ->and($position->movements->cancellationsCount())->toBe(1)
+        ->and($position->movements->settlementsCount())->toBe(0);
+});
+
+it('does not report in a later month the settlement of a contract cancelled earlier', function () {
+    $construction = DerivationFixture::construction();
+    $unit = DerivationFixture::unit($construction, '101');
+
+    $contract = DerivationFixture::contract($unit, '2026-01-10', '600000.00', cancellationDate: '2026-06-20', status: ContractStatus::Cancelled);
+    DerivationFixture::installment($contract, '001', '2026-02-10', '300000.00', '2026-02-10', '300000.00');
+    DerivationFixture::installment($contract, '002', '2026-08-10', '300000.00', cancellationDate: '2026-07-05');
+
+    $june = DerivationFixture::derive($construction, '2026-06-01');
+    $july = DerivationFixture::derive($construction, '2026-07-01');
+
+    expect($june->movements->cancellationsCount())->toBe(1)
+        ->and($june->movements->settlementsCount())->toBe(0)
+        ->and($july->movements->cancellationsCount())->toBe(0)
+        ->and($july->movements->settlementsCount())->toBe(0);
+});
+
+it('keeps only the new contract when the unit is resold in the month of the distrato', function () {
+    $construction = DerivationFixture::construction();
+    $unit = DerivationFixture::unit($construction, '101');
+
+    $old = DerivationFixture::contract($unit, '2026-01-10', '600000.00', cancellationDate: '2026-07-10', status: ContractStatus::Cancelled);
+    DerivationFixture::installment($old, '001', '2026-02-10', '300000.00', '2026-02-10', '300000.00');
+    DerivationFixture::installment($old, '002', '2026-08-10', '300000.00', cancellationDate: '2026-07-10');
+
+    $new = DerivationFixture::contract($unit, '2026-07-15', '650000.00');
+    DerivationFixture::installment($new, '001', '2026-07-20', '650000.00', '2026-07-20', '650000.00');
+
+    $position = DerivationFixture::derive($construction);
+
+    expect(DerivationFixture::lineFor($position, $unit)->contractId)->toBe($new->id)
+        ->and($position->movements->settlementsCount())->toBe(1)
+        ->and($position->movements->settlements[0]->contractId)->toBe($new->id);
+});
+
+it('does not freeze a false settlement in the snapshot when the distrato cancels the open installments', function () {
+    $construction = DerivationFixture::construction();
+    $unit = DerivationFixture::unit($construction, '101');
+
+    $contract = DerivationFixture::contract($unit, '2026-01-10', '600000.00', cancellationDate: '2026-07-10', status: ContractStatus::Cancelled);
+    DerivationFixture::installment($contract, '001', '2026-02-10', '300000.00', '2026-02-10', '300000.00');
+    DerivationFixture::installment($contract, '002', '2026-08-10', '300000.00', cancellationDate: '2026-07-10');
+
+    $snapshot = SalesBoardSnapshot::fromDerivedPosition(DerivationFixture::derive($construction));
+
+    $types = collect($snapshot->movements)
+        ->filter(fn (SalesBoardSnapshotMovement $movement): bool => $movement->contractId === $contract->id)
+        ->map(fn (SalesBoardSnapshotMovement $movement): SalesBoardMovementType => $movement->type)
+        ->values()
+        ->all();
+
+    expect($types)->toBe([SalesBoardMovementType::Cancellation]);
+});
+
+it('does not report the settlement of the contract on an exchanged line', function () {
+    $construction = DerivationFixture::construction();
+    $unit = DerivationFixture::unit($construction, '101');
+
+    $contract = DerivationFixture::contract($unit, '2026-02-01', '450000.00', status: ContractStatus::Exchanged);
+    DerivationFixture::installment($contract, '001', '2026-07-10', '450000.00', '2026-07-10', '450000.00');
+
+    ConstructionUnitExchange::factory()->forUnit($unit)->forContract($contract)
+        ->effectiveFrom('2026-02-01')->worth('450000.00')->create();
+
+    $position = DerivationFixture::derive($construction);
+
+    expect(DerivationFixture::lineFor($position, $unit)->classification)->toBe(SalesBoardUnitClassification::Exchanged)
+        ->and($position->movements->settlementsCount())->toBe(0);
+});
+
+it('does not treat the contract named by the exchange in force on its date as a sale of the month', function (bool $withPolicy) {
+    $construction = DerivationFixture::construction();
+    $unit = DerivationFixture::unit($construction, '101', '500000.00');
+
+    if ($withPolicy) {
+        SalesDiscountPolicy::factory()->forConstruction($construction)->effectiveFrom('2026-01-01')->allowing('10.00')->create();
+    }
+
+    // Signed well below the table: as a sale it would be non conform (or blocked without a policy).
+    $contract = DerivationFixture::contract($unit, '2026-07-05', '300000.00', status: ContractStatus::Exchanged);
+
+    ConstructionUnitExchange::factory()->forUnit($unit)->forContract($contract)
+        ->effectiveFrom('2026-07-05')->worth('300000.00')->create();
+
+    $position = DerivationFixture::derive($construction);
+
+    expect(DerivationFixture::lineFor($position, $unit)->classification)->toBe(SalesBoardUnitClassification::Exchanged)
+        ->and($position->movements->salesCount())->toBe(0)
+        ->and(DerivationFixture::issueCodes($position))->not->toContain(SalesBoardIssueCode::SaleNonConform->value)
+        ->and(DerivationFixture::issueCodes($position))->not->toContain(SalesBoardIssueCode::SaleDiscountPolicyMissing->value)
+        ->and($position->hasBlockingIssue())->toBeFalse()
+        ->and($position->isComplete())->toBeTrue();
+})->with([
+    'with a policy in force' => [true],
+    'without any policy' => [false],
+]);
+
+it('does not treat an exchanged contract on an exchanged line as a sale, even when the exchange names no contract', function () {
+    $construction = DerivationFixture::construction();
+    $unit = DerivationFixture::unit($construction, '101', '500000.00');
+
+    ConstructionUnitExchange::factory()->forUnit($unit)->effectiveFrom('2026-01-01')->worth('450000.00')->create();
+
+    DerivationFixture::contract($unit, '2026-07-05', '500000.00', status: ContractStatus::Exchanged);
+
+    $position = DerivationFixture::derive($construction);
+
+    expect(DerivationFixture::lineFor($position, $unit)->classification)->toBe(SalesBoardUnitClassification::Exchanged)
+        ->and($position->movements->salesCount())->toBe(0)
+        ->and($position->isComplete())->toBeTrue();
+});
+
+it('still evaluates a sale of the month on a unit that is not exchanged', function () {
+    $construction = DerivationFixture::construction();
+    $exchangedUnit = DerivationFixture::unit($construction, '101', '500000.00');
+    $soldUnit = DerivationFixture::unit($construction, '102', '500000.00');
+
+    SalesDiscountPolicy::factory()->forConstruction($construction)->effectiveFrom('2026-01-01')->allowing('10.00')->create();
+
+    $exchangeContract = DerivationFixture::contract($exchangedUnit, '2026-07-05', '300000.00', status: ContractStatus::Exchanged);
+    ConstructionUnitExchange::factory()->forUnit($exchangedUnit)->forContract($exchangeContract)
+        ->effectiveFrom('2026-07-05')->worth('300000.00')->create();
+
+    $sale = DerivationFixture::contract($soldUnit, '2026-07-10', '440000.00');
+    DerivationFixture::installment($sale, '001', '2026-08-10', '440000.00');
+
+    $position = DerivationFixture::derive($construction);
+
+    expect($position->movements->salesCount())->toBe(1)
+        ->and($position->movements->sales[0]->contractId)->toBe($sale->id)
+        ->and($position->movements->nonConformSalesCount())->toBe(1);
 });
