@@ -32,10 +32,20 @@ use Tests\Support\SalesBoards\RolloutFixture;
  * Por isso nenhum deles usa `onOneServer()` -- os processos chamam o serviço
  * direto, exatamente como duas instâncias que atravessassem o lock fariam.
  *
- * Os cenários de serialização usam barreira: um processo segura o lock do alvo
- * e avisa por um arquivo; o outro só começa depois do aviso. Sem isso, dois
- * processos que por acaso rodassem em série dariam o mesmo resultado de um lock
- * que funciona, e uma regressão no lock passaria de vez em quando.
+ * Sem barreira, dois processos que por acaso rodassem em série dariam o mesmo
+ * resultado de um lock que funciona, e uma regressão passaria de vez em quando.
+ * Por isso cada cenário tem a sua, sinalizada por arquivo:
+ *
+ * - **lock do alvo** (reserva e rollout): um processo segura o lock e avisa; o
+ *   outro só começa depois do aviso. A intercalação é forçada;
+ * - **leitura da descoberta** (alvo materializado uma vez): os dois leem os alvos
+ *   existentes e só então algum deles insere. Os dois viram "não existe", e a
+ *   unique é quem decide. A intercalação é forçada;
+ * - **largada conjunta** (os demais): todos os processos sobem e esperam uns
+ *   pelos outros antes de começar. A sobreposição no tempo é garantida; a
+ *   ordem fina dentro dela é do banco, e o que esses cenários provam é o estado
+ *   final. A serialização em si é provada pelos cenários de intercalação
+ *   forçada.
  */
 beforeEach(function () {
     if (DB::getDriverName() !== 'mysql') {
@@ -153,12 +163,32 @@ function automationRaceActivatedEmission(): array
 }
 
 /**
- * @param  array{action: string, construction_id?: int, as_of?: string, provider?: string, lock_marker?: string, wait_for_marker?: string, hold_after_lock_ms?: int}  $instruction
+ * @param  array{action: string, construction_id?: int, as_of?: string, provider?: string, lock_marker?: string, wait_for_marker?: string, hold_after_lock_ms?: int, start_barrier?: array{arrive: string, await: list<string>}, discovery_barrier?: array{arrive: string, await: list<string>}}  $instruction
  */
 function automationTask(array $instruction): Closure
 {
     return static function () use ($instruction): array {
         config()->set('sales_board.automation.enabled', true);
+
+        /**
+         * A espera da barreira, dentro do processo filho: as funções do arquivo
+         * de teste não existem lá, só o que viaja na closure.
+         *
+         * @param  list<string>  $markers
+         */
+        $await = static function (array $markers, string $failure): void {
+            $deadline = microtime(true) + 10;
+
+            while (microtime(true) < $deadline) {
+                if (collect($markers)->every(fn (string $marker): bool => is_file($marker))) {
+                    return;
+                }
+
+                usleep(10_000);
+            }
+
+            throw new RuntimeException($failure);
+        };
 
         /**
          * O provider de configuração é o dos testes do **motor**: amarrado
@@ -192,7 +222,38 @@ function automationTask(array $instruction): Closure
             });
         }
 
+        $reachedDiscovery = false;
+
+        if (isset($instruction['discovery_barrier'])) {
+            DB::listen(static function (QueryExecuted $query) use ($instruction, $await, &$reachedDiscovery): void {
+                $sql = strtolower($query->sql);
+
+                /**
+                 * A leitura dos alvos existentes da descoberta: a primeira
+                 * consulta aos alvos filtrada por competência. A recuperação,
+                 * antes dela, filtra pela tentativa em voo, não por competência.
+                 */
+                if ($reachedDiscovery
+                    || ! str_starts_with($sql, 'select')
+                    || ! str_contains($sql, 'sales_board_automation_targets')
+                    || ! str_contains($sql, 'reference_month')
+                    || str_contains($sql, 'for update')) {
+                    return;
+                }
+
+                $reachedDiscovery = true;
+
+                file_put_contents($instruction['discovery_barrier']['arrive'], 'read');
+                $await($instruction['discovery_barrier']['await'], 'O processo concorrente não chegou à leitura da descoberta.');
+            });
+        }
+
         try {
+            if (isset($instruction['start_barrier'])) {
+                file_put_contents($instruction['start_barrier']['arrive'], 'ready');
+                $await($instruction['start_barrier']['await'], 'O processo concorrente não chegou à largada.');
+            }
+
             if (isset($instruction['wait_for_marker'])) {
                 $deadline = microtime(true) + 10;
 
@@ -225,6 +286,7 @@ function automationTask(array $instruction): Closure
                 'generated' => $run->generated_count,
                 'skipped' => $run->skipped_count,
                 'status' => $run->status->value,
+                'discovery_barrier_crossed' => $reachedDiscovery,
                 'exception' => null,
             ];
         } catch (Throwable $exception) {
@@ -241,28 +303,75 @@ function automationRaceMarker(string $name): string
     return $marker;
 }
 
+/**
+ * Uma barreira para N processos: cada um marca a chegada no próprio arquivo e
+ * espera os arquivos de todos os outros.
+ *
+ * @return list<array{arrive: string, await: list<string>}>
+ */
+function automationRaceRendezvous(string $name, int $parties): array
+{
+    $markers = array_map(
+        fn (int $party): string => automationRaceMarker($name.'-'.$party),
+        range(1, $parties),
+    );
+
+    return array_map(fn (string $marker): array => [
+        'arrive' => $marker,
+        'await' => array_values(array_diff($markers, [$marker])),
+    ], $markers);
+}
+
+/**
+ * @param  list<array{arrive: string, await: list<string>}>  $rendezvous
+ */
+function automationRaceCleanup(array $rendezvous): void
+{
+    foreach ($rendezvous as $party) {
+        @unlink($party['arrive']);
+    }
+}
+
 it('never materializes two targets for the same competence', function () {
     $construction = automationRaceConstruction();
+    $barrier = automationRaceRendezvous('sales-board-automation-discovery', 2);
 
-    $results = Concurrency::driver('process')->run([
-        automationTask(['action' => 'run', 'construction_id' => $construction->id]),
-        automationTask(['action' => 'run', 'construction_id' => $construction->id]),
-    ]);
+    $results = Concurrency::driver('process')->run(array_map(
+        fn (array $party): Closure => automationTask([
+            'action' => 'run',
+            'construction_id' => $construction->id,
+            'discovery_barrier' => $party,
+        ]),
+        $barrier,
+    ));
 
-    // Nenhum SQLSTATE atravessa: a corrida pela unique vira releitura.
-    expect(collect($results)->where('success', true))->toHaveCount(2)
+    automationRaceCleanup($barrier);
+
+    /**
+     * Os dois leram "não existe" antes de qualquer um inserir -- a barreira
+     * foi de fato atravessada, e não pulada por uma consulta que mudou de
+     * forma. Nenhum SQLSTATE atravessa: a corrida pela unique vira releitura.
+     */
+    expect(collect($results)->pluck('discovery_barrier_crossed')->all())->toBe([true, true])
+        ->and(collect($results)->where('success', true))->toHaveCount(2)
         ->and(collect($results)->pluck('exception')->filter()->all())->toBe([])
         ->and(SalesBoardAutomationTarget::query()->count())->toBe(1);
 })->group('mysql');
 
 it('never generates two cycles when two schedulers run at once', function () {
     $construction = automationRaceConstruction();
+    $barrier = automationRaceRendezvous('sales-board-automation-three-schedulers', 3);
 
-    $results = Concurrency::driver('process')->run([
-        automationTask(['action' => 'run', 'construction_id' => $construction->id]),
-        automationTask(['action' => 'run', 'construction_id' => $construction->id]),
-        automationTask(['action' => 'run', 'construction_id' => $construction->id]),
-    ]);
+    $results = Concurrency::driver('process')->run(array_map(
+        fn (array $party): Closure => automationTask([
+            'action' => 'run',
+            'construction_id' => $construction->id,
+            'start_barrier' => $party,
+        ]),
+        $barrier,
+    ));
+
+    automationRaceCleanup($barrier);
 
     $target = SalesBoardAutomationTarget::query()->sole();
 
@@ -351,11 +460,14 @@ it('attempts each competence exactly once when two schedulers race through the r
 
 it('never duplicates the cycle when a manual generation races the scheduler', function () {
     $construction = automationRaceConstruction();
+    [$manual, $scheduler] = $barrier = automationRaceRendezvous('sales-board-automation-manual-race', 2);
 
     $results = Concurrency::driver('process')->run([
-        automationTask(['action' => 'generate', 'construction_id' => $construction->id]),
-        automationTask(['action' => 'run', 'construction_id' => $construction->id]),
+        automationTask(['action' => 'generate', 'construction_id' => $construction->id, 'start_barrier' => $manual]),
+        automationTask(['action' => 'run', 'construction_id' => $construction->id, 'start_barrier' => $scheduler]),
     ]);
+
+    automationRaceCleanup($barrier);
 
     expect(collect($results)->where('success', true))->toHaveCount(2)
         ->and(SalesBoardCycle::query()->count())->toBe(1)
@@ -366,17 +478,25 @@ it('never duplicates the cycle when a manual generation races the scheduler', fu
 
 it('records every attempt honestly while keeping one cycle', function () {
     $construction = automationRaceConstruction();
+    $barrier = automationRaceRendezvous('sales-board-automation-honest-attempts', 2);
 
-    Concurrency::driver('process')->run([
-        automationTask(['action' => 'run', 'construction_id' => $construction->id]),
-        automationTask(['action' => 'run', 'construction_id' => $construction->id]),
-    ]);
+    $results = Concurrency::driver('process')->run(array_map(
+        fn (array $party): Closure => automationTask([
+            'action' => 'run',
+            'construction_id' => $construction->id,
+            'start_barrier' => $party,
+        ]),
+        $barrier,
+    ));
+
+    automationRaceCleanup($barrier);
 
     $attempts = SalesBoardAutomationAttempt::query()->get();
 
     // As tentativas podem refletir a corrida -- é o que elas existem para
     // contar. O que não pode variar é o estado final.
-    expect($attempts->count())->toBeGreaterThanOrEqual(1)
+    expect(collect($results)->pluck('exception')->filter()->all())->toBe([])
+        ->and($attempts->count())->toBeGreaterThanOrEqual(1)
         ->and($attempts->pluck('outcome')->pluck('value')->unique()->diff(['gerado', 'ja_existente'])->all())
         ->toBe([])
         ->and(SalesBoardCycle::query()->count())->toBe(1);

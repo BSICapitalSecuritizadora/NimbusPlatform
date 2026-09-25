@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Emite um aviso no máximo uma vez por condição, destinatário e janela.
+ * Emite um aviso no máximo uma vez por condição, destinatário, janela e canal.
  *
  * O banco é quem decide quem envia: `insertOrIgnore` na chave de deduplicação
  * devolve 1 para quem inseriu e 0 para quem colidiu. Duas instâncias avaliando a
@@ -27,12 +27,22 @@ use Throwable;
  * O que entra é a janela relevante -- o dia civil de negócio -- junto da
  * entidade, do tipo e do destinatário.
  *
+ * O livro-razão tem uma linha por canal (e-mail, sino do painel), e a chave
+ * inclui o canal. Cada canal vai para a fila como um job próprio
+ * ({@see SalesBoardAutomationNotification}), e cada um falha sozinho: o e-mail
+ * recusado pelo SMTP devolve só a linha do e-mail, e o sino que já recebeu o
+ * aviso não o recebe de novo na execução seguinte.
+ *
  * Falha de envio remove a linha e conta separado. É at-least-once assumido:
  * exactly-once com canal externo não existe, e fingir que existe apenas
- * transformaria um aviso perdido em aviso perdido *silencioso*. O envio em si
- * vai para a fila ({@see SalesBoardAutomationNotification}): um SMTP fora do ar
- * não segura o tick do scheduler, e a falha de entrega no worker também remove a
- * linha, para a execução seguinte tentar de novo.
+ * transformaria um aviso perdido em aviso perdido *silencioso*. Um SMTP fora do
+ * ar não segura o tick do scheduler, e a falha de entrega no worker também
+ * remove a linha do canal, para a execução seguinte tentar de novo.
+ *
+ * Os contadores contam avisos (condição × destinatário), não jobs: "enviado"
+ * quer dizer **enfileirado** em pelo menos um canal -- a entrega acontece depois,
+ * no worker, e a falha dela aparece na fila de jobs falhos e no aviso que volta
+ * a ser devido. "Deduplicado" é o aviso cujos canais já tinham saído todos.
  */
 class SalesBoardAutomationAlertDispatcher
 {
@@ -108,10 +118,69 @@ class SalesBoardAutomationAlertDispatcher
         ?string $detail,
         ?string $url,
     ): void {
-        $dedupeKey = $this->dedupeKey($type, $anchors, $window, (int) $recipient->getKey());
+        $queued = 0;
+        $failed = 0;
+
+        foreach (SalesBoardAutomationNotification::CHANNELS as $channel) {
+            $dedupeKey = $this->dedupeKey($type, $anchors, $window, (int) $recipient->getKey(), $channel);
+
+            if (! $this->claim($type, $dedupeKey, $channel, $anchors, $recipient)) {
+                continue;
+            }
+
+            try {
+                $recipient->notify(
+                    (new SalesBoardAutomationNotification($type, $constructionName, $referenceMonth, $detail, $url, $dedupeKey, $channel))
+                        ->afterCommit()
+                );
+            } catch (Throwable $exception) {
+                /**
+                 * O registro do canal é retirado para que a próxima execução
+                 * tente de novo. Manter a linha faria o canal ser considerado
+                 * entregue para sempre, e ninguém receberia nada por ele. O que
+                 * chega aqui é a falha de enfileirar; a falha de entrega faz o
+                 * mesmo em {@see SalesBoardAutomationNotification::failed()}.
+                 */
+                SalesBoardAutomationAlert::query()->where('dedupe_key', $dedupeKey)->delete();
+
+                report($exception);
+                $failed++;
+
+                continue;
+            }
+
+            $queued++;
+        }
+
+        if ($queued > 0) {
+            $this->counters['sent']++;
+        }
+
+        if ($failed > 0) {
+            $this->counters['failed']++;
+        }
+
+        if ($queued === 0 && $failed === 0) {
+            $this->counters['deduped']++;
+        }
+    }
+
+    /**
+     * Reserva o canal no livro-razão: 1 para quem inseriu (e deve enviar), 0
+     * para quem colidiu (o canal já saiu, ou outra instância o está enviando).
+     *
+     * @param  array<string, int|string|null>  $anchors
+     */
+    private function claim(
+        SalesBoardAutomationAlertType $type,
+        string $dedupeKey,
+        string $channel,
+        array $anchors,
+        User $recipient,
+    ): bool {
         $now = CarbonImmutable::now();
 
-        $inserted = DB::table('sales_board_automation_alerts')->insertOrIgnore([
+        return DB::table('sales_board_automation_alerts')->insertOrIgnore([
             'alert_type' => $type->value,
             'dedupe_key' => $dedupeKey,
             'sales_board_automation_run_id' => $anchors['sales_board_automation_run_id'] ?? null,
@@ -121,45 +190,19 @@ class SalesBoardAutomationAlertDispatcher
             'sales_board_builder_review_id' => $anchors['sales_board_builder_review_id'] ?? null,
             'sales_board_management_review_id' => $anchors['sales_board_management_review_id'] ?? null,
             'recipient_user_id' => $recipient->getKey(),
+            'channel' => $channel,
             'sent_at' => $now,
             'created_at' => $now,
         ]) === 1;
-
-        if (! $inserted) {
-            $this->counters['deduped']++;
-
-            return;
-        }
-
-        try {
-            $recipient->notify(
-                (new SalesBoardAutomationNotification($type, $constructionName, $referenceMonth, $detail, $url, $dedupeKey))
-                    ->afterCommit()
-            );
-        } catch (Throwable $exception) {
-            /**
-             * O registro é retirado para que a próxima execução tente de novo.
-             * Manter a linha faria o aviso ser considerado enviado para sempre,
-             * e ninguém receberia nada. Com a fila, o que chega aqui é a falha
-             * de enfileirar; a falha de entrega faz o mesmo em
-             * {@see SalesBoardAutomationNotification::failed()}.
-             */
-            SalesBoardAutomationAlert::query()->where('dedupe_key', $dedupeKey)->delete();
-
-            report($exception);
-            $this->counters['failed']++;
-
-            return;
-        }
-
-        $this->counters['sent']++;
     }
 
     /**
      * A chave determinística da condição.
      *
      * Entra tudo o que identifica "este aviso, sobre esta entidade, para esta
-     * pessoa, nesta janela" -- e nada que mude sozinho com o relógio.
+     * pessoa, nesta janela, por este canal" -- e nada que mude sozinho com o
+     * relógio. Sem canal, é a chave da condição para o destinatário, usada no
+     * registro de destinatário ausente.
      *
      * @param  array<string, int|string|null>  $anchors
      */
@@ -168,15 +211,22 @@ class SalesBoardAutomationAlertDispatcher
         array $anchors,
         string $window,
         int $recipientId,
+        ?string $channel = null,
     ): string {
         ksort($anchors);
 
-        return hash('sha256', implode('|', [
+        $parts = [
             $type->value,
             $window,
             $recipientId,
             json_encode($anchors),
-        ]));
+        ];
+
+        if ($channel !== null) {
+            $parts[] = $channel;
+        }
+
+        return hash('sha256', implode('|', $parts));
     }
 
     /**

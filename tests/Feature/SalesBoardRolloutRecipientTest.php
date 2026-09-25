@@ -256,7 +256,7 @@ it('delivers a blocked-generation alert to the operational recipient only', func
 
     app(SalesBoardAutomationService::class)->run(asOf: CarbonImmutable::parse('2026-09-13'));
 
-    $alert = SalesBoardAutomationAlert::query()->sole();
+    $alert = SalesBoardAutomationAlert::query()->where('channel', 'mail')->sole();
 
     expect($alert->alert_type)->toBe(SalesBoardAutomationAlertType::GenerationBlocked)
         ->and($alert->recipient_user_id)->toBe($people['operational']->id);

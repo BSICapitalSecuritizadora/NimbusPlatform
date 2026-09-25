@@ -168,11 +168,11 @@ php artisan migrate --force --isolated --no-interaction
 php artisan optimize
 
 # Os locks de `withoutOverlapping()` do agendador moram no store de cache
-# compartilhado (CACHE_STORE, Redis em produção) e sobrevivem ao reinício do
-# container. Um deploy ou troca de App Setting no meio de uma execução deixava o
-# lock gravado, e o evento era pulado em silêncio até ele expirar. Este container acabou de
-# subir, então nenhuma execução dele está em andamento: os locks são limpos
-# antes dos laços. Com mais de uma instância, isso pode soltar o lock de uma
+# configurado (o do CACHE_STORE; `database` no .env.example) e, fora de um store
+# em memória, sobrevivem ao reinício do container. Um deploy ou troca de App
+# Setting no meio de uma execução deixava o lock gravado, e o evento era pulado
+# em silêncio até ele expirar. Este container acabou de subir, então nenhuma
+# execução dele está em andamento: os locks são limpos antes dos laços. Com mais de uma instância, isso pode soltar o lock de uma
 # execução viva em outra instância -- a automação do Quadro de Vendas tolera,
 # porque a correção dela é do banco (reserva da tentativa sob lock e uniques).
 php artisan schedule:clear-cache --no-interaction || true

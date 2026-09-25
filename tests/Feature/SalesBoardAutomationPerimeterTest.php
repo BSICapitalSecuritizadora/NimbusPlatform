@@ -123,7 +123,7 @@ it('stops reminding about a blocked competence once its emission returns to lega
 
     runAutomationOn('2026-09-13');
 
-    expect(SalesBoardAutomationAlert::query()->where('alert_type', SalesBoardAutomationAlertType::GenerationBlocked)->count())->toBe(1);
+    expect(SalesBoardAutomationAlert::query()->where('alert_type', SalesBoardAutomationAlertType::GenerationBlocked)->where('channel', 'mail')->count())->toBe(1);
 
     RolloutFixture::returnToLegacy($scenario['emission']);
 
@@ -132,10 +132,11 @@ it('stops reminding about a blocked competence once its emission returns to lega
     }
 
     // Antes: um aviso por dia, para sempre, sobre uma competência fora da automação.
-    expect(SalesBoardAutomationAlert::query()->where('alert_type', SalesBoardAutomationAlertType::GenerationBlocked)->count())->toBe(1)
+    expect(SalesBoardAutomationAlert::query()->where('alert_type', SalesBoardAutomationAlertType::GenerationBlocked)->where('channel', 'mail')->count())->toBe(1)
         ->and(SalesBoardAutomationTarget::query()->sole()->status)->toBe(SalesBoardAutomationTargetStatus::Closed);
 
-    Notification::assertSentToTimes($scenario['people']['operational'], SalesBoardAutomationNotification::class, 1);
+    // Uma instância por canal (e-mail e sino), uma vez só.
+    Notification::assertSentToTimes($scenario['people']['operational'], SalesBoardAutomationNotification::class, 2);
 });
 
 it('never reminds about a manual cycle of a legacy emission', function () {
@@ -177,7 +178,7 @@ it('suspends a whole emission whose scope changed, closes its open targets and w
         ->and($blocked->closure_reason)->toBe(SalesBoardAutomationClosureReason::ScopeSuspended)
         ->and($blocked->closed_by_user_id)->toBeNull();
 
-    $alert = SalesBoardAutomationAlert::query()->where('alert_type', SalesBoardAutomationAlertType::ScopeSuspended)->sole();
+    $alert = SalesBoardAutomationAlert::query()->where('alert_type', SalesBoardAutomationAlertType::ScopeSuspended)->where('channel', 'mail')->sole();
 
     expect($alert->emission_id)->toBe($scenario['emission']->id)
         ->and($alert->recipient_user_id)->toBe($scenario['people']['management']->id);
@@ -190,7 +191,7 @@ it('suspends a whole emission whose scope changed, closes its open targets and w
     runAutomationOn('2026-09-15');
     runAutomationOn('2026-10-14');
 
-    expect(SalesBoardAutomationAlert::query()->where('alert_type', SalesBoardAutomationAlertType::ScopeSuspended)->count())->toBe(1);
+    expect(SalesBoardAutomationAlert::query()->where('alert_type', SalesBoardAutomationAlertType::ScopeSuspended)->where('channel', 'mail')->count())->toBe(1);
 });
 
 it('reopens a closed competence when a new activation covers it again', function () {
@@ -256,6 +257,30 @@ it('counts as pending action only what the automation still serves', function ()
         ->set('activeTab', 'encerrados')
         ->assertCountTableRecords(1)
         ->assertSee('Encerrado (fora da automação)');
+});
+
+it('shows who closed a competence and when, in Brasília time, on the closed tab', function () {
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    $this->seed(RolesAndPermissionsSeeder::class);
+    $this->actingAs(makeAdminUser());
+
+    $scenario = activatedEmission(1);
+    blockConstruction($scenario['constructions'][0]);
+    runAutomationOn('2026-09-13');
+
+    // 02:30 de 20/09 em UTC, o fuso em que a aplicação grava: 23:30 de 19/09 em Brasília.
+    $this->travelTo(CarbonImmutable::parse('2026-09-20 02:30:00', 'UTC'));
+    RolloutFixture::returnToLegacy($scenario['emission'], User::factory()->create(['name' => 'Fulana da Gestão']));
+
+    /**
+     * A tela não tem página de detalhe: sem isto, o autor do encerramento só
+     * aparecia no evento do rollout.
+     */
+    Livewire::test(ListSalesBoardAutomationTargets::class)
+        ->set('activeTab', 'encerrados')
+        ->assertCountTableRecords(1)
+        ->assertSee('em 19/09/2026 23:30')
+        ->assertSee('por Fulana da Gestão');
 });
 
 it('warns on the rollout screen that every reminder is off and that a liquidated emission is still automated', function () {

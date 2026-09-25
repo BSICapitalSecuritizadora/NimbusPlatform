@@ -8,6 +8,7 @@ use App\Enums\SalesBoardAutomationAlertType;
 use App\Enums\SalesBoardAutomationRunStatus;
 use App\Models\SalesBoardAutomationRun;
 use App\Models\SalesBoardAutomationTarget;
+use App\Support\BusinessTime;
 use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use App\Support\SalesBoards\SalesBoardAutomationLinks;
 use Carbon\CarbonImmutable;
@@ -88,7 +89,7 @@ class SalesBoardAutomationRecoveryService
                 $this->recipients->forRunInterrupted($run),
                 ['sales_board_automation_run_id' => (int) $run->getKey()],
                 'execucao-'.$run->getKey(),
-                sprintf('Execução #%d da automação, iniciada em %s', (int) $run->getKey(), $run->started_at->format('d/m/Y H:i')),
+                sprintf('Execução #%d da automação, iniciada em %s', (int) $run->getKey(), BusinessTime::at($run->started_at)->format('d/m/Y H:i')),
                 '',
                 'A execução mensal do Quadro de Vendas foi interrompida antes de terminar. As competências que ficaram pela metade '
                     .'serão tentadas de novo com espera crescente; se o problema se repetir, a causa provável é falta de memória no servidor.',

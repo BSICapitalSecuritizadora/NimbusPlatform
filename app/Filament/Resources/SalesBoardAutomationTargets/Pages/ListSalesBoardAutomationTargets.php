@@ -5,6 +5,7 @@ namespace App\Filament\Resources\SalesBoardAutomationTargets\Pages;
 use App\Enums\SalesBoardAutomationTargetStatus;
 use App\Filament\Resources\SalesBoardAutomationTargets\SalesBoardAutomationTargetResource;
 use App\Models\SalesBoardAutomationRun;
+use App\Support\BusinessTime;
 use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use App\Support\SalesBoards\SalesBoardAutomationNotices;
 use App\Support\SalesBoards\SalesBoardAutomationPerimeter;
@@ -61,7 +62,7 @@ class ListSalesBoardAutomationTargets extends ListRecords
 
         return sprintf(
             'Última execução em %s · %s · competência limite %s · %d gerado(s), %d existente(s), %d bloqueado(s), %d falha(s).',
-            $run->started_at->format('d/m/Y H:i'),
+            BusinessTime::at($run->started_at)->format('d/m/Y H:i'),
             $run->status->label(),
             $run->latestDueMonthLabel(),
             $run->generated_count,

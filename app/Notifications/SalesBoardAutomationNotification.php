@@ -29,6 +29,12 @@ use Throwable;
  * rotinas do mesmo minuto atrasavam junto. Na fila, cada canal é um job, com
  * prazo curto; o que falhar no worker devolve o aviso para a próxima execução.
  *
+ * O despachante cria uma instância por canal ({@see self::$deliveryChannel}),
+ * cada uma com a própria linha no livro-razão. É o que deixa a falha de um canal
+ * devolver só ele: com uma instância para os dois, o `failed()` do job do
+ * e-mail não sabia qual canal tinha caído e devolvia o aviso inteiro -- e o
+ * sino ganhava uma cópia por hora enquanto o SMTP estivesse fora.
+ *
  * No banco, grava no formato do Filament: é o que o sino do painel lê. O
  * `toArray()` cru gravava linhas que nenhuma tela mostrava.
  */
@@ -47,6 +53,17 @@ class SalesBoardAutomationNotification extends Notification implements ShouldQue
      */
     public int $timeout = 60;
 
+    /**
+     * Os canais do aviso. O sino é o canal `database`, no formato do Filament.
+     *
+     * @var list<string>
+     */
+    public const CHANNELS = ['mail', 'database'];
+
+    /**
+     * @param  string|null  $dedupeKey  a linha do livro-razão deste canal
+     * @param  string|null  $deliveryChannel  o único canal desta instância; nulo envia por todos
+     */
     public function __construct(
         public readonly SalesBoardAutomationAlertType $type,
         public readonly string $constructionName,
@@ -54,6 +71,7 @@ class SalesBoardAutomationNotification extends Notification implements ShouldQue
         public readonly ?string $detail = null,
         public readonly ?string $url = null,
         public readonly ?string $dedupeKey = null,
+        public readonly ?string $deliveryChannel = null,
     ) {}
 
     /**
@@ -61,7 +79,7 @@ class SalesBoardAutomationNotification extends Notification implements ShouldQue
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        return $this->deliveryChannel === null ? self::CHANNELS : [$this->deliveryChannel];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -120,11 +138,12 @@ class SalesBoardAutomationNotification extends Notification implements ShouldQue
     }
 
     /**
-     * A entrega falhou no worker: o aviso volta a ser devido.
+     * A entrega falhou no worker: o aviso volta a ser devido neste canal.
      *
-     * A linha do livro-razão é o que faz a execução seguinte considerar o aviso
-     * enviado. Mantê-la depois de uma falha de entrega faria o aviso sumir em
-     * silêncio.
+     * A linha do livro-razão é o que faz a execução seguinte considerar o canal
+     * entregue. Mantê-la depois de uma falha faria o aviso sumir em silêncio; e
+     * a chave é a do canal desta instância, então o canal que entregou continua
+     * registrado e não se repete.
      */
     public function failed(Throwable $exception): void
     {

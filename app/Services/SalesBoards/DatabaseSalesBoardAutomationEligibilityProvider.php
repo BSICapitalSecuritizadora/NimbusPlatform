@@ -14,10 +14,11 @@ use Carbon\CarbonImmutable;
 /**
  * Quais empreendimentos a automação pode processar, segundo o rollout.
  *
- * Substitui o provider de configuração da Fase F, que era declaradamente
- * temporário. É a única peça que a Fase G precisou trocar para a automação
- * passar a enxergar Emissões reais: descoberta, retry, alertas e
- * observabilidade continuam exatamente como estavam.
+ * É a fonte de elegibilidade da aplicação: o binding de produção, lido pela
+ * descoberta, pelo perímetro dos lembretes e pelo encerramento de alvos fora do
+ * perímetro. O motor não sabe de onde vem a resposta -- ele só pergunta ao
+ * contrato {@see SalesBoardAutomationEligibilityProvider} --, e é isso que deixa
+ * os testes do motor trocarem a fonte sem tocar em descoberta, retry ou avisos.
  *
  * Quatro travas em série, e cada uma existe por um motivo diferente:
  *

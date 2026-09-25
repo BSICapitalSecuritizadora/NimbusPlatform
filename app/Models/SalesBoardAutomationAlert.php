@@ -9,12 +9,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Um aviso emitido -- ou a intenção de emitir, registrada antes do envio.
+ * Um aviso emitido por um canal -- ou a intenção de emitir, registrada antes
+ * do envio.
  *
- * A linha nasce pelo `insertOrIgnore` que decide, no banco, quem envia: quem
- * inseriu envia, quem colidiu já sabe que o aviso saiu. Se o envio falhar, a
- * linha é removida para que a próxima execução tente de novo -- é at-least-once
- * assumido, não exactly-once fingido.
+ * Uma linha por aviso, destinatário e canal (e-mail, sino do painel). A linha
+ * nasce pelo `insertOrIgnore` que decide, no banco, quem envia: quem inseriu
+ * enfileira aquele canal, quem colidiu já sabe que ele saiu. Se a entrega
+ * daquele canal falhar, só a linha dele é removida, para que a próxima execução
+ * tente de novo só ele -- é at-least-once assumido, não exactly-once fingido.
  */
 class SalesBoardAutomationAlert extends Model
 {
@@ -33,6 +35,7 @@ class SalesBoardAutomationAlert extends Model
         'sales_board_builder_review_id',
         'sales_board_management_review_id',
         'recipient_user_id',
+        'channel',
         'sent_at',
     ];
 

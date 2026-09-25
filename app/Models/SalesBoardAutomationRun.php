@@ -100,6 +100,11 @@ class SalesBoardAutomationRun extends Model
      * dado de comprador, nada que transforme uma linha de observabilidade em
      * dado pessoal espalhado por arquivo de log.
      *
+     * `alerts_sent` conta avisos **enfileirados**: a entrega é do worker da
+     * fila, depois da execução. Uma entrega que falha lá não volta para esta
+     * linha -- aparece nos jobs falhos, e o aviso volta a ser devido na execução
+     * seguinte.
+     *
      * @return array<string, mixed>
      */
     public function toSummaryArray(): array

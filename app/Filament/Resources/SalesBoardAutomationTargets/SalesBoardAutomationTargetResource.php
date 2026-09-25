@@ -62,7 +62,7 @@ class SalesBoardAutomationTargetResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['construction', 'cycle']);
+        return parent::getEloquentQuery()->with(['construction', 'cycle', 'closedBy']);
     }
 
     public static function canViewAny(): bool

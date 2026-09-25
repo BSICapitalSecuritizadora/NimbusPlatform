@@ -158,7 +158,7 @@ it('sends no builder reminder while disabled, and does when enabled', function (
 
     AutomationFixture::run('2026-08-13');
 
-    expect(SalesBoardAutomationAlert::query()->sole()->alert_type)->toBe(SalesBoardAutomationAlertType::BuilderReminder);
+    expect(SalesBoardAutomationAlert::query()->where('channel', 'mail')->sole()->alert_type)->toBe(SalesBoardAutomationAlertType::BuilderReminder);
 });
 
 it('sends no management reminder while disabled', function () {

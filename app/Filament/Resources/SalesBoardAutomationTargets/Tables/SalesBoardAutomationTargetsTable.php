@@ -4,6 +4,7 @@ namespace App\Filament\Resources\SalesBoardAutomationTargets\Tables;
 
 use App\Enums\SalesBoardAutomationTargetStatus;
 use App\Models\SalesBoardAutomationTarget;
+use App\Support\BusinessTime;
 use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use App\Support\SalesBoards\SalesBoardIssuePresenter;
 use Filament\Tables\Columns\TextColumn;
@@ -63,7 +64,7 @@ class SalesBoardAutomationTargetsTable
                     })
                     ->description(fn (SalesBoardAutomationTarget $record): ?string => match ($record->status) {
                         SalesBoardAutomationTargetStatus::Blocked => (implode(', ', $record->blockerCodes())) ?: null,
-                        SalesBoardAutomationTargetStatus::Closed => $record->closure_reason?->label(),
+                        SalesBoardAutomationTargetStatus::Closed => self::closureDescription($record),
                         default => null,
                     })
                     ->placeholder('—')
@@ -73,19 +74,19 @@ class SalesBoardAutomationTargetsTable
                 TextColumn::make('first_attempt_at')
                     ->label('Parado desde')
                     ->state(fn (SalesBoardAutomationTarget $record): mixed => $record->status->isOpen() ? $record->first_attempt_at : null)
-                    ->dateTime('d/m/Y H:i')
+                    ->dateTime('d/m/Y H:i', BusinessTime::timezone())
                     ->placeholder('—')
                     ->visibleFrom('lg'),
 
                 TextColumn::make('last_attempt_at')
                     ->label('Última tentativa')
-                    ->dateTime('d/m/Y H:i')
+                    ->dateTime('d/m/Y H:i', BusinessTime::timezone())
                     ->placeholder('—')
                     ->visibleFrom('lg'),
 
                 TextColumn::make('next_attempt_at')
                     ->label('Próxima tentativa')
-                    ->dateTime('d/m/Y H:i')
+                    ->dateTime('d/m/Y H:i', BusinessTime::timezone())
                     ->placeholder('—'),
 
                 TextColumn::make('cycle.id')
@@ -117,6 +118,25 @@ class SalesBoardAutomationTargetsTable
              */
             ->emptyStateHeading(fn (HasTable $livewire): string => self::emptyState($livewire)[0])
             ->emptyStateDescription(fn (HasTable $livewire): string => self::emptyState($livewire)[1]);
+    }
+
+    /**
+     * Motivo, quando e por quem, na própria linha.
+     *
+     * A tela não tem página de detalhe, e o encerramento é trilha: quem abre a
+     * aba "Encerrados" precisa ver ali quem devolveu a Emissão ao legado, sem
+     * procurar o evento do rollout. Sem autor, quem encerrou foi a própria
+     * automação (escopo suspenso na execução horária).
+     */
+    private static function closureDescription(SalesBoardAutomationTarget $record): ?string
+    {
+        $parts = array_filter([
+            $record->closure_reason?->label(),
+            $record->closed_at === null ? null : 'em '.BusinessTime::at($record->closed_at)->format('d/m/Y H:i'),
+            'por '.($record->closedBy?->name ?? 'automação'),
+        ]);
+
+        return implode(' · ', $parts);
     }
 
     /**

@@ -40,7 +40,8 @@ beforeEach(function () {
 });
 
 it('marks a run left executing by a dead process as interrupted, and alerts', function () {
-    $this->travelTo(CarbonImmutable::parse('2026-09-13 13:00:00'));
+    // 13:00 em UTC, o fuso técnico; 10:00 em Brasília.
+    $this->travelTo(CarbonImmutable::parse('2026-09-13 13:00:00', 'UTC'));
 
     $dead = SalesBoardAutomationRun::factory()->running(now()->subHours(4))->create();
 
@@ -61,18 +62,23 @@ it('marks a run left executing by a dead process as interrupted, and alerts', fu
         ->and($run->status)->toBe(SalesBoardAutomationRunStatus::Completed)
         ->and($run->generated_count)->toBe(1);
 
-    $alert = SalesBoardAutomationAlert::query()->sole();
+    $alert = SalesBoardAutomationAlert::query()->where('channel', 'mail')->sole();
 
     expect($alert->alert_type)->toBe(SalesBoardAutomationAlertType::RunInterrupted)
         ->and($alert->sales_board_automation_run_id)->toBe($dead->id)
         ->and($alert->recipient_user_id)->toBe($recipient->id);
 
-    Notification::assertSentTo($recipient, SalesBoardAutomationNotification::class);
+    // O horário do aviso é o de Brasília, não o UTC em que a execução foi gravada.
+    Notification::assertSentTo(
+        $recipient,
+        SalesBoardAutomationNotification::class,
+        fn (SalesBoardAutomationNotification $notification): bool => str_contains($notification->constructionName, 'iniciada em 13/09/2026 06:00'),
+    );
 
     // A execução seguinte não reabre nem reavisa.
     AutomationFixture::run();
 
-    expect(SalesBoardAutomationAlert::query()->count())->toBe(1);
+    expect(SalesBoardAutomationAlert::query()->where('channel', 'mail')->count())->toBe(1);
 });
 
 it('leaves a recent executing run alone, because it may still be alive', function () {
@@ -215,7 +221,7 @@ it('counts consecutive technical failures, not blocked attempts, for backoff and
 
     expect($target->consecutive_failure_count)->toBe(3)
         ->and($target->next_attempt_at->toDateTimeString())->toBe('2026-09-18 20:00:00')
-        ->and(SalesBoardAutomationAlert::query()->where('alert_type', SalesBoardAutomationAlertType::GenerationFailed)->count())->toBe(1);
+        ->and(SalesBoardAutomationAlert::query()->where('alert_type', SalesBoardAutomationAlertType::GenerationFailed)->where('channel', 'mail')->count())->toBe(1);
 });
 
 it('resets the failure streak once the source blocks again', function () {
