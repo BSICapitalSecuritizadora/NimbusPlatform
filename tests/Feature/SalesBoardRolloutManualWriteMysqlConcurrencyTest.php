@@ -11,7 +11,9 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Concurrency;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\RolloutFixture;
+use Tests\Support\CommittedRowsSweeper;
 
 /**
  * Ativação da automação × registro manual da competência inicial, em conexões
@@ -36,20 +38,24 @@ beforeEach(function () {
     }
 
     Artisan::call('migrate:fresh', ['--no-interaction' => true]);
+
+    $this->committedRows = CommittedRowsSweeper::afterFreshMigration();
 });
 
+/**
+ * O cenário e os processos filhos commitam fora de qualquer transação de teste.
+ * A limpeza devolve o banco ao estado recém-migrado -- tudo o que entrou depois
+ * da foto do `beforeEach`, em qualquer tabela -- e a verificação garante que o
+ * arquivo seguinte da suíte não herda nada daqui.
+ */
 afterEach(function () {
-    if (DB::getDriverName() !== 'mysql') {
+    if (DB::getDriverName() !== 'mysql' || ! isset($this->committedRows)) {
         return;
     }
 
-    DB::table('sales_board_rollout_events')->delete();
-    DB::table('emissions')->update(['sales_board_active_homologation_id' => null]);
-    DB::table('sales_board_rollout_homologation_constructions')->delete();
-    DB::table('sales_board_rollout_homologations')->delete();
-    DB::table('sales_board_rollout_recipients')->delete();
-    DB::table('sales_board_histories')->delete();
-    DB::table('sales_boards')->delete();
+    $this->committedRows->sweep();
+
+    expect($this->committedRows->leftovers())->toBe([]);
 });
 
 /**
@@ -162,7 +168,8 @@ it('never lets a manual board of the initial competence slip through a running a
         manualWriteRaceActivationTask([
             'emission' => (int) $scenario['emission']->getKey(),
             'homologation' => (int) $homologation->getKey(),
-            'actor' => (int) User::factory()->create()->getKey(),
+            // Ativar é da Gestão, e não de quem abriu a homologação.
+            'actor' => (int) GovernanceFixture::approver()->getKey(),
             'own_marker' => $activationMarker,
             'peer_marker' => $manualMarker,
         ]),

@@ -10,6 +10,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Concurrency;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\CommittedRowsSweeper;
 
 /**
  * Duas substituições confirmadas da mesma política, em conexões reais.
@@ -28,33 +29,23 @@ beforeEach(function () {
 
     Artisan::call('migrate:fresh', ['--no-interaction' => true]);
 
-    /**
-     * As migrations semeiam o tipo "Sem tipo definido"; o que passar disto foi
-     * a factory do prestador que criou.
-     */
-    $this->seededProviderTypeMaxId = (int) DB::table('expense_service_provider_types')->max('id');
+    $this->committedRows = CommittedRowsSweeper::afterFreshMigration();
 });
 
 /**
- * Tanto o processo do teste quanto os filhos commitam: não há transação de
- * teste aqui, e o arquivo seguinte da suíte herdaria as linhas. O banco começa
- * limpo (`migrate:fresh` acima), então tudo o que está nestas tabelas foi este
- * teste que gravou -- a obra e o que a factory dela cria, as políticas e a
- * trilha de auditoria. A remoção é pelo query builder porque a política recusa
- * `delete()`, como deve em produção; e respeita as chaves estrangeiras, para
- * que uma tabela nova no caminho das factories falhe aqui em vez de vazar.
+ * O cenário e os processos filhos commitam fora de qualquer transação de teste.
+ * A limpeza devolve o banco ao estado recém-migrado -- tudo o que entrou depois
+ * da foto do `beforeEach`, em qualquer tabela -- e a verificação garante que o
+ * arquivo seguinte da suíte não herda nada daqui.
  */
 afterEach(function () {
-    if (DB::getDriverName() !== 'mysql') {
+    if (DB::getDriverName() !== 'mysql' || ! isset($this->committedRows)) {
         return;
     }
 
-    DB::table('sales_discount_policies')->delete();
-    DB::table('constructions')->delete();
-    DB::table('emissions')->delete();
-    DB::table('expense_service_providers')->delete();
-    DB::table('expense_service_provider_types')->where('id', '>', $this->seededProviderTypeMaxId)->delete();
-    DB::table('activity_log')->delete();
+    $this->committedRows->sweep();
+
+    expect($this->committedRows->leftovers())->toBe([]);
 });
 
 /**

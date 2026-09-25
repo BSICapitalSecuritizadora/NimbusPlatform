@@ -20,7 +20,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Concurrency;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
+use Tests\Support\CommittedRowsSweeper;
 use Tests\Support\SalesBoards\AutomationFixture;
 use Tests\Support\SalesBoards\ConfiguredSalesBoardAutomationEligibilityProvider;
 use Tests\Support\SalesBoards\RolloutFixture;
@@ -55,7 +55,7 @@ beforeEach(function () {
 
     Artisan::call('migrate:fresh', ['--no-interaction' => true]);
 
-    $this->automationRaceBaseline = automationRaceBaseline();
+    $this->committedRows = CommittedRowsSweeper::afterFreshMigration();
 });
 
 /**
@@ -63,65 +63,20 @@ beforeEach(function () {
  * filhos (automação). Sem limpar, o arquivo seguinte da suíte começaria com as
  * Emissões, os usuários e os ciclos daqui, e só a suíte inteira denunciaria.
  *
- * A limpeza apaga, em todas as tabelas, o que surgiu depois do retrato tirado
- * logo após as migrations -- inclusive o que os filhos gravaram -- e preserva os
- * dados de referência que as próprias migrations semeiam. É pelo query builder,
- * com as chaves estrangeiras suspensas só nesta conexão, porque os models
- * recusam exclusão e é assim que devem se comportar em produção.
+ * A limpeza apaga, em todas as tabelas, o que surgiu depois da foto tirada logo
+ * após as migrations -- inclusive o que os filhos gravaram -- e preserva os
+ * dados de referência que as próprias migrations semeiam. A verificação no fim
+ * prova que a limpeza bastou.
  */
 afterEach(function () {
-    if (DB::getDriverName() !== 'mysql' || ! isset($this->automationRaceBaseline)) {
+    if (DB::getDriverName() !== 'mysql' || ! isset($this->committedRows)) {
         return;
     }
 
-    DB::statement('SET FOREIGN_KEY_CHECKS=0');
+    $this->committedRows->sweep();
 
-    try {
-        foreach ($this->automationRaceBaseline as $table => $baseline) {
-            if ($baseline['max_id'] !== null) {
-                DB::table($table)->where('id', '>', $baseline['max_id'])->delete();
-            } elseif ($baseline['count'] === 0) {
-                DB::table($table)->delete();
-            }
-        }
-    } finally {
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
-    }
+    expect($this->committedRows->leftovers())->toBe([]);
 });
-
-/**
- * O retrato do banco recém-migrado: por tabela, o maior id numérico (ou a
- * contagem, quando a chave não é numérica).
- *
- * @return array<string, array{max_id: int|null, count: int}>
- */
-function automationRaceBaseline(): array
-{
-    $baseline = [];
-
-    /**
-     * Só o banco desta conexão: sem o schema explícito, o MySQL lista as
-     * tabelas de todos os bancos do servidor.
-     */
-    foreach (Schema::getTables(DB::getDatabaseName()) as $table) {
-        $name = $table['name'];
-
-        if ($name === 'migrations') {
-            continue;
-        }
-
-        $numericId = collect(Schema::getColumns($name))
-            ->contains(fn (array $column): bool => $column['name'] === 'id'
-                && str_contains(strtolower((string) $column['type_name']), 'int'));
-
-        $baseline[$name] = [
-            'max_id' => $numericId ? (int) (DB::table($name)->max('id') ?? 0) : null,
-            'count' => DB::table($name)->count(),
-        ];
-    }
-
-    return $baseline;
-}
 
 function automationRaceConstruction(): Construction
 {

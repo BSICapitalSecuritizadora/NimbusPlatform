@@ -52,13 +52,13 @@ beforeEach(function () {
  * - a observação da fonte guarda um resumo por contrato, não uma linha por
  *   parcela, e lê as parcelas como linhas simples: seu pico por parcela é uma
  *   fração do da derivação (medido: ~0,06 KB no SQLite, ~0,11 KB no MySQL);
- * - a derivação, a geração e a verificação ainda carregam as parcelas no
- *   resolvedor de quitação (medido: ~2,0 KB por parcela) -- o teto delas é o
- *   que mantém 57.600 parcelas longe dos 256 MB. É um teto frouxo de
- *   propósito: enquanto {@see ContractSettlementResolver} hidratar cada
- *   parcela, a folga cobre a variação entre SQLite e MySQL, e uma regressão de
- *   até ~25% passa. Quando o resolvedor passar a ler linhas simples, este teto
- *   desce para 1,0 a 1,5 KB;
+ * - a derivação, a geração e a verificação leem as parcelas no resolvedor de
+ *   quitação ({@see ContractSettlementResolver}) também como linhas simples,
+ *   contadas em fluxo (medido: ~0,11 a ~0,16 KB por parcela, SQLite e MySQL;
+ *   quando o resolvedor hidratava um model por parcela eram ~2,0 KB). O teto
+ *   de 0,5 KB deixa folga para a variação entre bancos e máquinas, e ainda
+ *   pega de volta a hidratação -- que é o que empurrava 57.600 parcelas para
+ *   perto dos 256 MB da requisição web;
  * - tempo por parcela (medido: ~0,08 ms no par derivação e observação);
  * - a avaliação do rollout percorre a Emissão empreendimento a empreendimento:
  *   o pico dela acompanha o maior empreendimento, não a soma deles (medido:
@@ -70,7 +70,7 @@ function volumeBudgets(): array
 {
     return [
         'observation_kb_per_installment' => 0.25,
-        'pipeline_kb_per_installment' => 2.5,
+        'pipeline_kb_per_installment' => 0.5,
         'ms_per_installment' => 0.25,
         'rollout_peak_over_largest' => 1.35,
     ];
@@ -250,7 +250,8 @@ function volumeReport(array $measurement, int $installments): array
 }
 
 it('keeps a mature development inside its memory and time budgets', function () {
-    $emission = Emission::factory()->create(['status' => 'active']);
+    // A geração só congela competência coberta pela automação.
+    $emission = Emission::factory()->withAutomatedSalesBoard()->create(['status' => 'active']);
     ['construction' => $construction, 'installments' => $installments] = volumeConstruction($emission, 'A');
     $month = CarbonImmutable::parse('2026-07-01');
 

@@ -23,7 +23,9 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Concurrency;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\SalesBoards\BuilderReviewFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
+use Tests\Support\CommittedRowsSweeper;
 
 /**
  * Decidir contra aprovar, e editar contra enviar, em conexões reais.
@@ -41,19 +43,24 @@ beforeEach(function () {
     }
 
     Artisan::call('migrate:fresh', ['--no-interaction' => true]);
+
+    $this->committedRows = CommittedRowsSweeper::afterFreshMigration();
 });
 
 /**
- * Os processos filhos commitam fora de qualquer transação de teste. Recriar o
- * schema garante que o arquivo seguinte da suíte não herde ciclos, revisões,
- * Emissões automatizadas nem usuários daqui.
+ * O cenário e os processos filhos commitam fora de qualquer transação de teste.
+ * A limpeza devolve o banco ao estado recém-migrado -- tudo o que entrou depois
+ * da foto do `beforeEach`, em qualquer tabela -- e a verificação garante que o
+ * arquivo seguinte da suíte não herda nada daqui.
  */
 afterEach(function () {
-    if (DB::getDriverName() !== 'mysql') {
+    if (DB::getDriverName() !== 'mysql' || ! isset($this->committedRows)) {
         return;
     }
 
-    Artisan::call('migrate:fresh', ['--no-interaction' => true]);
+    $this->committedRows->sweep();
+
+    expect($this->committedRows->leftovers())->toBe([]);
 });
 
 /**
@@ -135,7 +142,7 @@ function reviewWorkflowTask(array $instruction): Closure
 
 it('never lets a decision land after the approval checked the gate', function () {
     $scenario = ManagementReviewFixture::submittedCycleWithNonConformSale();
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::approver();
     $review = ManagementReviewFixture::open($scenario['cycle'], $actor);
     ManagementReviewFixture::decideAll($review, $actor);
 

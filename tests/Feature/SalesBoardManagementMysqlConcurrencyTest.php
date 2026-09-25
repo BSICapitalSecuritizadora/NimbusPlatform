@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Concurrency;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
+use Tests\Support\CommittedRowsSweeper;
 
 /**
  * As corridas da análise e da publicação, em conexões reais.
@@ -37,31 +38,24 @@ beforeEach(function () {
     }
 
     Artisan::call('migrate:fresh', ['--no-interaction' => true]);
+
+    $this->committedRows = CommittedRowsSweeper::afterFreshMigration();
 });
 
 /**
- * Os processos filhos commitam fora de qualquer transação de teste. Sem esta
- * limpeza, o arquivo seguinte da suíte herdaria ciclos, análises e quadros
- * alheios.
+ * O cenário e os processos filhos commitam fora de qualquer transação de teste.
+ * A limpeza devolve o banco ao estado recém-migrado -- tudo o que entrou depois
+ * da foto do `beforeEach`, em qualquer tabela -- e a verificação garante que o
+ * arquivo seguinte da suíte não herda nada daqui.
  */
 afterEach(function () {
-    if (DB::getDriverName() !== 'mysql') {
+    if (DB::getDriverName() !== 'mysql' || ! isset($this->committedRows)) {
         return;
     }
 
-    DB::table('sales_board_publications')->delete();
-    DB::table('sales_board_management_nonconformities')->delete();
-    DB::table('sales_board_management_reviews')->delete();
-    DB::table('sales_board_builder_divergences')->delete();
-    DB::table('sales_board_builder_review_sections')->delete();
-    DB::table('sales_board_builder_reviews')->delete();
-    DB::table('sales_board_histories')->delete();
-    DB::table('sales_boards')->delete();
-    DB::table('sales_board_cycles')->update(['current_baseline_id' => null]);
-    DB::table('sales_board_cycle_movements')->delete();
-    DB::table('sales_board_cycle_lines')->delete();
-    DB::table('sales_board_cycle_baselines')->delete();
-    DB::table('sales_board_cycles')->delete();
+    $this->committedRows->sweep();
+
+    expect($this->committedRows->leftovers())->toBe([]);
 });
 
 /**
