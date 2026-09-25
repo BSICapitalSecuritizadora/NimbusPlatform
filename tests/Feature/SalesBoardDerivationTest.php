@@ -5,7 +5,10 @@ use App\Enums\ContractStatus;
 use App\Enums\ResolvedUnitValueSource;
 use App\Enums\SalesBoardIssueCode;
 use App\Enums\SalesBoardUnitClassification;
+use App\Enums\SalesPriceConformityStatus;
 use App\Models\ConstructionUnitValue;
+use App\Models\SalesDiscountPolicy;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\SalesBoards\DerivationFixture;
 
@@ -183,4 +186,161 @@ it('does not let a schedule that disagrees with the sale value change the settle
 
     expect(DerivationFixture::lineFor($position, $unit)->classification)->toBe(SalesBoardUnitClassification::Settled)
         ->and($position->settledValueCents)->toBe(60_000_000);
+});
+
+it('treats a zero reference value as missing for a stock unit', function (bool $fromHistory) {
+    $construction = DerivationFixture::construction();
+    DerivationFixture::unit($construction, '101', '500000.00');
+    $zeroed = DerivationFixture::unit($construction, '102', $fromHistory ? '500000.00' : '0.00');
+
+    if ($fromHistory) {
+        ConstructionUnitValue::factory()->forUnit($zeroed)->effectiveFrom('2026-06-01')->worth('0.00')->create();
+    }
+
+    $position = DerivationFixture::derive($construction);
+
+    expect(DerivationFixture::lineFor($position, $zeroed)->classification)->toBe(SalesBoardUnitClassification::Stock)
+        ->and(DerivationFixture::lineFor($position, $zeroed)->unitReferenceValueCents)->toBeNull()
+        ->and($position->stockValueCents)->toBeNull()
+        ->and(collect($position->issues)->pluck('code'))->toContain(SalesBoardIssueCode::UnitValueMissing)
+        ->and($position->isComplete())->toBeFalse();
+})->with([
+    'zero base value' => [false],
+    'zero value in the history' => [true],
+]);
+
+it('does not judge a sale of the month against a zero reference value', function () {
+    $construction = DerivationFixture::construction();
+    $unit = DerivationFixture::unit($construction, '101', '0.00');
+
+    SalesDiscountPolicy::factory()->forConstruction($construction)->effectiveFrom('2026-01-01')->allowing('5.00')->create();
+
+    $contract = DerivationFixture::contract($unit, '2026-07-10', '100.00');
+    DerivationFixture::installment($contract, '001', '2026-08-10', '100.00');
+
+    $position = DerivationFixture::derive($construction);
+
+    expect($position->movements->sales[0]->conformity->status)->toBe(SalesPriceConformityStatus::Undetermined)
+        ->and($position->movements->conformSalesCount())->toBe(0)
+        ->and(DerivationFixture::issueCodes($position))->toContain(SalesBoardIssueCode::SaleUnitValueMissing->value)
+        ->and($position->hasBlockingIssue())->toBeTrue();
+});
+
+it('warns when a contract marked settled is left open by its schedule', function (string $scenario) {
+    $construction = DerivationFixture::construction();
+    $unit = DerivationFixture::unit($construction, '101');
+    $contract = DerivationFixture::contract($unit, '2026-01-10', '600000.00', status: ContractStatus::Settled);
+
+    DerivationFixture::installment($contract, '001', '2026-02-10', '300000.00', '2026-02-10', '300000.00');
+
+    if ($scenario === 'early payoff with a discount') {
+        DerivationFixture::installment($contract, '002', '2026-12-10', '300000.00', '2026-06-15', '280000.00');
+    } else {
+        // Renegotiated: the old installments stayed without a cancellation date.
+        DerivationFixture::installment($contract, '002', '2026-08-10', '150000.00');
+        DerivationFixture::installment($contract, '003', '2026-09-10', '150000.00');
+        DerivationFixture::installment($contract, 'R01', '2026-06-15', '300000.00', '2026-06-15', '300000.00');
+    }
+
+    $position = DerivationFixture::derive($construction);
+    $warning = collect($position->issues)->firstWhere('code', SalesBoardIssueCode::SettlementStatusDivergence);
+
+    expect(DerivationFixture::lineFor($position, $unit)->classification)->toBe(SalesBoardUnitClassification::Financed)
+        ->and($warning)->not->toBeNull()
+        ->and($warning->contractId)->toBe($contract->id)
+        ->and($warning->isBlocker())->toBeFalse()
+        ->and($position->hasBlockingIssue())->toBeFalse()
+        ->and($position->isComplete())->toBeTrue();
+})->with([
+    'early payoff with a discount',
+    'renegotiation without cancelling the old installments',
+]);
+
+it('does not warn about a settled status explained by a payment after the position date', function () {
+    $construction = DerivationFixture::construction();
+    $unit = DerivationFixture::unit($construction, '101');
+    $contract = DerivationFixture::contract($unit, '2026-01-10', '600000.00', status: ContractStatus::Settled);
+
+    DerivationFixture::installment($contract, '001', '2026-08-10', '600000.00', '2026-08-10', '600000.00');
+
+    $july = DerivationFixture::derive($construction, '2026-07-01');
+
+    expect(DerivationFixture::lineFor($july, $unit)->classification)->toBe(SalesBoardUnitClassification::Financed)
+        ->and(DerivationFixture::issueCodes($july))->not->toContain(SalesBoardIssueCode::SettlementStatusDivergence->value);
+});
+
+it('warns when a contract still marked active is settled by its schedule', function () {
+    $construction = DerivationFixture::construction();
+    $unit = DerivationFixture::unit($construction, '101');
+    $contract = DerivationFixture::contract($unit, '2026-01-10', '600000.00', status: ContractStatus::Active);
+
+    DerivationFixture::installment($contract, '001', '2026-02-10', '600000.00', '2026-02-10', '600000.00');
+
+    $position = DerivationFixture::derive($construction);
+    $warning = collect($position->issues)->firstWhere('code', SalesBoardIssueCode::SettlementStatusDivergence);
+
+    expect(DerivationFixture::lineFor($position, $unit)->classification)->toBe(SalesBoardUnitClassification::Settled)
+        ->and($warning)->not->toBeNull()
+        ->and($warning->contractId)->toBe($contract->id)
+        ->and($position->isComplete())->toBeTrue();
+});
+
+it('does not warn when the status agrees with the schedule', function () {
+    $construction = DerivationFixture::construction();
+
+    $settled = DerivationFixture::contract(DerivationFixture::unit($construction, '101'), '2026-01-10', status: ContractStatus::Settled);
+    DerivationFixture::installment($settled, '001', '2026-02-10', '600000.00', '2026-02-10', '600000.00');
+
+    $active = DerivationFixture::contract(DerivationFixture::unit($construction, '102'), '2026-01-10', status: ContractStatus::Active);
+    DerivationFixture::installment($active, '001', '2026-12-10', '600000.00');
+
+    $position = DerivationFixture::derive($construction);
+
+    expect($position->issues)->toBe([]);
+});
+
+it('warns about a contract that holds the unit by status with a sale date in the future', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-09-25 12:00:00'));
+
+    $construction = DerivationFixture::construction();
+    $unit = DerivationFixture::unit($construction, '101', '400000.00');
+
+    // Typo on the year of the sale: 2062 instead of 2026.
+    $contract = DerivationFixture::contract($unit, '2062-03-10', '600000.00');
+
+    $position = DerivationFixture::derive($construction);
+    $warning = collect($position->issues)->firstWhere('code', SalesBoardIssueCode::FutureSaleDate);
+
+    expect(DerivationFixture::lineFor($position, $unit)->classification)->toBe(SalesBoardUnitClassification::Stock)
+        ->and($position->stockValueCents)->toBe(40_000_000)
+        ->and($warning)->not->toBeNull()
+        ->and($warning->contractId)->toBe($contract->id)
+        ->and($warning->constructionUnitId)->toBe($unit->id)
+        ->and($warning->isBlocker())->toBeFalse()
+        ->and($position->isComplete())->toBeTrue();
+});
+
+it('does not warn about a sale after the position date that already happened', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-09-25 12:00:00'));
+
+    $construction = DerivationFixture::construction();
+    $unit = DerivationFixture::unit($construction, '101');
+    DerivationFixture::contract($unit, '2026-08-10', '600000.00');
+
+    $july = DerivationFixture::derive($construction, '2026-07-01');
+
+    expect(DerivationFixture::lineFor($july, $unit)->classification)->toBe(SalesBoardUnitClassification::Stock)
+        ->and($july->issues)->toBe([]);
+});
+
+it('reads "future" in the business calendar, not in UTC', function () {
+    // 01:00 UTC on the 26th is still the 25th in São Paulo.
+    $this->travelTo(CarbonImmutable::parse('2026-09-26 01:00:00', 'UTC'));
+
+    $construction = DerivationFixture::construction();
+    DerivationFixture::contract(DerivationFixture::unit($construction, '101'), '2026-09-26');
+
+    $position = DerivationFixture::derive($construction, '2026-08-01');
+
+    expect(DerivationFixture::issueCodes($position))->toContain(SalesBoardIssueCode::FutureSaleDate->value);
 });

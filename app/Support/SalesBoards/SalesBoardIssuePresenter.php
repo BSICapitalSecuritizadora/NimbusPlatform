@@ -88,6 +88,8 @@ final class SalesBoardIssuePresenter
             SalesBoardIssueCode::SaleDiscountPolicyMissing => 'Cadastre a política de desconto vigente na data da venda: na obra, aba Política Comercial de Desconto › “Nova política”.',
             SalesBoardIssueCode::UnitConstructionMismatch => 'Corrija o empreendimento do contrato ou da unidade: os dois precisam ser o mesmo.',
             SalesBoardIssueCode::SaleNonConform => 'Não impede a apuração: a venda será analisada pela Gestão.',
+            SalesBoardIssueCode::SettlementStatusDivergence => 'Não impede a apuração: o Quadro segue o cronograma de parcelas. Confira as parcelas do contrato (pagamento abaixo do previsto, parcelas renegociadas sem data de cancelamento) ou corrija o status do contrato.',
+            SalesBoardIssueCode::FutureSaleDate => 'Não impede a apuração, mas a unidade conta como estoque até a data da venda: confira a data da venda do contrato.',
         };
     }
 }

@@ -23,11 +23,13 @@ use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\ConstructionUnitExchange;
 use App\Models\Contract;
+use App\Support\BusinessTime;
 use App\Support\Contracts\ContractOccupancy;
 use App\Support\Dates\InclusiveDateBound;
 use App\Support\Money\IntegerMoney;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -41,12 +43,21 @@ use Illuminate\Support\Collection;
  * fora -- contar contratos ativos aqui, unidades ali -- é o que produz um total
  * que não fecha e não se consegue abrir.
  *
- * Nada depende de `Contract.status`: o status é a foto de hoje, e a pergunta é
- * sempre sobre uma data passada. O status entra apenas como sinal de
- * inconsistência no readiness.
+ * Nenhuma classificação nem quitação depende de `Contract.status`: o status é a
+ * foto de hoje, e a pergunta é sempre sobre uma data passada. O status entra
+ * como sinal de inconsistência -- permuta sem fonte, permuta sem contrato
+ * ocupada por uma venda, quitação que o cronograma não explica, venda datada no
+ * futuro -- e para reconhecer o contrato de permuta, que não é venda.
  */
 class SalesBoardDerivationService
 {
+    /**
+     * Data depois de qualquer parcela registrada: o estado do cronograma com
+     * tudo o que já foi lançado. Só serve para decidir se o status "quitado"
+     * tem explicação em algum pagamento, nunca para classificar uma linha.
+     */
+    private const SCHEDULE_HORIZON = '9999-12-31';
+
     public function __construct(
         private readonly UnitValueResolver $unitValueResolver,
         private readonly SalesDiscountPolicyResolver $salesDiscountPolicyResolver,
@@ -100,10 +111,12 @@ class SalesBoardDerivationService
         $constructionIds = $constructions->keys()->map(fn (mixed $id): int => (int) $id)->all();
 
         $unitsByConstruction = $this->loadUnits($constructionIds);
-        $contractsByConstruction = $this->loadContracts($constructionIds, $positionDate);
 
         /** @var Collection<int, ConstructionUnit> $allUnits */
         $allUnits = $unitsByConstruction->flatten(1);
+
+        [$contractsByConstruction, $futureDatedByConstruction] = $this->loadContracts($constructionIds, $allUnits, $positionDate);
+
         /** @var Collection<int, Contract> $allContracts */
         $allContracts = $contractsByConstruction->flatten(1);
 
@@ -111,7 +124,7 @@ class SalesBoardDerivationService
 
         $settlements = $this->contractSettlementResolver->resolveForContractsAtDates(
             $allContracts->map(fn (Contract $contract): int => (int) $contract->getKey())->unique()->values()->all(),
-            [$positionDate, $month->subDay()],
+            [$positionDate, $month->subDay(), CarbonImmutable::parse(self::SCHEDULE_HORIZON)],
         );
 
         $salesInMonthByConstruction = $contractsByConstruction->map(
@@ -128,6 +141,7 @@ class SalesBoardDerivationService
                 construction: $construction,
                 units: $unitsByConstruction->get((int) $constructionId, collect()),
                 contracts: $contractsByConstruction->get((int) $constructionId, collect()),
+                futureDated: $futureDatedByConstruction->get((int) $constructionId, collect()),
                 salesInMonth: $salesInMonthByConstruction->get((int) $constructionId, collect()),
                 exchangesByUnit: $exchangesByUnit,
                 settlements: $settlements,
@@ -146,6 +160,7 @@ class SalesBoardDerivationService
      *
      * @param  Collection<int, ConstructionUnit>  $units
      * @param  Collection<int, Contract>  $contracts
+     * @param  Collection<int, Contract>  $futureDated
      * @param  Collection<int, Contract>  $salesInMonth
      * @param  Collection<int, Collection<int, ConstructionUnitExchange>>  $exchangesByUnit
      * @param  array<string, array<int, ContractSettlementSummary>>  $settlements
@@ -156,6 +171,7 @@ class SalesBoardDerivationService
         Construction $construction,
         Collection $units,
         Collection $contracts,
+        Collection $futureDated,
         Collection $salesInMonth,
         Collection $exchangesByUnit,
         array $settlements,
@@ -195,11 +211,15 @@ class SalesBoardDerivationService
             (int) $unit->getKey() => $exchangesByUnit->get((int) $unit->getKey(), collect()),
         ]);
 
+        /** @var Collection<int, SalesBoardDerivedLine> $linesByUnit */
+        $linesByUnit = collect($lines)->keyBy(fn (SalesBoardDerivedLine $line): int => $line->constructionUnitId);
+
         $movements = $this->deriveMovements(
             construction: $construction,
             contracts: $contracts,
             units: $units,
-            salesInMonth: $salesInMonth,
+            linesByUnit: $linesByUnit,
+            salesInMonth: $this->withoutExchangeContracts($salesInMonth, $linesByUnit, $exchanges),
             settlements: $settlements,
             month: $month,
             positionDate: $positionDate,
@@ -207,7 +227,14 @@ class SalesBoardDerivationService
             policies: $policies,
         );
 
-        $issues = [...$issues, ...$this->movementIssues($movements), ...$this->exchangeSourceIssues($contracts, $exchanges, $positionDate)];
+        $issues = [
+            ...$issues,
+            ...$this->movementIssues($movements),
+            ...$this->exchangeSourceIssues($contracts, $exchanges, $positionDate),
+            ...$this->constructionMismatchIssues($construction, $contracts, $linesByUnit, $month, $positionDate),
+            ...$this->settlementStatusIssues($contracts, $linesByUnit, $settlements, $positionDate),
+            ...$this->futureSaleIssues($futureDated),
+        ];
 
         return SalesBoardDerivedPosition::fromLines(
             constructionId: (int) $construction->getKey(),
@@ -299,17 +326,30 @@ class SalesBoardDerivationService
              * A permuta responde pela unidade, mas não pode contradizer quem
              * está com ela. Se um terceiro contrato ocupa a unidade, o conflito
              * é real e aparece -- escolher um dos dois esconderia o problema.
+             *
+             * A permuta sem contrato vinculado (a inicial costuma nascer assim)
+             * só convive com um ocupante que seja contrato de permuta. Uma venda
+             * comum ocupando a unidade é o mesmo conflito, e absorvê-la no
+             * "permutado" faria a venda sumir do financiado sem aviso.
              */
-            if (($contract !== null)
-                && ($exchange->contract_id !== null)
-                && ((int) $exchange->contract_id !== (int) $contract->getKey())) {
+            $conflict = match (true) {
+                $contract === null => null,
+                ($exchange->contract_id !== null) && ((int) $exchange->contract_id !== (int) $contract->getKey()) => sprintf(
+                    'A permuta vigente aponta para outro contrato (%s) e a unidade está ocupada pelo contrato %s.',
+                    (string) $exchange->contract_id,
+                    (string) $contract->code,
+                ),
+                ($exchange->contract_id === null) && ($contract->status !== ContractStatus::Exchanged) => sprintf(
+                    'A permuta vigente não tem contrato vinculado e a unidade está ocupada pelo contrato %s, que não está marcado como permutado.',
+                    (string) $contract->code,
+                ),
+                default => null,
+            };
+
+            if ($conflict !== null) {
                 $issues[] = new SalesBoardIssue(
                     code: SalesBoardIssueCode::ExchangeOccupancyConflict,
-                    message: sprintf(
-                        'A permuta vigente aponta para outro contrato (%s) e a unidade está ocupada pelo contrato %s.',
-                        (string) $exchange->contract_id,
-                        (string) $contract->code,
-                    ),
+                    message: $conflict,
                     constructionUnitId: $unitId,
                     contractId: (int) $contract->getKey(),
                     contractCode: $contract->code,
@@ -337,7 +377,7 @@ class SalesBoardDerivationService
                 $issues[] = new SalesBoardIssue(
                     code: SalesBoardIssueCode::UnitValueMissing,
                     message: sprintf(
-                        'A unidade está em estoque em %s e não tem valor de referência conhecido nessa data.',
+                        'A unidade está em estoque em %s e não tem valor de referência conhecido nessa data (ausente ou registrado como zero).',
                         $positionDate->format('d/m/Y'),
                     ),
                     constructionUnitId: $unitId,
@@ -475,24 +515,104 @@ class SalesBoardDerivationService
     }
 
     /**
-     * Contratos do empreendimento vendidos até a data da posição.
+     * Contratos dos empreendimentos vendidos até a data da posição, e à parte os
+     * que estão datados no futuro.
      *
      * Uma venda posterior à data não compõe a posição nem os movimentos do mês,
      * e um distrato posterior pertence a outra competência -- mas o contrato
      * dele precisa estar aqui, e está: o distrato é sempre posterior à venda.
      *
+     * A carga é pelo empreendimento que o contrato aponta **e** pelas unidades
+     * do empreendimento. `contracts.construction_id` é uma cópia do empreendimento
+     * da unidade, refeita só quando o próprio contrato é salvo; uma unidade
+     * trocada de empreendimento deixaria o contrato preso ao antigo, e carregar
+     * só pela cópia transformaria em silêncio a unidade vendida em estoque no
+     * novo e sumiria com o contrato no antigo. Com as duas chaves, o contrato
+     * chega aos dois lados e a divergência vira achado (ver
+     * {@see self::constructionMismatchIssues()}).
+     *
+     * A segunda parte são os contratos que seguram a unidade pelo status e têm
+     * a data da venda depois de hoje e da data da posição: nenhuma competência
+     * os conta como ocupantes ainda, e sem eles a unidade apareceria como
+     * estoque sem nenhum aviso. Vêm na mesma consulta -- são raros e não mudam
+     * o número de leituras.
+     *
      * @param  list<int>  $constructionIds
-     * @return Collection<int, Collection<int, Contract>>
+     * @param  Collection<int, ConstructionUnit>  $units
+     * @return array{0: Collection<int, Collection<int, Contract>>, 1: Collection<int, Collection<int, Contract>>}
      */
-    private function loadContracts(array $constructionIds, CarbonImmutable $positionDate): Collection
+    private function loadContracts(array $constructionIds, Collection $units, CarbonImmutable $positionDate): array
     {
-        return Contract::query()
-            ->whereIn('construction_id', $constructionIds)
-            ->where('sale_date', '<=', InclusiveDateBound::upperBound($positionDate))
+        $unitIds = $units->map(fn (ConstructionUnit $unit): int => (int) $unit->getKey())->values()->all();
+        $today = CarbonImmutable::parse(BusinessTime::dateString());
+        $futureBound = $today->greaterThan($positionDate) ? $today : $positionDate;
+
+        $contracts = Contract::query()
+            ->where(function (Builder $query) use ($constructionIds, $unitIds): void {
+                $query->whereIn('construction_id', $constructionIds)
+                    ->orWhereIn('construction_unit_id', $unitIds);
+            })
+            ->where(function (Builder $query) use ($positionDate, $futureBound): void {
+                $query->where('sale_date', '<=', InclusiveDateBound::upperBound($positionDate))
+                    ->orWhere(function (Builder $query) use ($futureBound): void {
+                        $query->where('sale_date', '>', InclusiveDateBound::upperBound($futureBound))
+                            ->whereIn('status', ContractStatus::occupyingValues());
+                    });
+            })
             ->orderBy('sale_date')
             ->orderBy('id')
-            ->get()
-            ->groupBy(fn (Contract $contract): int => (int) $contract->construction_id);
+            ->get();
+
+        $constructionOfUnit = $units
+            ->mapWithKeys(fn (ConstructionUnit $unit): array => [(int) $unit->getKey() => (int) $unit->construction_id])
+            ->all();
+
+        [$sold, $futureDated] = $contracts->partition(
+            fn (Contract $contract): bool => ($contract->sale_date !== null)
+                && ($contract->sale_date->toDateString() <= $positionDate->toDateString()),
+        );
+
+        return [
+            $this->groupByConstruction($sold, $constructionIds, $constructionOfUnit),
+            $this->groupByConstruction($futureDated, $constructionIds, $constructionOfUnit),
+        ];
+    }
+
+    /**
+     * Um contrato pertence ao empreendimento que ele aponta e ao da unidade
+     * dele. No caso normal os dois coincidem e ele cai num grupo só; quando
+     * divergem, aparece nos dois.
+     *
+     * @param  Collection<int, Contract>  $contracts
+     * @param  list<int>  $constructionIds
+     * @param  array<int, int>  $constructionOfUnit
+     * @return Collection<int, Collection<int, Contract>>
+     */
+    private function groupByConstruction(Collection $contracts, array $constructionIds, array $constructionOfUnit): Collection
+    {
+        $requested = array_flip($constructionIds);
+        $groups = [];
+
+        foreach ($contracts as $contract) {
+            $owners = [];
+            $pointedConstructionId = (int) $contract->construction_id;
+
+            if (isset($requested[$pointedConstructionId])) {
+                $owners[$pointedConstructionId] = true;
+            }
+
+            $unitConstructionId = $constructionOfUnit[(int) $contract->construction_unit_id] ?? null;
+
+            if ($unitConstructionId !== null) {
+                $owners[$unitConstructionId] = true;
+            }
+
+            foreach (array_keys($owners) as $owner) {
+                $groups[$owner][] = $contract;
+            }
+        }
+
+        return collect($groups)->map(fn (array $group): Collection => collect($group));
     }
 
     /**
@@ -550,6 +670,46 @@ class SalesBoardDerivationService
     }
 
     /**
+     * As vendas da competência sem os contratos de permuta.
+     *
+     * Unidade permutada não é venda (ver {@see self::deriveLine()}), e o
+     * contrato que formaliza a permuta também não: avaliá-lo contra a política
+     * comercial produziria não conformidade -- ou bloqueio por falta de
+     * política -- de algo que nunca teve preço de tabela. O contrato de permuta
+     * é reconhecido de dois jeitos: uma permuta vigente na data da venda aponta
+     * para ele, ou ele está marcado como permutado e é o contrato da linha
+     * classificada como permutada no fechamento.
+     *
+     * @param  Collection<int, Contract>  $salesInMonth
+     * @param  Collection<int, SalesBoardDerivedLine>  $linesByUnit
+     * @param  Collection<int, Collection<int, ConstructionUnitExchange>>  $exchanges
+     * @return Collection<int, Contract>
+     */
+    private function withoutExchangeContracts(Collection $salesInMonth, Collection $linesByUnit, Collection $exchanges): Collection
+    {
+        return $salesInMonth->reject(function (Contract $contract) use ($linesByUnit, $exchanges): bool {
+            $contractId = (int) $contract->getKey();
+            $unitId = (int) $contract->construction_unit_id;
+
+            $namedByExchange = $exchanges->get($unitId, collect())->contains(
+                fn (ConstructionUnitExchange $exchange): bool => ($exchange->contract_id !== null)
+                    && ((int) $exchange->contract_id === $contractId)
+                    && $exchange->isEffectiveOn($contract->sale_date),
+            );
+
+            if ($namedByExchange) {
+                return true;
+            }
+
+            $line = $linesByUnit->get($unitId);
+
+            return ($contract->status === ContractStatus::Exchanged)
+                && ($line?->classification === SalesBoardUnitClassification::Exchanged)
+                && ($line->contractId === $contractId);
+        })->values();
+    }
+
+    /**
      * Valores de referência de que a derivação precisa, num carregamento só.
      *
      * Duas perguntas diferentes caem aqui: quanto cada unidade vale na data da
@@ -585,7 +745,18 @@ class SalesBoardDerivationService
             ];
         }
 
-        return $this->unitValueResolver->forUnitDates($units, $requests);
+        /**
+         * Valor zerado não é valor conhecido: na prática é o marcador de "sem
+         * preço" de uma planilha. Tratado como valor, somaria zero ao estoque
+         * e daria piso zero a toda venda -- conformidade e estoque inventados.
+         * Aqui ele vira a ausência que é, e cai nos mesmos achados.
+         */
+        return array_map(
+            static fn (ResolvedUnitValue $value): ResolvedUnitValue => ($value->valueCents === 0)
+                ? ResolvedUnitValue::absent($value->constructionUnitId, $value->positionDate)
+                : $value,
+            $this->unitValueResolver->forUnitDates($units, $requests),
+        );
     }
 
     /**
@@ -621,6 +792,7 @@ class SalesBoardDerivationService
     /**
      * @param  Collection<int, Contract>  $contracts
      * @param  Collection<int, ConstructionUnit>  $units
+     * @param  Collection<int, SalesBoardDerivedLine>  $linesByUnit
      * @param  Collection<int, Contract>  $salesInMonth
      * @param  array<string, array<int, ContractSettlementSummary>>  $settlements
      * @param  array<string, ResolvedUnitValue>  $unitValues
@@ -630,6 +802,7 @@ class SalesBoardDerivationService
         Construction $construction,
         Collection $contracts,
         Collection $units,
+        Collection $linesByUnit,
         Collection $salesInMonth,
         array $settlements,
         CarbonImmutable $month,
@@ -701,8 +874,24 @@ class SalesBoardDerivationService
         $settlementsAtClose = $settlements[$positionDate->toDateString()] ?? [];
         $settlementsBefore = $settlements[$month->subDay()->toDateString()] ?? [];
 
+        /**
+         * Quitação é de quem continua com a unidade no fechamento. O distrato
+         * costuma cancelar as parcelas em aberto, e o que sobra -- só as pagas
+         * -- o resolvedor lê como quitado; sem a ocupação, a competência
+         * congelaria ao mesmo tempo o distrato e uma quitação que não houve. O
+         * contrato de uma linha permutada também fica de fora: permuta não é
+         * venda, e a quitação dela não é quitação de venda.
+         */
         $settlementMovements = $contracts
-            ->filter(function (Contract $contract) use ($settlementsAtClose, $settlementsBefore): bool {
+            ->filter(function (Contract $contract) use ($settlementsAtClose, $settlementsBefore, $linesByUnit, $positionDate): bool {
+                if (! ContractOccupancy::occupiesAt($contract, $positionDate)) {
+                    return false;
+                }
+
+                if ($linesByUnit->get((int) $contract->construction_unit_id)?->classification === SalesBoardUnitClassification::Exchanged) {
+                    return false;
+                }
+
                 $contractId = (int) $contract->getKey();
                 $closed = $settlementsAtClose[$contractId] ?? null;
                 $before = $settlementsBefore[$contractId] ?? null;
@@ -840,5 +1029,181 @@ class SalesBoardDerivationService
         }
 
         return $issues;
+    }
+
+    /**
+     * Contrato que aponta para um empreendimento e cuja unidade está em outro.
+     *
+     * A linha da unidade já denuncia o ocupante divergente (ver
+     * {@see self::deriveLine()}). O que sobra aparece aqui: do lado do
+     * empreendimento para o qual o contrato aponta, a unidade não existe e o
+     * contrato sumiria das linhas sem aviso; do lado da unidade, um contrato que
+     * não a ocupa no fechamento mas vendeu ou distratou dentro do mês mexeria
+     * nos movimentos sem ninguém ver. Só entra o contrato que pesa nesta
+     * competência: ocupante na data da posição, ou com venda ou distrato no mês.
+     *
+     * @param  Collection<int, Contract>  $contracts
+     * @param  Collection<int, SalesBoardDerivedLine>  $linesByUnit
+     * @return list<SalesBoardIssue>
+     */
+    private function constructionMismatchIssues(
+        Construction $construction,
+        Collection $contracts,
+        Collection $linesByUnit,
+        CarbonImmutable $month,
+        CarbonImmutable $positionDate,
+    ): array {
+        $constructionId = (int) $construction->getKey();
+        $issues = [];
+
+        foreach ($contracts as $contract) {
+            $contractId = (int) $contract->getKey();
+            $unitId = (int) $contract->construction_unit_id;
+            $line = $linesByUnit->get($unitId);
+
+            $pointsHere = (int) $contract->construction_id === $constructionId;
+            $unitIsHere = $line !== null;
+
+            if ($pointsHere === $unitIsHere) {
+                continue;
+            }
+
+            if ($line?->contractId === $contractId) {
+                continue;
+            }
+
+            if (! $this->weighsOnCompetence($contract, $month, $positionDate)) {
+                continue;
+            }
+
+            $issues[] = new SalesBoardIssue(
+                code: SalesBoardIssueCode::UnitConstructionMismatch,
+                message: $pointsHere
+                    ? sprintf('O contrato %s aponta para este empreendimento, mas a unidade dele está cadastrada em outro.', (string) $contract->code)
+                    : sprintf('O contrato %s é de uma unidade deste empreendimento, mas aponta para outro empreendimento.', (string) $contract->code),
+                constructionUnitId: $unitId,
+                contractId: $contractId,
+                contractCode: $contract->code,
+            );
+        }
+
+        return $issues;
+    }
+
+    private function weighsOnCompetence(Contract $contract, CarbonImmutable $month, CarbonImmutable $positionDate): bool
+    {
+        if (ContractOccupancy::occupiesAt($contract, $positionDate)) {
+            return true;
+        }
+
+        $within = static fn (?string $date): bool => ($date !== null)
+            && ($date >= $month->toDateString())
+            && ($date <= $positionDate->toDateString());
+
+        return $within($contract->sale_date?->toDateString())
+            || $within($contract->cancellation_date?->toDateString());
+    }
+
+    /**
+     * Status do contrato que contradiz a quitação apurada pelo cronograma.
+     *
+     * Aviso, nunca bloqueio, e nunca muda a classificação: o Quadro segue as
+     * parcelas. Mas "quitado" na fonte com o contrato financiado no Quadro é o
+     * rastro de uma quitação antecipada com desconto (pago abaixo do previsto)
+     * ou de uma renegociação cujas parcelas antigas nunca foram canceladas, e
+     * sem o aviso o contrato migraria de balde em silêncio.
+     *
+     * Os dois sentidos, com a assimetria que o status impõe:
+     *
+     * - marcado como quitado, financiado no fechamento, e nenhum pagamento
+     *   registrado depois completa a quitação. Um contrato quitado em agosto
+     *   continua financiado em julho sem nada de errado -- por isso a pergunta
+     *   vai também ao cronograma inteiro;
+     * - marcado como ativo e quitado no fechamento. Quitação apurada numa data
+     *   não se desfaz depois, então o status está atrasado.
+     *
+     * @param  Collection<int, Contract>  $contracts
+     * @param  Collection<int, SalesBoardDerivedLine>  $linesByUnit
+     * @param  array<string, array<int, ContractSettlementSummary>>  $settlements
+     * @return list<SalesBoardIssue>
+     */
+    private function settlementStatusIssues(Collection $contracts, Collection $linesByUnit, array $settlements, CarbonImmutable $positionDate): array
+    {
+        $contractsById = $contracts->keyBy(fn (Contract $contract): int => (int) $contract->getKey());
+        $horizon = $settlements[self::SCHEDULE_HORIZON] ?? [];
+        $issues = [];
+
+        foreach ($linesByUnit as $line) {
+            $contract = $line->contractId === null ? null : $contractsById->get($line->contractId);
+
+            if ($contract === null) {
+                continue;
+            }
+
+            $message = match (true) {
+                ($line->classification === SalesBoardUnitClassification::Financed)
+                    && ($contract->status === ContractStatus::Settled)
+                    && ! (($horizon[$line->contractId] ?? null)?->isSettled() ?? false) => sprintf(
+                        'O contrato %s está marcado como quitado, mas o cronograma de parcelas não o quita em %s (%d de %d parcelas válidas pagas) nem com os pagamentos registrados depois.',
+                        (string) $contract->code,
+                        $positionDate->format('d/m/Y'),
+                        (int) $line->settlementInstallmentsPaid,
+                        (int) $line->settlementInstallmentsTotal,
+                    ),
+                ($line->classification === SalesBoardUnitClassification::Settled)
+                    && ($contract->status === ContractStatus::Active) => sprintf(
+                        'O contrato %s está marcado como ativo, mas o cronograma de parcelas o dá como quitado em %s (%d de %d parcelas pagas).',
+                        (string) $contract->code,
+                        $positionDate->format('d/m/Y'),
+                        (int) $line->settlementInstallmentsPaid,
+                        (int) $line->settlementInstallmentsTotal,
+                    ),
+                default => null,
+            };
+
+            if ($message === null) {
+                continue;
+            }
+
+            $issues[] = new SalesBoardIssue(
+                code: SalesBoardIssueCode::SettlementStatusDivergence,
+                message: $message,
+                constructionUnitId: $line->constructionUnitId,
+                contractId: (int) $contract->getKey(),
+                contractCode: $contract->code,
+            );
+        }
+
+        return $issues;
+    }
+
+    /**
+     * Contrato que segura a unidade pelo status com a data da venda no futuro.
+     *
+     * Nenhuma competência o conta como ocupante até a data chegar, então a
+     * unidade aparece como estoque enquanto o status diz que ela tem dono -- o
+     * rastro típico de um ano digitado errado na carga. Aviso, porque o número
+     * do Quadro é coerente com o dado gravado; o que está errado é o dado.
+     *
+     * @param  Collection<int, Contract>  $futureDated
+     * @return list<SalesBoardIssue>
+     */
+    private function futureSaleIssues(Collection $futureDated): array
+    {
+        return $futureDated
+            ->map(fn (Contract $contract): SalesBoardIssue => new SalesBoardIssue(
+                code: SalesBoardIssueCode::FutureSaleDate,
+                message: sprintf(
+                    'O contrato %s está como %s, mas a data da venda (%s) é futura: até lá o Quadro não o conta como ocupante da unidade.',
+                    (string) $contract->code,
+                    mb_strtolower($contract->status->label()),
+                    $contract->sale_date->format('d/m/Y'),
+                ),
+                constructionUnitId: (int) $contract->construction_unit_id,
+                contractId: (int) $contract->getKey(),
+                contractCode: $contract->code,
+            ))
+            ->values()
+            ->all();
     }
 }

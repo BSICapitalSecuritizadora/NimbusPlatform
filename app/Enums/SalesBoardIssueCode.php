@@ -39,10 +39,22 @@ enum SalesBoardIssueCode: string
 
     case SaleNonConform = 'SALE_NON_CONFORM';
 
+    case SettlementStatusDivergence = 'SETTLEMENT_STATUS_DIVERGENCE';
+
+    case FutureSaleDate = 'FUTURE_SALE_DATE';
+
+    /**
+     * Os avisos são fatos apurados sobre dados que existem: a venda fora da
+     * política, o status do contrato que contradiz o cronograma, a venda datada
+     * no futuro. Nenhum deles impede a apuração -- o Quadro segue a fonte
+     * temporal --, mas todos precisam chegar a quem revisa.
+     */
     public function severity(): SalesBoardIssueSeverity
     {
         return match ($this) {
-            self::SaleNonConform => SalesBoardIssueSeverity::Warning,
+            self::SaleNonConform,
+            self::SettlementStatusDivergence,
+            self::FutureSaleDate => SalesBoardIssueSeverity::Warning,
             default => SalesBoardIssueSeverity::Blocker,
         };
     }
@@ -61,6 +73,8 @@ enum SalesBoardIssueCode: string
             self::SaleDiscountPolicyMissing => 'Venda da competência sem política de desconto vigente',
             self::UnitConstructionMismatch => 'Contrato vinculado a empreendimento diferente do da unidade',
             self::SaleNonConform => 'Venda fora da política comercial vigente',
+            self::SettlementStatusDivergence => 'Status do contrato diverge da quitação apurada pelo cronograma',
+            self::FutureSaleDate => 'Contrato ativo com data de venda futura',
         };
     }
 }

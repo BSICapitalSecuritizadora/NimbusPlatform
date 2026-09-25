@@ -3,8 +3,11 @@
 use App\Enums\ContractStatus;
 use App\Enums\SalesBoardIssueCode;
 use App\Enums\SalesBoardUnitClassification;
+use App\Models\Construction;
+use App\Models\ConstructionUnit;
 use App\Models\ConstructionUnitExchange;
 use App\Models\Contract;
+use App\Services\SalesBoards\SalesBoardDerivationService;
 use App\Support\Contracts\ContractOccupancy;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -190,4 +193,123 @@ it('flags a contract marked exchanged with no registered exchange, without class
     expect(DerivationFixture::lineFor($position, $unit)->classification)->toBe(SalesBoardUnitClassification::Financed)
         ->and($position->exchangedUnits)->toBe(0)
         ->and(collect($position->issues)->pluck('code'))->toContain(SalesBoardIssueCode::ExchangeSourceMissing);
+});
+
+it('flags an exchange without a contract when an ordinary sale occupies the unit', function (ContractStatus $status) {
+    $construction = DerivationFixture::construction();
+    $unit = DerivationFixture::unit($construction, '101');
+
+    ConstructionUnitExchange::factory()->forUnit($unit)->effectiveFrom('2026-01-01')->worth('450000.00')->create();
+
+    $sale = DerivationFixture::contract($unit, '2026-03-01', '600000.00', status: $status);
+    DerivationFixture::installment($sale, '001', '2026-04-01', '600000.00');
+
+    $position = DerivationFixture::derive($construction);
+    $line = DerivationFixture::lineFor($position, $unit);
+
+    expect($line->classification)->toBe(SalesBoardUnitClassification::Undetermined)
+        ->and($line->contractId)->toBe($sale->id)
+        ->and($position->exchangedUnits)->toBe(0)
+        ->and($position->exchangedValueCents)->toBe(0)
+        ->and(collect($position->issues)->pluck('code'))->toContain(SalesBoardIssueCode::ExchangeOccupancyConflict)
+        ->and($position->hasBlockingIssue())->toBeTrue()
+        ->and($position->isComplete())->toBeFalse();
+})->with([
+    'active sale' => [ContractStatus::Active],
+    'settled sale' => [ContractStatus::Settled],
+]);
+
+it('keeps an exchange without a contract as exchanged when its occupant is the exchange contract', function () {
+    $construction = DerivationFixture::construction();
+    $unit = DerivationFixture::unit($construction, '101');
+
+    ConstructionUnitExchange::factory()->forUnit($unit)->effectiveFrom('2026-01-01')->worth('450000.00')->create();
+    DerivationFixture::contract($unit, '2026-01-01', '450000.00', status: ContractStatus::Exchanged);
+
+    $position = DerivationFixture::derive($construction);
+
+    expect(DerivationFixture::lineFor($position, $unit)->classification)->toBe(SalesBoardUnitClassification::Exchanged)
+        ->and($position->exchangedValueCents)->toBe(45_000_000)
+        ->and($position->hasBlockingIssue())->toBeFalse();
+});
+
+/**
+ * A unidade vendida em A passa para B por uma escrita que não salva o
+ * contrato: `contracts.construction_id` continua apontando para A.
+ *
+ * @return array{0: Construction, 1: Construction, 2: ConstructionUnit, 3: Contract}
+ */
+function movedSoldUnit(string $saleDate = '2026-03-10'): array
+{
+    $first = DerivationFixture::construction();
+    $second = Construction::factory()->create(['emission_id' => $first->emission_id]);
+
+    $moved = DerivationFixture::unit($first, '101');
+    DerivationFixture::unit($first, '102');
+    DerivationFixture::unit($second, '201');
+
+    $contract = DerivationFixture::contract($moved, $saleDate, '600000.00');
+    DerivationFixture::installment($contract, '001', '2026-12-10', '600000.00');
+
+    ConstructionUnit::query()->whereKey($moved->id)->update(['construction_id' => $second->id]);
+
+    return [$first, $second, $moved->fresh(), $contract->fresh()];
+}
+
+it('refuses to turn a sold unit moved to another development into stock', function () {
+    [$first, $second, $moved, $contract] = movedSoldUnit();
+
+    expect((int) $contract->construction_id)->toBe($first->id);
+
+    $target = DerivationFixture::derive($second);
+    $line = DerivationFixture::lineFor($target, $moved);
+
+    expect($line->classification)->toBe(SalesBoardUnitClassification::Undetermined)
+        ->and($line->contractId)->toBe($contract->id)
+        ->and($target->stockUnits)->toBe(1)
+        ->and(collect($target->issues)->pluck('code'))->toContain(SalesBoardIssueCode::UnitConstructionMismatch)
+        ->and($target->isComplete())->toBeFalse();
+});
+
+it('does not let the development the contract points to lose it in silence', function () {
+    [$first, , , $contract] = movedSoldUnit();
+
+    $source = DerivationFixture::derive($first);
+    $mismatch = collect($source->issues)->firstWhere('code', SalesBoardIssueCode::UnitConstructionMismatch);
+
+    expect($source->financedUnits)->toBe(0)
+        ->and($mismatch)->not->toBeNull()
+        ->and($mismatch->contractId)->toBe($contract->id)
+        ->and($source->hasBlockingIssue())->toBeTrue()
+        ->and($source->isComplete())->toBeFalse();
+});
+
+it('flags the moved unit on both sides when the emission is derived in one batch', function () {
+    [$first, $second] = movedSoldUnit('2026-07-10');
+
+    $positions = app(SalesBoardDerivationService::class)
+        ->deriveForConstructions([$first, $second], CarbonImmutable::parse('2026-07-01'));
+
+    expect(collect($positions[$first->id]->issues)->pluck('code'))->toContain(SalesBoardIssueCode::UnitConstructionMismatch)
+        ->and(collect($positions[$second->id]->issues)->pluck('code'))->toContain(SalesBoardIssueCode::UnitConstructionMismatch)
+        ->and($positions[$first->id]->isComplete())->toBeFalse()
+        ->and($positions[$second->id]->isComplete())->toBeFalse();
+});
+
+it('does not flag an old distrato of a moved unit that weighs on no movement of the month', function () {
+    $first = DerivationFixture::construction();
+    $second = Construction::factory()->create(['emission_id' => $first->emission_id]);
+    $moved = DerivationFixture::unit($first, '101');
+
+    $old = DerivationFixture::contract($moved, '2025-03-10', '600000.00', cancellationDate: '2025-06-20', status: ContractStatus::Cancelled);
+    DerivationFixture::installment($old, '001', '2025-04-10', '600000.00');
+
+    ConstructionUnit::query()->whereKey($moved->id)->update(['construction_id' => $second->id]);
+
+    $source = DerivationFixture::derive($first);
+    $target = DerivationFixture::derive($second);
+
+    expect(collect($source->issues)->pluck('code'))->not->toContain(SalesBoardIssueCode::UnitConstructionMismatch)
+        ->and(collect($target->issues)->pluck('code'))->not->toContain(SalesBoardIssueCode::UnitConstructionMismatch)
+        ->and(DerivationFixture::lineFor($target, $moved)->classification)->toBe(SalesBoardUnitClassification::Stock);
 });
