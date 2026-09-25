@@ -100,11 +100,34 @@ class SalesBoardRolloutHomologationService
         });
     }
 
+    /**
+     * Refaz o retrato de um rascunho.
+     *
+     * A editabilidade é conferida sob lock, e não na instância da tela: entre o
+     * clique em "Reavaliar" e a gravação, outra pessoa pode ter aprovado a
+     * homologação, e reavaliar depois disso reescreveria as linhas e o hash de
+     * um retrato já aprovado. Os locks seguem a ordem da aprovação -- Emissão e
+     * depois homologação --, e as linhas e o hash são gravados na mesma
+     * transação, para uma reavaliação e uma aprovação simultâneas se
+     * serializarem em vez de se intercalarem.
+     */
     public function reassess(SalesBoardRolloutHomologation $homologation): SalesBoardRolloutHomologation
     {
-        $this->assertEditable($homologation);
+        return DB::transaction(function () use ($homologation): SalesBoardRolloutHomologation {
+            Emission::query()
+                ->whereKey($homologation->emission_id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        return $this->assessment->assess($homologation->fresh());
+            $locked = SalesBoardRolloutHomologation::query()
+                ->whereKey($homologation->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->assertEditable($locked);
+
+            return $this->assessment->assess($locked);
+        });
     }
 
     /**
@@ -129,13 +152,27 @@ class SalesBoardRolloutHomologationService
         }
 
         return DB::transaction(function () use ($row, $reason, $actor): SalesBoardRolloutHomologationConstruction {
+            /**
+             * A homologação é travada antes da linha, na ordem da aprovação e
+             * da reavaliação: travar a linha primeiro deixaria a leitura do
+             * status enxergar o rascunho que uma aprovação em andamento está
+             * encerrando, e o aceite cairia numa homologação já aprovada.
+             */
+            $homologation = SalesBoardRolloutHomologation::query()
+                ->whereKey(
+                    SalesBoardRolloutHomologationConstruction::query()
+                        ->whereKey($row->getKey())
+                        ->value('sales_board_rollout_homologation_id')
+                )
+                ->lockForUpdate()
+                ->firstOrFail();
+
             $row = SalesBoardRolloutHomologationConstruction::query()
                 ->whereKey($row->getKey())
                 ->lockForUpdate()
-                ->with('homologation')
                 ->firstOrFail();
 
-            $this->assertEditable($row->homologation);
+            $this->assertEditable($homologation);
 
             $row->forceFill([
                 'accepted_difference' => true,

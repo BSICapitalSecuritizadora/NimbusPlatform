@@ -4,10 +4,12 @@ namespace App\Models;
 
 use App\Concerns\MoneyFormatter;
 use App\Observers\SalesBoardObserver;
+use App\Services\SalesBoards\SalesBoardWriteGuard;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Database\Factories\SalesBoardFactory;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -61,6 +63,24 @@ class SalesBoard extends Model
             $salesBoard->reference_month = self::normalizeReferenceMonth($salesBoard->reference_month);
             $salesBoard->total_units = $salesBoard->calculateTotalUnits();
         });
+    }
+
+    /**
+     * Grava o quadro, a versão do histórico e o log de atividade numa transação
+     * só.
+     *
+     * Não é só atomicidade. O {@see SalesBoardWriteGuard}, chamado pelo observer
+     * antes do INSERT/UPDATE, trava a Emissão em modo compartilhado quando há
+     * transação aberta -- e o lock só protege alguma coisa se durar até a
+     * gravação commitar. Sem esta transação a tela, que não usa as transações do
+     * painel, soltaria o lock no fim da própria leitura, e uma ativação da
+     * automação poderia começar entre a conferência do guard e o INSERT.
+     *
+     * @param  array<string, mixed>  $options
+     */
+    public function save(array $options = []): bool
+    {
+        return $this->getConnection()->transaction(fn (): bool => parent::save($options));
     }
 
     protected function casts(): array
@@ -126,6 +146,29 @@ class SalesBoard extends Model
     public function hasInitialPosition(): bool
     {
         return $this->initialPosition()->exists();
+    }
+
+    /**
+     * A posição inicial do empreendimento nesta operação, seja qual for o
+     * quadro.
+     *
+     * A consolidação marca a versão vigente de cada quadro que existe quando a
+     * emissão deixa "Em Elaboração", então uma competência só da elaboração
+     * também recebe a marca e o empreendimento pode ter mais de uma versão
+     * marcada. O início da operação é a mais recente delas -- a posição em
+     * vigor na consolidação --, e a tela do quadro e o histórico logo abaixo
+     * precisam apontar para a mesma versão.
+     */
+    public function constructionInitialPosition(): ?SalesBoardHistory
+    {
+        return SalesBoardHistory::query()
+            ->initial()
+            ->whereHas('salesBoard', fn (Builder $query): Builder => $query
+                ->where('emission_id', $this->emission_id)
+                ->where('construction_id', $this->construction_id))
+            ->orderByDesc('reference_month')
+            ->orderByDesc('id')
+            ->first();
     }
 
     /**

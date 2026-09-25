@@ -118,6 +118,18 @@ class SalesBoardWriteGuard
      * Emissão errada seria lido como a posição de um empreendimento
      * automatizado, e olhar só a Emissão do quadro deixaria essa escrita passar.
      *
+     * Dentro de transação -- e o {@see SalesBoard} grava sempre dentro de uma --
+     * a leitura trava as Emissões em modo compartilhado até o commit. É o que
+     * serializa o registro manual com a ativação da automação, que trava a
+     * Emissão com `FOR UPDATE`, confere o conflito com o legado e só depois
+     * refaz a derivação inteira. Uma leitura simples não esperaria esse lock:
+     * enxergaria o modo "legado" ainda não commitado e deixaria o quadro manual
+     * da competência inicial nascer no meio da ativação. Com o lock, ou o quadro
+     * commita antes e a ativação o encontra como conflito, ou o guard espera a
+     * ativação terminar e lê o modo já automatizado. A ordem é a do id, a mesma
+     * em qualquer escrita, para duas gravações nunca travarem as mesmas
+     * Emissões em ordem inversa.
+     *
      * @return Collection<int, Emission>
      */
     private function emissionsClaiming(SalesBoard $salesBoard): Collection
@@ -133,8 +145,16 @@ class SalesBoardWriteGuard
             ->values()
             ->all();
 
-        return $emissionIds === []
-            ? collect()
-            : Emission::query()->whereKey($emissionIds)->orderBy('id')->get();
+        if ($emissionIds === []) {
+            return collect();
+        }
+
+        $query = Emission::query()->whereKey($emissionIds)->orderBy('id');
+
+        if ($query->getConnection()->transactionLevel() > 0) {
+            $query->sharedLock();
+        }
+
+        return $query->get();
     }
 }
