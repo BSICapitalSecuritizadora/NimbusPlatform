@@ -33,6 +33,15 @@ enum SalesBoardRolloutRecipientRole: string
      * O mapa vive aqui, num lugar só. Espalhá-lo pelo motor de lembretes
      * garantiria que, na primeira adição de tipo, algum alerta fosse para o
      * papel errado sem que nada denunciasse.
+     *
+     * Escalação vai para a Gestão, e não para quem já recebe o lembrete: um
+     * "aviso mais forte" para a mesma pessoa não escala para ninguém. O
+     * operacional continua recebendo o lembrete da validação enquanto ela estiver
+     * parada; a escalação é o que leva o atraso a quem decide.
+     *
+     * A suspensão por mudança de escopo também é da Gestão -- retomar exige nova
+     * homologação, que é decisão dela. A execução interrompida é falha técnica
+     * do motor e vai para quem acompanha a apuração.
      */
     public static function forAlert(SalesBoardAutomationAlertType $alert): self
     {
@@ -41,10 +50,12 @@ enum SalesBoardRolloutRecipientRole: string
             SalesBoardAutomationAlertType::GenerationFailed,
             SalesBoardAutomationAlertType::ReadyForBuilder,
             SalesBoardAutomationAlertType::BuilderReminder,
-            SalesBoardAutomationAlertType::BuilderEscalation => self::Operational,
+            SalesBoardAutomationAlertType::RunInterrupted => self::Operational,
 
+            SalesBoardAutomationAlertType::BuilderEscalation,
             SalesBoardAutomationAlertType::ManagementReminder,
-            SalesBoardAutomationAlertType::ManagementEscalation => self::Management,
+            SalesBoardAutomationAlertType::ManagementEscalation,
+            SalesBoardAutomationAlertType::ScopeSuspended => self::Management,
         };
     }
 
@@ -59,8 +70,8 @@ enum SalesBoardRolloutRecipientRole: string
     public function description(): string
     {
         return match ($this) {
-            self::Operational => 'Recebe avisos de geração bloqueada, falha técnica e da validação pendente com a construtora.',
-            self::Management => 'Recebe avisos de competência aguardando análise e decisão da Gestão.',
+            self::Operational => 'Recebe avisos de geração bloqueada, falha técnica, execução interrompida e da validação pendente com a construtora.',
+            self::Management => 'Recebe avisos de competência aguardando análise e decisão da Gestão, as escalações de atraso e a suspensão da automação por mudança de escopo.',
         };
     }
 }

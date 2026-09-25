@@ -18,6 +18,7 @@ class SalesBoardAutomationAlertFactory extends Factory
         return [
             'alert_type' => SalesBoardAutomationAlertType::GenerationBlocked,
             'dedupe_key' => hash('sha256', (string) fake()->unique()->numberBetween(1, 1_000_000)),
+            'channel' => 'mail',
             'sent_at' => now(),
         ];
     }

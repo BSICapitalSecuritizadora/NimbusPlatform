@@ -8,6 +8,7 @@ use App\Services\SalesBoards\DatabaseSalesBoardAutomationRecipientResolver;
 use App\Services\SalesBoards\SalesBoardAutomationAlertDispatcher;
 use App\Services\SalesBoards\SalesBoardAutomationEligibilityProvider;
 use App\Services\SalesBoards\SalesBoardAutomationRecipientResolver;
+use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use App\Support\SalesBoards\SalesBoardWriteContext;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Config;
@@ -22,20 +23,17 @@ use Illuminate\Support\ServiceProvider;
  * conflito num arquivo que ninguém quer resolver às pressas. A segunda é de
  * coesão -- os dois bindings que decidem *quem* é automatizado e *quem* é
  * avisado moram aqui, ao lado do agendamento que os usa, e é este o arquivo que
- * a Fase G vai abrir para trocar a implementação.
+ * se abre para entender de onde vem a elegibilidade.
  *
- * Os dois bindings são o ponto de extensão inteiro da fase:
+ * Os dois bindings são o ponto de extensão inteiro da automação:
  *
  * - o **provider de elegibilidade** lê o rollout por Emissão: modo, competência
  *   inicial e escopo homologado;
  * - o **resolvedor de destinatários** lê os responsáveis configurados por
  *   Emissão e papel.
  *
- * Os dois nasceram na Fase F apontando para implementações temporárias --
- * configuração e lista vazia -- e a Fase G trocou exatamente estas duas linhas.
- * O orquestrador, a regra do dia 13, o catch-up, os retries, os alertas e a
- * observabilidade continuam como estavam: era esse o objetivo de a costura ser
- * uma interface.
+ * Não há implementação alternativa em produção. A antiga habilitação por
+ * variável de ambiente da Fase F saiu de `app/` e vive só nos testes do motor.
  */
 class SalesBoardAutomationServiceProvider extends ServiceProvider
 {
@@ -93,11 +91,19 @@ class SalesBoardAutomationServiceProvider extends ServiceProvider
      * e cada alvo só tenta quando `next_attempt_at` permite.
      *
      * `onOneServer()` e `withoutOverlapping()` são economia, não correção. Eles
-     * dependem do cache compartilhado; se o Redis cair ou duas instâncias
-     * atravessarem mesmo assim, quem impede a duplicação são as uniques de
+     * dependem do store de cache compartilhado (`CACHE_STORE`); se ele falhar ou
+     * duas instâncias atravessarem mesmo assim, quem impede a duplicação são a
+     * reserva da tentativa sob lock e as uniques de
      * `sales_board_automation_targets` e `sales_board_cycles`, e é isso que os
      * testes de concorrência exercitam -- chamando o serviço direto, sem lock de
      * scheduler nenhum.
+     *
+     * O lock de sobreposição expira em duas horas, e não nas 24 do padrão do
+     * Laravel. Ele sobrevive a um processo morto -- mora no store de cache, não
+     * no processo --, e um deploy ou reinício no meio de uma execução deixava a
+     * automação pulando todos os ticks até o dia seguinte. Duas horas cobrem com
+     * folga a execução mais longa esperada; o `startup.sh` ainda limpa os locks
+     * do scheduler antes de subir os laços.
      */
     private function scheduleAutomation(Schedule $schedule): void
     {
@@ -106,6 +112,6 @@ class SalesBoardAutomationServiceProvider extends ServiceProvider
             ->name('sales-board-automation-run')
             ->timezone(Config::get('measurements.business_timezone', 'America/Sao_Paulo'))
             ->onOneServer()
-            ->withoutOverlapping();
+            ->withoutOverlapping(SalesBoardAutomationConfig::OVERLAP_LOCK_MINUTES);
     }
 }

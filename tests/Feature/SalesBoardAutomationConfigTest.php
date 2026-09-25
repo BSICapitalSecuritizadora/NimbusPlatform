@@ -1,6 +1,7 @@
 <?php
 
 use App\Support\SalesBoards\SalesBoardAutomationConfig;
+use Tests\Support\SalesBoards\AutomationConfigFixture;
 
 /**
  * O interruptor da automação é mecanismo de segurança, não preferência.
@@ -18,50 +19,7 @@ use App\Support\SalesBoards\SalesBoardAutomationConfig;
  */
 function withSalesBoardAutomationEnv(array $values, Closure $callback): mixed
 {
-    $previous = [];
-
-    foreach ($values as $key => $value) {
-        $putenv = getenv($key);
-
-        $previous[$key] = [
-            'env' => array_key_exists($key, $_ENV) ? [$_ENV[$key]] : null,
-            'server' => array_key_exists($key, $_SERVER) ? [$_SERVER[$key]] : null,
-            'putenv' => $putenv === false ? null : [$putenv],
-        ];
-
-        if ($value === null) {
-            unset($_ENV[$key], $_SERVER[$key]);
-            putenv($key);
-        } else {
-            $_ENV[$key] = $value;
-            $_SERVER[$key] = $value;
-            putenv($key.'='.$value);
-        }
-    }
-
-    try {
-        return $callback();
-    } finally {
-        foreach ($previous as $key => $state) {
-            if ($state['env'] === null) {
-                unset($_ENV[$key]);
-            } else {
-                $_ENV[$key] = $state['env'][0];
-            }
-
-            if ($state['server'] === null) {
-                unset($_SERVER[$key]);
-            } else {
-                $_SERVER[$key] = $state['server'][0];
-            }
-
-            if ($state['putenv'] === null) {
-                putenv($key);
-            } else {
-                putenv($key.'='.$state['putenv'][0]);
-            }
-        }
-    }
+    return AutomationConfigFixture::withEnv($values, $callback);
 }
 
 /**
@@ -72,7 +30,7 @@ function withSalesBoardAutomationEnv(array $values, Closure $callback): mixed
  */
 function salesBoardConfigUnder(array $env): array
 {
-    return withSalesBoardAutomationEnv($env, fn (): array => require base_path('config/sales_board.php'));
+    return AutomationConfigFixture::under($env);
 }
 
 /**
@@ -213,10 +171,72 @@ it('keeps the parsed values through the config cache serialization', function (s
     unlink($path);
 })->with(['off', 'no', 'false', 'banana']);
 
-it('still falls back to no targets when the targets json is unreadable', function () {
-    expect(salesBoardConfigUnder(['SALES_BOARD_AUTOMATION_TARGETS' => 'nao-e-json'])['automation']['targets'])
-        ->toBe([]);
+/**
+ * A habilitação por variável de ambiente da Fase F saiu: quem está sob
+ * automação vem só do rollout por Emissão. O teste antigo conferia que um JSON
+ * ilegível caía em lista vazia; o que importa agora é que a variável não chegue
+ * à configuração de jeito nenhum -- nem legível, nem ilegível.
+ */
+it('never reads automation targets from the environment', function (string $raw) {
+    expect(salesBoardConfigUnder(['SALES_BOARD_AUTOMATION_TARGETS' => $raw])['automation'])
+        ->not->toHaveKey('targets');
+})->with([
+    'unreadable' => ['nao-e-json'],
+    'readable' => ['[{"construction_id":7,"start_reference_month":"2026-08-01"}]'],
+]);
+
+it('falls back to the default retry cadence when the configured value is unreadable', function (?string $raw, int $expected) {
+    $retry = salesBoardConfigUnder([
+        'SALES_BOARD_AUTOMATION_BLOCKED_RETRY_HOURS' => $raw,
+        'SALES_BOARD_AUTOMATION_FAILED_MAX_BACKOFF_HOURS' => $raw,
+    ])['automation']['retry'];
+
+    // Antes, `(int) 'abc'` virava 0 e a política aplicava max(1, 0): a obra
+    // bloqueada era rederivada de hora em hora.
+    expect($retry['blocked_after_hours'])->toBeInt()->toBe($expected)
+        ->and($retry['failed_max_backoff_hours'])->toBeInt()->toBe($expected);
+})->with([
+    'unset' => [null, 24],
+    'empty' => ['', 24],
+    'text' => ['abc', 24],
+    'with unit' => ['24h', 24],
+    'zero' => ['0', 24],
+    'negative' => ['-5', 24],
+    'decimal' => ['1.5', 24],
+    'valid' => ['12', 12],
+    'padded' => [' 6 ', 6],
+]);
+
+it('keeps the retry cadence fail safe even when set at runtime', function () {
+    config()->set('sales_board.automation.retry.blocked_after_hours', 'abc');
+    config()->set('sales_board.automation.retry.failed_max_backoff_hours', 0);
+
+    expect(SalesBoardAutomationConfig::retryHours('blocked_after_hours', 24))->toBe(24)
+        ->and(SalesBoardAutomationConfig::retryHours('failed_max_backoff_hours', 24))->toBe(24);
 });
+
+it('reads the memory limit of the run fail safe', function (?string $raw, string $expected) {
+    expect(salesBoardConfigUnder(['SALES_BOARD_AUTOMATION_MEMORY_LIMIT' => $raw])['automation']['memory_limit'])
+        ->toBe($expected);
+})->with([
+    'unset' => [null, '512M'],
+    'text' => ['muito', '512M'],
+    'zero' => ['0', '512M'],
+    'megabytes' => ['1024M', '1024M'],
+    'lowercase gigabytes' => ['1g', '1G'],
+    'unlimited' => ['-1', '-1'],
+]);
+
+it('never lets the stale run threshold undercut the scheduler overlap lock', function (mixed $configured, int $expected) {
+    config()->set('sales_board.automation.stale_run_after_minutes', $configured);
+
+    expect(SalesBoardAutomationConfig::staleRunMinutes())->toBe($expected);
+})->with([
+    'default' => [null, 180],
+    'unreadable' => ['abc', 180],
+    'below the lock' => [30, SalesBoardAutomationConfig::OVERLAP_LOCK_MINUTES],
+    'above the lock' => [240, 240],
+]);
 
 it('reads the runtime switch fail closed, whatever was set at runtime', function (mixed $value, bool $expected) {
     config()->set('sales_board.automation.enabled', $value);

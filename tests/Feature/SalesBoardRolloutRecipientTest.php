@@ -6,7 +6,9 @@ use App\Enums\SalesBoardSource;
 use App\Exceptions\SalesBoardRolloutException;
 use App\Models\ConstructionUnit;
 use App\Models\SalesBoardAutomationAlert;
+use App\Models\SalesBoardAutomationRun;
 use App\Models\SalesBoardAutomationTarget;
+use App\Models\SalesBoardBuilderReview;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardRolloutRecipient;
 use App\Models\User;
@@ -29,7 +31,7 @@ it('maps every alert type to exactly one role', function () {
         SalesBoardAutomationAlertType::GenerationFailed,
         SalesBoardAutomationAlertType::ReadyForBuilder,
         SalesBoardAutomationAlertType::BuilderReminder,
-        SalesBoardAutomationAlertType::BuilderEscalation,
+        SalesBoardAutomationAlertType::RunInterrupted,
     ];
 
     foreach ($operational as $alert) {
@@ -37,10 +39,63 @@ it('maps every alert type to exactly one role', function () {
             ->toBe(SalesBoardRolloutRecipientRole::Operational);
     }
 
-    foreach ([SalesBoardAutomationAlertType::ManagementReminder, SalesBoardAutomationAlertType::ManagementEscalation] as $alert) {
+    /**
+     * Escalação vai para a Gestão, e não para o papel que já recebe o
+     * lembrete: um aviso mais forte para a mesma pessoa não escala.
+     */
+    $management = [
+        SalesBoardAutomationAlertType::BuilderEscalation,
+        SalesBoardAutomationAlertType::ManagementReminder,
+        SalesBoardAutomationAlertType::ManagementEscalation,
+        SalesBoardAutomationAlertType::ScopeSuspended,
+    ];
+
+    foreach ($management as $alert) {
         expect(SalesBoardRolloutRecipientRole::forAlert($alert))
             ->toBe(SalesBoardRolloutRecipientRole::Management);
     }
+
+    expect([...$operational, ...$management])->toHaveCount(count(SalesBoardAutomationAlertType::cases()));
+});
+
+it('escalates a stalled builder review to management, not to the operational owner', function () {
+    $scenario = RolloutFixture::emission(1);
+    $people = RolloutFixture::recipients($scenario['emission']);
+
+    $cycle = SalesBoardCycle::factory()->create([
+        'emission_id' => $scenario['emission']->id,
+        'construction_id' => $scenario['constructions'][0]->id,
+    ]);
+    $review = new SalesBoardBuilderReview;
+    $review->setRelation('cycle', $cycle);
+
+    $resolver = app(SalesBoardAutomationRecipientResolver::class);
+
+    expect(collect($resolver->forBuilderReminder($review))->pluck('id')->all())->toBe([$people['operational']->id])
+        ->and(collect($resolver->forBuilderEscalation($review))->pluck('id')->all())->toBe([$people['management']->id]);
+});
+
+it('warns the operational owners of every automated emission, once each, about an interrupted run', function () {
+    $automated = RolloutFixture::emission(1, 'A');
+    $legacy = RolloutFixture::emission(1, 'B');
+
+    $shared = RolloutFixture::operationalUser();
+    $directory = app(SalesBoardRolloutRecipientDirectory::class);
+
+    $directory->add($automated['emission'], SalesBoardRolloutRecipientRole::Operational, $shared, null);
+    $directory->add($legacy['emission'], SalesBoardRolloutRecipientRole::Operational, RolloutFixture::operationalUser(), null);
+
+    $second = RolloutFixture::emission(1, 'C');
+    $directory->add($second['emission'], SalesBoardRolloutRecipientRole::Operational, $shared, null);
+
+    foreach ([$automated['emission'], $second['emission']] as $emission) {
+        $emission->forceFill(['sales_board_source' => SalesBoardSource::Automated])->save();
+    }
+
+    $resolved = app(SalesBoardAutomationRecipientResolver::class)
+        ->forRunInterrupted(SalesBoardAutomationRun::factory()->create());
+
+    expect(collect($resolved)->pluck('id')->all())->toBe([$shared->id]);
 });
 
 it('resolves operational recipients for a blocked generation', function () {
@@ -201,7 +256,7 @@ it('delivers a blocked-generation alert to the operational recipient only', func
 
     app(SalesBoardAutomationService::class)->run(asOf: CarbonImmutable::parse('2026-09-13'));
 
-    $alert = SalesBoardAutomationAlert::query()->sole();
+    $alert = SalesBoardAutomationAlert::query()->where('channel', 'mail')->sole();
 
     expect($alert->alert_type)->toBe(SalesBoardAutomationAlertType::GenerationBlocked)
         ->and($alert->recipient_user_id)->toBe($people['operational']->id);

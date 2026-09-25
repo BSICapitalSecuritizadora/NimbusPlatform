@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\SalesBoardAutomationClosureReason;
 use App\Enums\SalesBoardAutomationSatisfiedVia;
 use App\Enums\SalesBoardAutomationTargetStatus;
 use Carbon\CarbonImmutable;
@@ -37,6 +38,8 @@ class SalesBoardAutomationTarget extends Model
         'status',
         'satisfied_via',
         'attempt_count',
+        'consecutive_failure_count',
+        'in_flight_run_id',
         'first_attempt_at',
         'last_attempt_at',
         'next_attempt_at',
@@ -46,6 +49,10 @@ class SalesBoardAutomationTarget extends Model
         'last_blocker_message',
         'last_error_code',
         'last_error_message',
+        'closed_at',
+        'closure_reason',
+        'closure_message',
+        'closed_by_user_id',
         'auto_open_builder_review',
         'updated_at',
     ];
@@ -57,6 +64,8 @@ class SalesBoardAutomationTarget extends Model
         'status',
         'satisfied_via',
         'attempt_count',
+        'consecutive_failure_count',
+        'in_flight_run_id',
         'first_attempt_at',
         'last_attempt_at',
         'next_attempt_at',
@@ -66,6 +75,10 @@ class SalesBoardAutomationTarget extends Model
         'last_blocker_message',
         'last_error_code',
         'last_error_message',
+        'closed_at',
+        'closure_reason',
+        'closure_message',
+        'closed_by_user_id',
         'auto_open_builder_review',
     ];
 
@@ -90,11 +103,15 @@ class SalesBoardAutomationTarget extends Model
             'status' => SalesBoardAutomationTargetStatus::class,
             'satisfied_via' => SalesBoardAutomationSatisfiedVia::class,
             'attempt_count' => 'integer',
+            'consecutive_failure_count' => 'integer',
+            'in_flight_run_id' => 'integer',
             'first_attempt_at' => 'immutable_datetime',
             'last_attempt_at' => 'immutable_datetime',
             'next_attempt_at' => 'immutable_datetime',
             'last_outcome_at' => 'immutable_datetime',
             'last_blocker_codes' => 'array',
+            'closed_at' => 'immutable_datetime',
+            'closure_reason' => SalesBoardAutomationClosureReason::class,
             'auto_open_builder_review' => 'boolean',
         ];
     }
@@ -107,6 +124,19 @@ class SalesBoardAutomationTarget extends Model
     public function cycle(): BelongsTo
     {
         return $this->belongsTo(SalesBoardCycle::class, 'sales_board_cycle_id');
+    }
+
+    /**
+     * A execução que reservou a tentativa em andamento, se houver.
+     */
+    public function inFlightRun(): BelongsTo
+    {
+        return $this->belongsTo(SalesBoardAutomationRun::class, 'in_flight_run_id');
+    }
+
+    public function closedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'closed_by_user_id');
     }
 
     public function attempts(): HasMany
@@ -126,11 +156,16 @@ class SalesBoardAutomationTarget extends Model
      * Satisfeito nunca mais tenta -- é terminal para a automação daquela
      * competência, mesmo que o ciclo depois avance para validação, análise ou
      * aprovação. O que a automação prometeu foi garantir a existência do ciclo,
-     * e isso já aconteceu.
+     * e isso já aconteceu. Encerrado também não: a competência saiu do perímetro
+     * da automação, e só a descoberta a reabre se ela voltar.
+     *
+     * Uma tentativa já reservada por outra execução também não é devida: é
+     * outra instância trabalhando agora, ou um processo morto que a execução
+     * seguinte vai registrar como interrompido.
      */
     public function isDueForAttempt(CarbonImmutable $now): bool
     {
-        if ($this->isSatisfied()) {
+        if (! $this->status->isOpen() || $this->in_flight_run_id !== null) {
             return false;
         }
 
@@ -159,6 +194,7 @@ class SalesBoardAutomationTarget extends Model
         return match ($this->status) {
             SalesBoardAutomationTargetStatus::Blocked => $this->last_blocker_message,
             SalesBoardAutomationTargetStatus::Failed => $this->last_error_message,
+            SalesBoardAutomationTargetStatus::Closed => $this->closure_message,
             default => null,
         };
     }

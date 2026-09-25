@@ -10,15 +10,15 @@ use App\Models\Construction;
 use App\Models\Emission;
 use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Quais empreendimentos a automação pode processar, segundo o rollout.
  *
- * Substitui o provider de configuração da Fase F, que era declaradamente
- * temporário. É a única peça que a Fase G precisou trocar para a automação
- * passar a enxergar Emissões reais: descoberta, retry, alertas e
- * observabilidade continuam exatamente como estavam.
+ * É a fonte de elegibilidade da aplicação: o binding de produção, lido pela
+ * descoberta, pelo perímetro dos lembretes e pelo encerramento de alvos fora do
+ * perímetro. O motor não sabe de onde vem a resposta -- ele só pergunta ao
+ * contrato {@see SalesBoardAutomationEligibilityProvider} --, e é isso que deixa
+ * os testes do motor trocarem a fonte sem tocar em descoberta, retry ou avisos.
  *
  * Quatro travas em série, e cada uma existe por um motivo diferente:
  *
@@ -103,9 +103,11 @@ class DatabaseSalesBoardAutomationEligibilityProvider implements SalesBoardAutom
     /**
      * O conjunto de empreendimentos ainda é o que foi homologado?
      *
-     * O aviso é `warning` e sai uma vez por execução da descoberta -- o
-     * scheduler roda de hora em hora, e registrar o mesmo desvio a cada hora
-     * afogaria o log. A tela de rollout mostra a situação de forma permanente.
+     * Só responde; não avisa nem registra. Esta pergunta é feita pela execução
+     * horária e também por telas (a aba de pendências, o recorte dos lembretes),
+     * e um `warning` aqui sairia a cada renderização. Quem avisa a suspensão --
+     * aos responsáveis da Gestão e ao log, uma vez por situação -- é o
+     * {@see SalesBoardAutomationSuspensionNotifier}, dentro da execução.
      *
      * @param  list<int>  $currentConstructionIds
      */
@@ -113,33 +115,11 @@ class DatabaseSalesBoardAutomationEligibilityProvider implements SalesBoardAutom
     {
         $homologation = $emission->activeSalesBoardHomologation;
 
-        if ($homologation === null) {
-            Log::warning('Sales board rollout has no active homologation', [
-                'event' => 'sales_board_rollout_without_homologation',
-                'emission_id' => (int) $emission->getKey(),
-            ]);
-
+        if ($homologation === null || $currentConstructionIds === []) {
             return false;
         }
 
-        if ($currentConstructionIds === []) {
-            return false;
-        }
-
-        $currentHash = $this->assessment->scopeHash($currentConstructionIds);
-
-        if ($currentHash === (string) $homologation->construction_scope_hash) {
-            return true;
-        }
-
-        Log::warning('Sales board rollout scope changed since homologation', [
-            'event' => 'sales_board_rollout_scope_changed',
-            'emission_id' => (int) $emission->getKey(),
-            'homologation_id' => (int) $homologation->getKey(),
-            'current_construction_count' => count($currentConstructionIds),
-        ]);
-
-        return false;
+        return $this->assessment->scopeHash($currentConstructionIds) === (string) $homologation->construction_scope_hash;
     }
 
     /**
