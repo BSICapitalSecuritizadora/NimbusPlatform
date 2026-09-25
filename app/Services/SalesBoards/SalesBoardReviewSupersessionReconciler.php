@@ -20,9 +20,10 @@ use App\Models\SalesBoardCycleBaseline;
  * aplicável, e recalcular de novo devolvia "sem alteração" sem redisparar nada.
  *
  * A reconciliação é a mesma substituição, contra a versão vigente, e por isso é
- * idempotente: quem chama antes de decidir -- as aberturas e o recálculo sem
- * alteração -- não precisa saber se algum ouvinte falhou. No caminho normal ela
- * só lê e não trava nada.
+ * idempotente: quem chama antes de decidir -- as aberturas, o recálculo sem
+ * alteração e o recálculo que só troca a origem material, os dois casos em que
+ * os ouvintes não agem -- não precisa saber se algum ouvinte falhou. No caminho
+ * normal ela só lê e não trava nada.
  */
 class SalesBoardReviewSupersessionReconciler
 {

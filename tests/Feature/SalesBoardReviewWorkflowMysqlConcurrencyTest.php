@@ -60,8 +60,11 @@ afterEach(function () {
  * Uma operação da revisão num processo filho.
  *
  * Com `hold_on_table`, o processo grava o marcador e segura a transação logo
- * depois da primeira consulta que toca a tabela -- com os locks que tiver
- * adquirido até ali. Com `wait_for_marker`, o processo só começa depois disso.
+ * depois da primeira consulta **dentro da transação** que toca a tabela -- com
+ * os locks que tiver adquirido até ali. As leituras de âncora rodam antes, fora
+ * da transação, e segurar numa delas deixaria o processo dormindo sem lock
+ * nenhum: a disputa viraria sequencial e o teste não provaria a serialização.
+ * Com `wait_for_marker`, o processo só começa depois disso.
  *
  * @param  array{action: string, review_id?: int, nonconformity_id?: int, section_id?: int, decision?: string, actor_id: int, reason?: string, hold_on_table?: string, marker?: string, hold_ms?: int, wait_for_marker?: string}  $instruction
  */
@@ -72,7 +75,9 @@ function reviewWorkflowTask(array $instruction): Closure
             $held = false;
 
             DB::listen(static function (QueryExecuted $query) use ($instruction, &$held): void {
-                if ($held || ! str_contains(strtolower($query->sql), '`'.$instruction['hold_on_table'].'`')) {
+                if ($held
+                    || ($query->connection->transactionLevel() === 0)
+                    || ! str_contains(strtolower($query->sql), '`'.$instruction['hold_on_table'].'`')) {
                     return;
                 }
 
@@ -189,7 +194,8 @@ it('never reopens a section of a review the submission already checked', functio
     @unlink($marker);
 
     $results = Concurrency::driver('process')->run([
-        // A edição segura a transação logo depois de ler a revisão.
+        // A edição segura a transação logo depois de ler a revisão -- o ponto
+        // em que ela já conferiu que a declaração está aberta e falta gravar.
         reviewWorkflowTask([
             'action' => 'reopen_section',
             'section_id' => $section->id,
@@ -212,19 +218,13 @@ it('never reopens a section of a review the submission already checked', functio
     $statuses = $finalReview->sections()->pluck('status')->all();
 
     /**
-     * Uma das duas vence, inteira: ou a seção reabre e o envio é recusado por
-     * seção pendente, ou o envio passa e a reabertura encontra a declaração
-     * congelada. O que nunca acontece é uma declaração enviada com seção
-     * pendente.
+     * A reabertura tem ciclo e revisão travados quando o envio começa. O envio
+     * espera o ciclo, encontra a seção pendente e é recusado. O que nunca
+     * acontece é uma declaração enviada com seção pendente.
      */
-    expect(collect($results)->where('success', true))->toHaveCount(1)
-        ->and(collect($results)->where('success', false)->pluck('exception')->all())
-        ->toBe([SalesBoardBuilderReviewException::class]);
-
-    if ($finalReview->status === SalesBoardBuilderReviewStatus::Submitted) {
-        expect(collect($statuses)->every(fn (SalesBoardBuilderReviewSectionStatus $status): bool => $status->isResolved()))->toBeTrue();
-    } else {
-        expect($finalReview->status)->toBe(SalesBoardBuilderReviewStatus::Draft)
-            ->and($section->fresh()->status)->toBe(SalesBoardBuilderReviewSectionStatus::Pending);
-    }
+    expect($results[0])->toBe(['success' => true, 'outcome' => SalesBoardBuilderReviewSectionStatus::Pending->value, 'exception' => null])
+        ->and($results[1]['exception'])->toBe(SalesBoardBuilderReviewException::class)
+        ->and($finalReview->status)->toBe(SalesBoardBuilderReviewStatus::Draft)
+        ->and($section->fresh()->status)->toBe(SalesBoardBuilderReviewSectionStatus::Pending)
+        ->and(collect($statuses)->contains(SalesBoardBuilderReviewSectionStatus::Pending))->toBeTrue();
 })->group('mysql');

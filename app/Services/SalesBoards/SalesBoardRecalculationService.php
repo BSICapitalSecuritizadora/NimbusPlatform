@@ -207,6 +207,21 @@ class SalesBoardRecalculationService
             $locked->forceFill(['current_baseline_id' => $baseline->getKey()])->save();
 
             /**
+             * Uma versão que só troca a origem material também reconcilia.
+             *
+             * Os ouvintes ignoram a troca que não muda a posição, e com razão --
+             * nada mudou para quem conferiu. Mas se o aviso de uma versão
+             * anterior não chegou a substituir alguma revisão, ela continua
+             * desatualizada também contra esta, e sem a reconciliação aqui o
+             * recálculo sairia gravado com a competência presa como estava. No
+             * caminho normal ela só lê. O ponteiro já aponta para a versão nova,
+             * e o ciclo continua travado por esta transação.
+             */
+            if ($snapshotFingerprint === (string) $current->snapshot_fingerprint) {
+                $this->reconciler->reconcile($locked);
+            }
+
+            /**
              * O aviso de que a versão vigente mudou sai **depois** do commit.
              *
              * Quem escuta -- hoje, a validação da construtora -- toma decisões

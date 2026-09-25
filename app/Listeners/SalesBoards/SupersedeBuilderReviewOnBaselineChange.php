@@ -32,9 +32,11 @@ class SupersedeBuilderReviewOnBaselineChange
      * O ouvinte roda depois do commit: a versão nova já existe, e deixar a
      * exceção chegar a quem recalculou mostraria um erro para um recálculo
      * gravado -- e ainda impediria o ouvinte seguinte de rodar. A falha é
-     * registrada, e a substituição que ficou pendente é concluída pela
-     * {@see SalesBoardReviewSupersessionReconciler} na próxima abertura de
-     * validação ou análise, ou no próximo recálculo.
+     * registrada, e a substituição que ficou pendente é concluída na próxima
+     * abertura de validação ou análise, ou no próximo recálculo: o sem
+     * alteração e o que só troca a origem material chamam a
+     * {@see SalesBoardReviewSupersessionReconciler}; o que muda a posição
+     * dispara estes ouvintes de novo, contra a versão vigente.
      */
     public function handle(SalesBoardCurrentBaselineChanged $event): void
     {

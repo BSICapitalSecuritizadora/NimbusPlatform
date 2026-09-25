@@ -374,6 +374,13 @@ class SalesBoardManagementApprovalService
      *
      * A Emissão é relida aqui, dentro da transação: a tela pode ter sido aberta
      * antes de a Emissão voltar ao legado.
+     *
+     * Sem lock na Emissão, de propósito. O rollout trava a Emissão antes de
+     * qualquer ciclo, e aqui o ciclo já está travado: travar a Emissão agora
+     * inverteria a ordem e abriria espaço para deadlock entre uma aprovação e
+     * um retorno ao legado. O custo é uma janela estreita, e conhecida: um
+     * retorno ao legado que feche enquanto esta aprovação deriva a fonte não a
+     * impede, e a competência sai publicada pelo ciclo.
      */
     private function assertCoveredByAutomation(SalesBoardCycle $cycle): void
     {
