@@ -9,6 +9,7 @@ use App\Models\ConstructionUnitExchange;
 use App\Models\Contract;
 use App\Services\SalesBoards\SalesBoardDerivationService;
 use App\Support\Contracts\ContractOccupancy;
+use App\Support\SalesBoards\SalesBoardIssuePresenter;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\SalesBoards\DerivationFixture;
@@ -218,6 +219,14 @@ it('flags an exchange without a contract when an ordinary sale occupies the unit
     'active sale' => [ContractStatus::Active],
     'settled sale' => [ContractStatus::Settled],
 ]);
+
+it('explains both variants of the exchange occupancy conflict in the hint', function () {
+    $hint = SalesBoardIssuePresenter::describe([SalesBoardIssueCode::ExchangeOccupancyConflict->value])[0]['hint'];
+
+    expect($hint)->toContain('aponta para outro contrato')
+        ->and($hint)->toContain('não tem contrato e a unidade está com uma venda comum')
+        ->and($hint)->toContain('leve o caso à Gestão');
+});
 
 it('keeps an exchange without a contract as exchanged when its occupant is the exchange contract', function () {
     $construction = DerivationFixture::construction();

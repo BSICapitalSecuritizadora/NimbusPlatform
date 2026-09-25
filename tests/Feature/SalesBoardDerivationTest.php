@@ -320,6 +320,25 @@ it('warns about a contract that holds the unit by status with a sale date in the
         ->and($position->isComplete())->toBeTrue();
 });
 
+it('labels the future sale warning by the occupying contract, whatever its status', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-09-25 12:00:00'));
+
+    $construction = DerivationFixture::construction();
+    $contract = DerivationFixture::contract(
+        DerivationFixture::unit($construction, '101', '400000.00'),
+        '2062-03-10',
+        '600000.00',
+        status: ContractStatus::Settled,
+    );
+
+    $warning = collect(DerivationFixture::derive($construction)->issues)->firstWhere('code', SalesBoardIssueCode::FutureSaleDate);
+
+    expect($warning)->not->toBeNull()
+        ->and($warning->contractId)->toBe($contract->id)
+        ->and($warning->message)->toContain('quitado')
+        ->and(SalesBoardIssueCode::FutureSaleDate->label())->toBe('Contrato que ocupa a unidade com data de venda futura');
+});
+
 it('does not warn about a sale after the position date that already happened', function () {
     $this->travelTo(CarbonImmutable::parse('2026-09-25 12:00:00'));
 
