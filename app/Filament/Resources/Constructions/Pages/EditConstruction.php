@@ -26,7 +26,8 @@ class EditConstruction extends EditRecord
         return [
             ActionGroup::make([
                 DeleteAction::make()
-                    ->label('Excluir obra'),
+                    ->label('Excluir obra')
+                    ->authorizationTooltip(),
             ])
                 ->label('Mais ações')
                 ->icon('heroicon-m-ellipsis-vertical')

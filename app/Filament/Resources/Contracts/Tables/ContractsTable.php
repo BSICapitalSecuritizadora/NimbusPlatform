@@ -233,7 +233,7 @@ class ContractsTable
                     DeleteAction::make()
                         ->label('Excluir')
                         ->modalHeading('Excluir contrato')
-                        ->modalDescription('O contrato deixa de aparecer na listagem e libera a unidade, mas é preservado para manter o histórico comercial.')
+                        ->modalDescription(ContractResource::DELETE_MODAL_DESCRIPTION)
                         ->visible(fn (Contract $record): bool => ContractResource::canDelete($record)),
 
                     RestoreAction::make()
@@ -273,7 +273,14 @@ class ContractsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    /**
+                     * Cada contrato passa pela mesma policy da exclusão
+                     * individual: o contrato já congelado num ciclo fica de
+                     * fora, e a notificação diz por quê.
+                     */
+                    DeleteBulkAction::make()
+                        ->modalDescription(ContractResource::DELETE_MODAL_DESCRIPTION)
+                        ->authorizeIndividualRecords(),
                 ]),
             ])
             ->emptyStateHeading(fn ($livewire): string => self::hasActiveFiltersOrSearch($livewire)

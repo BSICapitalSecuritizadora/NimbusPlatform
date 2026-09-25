@@ -12,23 +12,34 @@ use App\Domain\PuCalculator\Services\DecimalRounder;
 use App\Domain\PuCalculator\Services\IndexRateLookupService;
 use App\Domain\PuCalculator\Services\IndexRateService;
 use App\Domain\PuCalculator\Services\RoundingService;
+use App\Filament\Support\AuthorizesThroughModelPolicy;
 use App\Listeners\LogNotificationListener;
 use App\Mail\Transport\MicrosoftGraphTransport;
+use App\Models\Construction;
+use App\Models\ConstructionUnit;
+use App\Models\Contract;
 use App\Models\ContractInstallment;
 use App\Models\Document;
+use App\Models\Emission;
 use App\Models\JobApplication;
 use App\Models\Measurement;
 use App\Models\Nimbus\Submission;
 use App\Models\Operation;
 use App\Models\ResponsibilityDelegation;
+use App\Models\SalesBoard;
 use App\Models\Vacancy;
+use App\Policies\ConstructionPolicy;
+use App\Policies\ConstructionUnitPolicy;
 use App\Policies\ContractInstallmentPolicy;
+use App\Policies\ContractPolicy;
 use App\Policies\DocumentPolicy;
+use App\Policies\EmissionPolicy;
 use App\Policies\JobApplicationPolicy;
 use App\Policies\MeasurementPolicy;
 use App\Policies\Nimbus\SubmissionPolicy;
 use App\Policies\OperationPolicy;
 use App\Policies\ResponsibilityDelegationPolicy;
+use App\Policies\SalesBoardPolicy;
 use App\Policies\VacancyPolicy;
 use App\Services\ConstructionProgressProvider;
 use App\Services\MeasurementPlanProgressProvider;
@@ -90,7 +101,18 @@ class AppServiceProvider extends ServiceProvider
         $this->configureMacros();
         $this->configureMailTransports();
 
+        /**
+         * As fontes do Quadro de Vendas e o próprio quadro. Os resources delas
+         * leem estas policies por {@see AuthorizesThroughModelPolicy}:
+         * sem elas, o Filament liberava exclusão em massa e a página de edição
+         * para quem só tinha visualização.
+         */
+        Gate::policy(Emission::class, EmissionPolicy::class);
+        Gate::policy(Construction::class, ConstructionPolicy::class);
+        Gate::policy(ConstructionUnit::class, ConstructionUnitPolicy::class);
+        Gate::policy(Contract::class, ContractPolicy::class);
         Gate::policy(ContractInstallment::class, ContractInstallmentPolicy::class);
+        Gate::policy(SalesBoard::class, SalesBoardPolicy::class);
         Gate::policy(Submission::class, SubmissionPolicy::class);
         Gate::policy(Document::class, DocumentPolicy::class);
         Gate::policy(Vacancy::class, VacancyPolicy::class);

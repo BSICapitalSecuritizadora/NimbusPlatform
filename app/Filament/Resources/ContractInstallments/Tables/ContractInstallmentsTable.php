@@ -135,7 +135,13 @@ class ContractInstallmentsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    /**
+                     * Cada parcela passa pela mesma policy da exclusão
+                     * individual: a de contrato já congelado num ciclo fica de
+                     * fora, e a notificação diz por quê.
+                     */
+                    DeleteBulkAction::make()
+                        ->authorizeIndividualRecords(),
                 ]),
             ])
             ->emptyStateHeading(fn ($livewire): string => self::hasActiveFiltersOrSearch($livewire)

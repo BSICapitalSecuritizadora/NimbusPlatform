@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\ConstructionUnits\Schemas;
 
 use App\Concerns\MoneyFormatter;
+use App\Exceptions\SalesBoardSourceException;
 use App\Models\ConstructionUnit;
+use App\Services\SalesBoards\SalesBoardSourceGuard;
 use App\Support\Money\IntegerMoney;
 use Closure;
 use Filament\Forms\Components\DatePicker;
@@ -49,6 +51,7 @@ class ConstructionUnitForm
                                 $set('construction_id', null);
                             }
                         })
+                        ->disabled(fn (mixed $record): bool => self::constructionLockReason($record) !== null)
                         ->columnSpanFull()
                         ->validationMessages([
                             'required' => 'Selecione a emissão.',
@@ -68,8 +71,10 @@ class ConstructionUnitForm
                         ->preload()
                         ->required()
                         ->live()
-                        ->disabled(fn (Get $get): bool => blank($get(self::EMISSION_FIELD)))
-                        ->helperText('Selecione primeiro a emissão para listar apenas os empreendimentos vinculados.')
+                        ->disabled(fn (Get $get, mixed $record): bool => blank($get(self::EMISSION_FIELD))
+                            || (self::constructionLockReason($record) !== null))
+                        ->helperText(fn (mixed $record): string => self::constructionLockReason($record)
+                            ?? 'Selecione primeiro a emissão para listar apenas os empreendimentos vinculados.')
                         ->columnSpanFull()
                         ->validationMessages([
                             'required' => 'Selecione o empreendimento.',
@@ -113,6 +118,27 @@ class ConstructionUnitForm
 
             self::baseValueSection(),
         ]);
+    }
+
+    /**
+     * Por que a unidade em edição não pode trocar de empreendimento, ou `null`.
+     *
+     * Contrato, valor, permuta ou posição congelada prendem a unidade à obra
+     * dela ({@see SalesBoardSourceGuard::unitAnchors()}). O campo fica travado
+     * e o motivo aparece no lugar da dica; o model recusa a troca vinda de
+     * qualquer outro caminho.
+     */
+    private static function constructionLockReason(mixed $record): ?string
+    {
+        if (! ($record instanceof ConstructionUnit) || (! $record->exists)) {
+            return null;
+        }
+
+        $anchors = app(SalesBoardSourceGuard::class)->unitAnchors($record);
+
+        return $anchors === []
+            ? null
+            : SalesBoardSourceException::unitConstructionLocked($anchors)->getMessage();
     }
 
     /**

@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Concerns\MoneyFormatter;
 use App\Exceptions\MeasurementWorkflowException;
+use App\Exceptions\SalesBoardSourceException;
+use App\Services\SalesBoards\SalesBoardSourceGuard;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Database\Factories\ConstructionFactory;
@@ -84,6 +86,21 @@ class Construction extends Model
                 throw new MeasurementWorkflowException('A identidade de um empreendimento aprovado pela Engenharia está bloqueada.');
             }
 
+            /**
+             * Os quadros e os ciclos ficam gravados com a Emissão em que foram
+             * registrados. Trocar a Emissão da obra depois deles faria a
+             * antiga continuar somando o empreendimento e a nova ficar sem
+             * posição -- o formulário já trava o campo; isto vale para os
+             * outros caminhos.
+             */
+            if ($construction->exists && $construction->isDirty('emission_id')) {
+                $anchors = app(SalesBoardSourceGuard::class)->constructionEmissionAnchors($construction);
+
+                if ($anchors !== []) {
+                    throw SalesBoardSourceException::constructionEmissionLocked($anchors);
+                }
+            }
+
             $construction->construction_start_date = self::normalizeMonthDate($construction->construction_start_date);
             $construction->construction_end_date = self::normalizeMonthDate($construction->construction_end_date);
         });
@@ -91,6 +108,16 @@ class Construction extends Model
         static::deleting(function (self $construction): void {
             if ($construction->isReferencedByApprovedEngineering()) {
                 throw new MeasurementWorkflowException('Um empreendimento aprovado pela Engenharia não pode ser removido.');
+            }
+
+            /**
+             * Os quadros de vendas são a única história da obra que o banco não
+             * protege: a FK desce em cascata e leva o histórico de versões
+             * junto, sem passar pelo observer nem pela trilha de auditoria. O
+             * resto -- contratos, ciclos, políticas -- o banco já recusa.
+             */
+            if ($construction->salesBoards()->exists()) {
+                throw SalesBoardSourceException::constructionDeletionBlocked(['tem Quadro de Vendas registrado']);
             }
         });
     }
@@ -204,7 +231,13 @@ class Construction extends Model
         return Carbon::parse($monthDate)->format('m/Y');
     }
 
-    private function isReferencedByApprovedEngineering(): bool
+    /**
+     * Uma medição do empreendimento já passou pela aprovação da Engenharia?
+     *
+     * Pública porque a guarda de exclusão da obra precisa dizer este motivo
+     * antes de o `deleting` recusar com um erro.
+     */
+    public function isReferencedByApprovedEngineering(): bool
     {
         return $this->measurementPlanSets()
             ->whereHas('assets.measurement.reviews', fn ($reviews) => $reviews

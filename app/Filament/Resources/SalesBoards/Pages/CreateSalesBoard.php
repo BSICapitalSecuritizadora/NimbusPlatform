@@ -5,6 +5,7 @@ namespace App\Filament\Resources\SalesBoards\Pages;
 use App\Exceptions\SalesBoardRolloutException;
 use App\Filament\Resources\SalesBoards\SalesBoardResource;
 use App\Models\SalesBoard;
+use App\Services\SalesBoards\SalesBoardPositionReader;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -124,24 +125,64 @@ class CreateSalesBoard extends CreateRecord
     }
 
     /**
+     * A competência é procurada por empreendimento e mês -- a mesma chave que o
+     * {@see SalesBoardPositionReader} e a publicação do ciclo usam. Procurar
+     * também pela Emissão deixava um quadro gravado sob outra Emissão passar
+     * despercebido, e o registro virava um segundo quadro do mesmo
+     * empreendimento no mesmo mês.
+     *
+     * Regravar uma competência existente é editar a posição vigente: exige a
+     * permissão de edição, e não só a de criação que abriu esta página.
+     *
      * @param  array<string, mixed>  $data
      */
     private function recordPosition(array $data): Model
     {
+        $referenceMonth = SalesBoard::normalizeReferenceMonth($data['reference_month'] ?? null);
+
         $existingSalesBoard = SalesBoard::query()
-            ->where('emission_id', $data['emission_id'] ?? null)
             ->where('construction_id', $data['construction_id'] ?? null)
-            ->whereDate('reference_month', SalesBoard::normalizeReferenceMonth($data['reference_month'] ?? null))
+            ->whereDate('reference_month', $referenceMonth)
+            ->orderBy('id')
             ->first();
 
         if ($existingSalesBoard === null) {
             return parent::handleRecordCreation($data);
         }
 
+        if (! SalesBoardResource::canEdit($existingSalesBoard)) {
+            $this->refuse('Esta competência já tem posição registrada para o empreendimento, e alterá-la exige a permissão de editar o Quadro de Vendas.');
+        }
+
+        if ((int) $existingSalesBoard->emission_id !== (int) ($data['emission_id'] ?? 0)) {
+            $this->refuse(sprintf(
+                'A competência %s deste empreendimento já está registrada sob a operação %s, que não é a operação atual dele. '
+                    .'Uma nova versão aqui criaria um segundo quadro para o mesmo mês; a divergência precisa ser corrigida antes.',
+                SalesBoard::formatReferenceMonthForDisplay($referenceMonth),
+                $existingSalesBoard->emission?->name ?? '—',
+            ));
+        }
+
         $existingSalesBoard->changeReason = $this->resolveChangeReason();
         $existingSalesBoard->update($data);
 
         return $existingSalesBoard;
+    }
+
+    /**
+     * Recusa o registro com a explicação na tela e desfaz a transação do
+     * formulário.
+     */
+    private function refuse(string $message): never
+    {
+        Notification::make()
+            ->title('Registro recusado')
+            ->body($message)
+            ->danger()
+            ->persistent()
+            ->send();
+
+        $this->halt(shouldRollbackDatabaseTransaction: true);
     }
 
     private function resolveChangeReason(): ?string

@@ -174,7 +174,13 @@ class ConstructionUnitsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    /**
+                     * Cada unidade passa pela mesma policy da exclusão
+                     * individual: a que já tem história fica de fora, e a
+                     * notificação diz por quê -- em vez do erro de constraint.
+                     */
+                    DeleteBulkAction::make()
+                        ->authorizeIndividualRecords(),
                 ]),
             ])
             ->emptyStateHeading(fn ($livewire): string => static::hasActiveFiltersOrSearch($livewire)
