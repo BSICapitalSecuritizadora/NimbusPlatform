@@ -254,6 +254,9 @@ class ContractBuyerGrouping
      * The worse of what the scalar comparison decided and what the buyer set
      * did. A blocked buyer change refuses a row the fields alone would have
      * accepted, and a critical one lifts a routine update to a critical one.
+     * An informative one never writes, so it only names a row that had nothing
+     * else to say -- next to a real change it rides along, as it does in
+     * RecordComparison::outcome().
      */
     private function worstOutcome(ReconciliationOutcome $outcome, ChangeSeverity $severity): ReconciliationOutcome
     {
@@ -266,6 +269,9 @@ class ContractBuyerGrouping
             ChangeSeverity::Critical => ReconciliationOutcome::CriticalUpdate,
             ChangeSeverity::Normal => $outcome === ReconciliationOutcome::Unchanged
                 ? ReconciliationOutcome::Update
+                : $outcome,
+            ChangeSeverity::Informative => $outcome === ReconciliationOutcome::Unchanged
+                ? ReconciliationOutcome::InformativeDivergence
                 : $outcome,
         };
     }

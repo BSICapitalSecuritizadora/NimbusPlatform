@@ -14,6 +14,8 @@ use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\Contract;
 use App\Models\Emission;
+use App\Models\SalesBoard;
+use Carbon\CarbonImmutable;
 use Database\Factories\ClientFactory;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Testing\TestAction;
@@ -466,7 +468,7 @@ it('validates the dates and the status of every row', function () {
 
     expect($analysis->errorCount())->toBe(6)
         ->and($analysis->rows[0]['message'])->toContain('Status "Suspenso" não reconhecido.')
-        ->and($analysis->rows[1]['message'])->toBe('Data da venda inválida. Utilize o formato dd/mm/aaaa.')
+        ->and($analysis->rows[1]['message'])->toBe('Data da venda inválida. Utilize o formato dd/mm/aaaa, com o ano completo (a partir de 1990).')
         ->and($analysis->rows[2]['message'])->toBe('Contratos distratados exigem a data do distrato.')
         ->and($analysis->rows[3]['message'])->toBe('A data do distrato não pode ser anterior à data da venda.')
         ->and($analysis->rows[4]['message'])->toBe('Contratos com status Ativo não podem ter data de distrato.')
@@ -1241,4 +1243,198 @@ describe('distrato e revenda no mesmo lote', function () {
             ->and($analysis->collect()->firstWhere('code', 'CVC-00002')['message'])
             ->toContain('Existe um contrato excluído com este código');
     });
+});
+
+describe('leitura estrita da carga inicial', function () {
+    /**
+     * The cell of an Excel formula (area x price per m², a value x 1.02...) comes
+     * back as a float. Turned into text first, 386137.047 became "386137.047",
+     * and a dot followed by three digits read as a thousands separator: the sale
+     * was recorded as R$ 386.137.047,00. American text went the other way.
+     */
+    it('reads a numeric sale value cell for the number it holds and text in either convention', function () {
+        [, , , $unit402] = contractImportScenario();
+        $unit501 = ConstructionUnit::factory()->forConstruction($unit402->construction)->create(['block' => '01', 'unit' => '501']);
+
+        $analysis = analyzeContractSpreadsheet([
+            contractRow(['sale_value' => 85.37 * 4523.1]),
+            contractRow(['code' => 'CVC-2', 'unit' => '402', 'sale_value' => '386,137.05']),
+            contractRow(['code' => 'CVC-3', 'unit' => '501', 'sale_value' => 'R$ 386.137,05']),
+        ]);
+
+        expect($analysis->canImport())->toBeTrue()
+            ->and($analysis->rowsToCreate()->pluck('sale_value', 'code')->all())
+            ->toBe(['CVC-00123' => 386137.05, 'CVC-2' => 386137.05, 'CVC-3' => 386137.05]);
+
+        app(ImportContractsFromSpreadsheet::class)->handle($analysis);
+
+        expect(Contract::query()->orderBy('code')->pluck('sale_value')->all())
+            ->toBe(['386137.05', '386137.05', '386137.05']);
+    });
+
+    it('refuses a two digit year and a year before 1990 instead of booking the sale in the year 26', function (string $saleDate) {
+        contractImportScenario();
+
+        $analysis = analyzeContractSpreadsheet([contractRow(['sale_date' => $saleDate])]);
+
+        expect($analysis->canImport())->toBeFalse()
+            ->and($analysis->rows[0]['message'])
+            ->toBe('Data da venda inválida. Utilize o formato dd/mm/aaaa, com o ano completo (a partir de 1990).');
+    })->with([
+        'two digit year' => ['10/03/26'],
+        'three digit year' => ['05/03/202'],
+        'four digits, implausible' => ['10/03/0026'],
+        'before 1990' => ['10/03/1989'],
+        'american month first' => ['03/31/2024'],
+        'bare serial number' => ['46000'],
+    ]);
+
+    it('refuses a two digit year on the distrato date too', function () {
+        contractImportScenario();
+
+        $analysis = analyzeContractSpreadsheet([contractRow(['status' => 'Distratado', 'cancellation_date' => '15/06/25'])]);
+
+        expect($analysis->rows[0]['message'])
+            ->toBe('Data do distrato inválida. Utilize o formato dd/mm/aaaa, com o ano completo (a partir de 1990).');
+    });
+
+    it('still reads the full forms an export produces, with or without the time', function (string $saleDate) {
+        contractImportScenario();
+
+        $analysis = analyzeContractSpreadsheet([contractRow(['sale_date' => $saleDate])]);
+
+        expect($analysis->canImport())->toBeTrue()
+            ->and($analysis->rowsToCreate()->first()['sale_date'])->toBe('2024-03-10');
+    })->with([
+        'dd/mm/aaaa' => ['10/03/2024'],
+        'with time' => ['10/03/2024 00:00:00'],
+        'with short time' => ['10/03/2024 14:30'],
+        'iso' => ['2024-03-10'],
+        'iso with time' => ['2024-03-10 00:00:00'],
+        'iso without padding' => ['2024-3-10'],
+    ]);
+
+    /**
+     * The form bounds the sale date by today; the import did not. A contract
+     * dated 2062 held the unit by its status while every derivation before that
+     * day counted the unit as stock, with no finding.
+     */
+    it('refuses a sale dated after today in the business calendar, as the form does', function () {
+        contractImportScenario();
+
+        // 22:30 in São Paulo on 2026-09-25 is already the 26th in UTC.
+        $this->travelTo(CarbonImmutable::parse('2026-09-25 22:30:00', 'America/Sao_Paulo'));
+
+        $analysis = analyzeContractSpreadsheet([
+            contractRow(['sale_date' => '10/03/2062']),
+            contractRow(['code' => 'CVC-2', 'unit' => '402', 'sale_date' => '26/09/2026']),
+        ]);
+
+        expect($analysis->errorCount())->toBe(2)
+            ->and($analysis->rows[0]['message'])->toBe('A data da venda não pode ser futura.')
+            ->and($analysis->rows[1]['message'])->toBe('A data da venda não pode ser futura.');
+
+        expect(analyzeContractSpreadsheet([contractRow(['sale_date' => '25/09/2026'])])->canImport())->toBeTrue();
+    });
+
+    it('shows the interpreted sale date and value on the conference', function () {
+        $this->actingAs(makeAdminUser());
+
+        contractImportScenario();
+
+        $path = contractSpreadsheet([contractRow(['sale_value' => 85.37 * 4523.1])]);
+        $storedPath = 'imports/contracts/'.basename($path);
+        Storage::disk('local')->put($storedPath, file_get_contents($path));
+
+        $component = Livewire::test(ListContracts::class)->instance();
+        $preview = (fn (): string => $this->renderPreview($storedPath)->toHtml())->call($component);
+
+        expect($preview)
+            ->toContain('<th style="text-align:left;padding:.25rem .5rem;">Data da venda</th>')
+            ->toContain('10/03/2024')
+            ->toContain('R$ 386.137,05')
+            ->not->toContain('386.137.047');
+    });
+});
+
+describe('competência já registrada no Quadro de Vendas', function () {
+    it('flags the rows whose facts reach a competence already registered, without blocking', function () {
+        [$emission, $construction, , $unit402] = contractImportScenario();
+        $unit501 = ConstructionUnit::factory()->forConstruction($construction)->create(['block' => '01', 'unit' => '501']);
+
+        foreach (['2024-03-01', '2024-04-01'] as $month) {
+            SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create(['reference_month' => $month]);
+        }
+
+        $analysis = analyzeContractSpreadsheet([
+            contractRow(['sale_date' => '10/03/2024']),
+            contractRow(['code' => 'CVC-2', 'unit' => '402', 'sale_date' => '20/04/2024']),
+            contractRow(['code' => 'CVC-3', 'unit' => '501', 'sale_date' => '02/05/2024']),
+        ]);
+
+        $byCode = $analysis->collect()->keyBy('code');
+
+        expect($analysis->canImport())->toBeTrue()
+            ->and($analysis->registeredCompetenceCount())->toBe(2)
+            ->and($byCode['CVC-00123']['registered_competences'])->toBe(['2024-03', '2024-04'])
+            ->and($byCode['CVC-2']['registered_competences'])->toBe(['2024-04'])
+            ->and($byCode['CVC-3']['registered_competences'])->toBe([]);
+    });
+
+    it('dates an update by the field it changes: a distrato reaches only from its own day', function () {
+        [$emission, $construction, $unit305] = contractImportScenario();
+
+        Contract::factory()->forUnit($unit305)->forClient(Client::query()->sole())->create([
+            'code' => 'CVC-00123',
+            'sale_date' => '2024-03-10',
+            'sale_value' => 850000,
+        ]);
+
+        foreach (['2024-03-01', '2025-06-01'] as $month) {
+            SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create(['reference_month' => $month]);
+        }
+
+        $distrato = analyzeContractSpreadsheet([contractRow(['status' => 'Distratado', 'cancellation_date' => '15/06/2025'])]);
+        $newValue = analyzeContractSpreadsheet([contractRow(['sale_value' => '900000.00'])]);
+        $unchanged = analyzeContractSpreadsheet([contractRow()]);
+
+        expect($distrato->rows[0]['registered_competences'])->toBe(['2025-06'])
+            ->and($newValue->rows[0]['registered_competences'])->toBe(['2024-03', '2025-06'])
+            ->and($unchanged->unchangedCount())->toBe(1)
+            ->and($unchanged->registeredCompetenceCount())->toBe(0);
+    });
+
+    it('warns on the conference screen', function () {
+        $this->actingAs(makeAdminUser());
+
+        [$emission, $construction] = contractImportScenario();
+        SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create(['reference_month' => '2024-03-01']);
+
+        $path = contractSpreadsheet([contractRow()]);
+        $storedPath = 'imports/contracts/'.basename($path);
+        Storage::disk('local')->put($storedPath, file_get_contents($path));
+
+        $component = Livewire::test(ListContracts::class)->instance();
+        $preview = (fn (): string => $this->renderPreview($storedPath)->toHtml())->call($component);
+
+        expect($preview)
+            ->toContain('Alteram competência já registrada no Quadro de Vendas: <b>1</b>')
+            ->toContain('Altera fato da competência 03/2024, já registrada no Quadro de Vendas.');
+    });
+});
+
+it('resolves the development inside the emission of the row and refuses homonyms in the same emission', function () {
+    [$emission, $construction] = contractImportScenario();
+
+    $otherEmission = Emission::factory()->create(['name' => 'CRI Conviva 2']);
+    $homonymElsewhere = Construction::factory()->create(['emission_id' => $otherEmission->id, 'development_name' => 'Conviva Camboinhas']);
+    ConstructionUnit::factory()->forConstruction($homonymElsewhere)->create(['block' => '01', 'unit' => '305']);
+
+    expect(analyzeContractSpreadsheet([contractRow(['emission' => 'CRI Conviva 2'])])->rowsToCreate()->first()['construction_id'])
+        ->toBe($homonymElsewhere->id);
+
+    Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'conviva camboinhas ']);
+
+    expect(analyzeContractSpreadsheet([contractRow()])->rows[0]['message'])
+        ->toBe('Há mais de um empreendimento com este nome nesta emissão. Diferencie os nomes antes de importar.');
 });

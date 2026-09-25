@@ -18,6 +18,14 @@ enum ReconciliationOutcome: string
 
     case CriticalUpdate = 'atualizacao_critica';
 
+    /**
+     * The file disagrees with the record in a way the import deliberately never
+     * applies -- a receipt on record that the file no longer carries. Nothing is
+     * written; the row is shown so the difference is seen and, if real, fixed by
+     * hand where it is audited on its own.
+     */
+    case InformativeDivergence = 'divergencia_informativa';
+
     case Conflict = 'conflito';
 
     case Error = 'erro';
@@ -33,6 +41,7 @@ enum ReconciliationOutcome: string
             self::Unchanged => 'Sem alteração',
             self::Update => 'Atualização',
             self::CriticalUpdate => 'Atualização crítica',
+            self::InformativeDivergence => 'Divergência informativa',
             self::Conflict => 'Conflito',
             self::Error => 'Erro',
             self::DuplicatedInFile => 'Duplicada na planilha',
@@ -46,7 +55,7 @@ enum ReconciliationOutcome: string
             self::New => 'success',
             self::Unchanged => 'gray',
             self::Update => 'info',
-            self::CriticalUpdate => 'warning',
+            self::CriticalUpdate, self::InformativeDivergence => 'warning',
             self::Conflict, self::Error, self::DuplicatedInFile => 'danger',
             self::Empty => 'gray',
         };

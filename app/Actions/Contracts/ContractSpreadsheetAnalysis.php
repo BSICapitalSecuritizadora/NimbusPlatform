@@ -123,6 +123,17 @@ class ContractSpreadsheetAnalysis
     }
 
     /**
+     * Rows that, once written, touch a fact of a competence already registered
+     * on the Sales Board. Shown on the conference, never blocking.
+     */
+    public function registeredCompetenceCount(): int
+    {
+        return $this->collect()
+            ->filter(fn (array $row): bool => ($row['registered_competences'] ?? []) !== [])
+            ->count();
+    }
+
+    /**
      * Units the file distrata and sells again in one go. Shown on the preview so
      * the operator can see why a new contract on an occupied unit stopped being
      * a conflict; not recorded anywhere.

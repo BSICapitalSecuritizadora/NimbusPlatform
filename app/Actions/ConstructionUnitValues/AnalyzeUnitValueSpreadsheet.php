@@ -6,7 +6,9 @@ use App\Enums\ReconciliationOutcome;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\Emission;
+use App\Services\SalesBoards\RegisteredCompetenceIndex;
 use App\Services\SalesBoards\UnitValueResolver;
+use App\Support\Dates\SpreadsheetDate;
 use App\Support\Money\IntegerMoney;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
@@ -60,7 +62,25 @@ class AnalyzeUnitValueSpreadsheet
                 }
             });
 
-        return new UnitValueSpreadsheetAnalysis($analyzedRows);
+        return new UnitValueSpreadsheetAnalysis($this->flagRegisteredCompetences($analyzedRows));
+    }
+
+    /**
+     * Marca as linhas cuja vigência alcança competência já registrada no Quadro
+     * de Vendas. O aviso não bloqueia: reprecificar com vigência passada é
+     * legítimo, mas a posição registrada não acompanha a correção sozinha, e
+     * quem confirma precisa saber disso.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    private function flagRegisteredCompetences(array $rows): array
+    {
+        $index = RegisteredCompetenceIndex::forConstructions(array_column($rows, 'construction_id'));
+
+        return array_map(fn (array $row): array => $row['outcome']->writesToDatabase()
+            ? [...$row, 'registered_competences' => $index->reachedBy($row['construction_id'], $row['effective_from_date'])]
+            : $row, $rows);
     }
 
     /**
@@ -76,6 +96,7 @@ class AnalyzeUnitValueSpreadsheet
         $block = $this->cell($row, $resolvedHeaders, UnitValueSpreadsheetColumns::BLOCK);
         $unit = $this->cell($row, $resolvedHeaders, UnitValueSpreadsheetColumns::UNIT);
         $value = $this->cell($row, $resolvedHeaders, UnitValueSpreadsheetColumns::VALUE);
+        $rawValue = $this->rawCell($row, $resolvedHeaders, UnitValueSpreadsheetColumns::VALUE);
         $effectiveFrom = $this->cell($row, $resolvedHeaders, UnitValueSpreadsheetColumns::EFFECTIVE_FROM);
         $reason = $this->cell($row, $resolvedHeaders, UnitValueSpreadsheetColumns::REASON);
 
@@ -88,10 +109,12 @@ class AnalyzeUnitValueSpreadsheet
             'value' => $value,
             'effective_from' => $effectiveFrom,
             'reason' => $reason,
+            'construction_id' => null,
             'construction_unit_id' => null,
             'value_cents' => null,
             'effective_from_date' => null,
             'current_value_cents' => null,
+            'registered_competences' => [],
         ];
 
         if (blank($emissionName) && blank($constructionName) && blank($block) && blank($unit) && blank($value) && blank($effectiveFrom)) {
@@ -110,30 +133,33 @@ class AnalyzeUnitValueSpreadsheet
             return $this->error($base, 'Emissão não encontrada.');
         }
 
-        $construction = $this->findConstruction($constructionName);
+        $construction = $this->findConstruction($constructionName, $emission);
 
-        if ($construction === null) {
-            return $this->error($base, 'Empreendimento não encontrado.');
+        if (is_string($construction)) {
+            return $this->error($base, $construction);
         }
 
-        if ($construction->emission_id !== $emission->id) {
-            return $this->error($base, 'O empreendimento informado não pertence à emissão selecionada.');
-        }
+        $base['construction_id'] = $construction->getKey();
 
-        $valueCents = IntegerMoney::cents($value);
+        $valueCents = $this->parseAmount($rawValue);
 
         if ($valueCents === null) {
             return $this->error($base, 'Valor atualizado inválido.');
         }
 
-        if ($valueCents < 0) {
-            return $this->error($base, 'O valor atualizado não pode ser negativo.');
+        /**
+         * Zero não é preço de tabela: usado como marcador de "sem preço", fazia
+         * toda venda da unidade sair conforme e o estoque sair a R$ 0,00 sem
+         * nenhum achado.
+         */
+        if ($valueCents <= 0) {
+            return $this->error($base, 'O valor atualizado precisa ser maior que zero.');
         }
 
         $effectiveFromDate = $this->parseDate($effectiveFrom);
 
         if ($effectiveFromDate === null) {
-            return $this->error($base, 'Vigência inválida.');
+            return $this->error($base, 'Vigência inválida. '.SpreadsheetDate::FORMAT_HINT);
         }
 
         $base['value_cents'] = $valueCents;
@@ -217,6 +243,33 @@ class AnalyzeUnitValueSpreadsheet
     }
 
     /**
+     * A célula como o leitor a entregou, sem virar texto.
+     *
+     * @param  array<string, mixed>  $row
+     * @param  array<string, string>  $resolvedHeaders
+     */
+    private function rawCell(array $row, array $resolvedHeaders, string $column): mixed
+    {
+        $header = $resolvedHeaders[$column] ?? null;
+
+        return $header === null ? null : ($row[$header] ?? null);
+    }
+
+    /**
+     * Centavos do valor. A célula numérica é lida pelo número que carrega:
+     * convertida antes em texto, `153.919` virava "153.919" e o parser de
+     * texto, com razão, lê ponto seguido de três dígitos como milhar.
+     */
+    private function parseAmount(mixed $value): ?int
+    {
+        if (! is_int($value) && ! is_float($value) && ! is_string($value)) {
+            return null;
+        }
+
+        return IntegerMoney::cents($value);
+    }
+
+    /**
      * @param  array<string, mixed>  $row
      * @param  array<string, string>  $resolvedHeaders
      */
@@ -254,26 +307,13 @@ class AnalyzeUnitValueSpreadsheet
     }
 
     /**
-     * Brazilian day-first dates are matched before anything else: `Carbon::parse`
-     * would read "03/09/2026" as the 9th of March.
+     * Leitura estrita, a mesma dos importadores de contratos e parcelas: ano com
+     * quatro dígitos, hora opcional e nenhum `Carbon::parse()` de reserva, que
+     * lia "03/09/26" como 9 de março e antecipava o reajuste em seis meses.
      */
     private function parseDate(string $value): ?string
     {
-        $value = trim($value);
-
-        if (preg_match('#^(\d{1,2})/(\d{1,2})/(\d{4})$#', $value, $matches) === 1) {
-            [, $day, $month, $year] = $matches;
-
-            return checkdate((int) $month, (int) $day, (int) $year)
-                ? sprintf('%04d-%02d-%02d', $year, $month, $day)
-                : null;
-        }
-
-        try {
-            return CarbonImmutable::parse($value)->toDateString();
-        } catch (\Throwable) {
-            return null;
-        }
+        return SpreadsheetDate::parse($value);
     }
 
     private function findEmission(string $name): ?Emission
@@ -281,9 +321,29 @@ class AnalyzeUnitValueSpreadsheet
         return Emission::query()->whereRaw('LOWER(TRIM(name)) = ?', [Str::lower(trim($name))])->first();
     }
 
-    private function findConstruction(string $name): ?Construction
+    /**
+     * O empreendimento do nome dentro da emissão da linha, ou o motivo da recusa.
+     *
+     * Procurar primeiro pelo nome em todas as emissões e só depois conferir a
+     * emissão recusava a linha certa sempre que outro empreendimento homônimo,
+     * de outra série, aparecesse antes na consulta. Dois homônimos na mesma
+     * emissão são recusados: escolher um deles seria gravar valores numa unidade
+     * que ninguém apontou.
+     */
+    private function findConstruction(string $name, Emission $emission): Construction|string
     {
-        return Construction::query()->whereRaw('LOWER(TRIM(development_name)) = ?', [Str::lower(trim($name))])->first();
+        $candidates = Construction::query()
+            ->whereRaw('LOWER(TRIM(development_name)) = ?', [Str::lower(trim($name))])
+            ->get();
+
+        $inEmission = $candidates->where('emission_id', $emission->getKey());
+
+        return match (true) {
+            $inEmission->count() === 1 => $inEmission->first(),
+            $inEmission->count() > 1 => 'Há mais de um empreendimento com este nome nesta emissão. Diferencie os nomes antes de importar.',
+            $candidates->isNotEmpty() => 'O empreendimento informado não pertence à emissão selecionada.',
+            default => 'Empreendimento não encontrado.',
+        };
     }
 
     private function findUnit(Construction $construction, string $block, string $unit): ?ConstructionUnit

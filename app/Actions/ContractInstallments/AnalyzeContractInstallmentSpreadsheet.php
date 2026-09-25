@@ -2,14 +2,18 @@
 
 namespace App\Actions\ContractInstallments;
 
-use App\Concerns\MoneyFormatter;
+use App\Enums\ChangeSeverity;
 use App\Enums\ReconciliationOutcome;
 use App\Models\Construction;
 use App\Models\Contract;
 use App\Models\ContractInstallment;
 use App\Models\Emission;
+use App\Services\SalesBoards\RegisteredCompetenceIndex;
+use App\Support\Dates\SpreadsheetDate;
+use App\Support\Money\IntegerMoney;
+use App\Support\Reconciliation\FieldChange;
+use App\Support\Reconciliation\ValueComparator;
 use Carbon\Carbon;
-use DateTime;
 use DateTimeInterface;
 use Illuminate\Support\Str;
 use Spatie\SimpleExcel\SimpleExcelReader;
@@ -111,7 +115,70 @@ class AnalyzeContractInstallmentSpreadsheet
                 }
             });
 
-        return new ContractInstallmentSpreadsheetAnalysis($analyzedRows);
+        return new ContractInstallmentSpreadsheetAnalysis($this->flagRegisteredCompetences($analyzedRows));
+    }
+
+    /**
+     * Marks the rows that touch a fact of a competence already registered on the
+     * Sales Board. The warning never blocks: correcting the source is legitimate,
+     * but the registered position does not follow it on its own, and whoever
+     * confirms has to know that.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    private function flagRegisteredCompetences(array $rows): array
+    {
+        $index = RegisteredCompetenceIndex::forConstructions(array_column($rows, 'construction_id'));
+
+        return array_map(function (array $row) use ($index): array {
+            if (! $row['outcome']->writesToDatabase()) {
+                return $row;
+            }
+
+            return [
+                ...$row,
+                'registered_competences' => $index->reachedBy($row['construction_id'], ...$this->affectedDates($row)),
+            ];
+        }, $rows);
+    }
+
+    /**
+     * The dates from which the row changes what the Sales Board derives.
+     *
+     * Settlement is decided by the schedule alone -- valid on the day and paid
+     * in full by it -- so the due date moves nothing there. A new installment is
+     * a new obligation for the whole life of the contract and reaches back to
+     * the sale; a receipt, a paid value or a cancellation reaches back to the
+     * earlier of the day on record and the day in the file; a new expected value
+     * matters only where the installment already counts as paid.
+     *
+     * @param  array<string, mixed>  $row
+     * @return list<string|null>
+     */
+    private function affectedDates(array $row): array
+    {
+        if ($row['outcome'] === ReconciliationOutcome::New) {
+            return [$row['contract_sale_date'], $row['payment_date'], $row['cancellation_date']];
+        }
+
+        $dates = [];
+
+        foreach ($row['comparison']?->changes ?? [] as $change) {
+            /** @var FieldChange $change */
+            if ($change->severity === ChangeSeverity::Informative) {
+                continue;
+            }
+
+            $dates = [...$dates, ...match ($change->field) {
+                'payment_date' => [$row['payment_date'], $row['stored_payment_date']],
+                'paid_value', 'expected_value' => [$row['payment_date'] ?? $row['stored_payment_date']],
+                'cancellation_date' => [$row['cancellation_date'], $row['stored_cancellation_date']],
+                default => [],
+            }];
+        }
+
+        return $dates;
     }
 
     /**
@@ -158,9 +225,15 @@ class AnalyzeContractInstallmentSpreadsheet
             'number' => ContractInstallment::normalizeNumber($this->cell($row, $resolvedHeaders, ContractInstallmentSpreadsheetColumns::NUMBER)),
             'number_normalized' => ContractInstallment::normalizeNumberForComparison($this->cell($row, $resolvedHeaders, ContractInstallmentSpreadsheetColumns::NUMBER)),
             'due_date_raw' => $this->rawCell($row, $resolvedHeaders, ContractInstallmentSpreadsheetColumns::DUE_DATE),
-            'expected_value_raw' => $this->cell($row, $resolvedHeaders, ContractInstallmentSpreadsheetColumns::EXPECTED_VALUE),
+            /**
+             * Amounts stay raw: a numeric cell is read for the number it holds.
+             * Turned into text first, 1553.919 became "1553.919" and then
+             * R$ 1.553.919,00 -- a dot followed by three digits reads as a
+             * thousands separator.
+             */
+            'expected_value_raw' => $this->rawCell($row, $resolvedHeaders, ContractInstallmentSpreadsheetColumns::EXPECTED_VALUE),
             'payment_date_raw' => $this->rawCell($row, $resolvedHeaders, ContractInstallmentSpreadsheetColumns::PAYMENT_DATE),
-            'paid_value_raw' => $this->cell($row, $resolvedHeaders, ContractInstallmentSpreadsheetColumns::PAID_VALUE),
+            'paid_value_raw' => $this->rawCell($row, $resolvedHeaders, ContractInstallmentSpreadsheetColumns::PAID_VALUE),
             'cancellation_date_raw' => $this->rawCell($row, $resolvedHeaders, ContractInstallmentSpreadsheetColumns::CANCELLATION_DATE),
         ];
     }
@@ -193,7 +266,7 @@ class AnalyzeContractInstallmentSpreadsheet
             ? collect()
             : Contract::withTrashed()
                 ->whereIn('code_normalized', $codes->all())
-                ->get(['id', 'construction_id', 'code', 'code_normalized', 'deleted_at']);
+                ->get(['id', 'construction_id', 'code', 'code_normalized', 'sale_date', 'deleted_at']);
 
         $contractsByCode = [];
         $contractsByKey = [];
@@ -243,7 +316,9 @@ class AnalyzeContractInstallmentSpreadsheet
             'contract_code' => $row['contract_code'],
             'number' => $row['number'],
             'number_normalized' => $row['number_normalized'],
+            'construction_id' => null,
             'contract_id' => null,
+            'contract_sale_date' => null,
             'installment_id' => null,
             'comparison' => null,
             'due_date' => null,
@@ -251,6 +326,9 @@ class AnalyzeContractInstallmentSpreadsheet
             'payment_date' => null,
             'paid_value' => null,
             'cancellation_date' => null,
+            'stored_payment_date' => null,
+            'stored_cancellation_date' => null,
+            'registered_competences' => [],
         ];
 
         if ($this->isBlankRow($row)) {
@@ -277,6 +355,10 @@ class AnalyzeContractInstallmentSpreadsheet
             return $this->error($base, 'O empreendimento informado não pertence à emissão selecionada.');
         }
 
+        if ($construction['ambiguous']) {
+            return $this->error($base, 'Há mais de um empreendimento com este nome nesta emissão. Diferencie os nomes antes de importar.');
+        }
+
         $contractError = $this->resolveContract($row, $construction['id'], $context);
 
         if ($contractError['error'] !== null) {
@@ -284,12 +366,14 @@ class AnalyzeContractInstallmentSpreadsheet
         }
 
         $contract = $contractError['contract'];
+        $base['construction_id'] = $construction['id'];
         $base['contract_id'] = (int) $contract->getKey();
+        $base['contract_sale_date'] = ValueComparator::date($contract->sale_date);
 
         $dueDate = $this->parseDate($row['due_date_raw']);
 
         if ($dueDate === null) {
-            return $this->error($base, 'Data de vencimento inválida. Utilize o formato dd/mm/aaaa.');
+            return $this->error($base, 'Data de vencimento inválida. '.SpreadsheetDate::FORMAT_HINT);
         }
 
         $base['due_date'] = $dueDate;
@@ -346,6 +430,8 @@ class AnalyzeContractInstallmentSpreadsheet
 
         return [
             ...$base,
+            'stored_payment_date' => ValueComparator::date($existing->payment_date),
+            'stored_cancellation_date' => ValueComparator::date($existing->cancellation_date),
             'installment_id' => (int) $existing->getKey(),
             'comparison' => $comparison,
             'outcome' => $comparison->outcome(),
@@ -438,7 +524,12 @@ class AnalyzeContractInstallmentSpreadsheet
         $paymentDate = $this->parseDate($row['payment_date_raw']);
 
         if ($paymentDate === null) {
-            return ['date' => null, 'value' => null, 'error' => 'Data do pagamento inválida. Utilize o formato dd/mm/aaaa.'];
+            return ['date' => null, 'value' => null, 'error' => 'Data do pagamento inválida. '.SpreadsheetDate::FORMAT_HINT];
+        }
+
+        // A receipt is a fact: it is recorded after it happens, never ahead.
+        if (SpreadsheetDate::isAfterBusinessToday($paymentDate)) {
+            return ['date' => null, 'value' => null, 'error' => 'A data do pagamento não pode ser futura: um recebimento só é registrado depois de acontecer.'];
         }
 
         $paidValue = $this->parseAmount($row['paid_value_raw']);
@@ -465,15 +556,19 @@ class AnalyzeContractInstallmentSpreadsheet
         $cancellationDate = $this->parseDate($row['cancellation_date_raw']);
 
         if ($cancellationDate === null) {
-            return ['date' => null, 'error' => 'Data de cancelamento inválida. Utilize o formato dd/mm/aaaa.'];
+            return ['date' => null, 'error' => 'Data de cancelamento inválida. '.SpreadsheetDate::FORMAT_HINT];
         }
 
         return ['date' => $cancellationDate, 'error' => null];
     }
 
     /**
+     * The development of the name inside the row's emission. Two homonyms in
+     * the same emission are reported as ambiguous rather than picked between:
+     * choosing one would book the row against a development nobody pointed at.
+     *
      * @param  array<string, mixed>  $row
-     * @return array{id: int, belongs_to_emission: bool}|null
+     * @return array{id: int, belongs_to_emission: bool, ambiguous: bool}|null
      */
     private function resolveConstruction(array $row): ?array
     {
@@ -485,13 +580,16 @@ class AnalyzeContractInstallmentSpreadsheet
 
         $emissionId = $this->emissions[self::normalizeName((string) ($row['emission'] ?? ''))] ?? null;
 
-        foreach ($candidates as $candidate) {
-            if ($candidate['emission_id'] === $emissionId) {
-                return ['id' => $candidate['id'], 'belongs_to_emission' => true];
-            }
+        $inEmission = array_values(array_filter(
+            $candidates,
+            fn (array $candidate): bool => $candidate['emission_id'] === $emissionId,
+        ));
+
+        if ($inEmission !== []) {
+            return ['id' => $inEmission[0]['id'], 'belongs_to_emission' => true, 'ambiguous' => count($inEmission) > 1];
         }
 
-        return ['id' => $candidates[0]['id'], 'belongs_to_emission' => false];
+        return ['id' => $candidates[0]['id'], 'belongs_to_emission' => false, 'ambiguous' => false];
     }
 
     /**
@@ -581,57 +679,29 @@ class AnalyzeContractInstallmentSpreadsheet
 
     /**
      * Accepts what the operators actually type, plus what the reader hands over
-     * for a real date cell.
+     * for a real date cell -- strictly, through {@see SpreadsheetDate}: a
+     * two-digit year, an American reading or a bare serial number would book
+     * the installment in the wrong century or the wrong month.
      */
     private function parseDate(mixed $value): ?string
     {
-        if ($value instanceof DateTimeInterface) {
-            return Carbon::instance($value)->toDateString();
-        }
-
-        if (! is_string($value) && ! is_numeric($value)) {
-            return null;
-        }
-
-        $normalizedValue = trim((string) $value);
-
-        if ($normalizedValue === '') {
-            return null;
-        }
-
-        // No loose Carbon::parse() fallback on purpose: it would read
-        // "03/10/2026" as an American date and book the installment in the wrong
-        // month. The warning check rejects dates that only exist after a
-        // rollover, such as 31/02/2026 silently becoming 02/03/2026.
-        foreach (['d/m/Y', 'd/m/Y H:i:s', 'Y-m-d', 'Y-m-d H:i:s'] as $format) {
-            $date = DateTime::createFromFormat($format, $normalizedValue);
-            $errors = DateTime::getLastErrors();
-
-            if ($date === false) {
-                continue;
-            }
-
-            if (is_array($errors) && ((($errors['error_count'] ?? 0) > 0) || (($errors['warning_count'] ?? 0) > 0))) {
-                continue;
-            }
-
-            return Carbon::instance($date)->toDateString();
-        }
-
-        return null;
+        return SpreadsheetDate::parse($value);
     }
 
-    private function parseAmount(?string $value): ?float
+    /**
+     * The amount of a cell, through the same exact cents parser the unit
+     * importers use. A numeric cell keeps its number; text is read in either
+     * convention ("1.553,92" or "1,553.92").
+     */
+    private function parseAmount(mixed $value): ?float
     {
-        if (blank($value)) {
+        if (! is_int($value) && ! is_float($value) && ! is_string($value)) {
             return null;
         }
 
-        if (preg_match('/\d/', $value) !== 1) {
-            return null;
-        }
+        $cents = IntegerMoney::cents($value);
 
-        return MoneyFormatter::normalizeDecimalValue($value);
+        return $cents === null ? null : $cents / 100;
     }
 
     /**

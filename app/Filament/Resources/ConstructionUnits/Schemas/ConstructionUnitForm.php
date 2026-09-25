@@ -174,13 +174,18 @@ class ConstructionUnitForm
                     ->mutateStateForValidationUsing(fn (mixed $state): ?string => self::normalizeBaseValue($state))
                     ->requiredWith('base_value_reference_date')
                     ->rule('numeric')
-                    ->minValue(0)
+                    /**
+                     * Zero não é valor informado: usado como marcador de "sem
+                     * preço", fazia toda venda da unidade sair conforme e o
+                     * estoque sair a R$ 0,00 sem nenhum achado.
+                     */
+                    ->minValue(0.01)
                     ->placeholder('900.000,00')
-                    ->helperText('Deixe em branco se o valor ainda não foi informado. Zero é um valor informado, não um valor ausente.')
+                    ->helperText('Deixe em branco se o valor ainda não foi informado. Quando informado, precisa ser maior que zero.')
                     ->extraInputAttributes(['class' => 'text-right font-mono tabular-nums'])
                     ->validationMessages([
                         'required_with' => 'Informe o valor base ou limpe a data de referência.',
-                        'min' => 'O valor base não pode ser negativo.',
+                        'min' => 'O valor base precisa ser maior que zero.',
                     ]),
 
                 DatePicker::make('base_value_reference_date')

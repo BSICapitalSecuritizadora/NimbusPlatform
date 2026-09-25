@@ -26,4 +26,12 @@ enum ChangeSeverity: string
      * not an edited one), so the row is refused and a person decides.
      */
     case Blocked = 'bloqueada';
+
+    /**
+     * Reported, never applied. The file and the record disagree, but the file
+     * cannot tell an erasure from a missing value (an empty payment cell reads
+     * the same for "never paid" and "reverted"), so the difference is shown and
+     * a person decides.
+     */
+    case Informative = 'informativa';
 }

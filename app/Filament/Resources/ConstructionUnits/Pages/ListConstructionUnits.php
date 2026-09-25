@@ -9,6 +9,8 @@ use App\Actions\ConstructionUnitValues\AnalyzeUnitValueSpreadsheet;
 use App\Actions\ConstructionUnitValues\ImportUnitValuesFromSpreadsheet;
 use App\Actions\ConstructionUnitValues\UnitValueSpreadsheetAnalysis;
 use App\Filament\Resources\ConstructionUnits\ConstructionUnitResource;
+use App\Services\SalesBoards\RegisteredCompetenceIndex;
+use App\Support\Dates\SpreadsheetDate;
 use App\Support\Money\IntegerMoney;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -283,13 +285,30 @@ class ListConstructionUnits extends ListRecords
             'Duplicadas na planilha: <b>'.$analysis->duplicatedInFileCount().'</b>',
         ];
 
+        if ($analysis->registeredCompetenceCount() > 0) {
+            $lines[] = 'Alcançam competência já registrada no Quadro de Vendas: <b>'.$analysis->registeredCompetenceCount().'</b>';
+        }
+
         $verdict = $analysis->canImport()
             ? '<p class="fi-color-success"><b>Planilha pronta para atualização.</b></p>'
             : '<p class="fi-color-danger"><b>Corrija as inconsistências antes de confirmar.</b></p>';
 
+        $verdict .= $this->renderRegisteredCompetenceVerdict($analysis->registeredCompetenceCount());
+
         $rows = $analysis->previewRows();
         $renderedRows = $rows->take(self::PREVIEW_LIMIT)->map(function (array $row): string {
             $message = filled($row['message'] ?? null) ? ' — '.e((string) $row['message']) : '';
+            $message .= $this->renderRegisteredCompetenceNote($row);
+
+            /**
+             * A vigência como a importação a entendeu, e não como o arquivo a
+             * escreveu: é aqui que uma data lida no mês errado aparece antes
+             * de gravar. Sem data interpretada (linha com erro), o texto do
+             * arquivo.
+             */
+            $effectiveFrom = filled($row['effective_from_date'] ?? null)
+                ? SpreadsheetDate::display($row['effective_from_date'])
+                : (string) ($row['effective_from'] ?? '—');
 
             return '<tr>'
                 .'<td style="padding:.25rem .5rem;">'.$row['line'].'</td>'
@@ -298,7 +317,7 @@ class ListConstructionUnits extends ListRecords
                 .'<td style="padding:.25rem .5rem;">'.e((string) $row['unit']).'</td>'
                 .'<td style="padding:.25rem .5rem;">'.e($this->formatPreviewValue($row['current_value_cents'] ?? null)).'</td>'
                 .'<td style="padding:.25rem .5rem;">'.e($this->formatPreviewValue($row['value_cents'] ?? null)).'</td>'
-                .'<td style="padding:.25rem .5rem;">'.e((string) $row['effective_from']).'</td>'
+                .'<td style="padding:.25rem .5rem;">'.e($effectiveFrom).'</td>'
                 .'<td style="padding:.25rem .5rem;">'.e($row['outcome']->label()).$message.'</td>'
                 .'</tr>';
         })->implode('');
@@ -325,6 +344,31 @@ class ListConstructionUnits extends ListRecords
     private function formatPreviewValue(?int $cents): string
     {
         return $cents === null ? '—' : 'R$ '.IntegerMoney::format($cents);
+    }
+
+    /**
+     * Nunca bloqueia: reprecificar com vigência passada, ou cadastrar unidade
+     * em empreendimento já posicionado, é legítimo. Mas a posição registrada é
+     * uma foto que garantias e relatório mensal continuam lendo, e ela não
+     * acompanha a fonte sozinha.
+     */
+    private function renderRegisteredCompetenceVerdict(int $count): string
+    {
+        if ($count === 0) {
+            return '';
+        }
+
+        return '<p class="fi-color-warning"><b>'.$count.' linha(s) alcançam competências já registradas no Quadro de Vendas (marcadas com ⚑). A posição registrada não muda sozinha: depois de confirmar, verifique essas competências no Quadro de Vendas.</b></p>';
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function renderRegisteredCompetenceNote(array $row): string
+    {
+        $warning = RegisteredCompetenceIndex::describe($row['registered_competences'] ?? []);
+
+        return $warning === null ? '' : '<br><span class="fi-color-warning">⚑ '.e($warning).'</span>';
     }
 
     private function analyzeValues(?string $path): ?UnitValueSpreadsheetAnalysis
@@ -371,6 +415,10 @@ class ListConstructionUnits extends ListRecords
             'Duplicadas na planilha: <b>'.$analysis->duplicatedInFileCount().'</b>',
         ];
 
+        if ($analysis->registeredCompetenceCount() > 0) {
+            $lines[] = 'Em empreendimento com competência já registrada no Quadro de Vendas: <b>'.$analysis->registeredCompetenceCount().'</b>';
+        }
+
         if ($analysis->emptyLineCount() > 0) {
             $lines[] = 'Linhas vazias ignoradas: <b>'.$analysis->emptyLineCount().'</b>';
         }
@@ -378,6 +426,8 @@ class ListConstructionUnits extends ListRecords
         $verdict = $analysis->canImport()
             ? '<p class="fi-color-success"><b>Planilha pronta para importação.</b></p>'
             : '<p class="fi-color-danger"><b>Corrija as inconsistências antes de confirmar. A importação só é liberada quando todas as linhas estiverem válidas.</b></p>';
+
+        $verdict .= $this->renderRegisteredCompetenceVerdict($analysis->registeredCompetenceCount());
 
         return '<div class="fi-ta-text-item-label">'.implode(' &nbsp;·&nbsp; ', $lines).'</div>'.$verdict;
     }
@@ -388,6 +438,7 @@ class ListConstructionUnits extends ListRecords
         $renderedRows = $rows->take(self::PREVIEW_LIMIT)->map(function (array $row): string {
             $status = ConstructionUnitSpreadsheetAnalysis::statusLabel($row['status']);
             $message = filled($row['message'] ?? null) ? ' — '.e((string) $row['message']) : '';
+            $message .= $this->renderRegisteredCompetenceNote($row);
 
             return '<tr>'
                 .'<td style="padding:.25rem .5rem;">'.$row['line'].'</td>'
@@ -395,6 +446,12 @@ class ListConstructionUnits extends ListRecords
                 .'<td style="padding:.25rem .5rem;">'.e((string) $row['construction']).'</td>'
                 .'<td style="padding:.25rem .5rem;">'.e((string) $row['block']).'</td>'
                 .'<td style="padding:.25rem .5rem;">'.e((string) $row['unit']).'</td>'
+                /**
+                 * Valor base e data de referência como a importação os
+                 * entendeu, antes de gravar.
+                 */
+                .'<td style="padding:.25rem .5rem;text-align:right;white-space:nowrap;">'.e($this->formatPreviewValue($row['base_value'] ?? null)).'</td>'
+                .'<td style="padding:.25rem .5rem;">'.e(SpreadsheetDate::display($row['base_value_reference_date'] ?? null)).'</td>'
                 .'<td style="padding:.25rem .5rem;">'.e($status).$message.'</td>'
                 .'</tr>';
         })->implode('');
@@ -410,6 +467,8 @@ class ListConstructionUnits extends ListRecords
             .'<th style="text-align:left;padding:.25rem .5rem;">Empreendimento</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Bloco</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Unidade</th>'
+            .'<th style="text-align:right;padding:.25rem .5rem;">Valor base</th>'
+            .'<th style="text-align:left;padding:.25rem .5rem;">Referência</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Status</th>'
             .'</tr></thead><tbody>'.$renderedRows.'</tbody></table></div>'.$omitted;
     }

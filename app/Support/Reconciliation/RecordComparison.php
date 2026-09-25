@@ -37,6 +37,10 @@ final class RecordComparison
     /**
      * The severity of the whole row is the severity of its worst field: one
      * blocked field refuses the row even if everything else is routine.
+     *
+     * An informative difference never writes, so it only decides the row when
+     * it is all the row has: next to a real change, it rides along in the
+     * summary of an ordinary update.
      */
     public function outcome(): ReconciliationOutcome
     {
@@ -48,15 +52,19 @@ final class RecordComparison
             return ReconciliationOutcome::Conflict;
         }
 
-        return $this->hasSeverity(ChangeSeverity::Critical)
-            ? ReconciliationOutcome::CriticalUpdate
-            : ReconciliationOutcome::Update;
+        if ($this->hasSeverity(ChangeSeverity::Critical)) {
+            return ReconciliationOutcome::CriticalUpdate;
+        }
+
+        return $this->hasSeverity(ChangeSeverity::Normal)
+            ? ReconciliationOutcome::Update
+            : ReconciliationOutcome::InformativeDivergence;
     }
 
     /**
      * The attributes to write, keyed by column. Only the fields that actually
      * differ appear, so an update never rewrites a column the spreadsheet
-     * agreed with.
+     * agreed with -- and never one whose difference is only informative.
      *
      * @return array<string, mixed>
      */
@@ -65,7 +73,7 @@ final class RecordComparison
         $attributes = [];
 
         foreach ($this->changes as $change) {
-            if ($change->severity !== ChangeSeverity::Blocked) {
+            if (! in_array($change->severity, [ChangeSeverity::Blocked, ChangeSeverity::Informative], true)) {
                 $attributes[$change->field] = $change->value;
             }
         }

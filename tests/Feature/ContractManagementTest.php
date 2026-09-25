@@ -13,6 +13,7 @@ use App\Models\ConstructionUnit;
 use App\Models\Contract;
 use App\Models\ContractInstallment;
 use App\Models\Emission;
+use Carbon\CarbonImmutable;
 use Database\Factories\ClientFactory;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Database\QueryException;
@@ -464,6 +465,33 @@ describe('coerência temporal da unidade', function () {
             ->assertHasFormErrors(['cancellation_date']);
 
         expect(Contract::query()->count())->toBe(0);
+    });
+
+    it('refuses a sale dated after today in the business calendar, as the import does', function () {
+        $this->actingAs(makeAdminUser());
+
+        [$emission, $construction, $unit, $buyer] = contractScenario();
+
+        // 22:30 em São Paulo no dia 25 já é dia 26 em UTC.
+        $this->travelTo(CarbonImmutable::parse('2026-09-25 22:30:00', 'America/Sao_Paulo'));
+
+        Livewire::test(CreateContract::class)
+            ->fillForm(fillContractForm($emission, $construction, $unit, $buyer, [
+                'sale_date' => '2026-09-26',
+            ]))
+            ->call('create')
+            ->assertHasFormErrors(['sale_date' => 'A data da venda não pode ser futura.']);
+
+        expect(Contract::query()->count())->toBe(0);
+
+        Livewire::test(CreateContract::class)
+            ->fillForm(fillContractForm($emission, $construction, $unit, $buyer, [
+                'sale_date' => '2026-09-25',
+            ]))
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        expect(Contract::query()->sole()->sale_date->toDateString())->toBe('2026-09-25');
     });
 
     it('leaves an untouched pair of historical contracts alone', function () {

@@ -6,14 +6,19 @@ use App\Actions\ConstructionUnitValues\UnitValueSpreadsheetAnalysis;
 use App\Actions\ConstructionUnitValues\UnitValueSpreadsheetColumns;
 use App\Actions\ConstructionUnitValues\UnitValueSpreadsheetTemplate;
 use App\Enums\UnitValueSource;
+use App\Filament\Resources\ConstructionUnits\Pages\ListConstructionUnits;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\ConstructionUnitValue;
 use App\Models\Emission;
+use App\Models\SalesBoard;
 use App\Services\SalesBoards\UnitValueResolver;
 use Carbon\CarbonImmutable;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use OpenSpout\Common\Entity\Cell;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Common\Entity\Style\Style;
@@ -348,4 +353,149 @@ it('analyses hundreds of units without a query per row', function () {
         // insert per row.
         ->and($importQueries)->toBeLessThan(10)
         ->and($analysisQueries)->toBeLessThan(200 * 5);
+});
+
+describe('leitura estrita da vigência', function () {
+    /**
+     * Anything outside dd/mm/aaaa used to fall into Carbon::parse(), which reads
+     * slashes month first: "03/09/26" (3 de setembro) was recorded as 9 de março,
+     * and the new value applied six months early with no finding.
+     */
+    it('refuses a two digit year, an implausible year and a bare serial number', function (mixed $effectiveFrom) {
+        unitValueFixture('400000.00', '2026-01-01');
+
+        $analysis = analyzeUnitValues([
+            ['CRI Alfa', 'Residencial Alfa', '01', '101', '500.000,00', $effectiveFrom, 'Reajuste'],
+        ]);
+
+        expect($analysis->canImport())->toBeFalse()
+            ->and($analysis->collect()->first()['effective_from_date'])->toBeNull()
+            ->and($analysis->collect()->first()['message'])
+            ->toBe('Vigência inválida. Utilize o formato dd/mm/aaaa, com o ano completo (a partir de 1990).');
+    })->with([
+        'two digit year' => ['03/09/26'],
+        'dashes and two digit year' => ['03-09-26'],
+        'implausible year' => ['03/09/0026'],
+        'bare serial number' => [46000.5],
+    ]);
+
+    it('reads the time an export appends as the same day, never month first', function (string $effectiveFrom) {
+        unitValueFixture('400000.00', '2026-01-01');
+
+        $analysis = analyzeUnitValues([
+            ['CRI Alfa', 'Residencial Alfa', '01', '101', '500.000,00', $effectiveFrom, 'Reajuste'],
+        ]);
+
+        expect($analysis->collect()->first()['effective_from_date'])->toBe('2026-09-03');
+    })->with([
+        'with time' => ['03/09/2026 00:00:00'],
+        'with short time' => ['03/09/2026 10:00'],
+        'iso' => ['2026-09-03'],
+    ]);
+
+    it('shows the interpreted date on the conference, not the text of the file', function () {
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $this->actingAs(makeAdminUser());
+
+        unitValueFixture('400000.00', '2026-01-01');
+
+        $path = unitValueSpreadsheet([
+            ['CRI Alfa', 'Residencial Alfa', '01', '101', '500.000,00', '03/09/2026 00:00:00', 'Reajuste'],
+        ]);
+        $storedPath = 'imports/construction-unit-values/'.basename($path);
+        Storage::disk('local')->put($storedPath, file_get_contents($path));
+
+        $component = Livewire::test(ListConstructionUnits::class)->instance();
+        $preview = (fn (): string => $this->renderValuePreview($storedPath)->toHtml())->call($component);
+
+        expect($preview)
+            ->toContain('<td style="padding:.25rem .5rem;">03/09/2026</td>')
+            ->not->toContain('03/09/2026 00:00:00');
+    });
+});
+
+/**
+ * Zero was accepted as a table price. Used as the "no price yet" placeholder,
+ * it made every sale of the unit conform and the stock publish at R$ 0,00.
+ */
+it('refuses a zero value', function () {
+    unitValueFixture('400000.00', '2026-01-01');
+
+    $analysis = analyzeUnitValues([
+        ['CRI Alfa', 'Residencial Alfa', '01', '101', '0,00', '01/07/2026', 'Sem preço'],
+    ]);
+
+    expect($analysis->canImport())->toBeFalse()
+        ->and($analysis->collect()->first()['message'])->toBe('O valor atualizado precisa ser maior que zero.');
+});
+
+it('reads a numeric value cell for the number it holds', function () {
+    unitValueFixture();
+
+    $path = temporaryTestFilePath('unit-values-numeric');
+    $writer = new Writer;
+    $writer->openToFile($path);
+    $writer->addRow(Row::fromValues(UnitValueSpreadsheetColumns::headers()));
+    $writer->addRow(Row::fromValues(['CRI Alfa', 'Residencial Alfa', '01', '101', 153.919, '01/07/2026', 'Reajuste']));
+    $writer->close();
+
+    $analysis = app(AnalyzeUnitValueSpreadsheet::class)->handle($path);
+
+    expect($analysis->collect()->first()['value_cents'])->toBe(15392);
+});
+
+/**
+ * The development used to be looked up by name across every emission, and only
+ * then checked against the emission of the row. A homonym of another series
+ * found first made the right row read "não pertence à emissão".
+ */
+it('resolves the development inside the emission of the row', function () {
+    $otherEmission = Emission::factory()->create(['name' => 'CRI Alfa 1ª Série']);
+    Construction::factory()->create(['emission_id' => $otherEmission->id, 'development_name' => 'Residencial Alfa']);
+
+    [, $construction, $unit] = unitValueFixture('400000.00', '2026-01-01');
+
+    $analysis = analyzeUnitValues([
+        ['CRI Alfa', 'Residencial Alfa', '01', '101', '500.000,00', '01/07/2026', 'Reajuste'],
+    ]);
+
+    expect($analysis->canImport())->toBeTrue()
+        ->and($analysis->collect()->first()['construction_id'])->toBe($construction->id)
+        ->and($analysis->collect()->first()['construction_unit_id'])->toBe($unit->id);
+
+    Construction::factory()->create(['emission_id' => $construction->emission_id, 'development_name' => 'RESIDENCIAL ALFA']);
+
+    expect(analyzeUnitValues([
+        ['CRI Alfa', 'Residencial Alfa', '01', '101', '500.000,00', '01/07/2026', 'Reajuste'],
+    ])->collect()->first()['message'])
+        ->toBe('Há mais de um empreendimento com este nome nesta emissão. Diferencie os nomes antes de importar.');
+});
+
+it('flags a repricing whose effective date reaches a registered competence of the Sales Board', function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
+    $this->actingAs(makeAdminUser());
+
+    [$emission, $construction] = unitValueFixture('400000.00', '2026-01-01');
+
+    foreach (['2026-05-01', '2026-08-01'] as $month) {
+        SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create(['reference_month' => $month]);
+    }
+
+    $retroactive = analyzeUnitValues([['CRI Alfa', 'Residencial Alfa', '01', '101', '500.000,00', '01/07/2026', 'Reajuste']]);
+    $ahead = analyzeUnitValues([['CRI Alfa', 'Residencial Alfa', '01', '101', '500.000,00', '01/09/2026', 'Reajuste']]);
+
+    expect($retroactive->collect()->first()['registered_competences'])->toBe(['2026-08'])
+        ->and($retroactive->canImport())->toBeTrue()
+        ->and($ahead->registeredCompetenceCount())->toBe(0);
+
+    $path = unitValueSpreadsheet([['CRI Alfa', 'Residencial Alfa', '01', '101', '500.000,00', '01/05/2026', 'Reajuste']]);
+    $storedPath = 'imports/construction-unit-values/'.basename($path);
+    Storage::disk('local')->put($storedPath, file_get_contents($path));
+
+    $component = Livewire::test(ListConstructionUnits::class)->instance();
+    $preview = (fn (): string => $this->renderValuePreview($storedPath)->toHtml())->call($component);
+
+    expect($preview)
+        ->toContain('Alcançam competência já registrada no Quadro de Vendas: <b>1</b>')
+        ->toContain('Altera fatos de 2 competências já registradas no Quadro de Vendas (05/2026 a 08/2026).');
 });

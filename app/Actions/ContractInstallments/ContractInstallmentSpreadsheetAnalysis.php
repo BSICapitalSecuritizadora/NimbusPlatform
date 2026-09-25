@@ -120,6 +120,26 @@ class ContractInstallmentSpreadsheetAnalysis
         return $this->criticalUpdateCount() > 0;
     }
 
+    /**
+     * Rows that, once written, touch a fact of a competence already registered
+     * on the Sales Board. Shown on the conference, never blocking.
+     */
+    public function registeredCompetenceCount(): int
+    {
+        return $this->collect()
+            ->filter(fn (array $row): bool => ($row['registered_competences'] ?? []) !== [])
+            ->count();
+    }
+
+    /**
+     * Rows the file contradicts in a way the import never applies -- a receipt
+     * on record that the file no longer carries. Nothing is written for them.
+     */
+    public function informativeDivergenceCount(): int
+    {
+        return $this->countOf(ReconciliationOutcome::InformativeDivergence);
+    }
+
     public function canImport(): bool
     {
         return ($this->fileErrors === [])
@@ -169,7 +189,7 @@ class ContractInstallmentSpreadsheetAnalysis
     {
         return match ($outcome) {
             ReconciliationOutcome::Conflict, ReconciliationOutcome::Error, ReconciliationOutcome::DuplicatedInFile => 0,
-            ReconciliationOutcome::CriticalUpdate => 1,
+            ReconciliationOutcome::CriticalUpdate, ReconciliationOutcome::InformativeDivergence => 1,
             ReconciliationOutcome::Update => 2,
             ReconciliationOutcome::New => 3,
             default => 4,
