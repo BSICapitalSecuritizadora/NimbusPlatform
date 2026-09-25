@@ -368,14 +368,25 @@
                 Ação escrita direto no Blade é impressa mesmo quando `visible()` a
                 esconde, como um botão inerte. As condições abaixo são as mesmas das
                 ações e usam o portão que o workspace já trouxe, sem apurá-lo de novo.
-                Rodada encerrada não mostra nenhuma das duas.
+                Rodada encerrada não mostra nenhuma das duas. O motivo do
+                maker/checker também vai em texto ao lado do botão desabilitado:
+                o tooltip não existe em tela de toque.
             --}}
             @if ($canDecide)
+                @php($approvalConflict = $workspace->isReadyToPublish() ? $this->approvalConflict() : null)
+
                 <div class="mt-6 flex flex-wrap items-center gap-3">
                     {{ $this->returnToBuilderAction }}
 
                     @if ($workspace->isReadyToPublish())
                         {{ $this->approveAction }}
+
+                        @if ($approvalConflict !== null)
+                            <p class="text-sm text-gray-600 dark:text-gray-300">
+                                <span class="font-medium">Aprovar e publicar indisponível:</span>
+                                {{ $approvalConflict }}
+                            </p>
+                        @endif
                     @else
                         <p class="text-sm text-gray-600 dark:text-gray-300">
                             <span class="font-medium">Aprovar e publicar indisponível:</span>

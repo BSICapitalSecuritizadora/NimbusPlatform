@@ -264,6 +264,7 @@ it('lets an admin decide and publish a round someone else submitted', function (
 
     Livewire::test(ManagementReviewWorkspace::class, ['record' => $scenario['cycle']->getKey()])
         ->assertActionEnabled('approve')
+        ->assertDontSeeText('não pode aprová-la')
         ->callAction('approve', data: ['declaration' => true])
         ->assertHasNoActionErrors();
 
@@ -281,7 +282,8 @@ it('shows the approval disabled, with the reason, to the admin who submitted the
 
     $page = Livewire::test(ManagementReviewWorkspace::class, ['record' => $scenario['cycle']->getKey()])
         ->assertActionVisible('approve')
-        ->assertActionDisabled('approve');
+        ->assertActionDisabled('approve')
+        ->assertSeeText('quem enviou a validação da construtora desta rodada não pode aprová-la');
 
     expect($page->instance()->approvalConflict())
         ->toBe(SalesBoardMakerCheckerException::approverSubmittedBuilderReview()->getMessage());
@@ -404,6 +406,31 @@ it('lets the editor prepare the homologation but not conclude it', function () {
     expect($scenario['emission']->fresh()->usesAutomatedSalesBoard())->toBeTrue();
 });
 
+it('tells the editor that the pending impact attestations belong to Gestão', function () {
+    $editor = segregationUserWithRole('editor');
+    $scenario = RolloutFixture::emission(1);
+    RolloutFixture::legacyBoard($scenario['constructions'][0]);
+    RolloutFixture::open($scenario['emission'], $editor);
+    RolloutFixture::recipients($scenario['emission'], $editor);
+    $id = $scenario['emission']->getKey();
+    $notice = 'Atestar os impactos, aprovar e ativar são da Gestão';
+
+    $this->actingAs($editor);
+
+    Livewire::test(ManageSalesBoardRollout::class, ['record' => $id])
+        ->assertActionHidden('markGuaranteesReviewed')
+        ->assertSeeText('Aprovar homologação indisponível')
+        ->assertSeeText('Impacto sobre as Garantias revisado')
+        ->assertSeeText($notice);
+
+    $this->actingAs(segregationUserWithRole('admin'));
+
+    Livewire::test(ManageSalesBoardRollout::class, ['record' => $id])
+        ->assertActionVisible('markGuaranteesReviewed')
+        ->assertSeeText('Aprovar homologação indisponível')
+        ->assertDontSeeText($notice);
+});
+
 it('shows approval and activation disabled, with the reason, to the admin who opened the homologation', function () {
     $admin = segregationUserWithRole('admin');
     $scenario = segregationReadyHomologation($admin);
@@ -414,6 +441,7 @@ it('shows approval and activation disabled, with the reason, to the admin who op
     $page = Livewire::test(ManageSalesBoardRollout::class, ['record' => $id])
         ->assertActionVisible('approve')
         ->assertActionDisabled('approve')
+        ->assertSeeText('quem abriu a homologação não pode aprová-la')
         ->call('mountAction', 'approve')
         ->assertSet('mountedActions', []);
 
@@ -426,6 +454,7 @@ it('shows approval and activation disabled, with the reason, to the admin who op
     $page = Livewire::test(ManageSalesBoardRollout::class, ['record' => $id])
         ->assertActionVisible('activate')
         ->assertActionDisabled('activate')
+        ->assertSeeText('quem abriu a homologação não pode ativar a automação')
         ->call('mountAction', 'activate')
         ->assertSet('mountedActions', []);
 
@@ -451,11 +480,13 @@ it('lets another admin attest, approve and activate through the screen', functio
 
     Livewire::test(ManageSalesBoardRollout::class, ['record' => $id])
         ->assertActionEnabled('approve')
+        ->assertDontSeeText('não pode aprová-la')
         ->callAction('approve', data: ['reason' => RolloutFixture::REASON])
         ->assertHasNoActionErrors();
 
     Livewire::test(ManageSalesBoardRollout::class, ['record' => $id])
         ->assertActionEnabled('activate')
+        ->assertDontSeeText('não pode ativar a automação')
         ->callAction('activate', data: ['reason' => 'Ativação acordada com a operação.'])
         ->assertHasNoActionErrors();
 

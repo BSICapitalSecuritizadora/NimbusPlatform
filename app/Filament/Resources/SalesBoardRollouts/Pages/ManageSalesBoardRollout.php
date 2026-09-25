@@ -271,6 +271,34 @@ class ManageSalesBoardRollout extends Page
     }
 
     /**
+     * Por que "Aprovar" está à vista mas indisponível para quem abriu a
+     * homologação. A tela repete o motivo em texto ao lado do botão, porque o
+     * tooltip não existe em tela de toque.
+     */
+    public function approvalConflict(): ?string
+    {
+        return $this->makerCheckerConflict($this->latestHomologationState());
+    }
+
+    /**
+     * O mesmo para "Ativar automação", só quando é o maker/checker -- e não a
+     * falta de aprovação ou a homologação desatualizada, que a tela já explica
+     * -- o que desabilita o botão.
+     */
+    public function activationConflict(): ?string
+    {
+        $homologation = $this->latestHomologationState();
+
+        if ($homologation === null
+            || ! $homologation->isApproved()
+            || $this->outdatedHomologationId === (int) $homologation->getKey()) {
+            return null;
+        }
+
+        return $this->makerCheckerConflict($homologation, activating: true);
+    }
+
+    /**
      * Por que quem está na tela não pode aprovar ou ativar esta homologação --
      * quem a abriu não conclui nenhum dos dois atos --, ou `null`, se pode. O
      * serviço confere de novo ao aprovar e ao ativar.
@@ -528,8 +556,8 @@ class ManageSalesBoardRollout extends Page
              * dizendo a quem pedir: escondê-lo faria o portão verde parecer não
              * ter saída.
              */
-            ->disabled(fn (): bool => $this->makerCheckerConflict($this->latestHomologationState()) !== null)
-            ->tooltip(fn (): ?string => $this->makerCheckerConflict($this->latestHomologationState()))
+            ->disabled(fn (): bool => $this->approvalConflict() !== null)
+            ->tooltip(fn (): ?string => $this->approvalConflict())
             ->schema([
                 Textarea::make('reason')
                     ->label('Registro da aprovação')
