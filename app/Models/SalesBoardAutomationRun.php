@@ -38,6 +38,8 @@ class SalesBoardAutomationRun extends Model
         'skipped_count',
         'alerts_sent',
         'alerts_deduped',
+        'alerts_failed',
+        'alerts_without_recipient',
         'instance_key',
         'failure_message',
     ];
@@ -67,6 +69,8 @@ class SalesBoardAutomationRun extends Model
             'skipped_count' => 'integer',
             'alerts_sent' => 'integer',
             'alerts_deduped' => 'integer',
+            'alerts_failed' => 'integer',
+            'alerts_without_recipient' => 'integer',
         ];
     }
 
@@ -116,6 +120,8 @@ class SalesBoardAutomationRun extends Model
             'skipped' => $this->skipped_count,
             'alerts_sent' => $this->alerts_sent,
             'alerts_deduped' => $this->alerts_deduped,
+            'alerts_failed' => (int) $this->alerts_failed,
+            'alerts_without_recipient' => (int) $this->alerts_without_recipient,
             'duration_ms' => $this->durationMs(),
         ];
     }

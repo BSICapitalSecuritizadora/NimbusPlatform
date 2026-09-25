@@ -10,7 +10,6 @@ use App\Models\Construction;
 use App\Models\Emission;
 use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Quais empreendimentos a automação pode processar, segundo o rollout.
@@ -103,9 +102,11 @@ class DatabaseSalesBoardAutomationEligibilityProvider implements SalesBoardAutom
     /**
      * O conjunto de empreendimentos ainda é o que foi homologado?
      *
-     * O aviso é `warning` e sai uma vez por execução da descoberta -- o
-     * scheduler roda de hora em hora, e registrar o mesmo desvio a cada hora
-     * afogaria o log. A tela de rollout mostra a situação de forma permanente.
+     * Só responde; não avisa nem registra. Esta pergunta é feita pela execução
+     * horária e também por telas (a aba de pendências, o recorte dos lembretes),
+     * e um `warning` aqui sairia a cada renderização. Quem avisa a suspensão --
+     * aos responsáveis da Gestão e ao log, uma vez por situação -- é o
+     * {@see SalesBoardAutomationSuspensionNotifier}, dentro da execução.
      *
      * @param  list<int>  $currentConstructionIds
      */
@@ -113,33 +114,11 @@ class DatabaseSalesBoardAutomationEligibilityProvider implements SalesBoardAutom
     {
         $homologation = $emission->activeSalesBoardHomologation;
 
-        if ($homologation === null) {
-            Log::warning('Sales board rollout has no active homologation', [
-                'event' => 'sales_board_rollout_without_homologation',
-                'emission_id' => (int) $emission->getKey(),
-            ]);
-
+        if ($homologation === null || $currentConstructionIds === []) {
             return false;
         }
 
-        if ($currentConstructionIds === []) {
-            return false;
-        }
-
-        $currentHash = $this->assessment->scopeHash($currentConstructionIds);
-
-        if ($currentHash === (string) $homologation->construction_scope_hash) {
-            return true;
-        }
-
-        Log::warning('Sales board rollout scope changed since homologation', [
-            'event' => 'sales_board_rollout_scope_changed',
-            'emission_id' => (int) $emission->getKey(),
-            'homologation_id' => (int) $homologation->getKey(),
-            'current_construction_count' => count($currentConstructionIds),
-        ]);
-
-        return false;
+        return $this->assessment->scopeHash($currentConstructionIds) === (string) $homologation->construction_scope_hash;
     }
 
     /**

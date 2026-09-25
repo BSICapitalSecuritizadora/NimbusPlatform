@@ -46,6 +46,7 @@ class SalesBoardAutomationTargetInfolist
                         ->placeholder('—')
                         ->formatStateUsing(fn (?SalesBoardAutomationSatisfiedVia $state): string => $state?->label() ?? '—'),
                     TextEntry::make('attempt_count')->label('Tentativas'),
+                    TextEntry::make('consecutive_failure_count')->label('Falhas técnicas seguidas'),
                     TextEntry::make('first_attempt_at')->label('Primeira tentativa')->dateTime('d/m/Y H:i')->placeholder('—'),
                     TextEntry::make('last_attempt_at')->label('Última tentativa')->dateTime('d/m/Y H:i')->placeholder('—'),
                     TextEntry::make('next_attempt_at')->label('Próxima tentativa')->dateTime('d/m/Y H:i')->placeholder('—'),
@@ -74,6 +75,17 @@ class SalesBoardAutomationTargetInfolist
                         ->label('Descrição')
                         ->state(fn (SalesBoardAutomationTarget $record): string => (string) $record->currentReason())
                         ->columnSpanFull(),
+                ]),
+
+            Section::make('Encerramento')
+                ->visible(fn (SalesBoardAutomationTarget $record): bool => $record->status === SalesBoardAutomationTargetStatus::Closed)
+                ->columns(3)
+                ->schema([
+                    TextEntry::make('closure_reason')
+                        ->label('Motivo')
+                        ->formatStateUsing(fn (SalesBoardAutomationTarget $record): string => $record->closure_reason?->label() ?? '—'),
+                    TextEntry::make('closed_at')->label('Encerrado em')->dateTime('d/m/Y H:i')->placeholder('—'),
+                    TextEntry::make('closedBy.name')->label('Encerrado por')->placeholder('Automação'),
                 ]),
 
             Section::make('Ciclo')

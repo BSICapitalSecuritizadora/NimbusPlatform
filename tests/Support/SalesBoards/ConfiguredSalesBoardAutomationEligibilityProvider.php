@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Services\SalesBoards;
+namespace Tests\Support\SalesBoards;
 
 use App\DTOs\SalesBoards\SalesBoardAutomationEligibleTarget;
+use App\Services\SalesBoards\SalesBoardAutomationEligibilityProvider;
 use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Config;
@@ -12,11 +13,18 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * A habilitação vem da configuração, enquanto a Fase G não decide o rollout.
+ * Elegibilidade declarada pelo próprio teste -- **só para testes**.
  *
- * Nasce vazia. Um ambiente que receba as migrations desta fase sem ter escolhido
- * nada não automatiza empreendimento nenhum -- e essa é a propriedade que
- * permite aplicar o schema muito antes da decisão de operação.
+ * Nasceu como o provider temporário da Fase F e saiu de `app/` quando o rollout
+ * por Emissão virou o único caminho de produção: deixá-lo lá, junto de uma chave
+ * de configuração lida do ambiente, fazia parecer que uma variável habilitava
+ * empreendimentos, quando o container nem o usa. Os testes do **motor** da
+ * automação continuam precisando dizer "estes empreendimentos são elegíveis"
+ * sem montar homologação, e é para isso que ele existe agora.
+ *
+ * Lê `sales_board.automation.targets`, uma chave que só os testes preenchem
+ * (via {@see AutomationFixture::enable()}); o arquivo de configuração não a
+ * declara.
  *
  * Entradas malformadas são **descartadas com aviso**, não corrigidas. Um alvo
  * sem competência de ativação seria automaticamente "desde sempre", que é
@@ -24,7 +32,7 @@ use Throwable;
  * consulta a um empreendimento inexistente. Nos dois casos a resposta correta é
  * ignorar a linha e dizer alto que ela foi ignorada.
  */
-class ConfiguredSalesBoardAutomationEligibilityProvider implements SalesBoardAutomationEligibilityProvider
+final class ConfiguredSalesBoardAutomationEligibilityProvider implements SalesBoardAutomationEligibilityProvider
 {
     public function eligibleTargets(): array
     {

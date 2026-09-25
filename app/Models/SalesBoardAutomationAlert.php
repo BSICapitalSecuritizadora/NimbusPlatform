@@ -26,6 +26,8 @@ class SalesBoardAutomationAlert extends Model
     protected $fillable = [
         'alert_type',
         'dedupe_key',
+        'sales_board_automation_run_id',
+        'emission_id',
         'sales_board_automation_target_id',
         'sales_board_cycle_id',
         'sales_board_builder_review_id',

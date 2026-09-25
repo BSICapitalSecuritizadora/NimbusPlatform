@@ -2,6 +2,7 @@
 
 use App\Enums\SalesBoardAutomationAlertType;
 use App\Enums\SalesBoardAutomationAttemptOutcome;
+use App\Enums\SalesBoardAutomationClosureReason;
 use App\Enums\SalesBoardAutomationRunStatus;
 use App\Enums\SalesBoardAutomationRunTrigger;
 use App\Enums\SalesBoardAutomationSatisfiedVia;
@@ -36,6 +37,7 @@ it('keeps every persisted enum value within its column width', function () {
         [SalesBoardAutomationRunTrigger::cases(), 20, 'run trigger'],
         [SalesBoardAutomationRunStatus::cases(), 30, 'run status'],
         [SalesBoardAutomationAlertType::cases(), 40, 'alert type'],
+        [SalesBoardAutomationClosureReason::cases(), 40, 'closure reason'],
     ];
 
     foreach ($limits as [$cases, $max, $label]) {

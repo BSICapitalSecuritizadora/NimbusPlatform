@@ -4,6 +4,7 @@ namespace App\Filament\Resources\SalesBoardAutomationTargets\Tables;
 
 use App\Enums\SalesBoardAutomationTargetStatus;
 use App\Models\SalesBoardAutomationTarget;
+use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use App\Support\SalesBoards\SalesBoardIssuePresenter;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Contracts\HasTable;
@@ -56,19 +57,22 @@ class SalesBoardAutomationTargetsTable
                         SalesBoardAutomationTargetStatus::Blocked => collect(SalesBoardIssuePresenter::describe($record->blockerCodes()))
                             ->pluck('label')
                             ->implode('; ') ?: $record->currentReason(),
-                        SalesBoardAutomationTargetStatus::Failed => $record->currentReason(),
+                        SalesBoardAutomationTargetStatus::Failed,
+                        SalesBoardAutomationTargetStatus::Closed => $record->currentReason(),
                         default => null,
                     })
-                    ->description(fn (SalesBoardAutomationTarget $record): ?string => $record->status === SalesBoardAutomationTargetStatus::Blocked
-                        ? ((implode(', ', $record->blockerCodes())) ?: null)
-                        : null)
+                    ->description(fn (SalesBoardAutomationTarget $record): ?string => match ($record->status) {
+                        SalesBoardAutomationTargetStatus::Blocked => (implode(', ', $record->blockerCodes())) ?: null,
+                        SalesBoardAutomationTargetStatus::Closed => $record->closure_reason?->label(),
+                        default => null,
+                    })
                     ->placeholder('—')
                     ->wrap(),
 
-                // Competência satisfeita não está parada: a data só aparece para o que exige ação.
+                // Competência satisfeita ou encerrada não está parada: a data só aparece para o que exige ação.
                 TextColumn::make('first_attempt_at')
                     ->label('Parado desde')
-                    ->state(fn (SalesBoardAutomationTarget $record): mixed => $record->isSatisfied() ? null : $record->first_attempt_at)
+                    ->state(fn (SalesBoardAutomationTarget $record): mixed => $record->status->isOpen() ? $record->first_attempt_at : null)
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->visibleFrom('lg'),
@@ -128,11 +132,27 @@ class SalesBoardAutomationTargetsTable
             ];
         }
 
-        return match ($livewire->activeTab ?? null) {
-            'pendentes' => ['Nada pendente de ação', 'Nenhuma competência está bloqueada, com falha ou aguardando processamento.'],
+        $activeTab = $livewire->activeTab ?? null;
+
+        /**
+         * Desligada, a automação não atende empreendimento nenhum -- e o que ela
+         * não atende não fica pendente dela. A mensagem diz por que a aba está
+         * vazia, para ninguém ler "nada pendente" como "tudo em dia".
+         */
+        if ($activeTab === 'pendentes' && ! SalesBoardAutomationConfig::enabled()) {
+            return [
+                'Automação desligada',
+                'Com o interruptor global desligado nada é tentado, e nenhuma competência fica pendente da automação. '
+                    .'As competências abertas continuam visíveis nas abas de bloqueios, falhas e "Todos".',
+            ];
+        }
+
+        return match ($activeTab) {
+            'pendentes' => ['Nada pendente de ação', 'Nenhuma competência da automação está bloqueada, com falha ou aguardando processamento.'],
             'bloqueados' => ['Não há alvos bloqueados', 'Nenhuma competência está parada por fonte incompleta.'],
             'falhas' => ['Nenhuma falha técnica', 'Nenhuma competência está parada por falha técnica.'],
             'satisfeitos' => ['Nenhuma competência satisfeita ainda', 'Nenhuma competência foi gerada ou encontrada pela automação até agora.'],
+            'encerrados' => ['Nenhuma competência encerrada', 'Nenhuma competência saiu do perímetro da automação sem ser gerada.'],
             default => ['Nenhuma competência encontrada', 'Nenhuma competência corresponde aos filtros aplicados.'],
         };
     }

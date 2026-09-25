@@ -6,6 +6,8 @@ use App\Enums\SalesBoardAutomationTargetStatus;
 use App\Filament\Resources\SalesBoardAutomationTargets\SalesBoardAutomationTargetResource;
 use App\Models\SalesBoardAutomationRun;
 use App\Support\SalesBoards\SalesBoardAutomationConfig;
+use App\Support\SalesBoards\SalesBoardAutomationNotices;
+use App\Support\SalesBoards\SalesBoardAutomationPerimeter;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,6 +23,12 @@ class ListSalesBoardAutomationTargets extends ListRecords
     ];
 
     /**
+     * O perímetro lido uma vez por renderização: a aba e o badge perguntam a
+     * mesma coisa, e o provider custa uma consulta por Emissão automatizada.
+     */
+    private ?SalesBoardAutomationPerimeter $perimeter = null;
+
+    /**
      * O cabeçalho responde a pergunta que antecede todas as outras: o scheduler
      * rodou? Sem ela, uma lista vazia é indistinguível de uma automação morta.
      *
@@ -33,13 +41,16 @@ class ListSalesBoardAutomationTargets extends ListRecords
         $run = SalesBoardAutomationRun::query()->latest('started_at')->first();
         $lastRun = $this->lastRunSummary($run);
 
+        $notices = implode(' ', SalesBoardAutomationNotices::forAutomationScreen());
+        $notices = $notices === '' ? '' : ' '.$notices;
+
         if (! SalesBoardAutomationConfig::enabled()) {
-            return 'Automação desligada no interruptor global: nenhum processamento mensal é executado nem registrado enquanto ela estiver assim. '.$lastRun;
+            return 'Automação desligada no interruptor global: nenhum processamento mensal é executado nem registrado enquanto ela estiver assim. '.$lastRun.$notices;
         }
 
-        return $run === null
+        return ($run === null
             ? 'Automação global ligada, mas ainda sem execução: nenhuma execução registrada até agora.'
-            : 'Automação global ligada. '.$lastRun;
+            : 'Automação global ligada. '.$lastRun).$notices;
     }
 
     private function lastRunSummary(?SalesBoardAutomationRun $run): string
@@ -62,19 +73,18 @@ class ListSalesBoardAutomationTargets extends ListRecords
 
     /**
      * As abas são o recorte operacional: o que exige ação primeiro.
+     *
+     * "Pendentes de ação" é o que a automação ainda atende: alvo aberto de
+     * empreendimento que está no perímetro hoje, a partir da competência em que
+     * ele entrou. Um alvo de Emissão devolvida ao legado não pede ação de
+     * ninguém -- e contá-lo deixava o badge sem nunca zerar.
      */
     public function getTabs(): array
     {
         return [
             'pendentes' => Tab::make('Pendentes de ação')
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereIn('status', [
-                    SalesBoardAutomationTargetStatus::Blocked,
-                    SalesBoardAutomationTargetStatus::Failed,
-                    SalesBoardAutomationTargetStatus::Pending,
-                ]))
-                ->badge(fn (): int => static::getResource()::getEloquentQuery()
-                    ->whereNot('status', SalesBoardAutomationTargetStatus::Satisfied)
-                    ->count()),
+                ->modifyQueryUsing(fn (Builder $query): Builder => $this->pendingActionQuery($query))
+                ->badge(fn (): int => $this->pendingActionQuery(static::getResource()::getEloquentQuery())->count()),
 
             'bloqueados' => Tab::make('Bloqueados pela fonte')
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query
@@ -88,7 +98,20 @@ class ListSalesBoardAutomationTargets extends ListRecords
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query
                     ->where('status', SalesBoardAutomationTargetStatus::Satisfied)),
 
+            'encerrados' => Tab::make('Encerrados')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                    ->where('status', SalesBoardAutomationTargetStatus::Closed)),
+
             'todos' => Tab::make('Todos'),
         ];
+    }
+
+    private function pendingActionQuery(Builder $query): Builder
+    {
+        $this->perimeter ??= SalesBoardAutomationPerimeter::current();
+
+        return $this->perimeter->constrain(
+            $query->whereIn('status', SalesBoardAutomationTargetStatus::openCases())
+        );
     }
 }

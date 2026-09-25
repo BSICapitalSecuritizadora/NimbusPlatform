@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\SalesBoards;
 
 use App\Enums\SalesBoardAutomationAttemptOutcome;
+use App\Enums\SalesBoardAutomationRunStatus;
 use App\Enums\SalesBoardAutomationTargetStatus;
 use App\Enums\SalesBoardGenerationOutcome;
 use App\Models\Construction;
@@ -34,9 +35,24 @@ use Throwable;
  * Nada aqui reimplementa apuração. Prontidão, derivação, fingerprint e criação
  * do ciclo continuam sendo do {@see SalesBoardGenerationService}; este serviço
  * decide *quando* chamar e o que fazer com a resposta.
+ *
+ * A tentativa tem duas transações, e a primeira é curta de propósito: ela
+ * **reserva** a tentativa -- conta o número, marca a execução que está nela e já
+ * grava a próxima tentativa como se esta fosse falhar -- e commita antes de a
+ * geração começar. Um processo que morre no meio da geração (falta de memória,
+ * deploy, reinício) é o único caso que nenhum `catch` alcança; com a reserva
+ * commitada, a morte vira uma tentativa interrompida que a execução seguinte
+ * registra, o backoff passa a valer e a escalação conta. Sem ela, a transação
+ * desfeita apagava a própria tentativa: o alvo pesado voltava primeiro da fila a
+ * cada hora, sem contar nada, e derrubava junto todos os que vinham depois.
  */
 class SalesBoardAutomationTargetProcessor
 {
+    /**
+     * O código da tentativa que um processo morto deixou pela metade.
+     */
+    public const INTERRUPTED_CODE = 'TentativaInterrompida';
+
     public function __construct(
         private readonly SalesBoardGenerationService $generationService,
         private readonly SalesBoardAutomationRetryPolicy $retryPolicy,
@@ -46,34 +62,43 @@ class SalesBoardAutomationTargetProcessor
     /**
      * Processa um alvo e devolve a tentativa registrada.
      *
-     * Devolve `null` quando o alvo não devia mesmo tentar -- satisfeito por
-     * outra instância entre a descoberta e agora, ou ainda em espera de retry.
-     * Não é erro, e não vira tentativa: registrar "não tentei" a cada hora
-     * encheria a trilha de linhas que não explicam nada.
+     * Devolve `null` quando o alvo não devia mesmo tentar -- satisfeito ou
+     * encerrado por outra instância entre a descoberta e agora, ainda em espera
+     * de retry, ou com a tentativa reservada por outra execução. Não é erro, e
+     * não vira tentativa: registrar "não tentei" a cada hora encheria a trilha
+     * de linhas que não explicam nada.
      */
     public function process(
         SalesBoardAutomationRun $run,
         SalesBoardAutomationTarget $target,
         CarbonImmutable $now,
     ): ?SalesBoardAutomationAttempt {
-        return DB::transaction(function () use ($run, $target, $now): ?SalesBoardAutomationAttempt {
+        $reservation = $this->reserve($run, $target, $now);
+
+        if ($reservation === null) {
+            return null;
+        }
+
+        [$attemptNumber, $startedAt] = $reservation;
+
+        return DB::transaction(function () use ($run, $target, $now, $attemptNumber, $startedAt): ?SalesBoardAutomationAttempt {
             $locked = SalesBoardAutomationTarget::query()
                 ->whereKey($target->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
 
             /**
-             * Reconferido sob lock, e não confiando na leitura da descoberta:
-             * entre uma coisa e outra outra instância pode ter satisfeito este
-             * mesmo alvo, e tentar de novo produziria uma derivação inteira para
-             * descobrir o que a linha já sabia.
+             * Entre a reserva e agora o alvo pode ter sido encerrado (retorno ao
+             * legado, suspensão de escopo). A reserva é desfeita e nada é
+             * gerado: a competência não pertence mais à automação.
              */
-            if (! $locked->isDueForAttempt($now)) {
+            if ((int) $locked->in_flight_run_id !== (int) $run->getKey() || ! $locked->status->isOpen()) {
+                if ((int) $locked->in_flight_run_id === (int) $run->getKey()) {
+                    $locked->forceFill(['in_flight_run_id' => null])->save();
+                }
+
                 return null;
             }
-
-            $attemptNumber = (int) $locked->attempt_count + 1;
-            $startedAt = CarbonImmutable::now();
 
             $existing = $this->existingCycleFor($locked);
 
@@ -151,6 +176,149 @@ class SalesBoardAutomationTargetProcessor
     }
 
     /**
+     * Reserva a tentativa, numa transação própria e commitada antes da geração.
+     *
+     * Grava o que tem de valer se o processo morrer daqui em diante: o número da
+     * tentativa, a execução que a reservou e a próxima tentativa já com o
+     * backoff de uma falha técnica. Se a geração terminar, a segunda transação
+     * sobrescreve tudo isso com o desfecho real.
+     *
+     * Reconferido sob lock, e não confiando na leitura da descoberta: entre uma
+     * coisa e outra outra instância pode ter satisfeito ou reservado este mesmo
+     * alvo, e tentar de novo produziria uma derivação inteira para descobrir o
+     * que a linha já sabia.
+     *
+     * @return array{0: int, 1: CarbonImmutable}|null
+     */
+    private function reserve(
+        SalesBoardAutomationRun $run,
+        SalesBoardAutomationTarget $target,
+        CarbonImmutable $now,
+    ): ?array {
+        return DB::transaction(function () use ($run, $target, $now): ?array {
+            $locked = SalesBoardAutomationTarget::query()
+                ->whereKey($target->getKey())
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked instanceof SalesBoardAutomationTarget || ! $locked->isDueForAttempt($now)) {
+                return null;
+            }
+
+            $attemptNumber = (int) $locked->attempt_count + 1;
+            $startedAt = CarbonImmutable::now();
+
+            $locked->forceFill([
+                'attempt_count' => $attemptNumber,
+                'in_flight_run_id' => $run->getKey(),
+                'first_attempt_at' => $locked->first_attempt_at ?? $startedAt,
+                'last_attempt_at' => $startedAt,
+                'next_attempt_at' => $this->retryPolicy->afterFailure($now, (int) $locked->consecutive_failure_count + 1),
+            ])->save();
+
+            return [$attemptNumber, $startedAt];
+        });
+    }
+
+    /**
+     * Registra como falha a tentativa que um processo morto deixou reservada.
+     *
+     * Só vale para reservas de execuções que já não estão rodando -- terminadas,
+     * falhas ou dadas como interrompidas. A reserva de uma execução viva é
+     * trabalho em andamento, não órfão.
+     *
+     * A tentativa é acrescentada à trilha com a execução que a reservou, como
+     * qualquer outra. O alvo ainda aberto passa a falho, com a falha contada:
+     * a próxima tentativa já foi gravada com backoff na reserva, e é ela que
+     * vale. Um alvo que nesse meio-tempo foi encerrado continua encerrado.
+     */
+    public function recordInterruption(SalesBoardAutomationTarget $target): ?SalesBoardAutomationAttempt
+    {
+        return DB::transaction(function () use ($target): ?SalesBoardAutomationAttempt {
+            $locked = SalesBoardAutomationTarget::query()
+                ->whereKey($target->getKey())
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked instanceof SalesBoardAutomationTarget || $locked->in_flight_run_id === null) {
+                return null;
+            }
+
+            $run = SalesBoardAutomationRun::query()->find($locked->in_flight_run_id);
+
+            if (! $run instanceof SalesBoardAutomationRun || $run->status === SalesBoardAutomationRunStatus::Running) {
+                return null;
+            }
+
+            $message = 'A tentativa foi interrompida antes de terminar: o processo da automação foi encerrado no meio '
+                .'(falta de memória, deploy ou reinício). O detalhe técnico, se houver, está no log da aplicação.';
+
+            $state = ['in_flight_run_id' => null];
+
+            if ($locked->status->isOpen()) {
+                $state += [
+                    'status' => SalesBoardAutomationTargetStatus::Failed,
+                    'consecutive_failure_count' => (int) $locked->consecutive_failure_count + 1,
+                    'last_outcome_at' => CarbonImmutable::now(),
+                    'last_error_code' => self::INTERRUPTED_CODE,
+                    'last_error_message' => $message,
+                ];
+            }
+
+            $locked->forceFill($state)->save();
+
+            return $this->recordAttempt(
+                $run,
+                $locked,
+                (int) $locked->attempt_count,
+                SalesBoardAutomationAttemptOutcome::Failed,
+                $locked->last_attempt_at ?? CarbonImmutable::now(),
+                null,
+                self::INTERRUPTED_CODE,
+                $message,
+            );
+        });
+    }
+
+    /**
+     * Registra a falha de um alvo que estourou fora da geração.
+     *
+     * O orquestrador chama isto quando o próprio processamento -- lock, leitura,
+     * gravação de estado -- lançou. É melhor esforço: se nem isto conseguir
+     * gravar, a reserva fica e a execução seguinte a registra como
+     * interrompida.
+     */
+    public function recordUnexpectedFailure(
+        SalesBoardAutomationRun $run,
+        SalesBoardAutomationTarget $target,
+        CarbonImmutable $now,
+        Throwable $exception,
+    ): ?SalesBoardAutomationAttempt {
+        return DB::transaction(function () use ($run, $target, $now, $exception): ?SalesBoardAutomationAttempt {
+            $locked = SalesBoardAutomationTarget::query()
+                ->whereKey($target->getKey())
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked instanceof SalesBoardAutomationTarget
+                || (int) $locked->in_flight_run_id !== (int) $run->getKey()
+                || ! $locked->status->isOpen()) {
+                return null;
+            }
+
+            return $this->fail(
+                $run,
+                $locked,
+                (int) $locked->attempt_count,
+                $locked->last_attempt_at ?? CarbonImmutable::now(),
+                $now,
+                $this->errorCode($exception),
+                $this->sanitize($exception),
+            );
+        });
+    }
+
+    /**
      * O ciclo da competência, se já houver um.
      *
      * Qualquer ciclo serve, inclusive cancelado: a competência já tem
@@ -181,6 +349,8 @@ class SalesBoardAutomationTargetProcessor
             'satisfied_via' => $outcome->satisfiedVia(),
             'sales_board_cycle_id' => $cycle?->getKey(),
             'attempt_count' => $attemptNumber,
+            'consecutive_failure_count' => 0,
+            'in_flight_run_id' => null,
             'first_attempt_at' => $target->first_attempt_at ?? $startedAt,
             'last_attempt_at' => $startedAt,
             'next_attempt_at' => null,
@@ -249,6 +419,13 @@ class SalesBoardAutomationTargetProcessor
         $target->forceFill([
             'status' => SalesBoardAutomationTargetStatus::Blocked,
             'attempt_count' => $attemptNumber,
+            /**
+             * Bloqueio zera a sequência de falhas técnicas: a derivação rodou
+             * até o fim, e a próxima falha técnica é a primeira de uma nova
+             * sequência.
+             */
+            'consecutive_failure_count' => 0,
+            'in_flight_run_id' => null,
             'first_attempt_at' => $target->first_attempt_at ?? $startedAt,
             'last_attempt_at' => $startedAt,
             'next_attempt_at' => $this->retryPolicy->afterBlocked($now),
@@ -285,12 +462,16 @@ class SalesBoardAutomationTargetProcessor
         string $message,
         ?Throwable $exception = null,
     ): SalesBoardAutomationAttempt {
+        $consecutiveFailures = (int) $target->consecutive_failure_count + 1;
+
         $target->forceFill([
             'status' => SalesBoardAutomationTargetStatus::Failed,
             'attempt_count' => $attemptNumber,
+            'consecutive_failure_count' => $consecutiveFailures,
+            'in_flight_run_id' => null,
             'first_attempt_at' => $target->first_attempt_at ?? $startedAt,
             'last_attempt_at' => $startedAt,
-            'next_attempt_at' => $this->retryPolicy->afterFailure($now, $attemptNumber),
+            'next_attempt_at' => $this->retryPolicy->afterFailure($now, $consecutiveFailures),
             'last_outcome_at' => CarbonImmutable::now(),
             'last_error_code' => $code,
             'last_error_message' => $message,

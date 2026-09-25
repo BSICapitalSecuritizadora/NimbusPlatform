@@ -17,5 +17,8 @@
             {{ $emission->name }}
         </span>
         <span class="bsi-rollout-description">{{ $this->getSubheading() }}</span>
+        @foreach (\App\Support\SalesBoards\SalesBoardAutomationNotices::forRollout($emission) as $notice)
+            <span class="bsi-rollout-notice" role="note">{{ $notice }}</span>
+        @endforeach
     </x-slot>
 </x-filament-panels::header>

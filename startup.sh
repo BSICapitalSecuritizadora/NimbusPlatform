@@ -167,6 +167,16 @@ chown -R www-data:www-data storage/framework storage/logs 2>/dev/null || true
 php artisan migrate --force --isolated --no-interaction
 php artisan optimize
 
+# Os locks de `withoutOverlapping()` do agendador moram no store de cache
+# compartilhado (CACHE_STORE, Redis em produção) e sobrevivem ao reinício do
+# container. Um deploy ou troca de App Setting no meio de uma execução deixava o
+# lock gravado, e o evento era pulado em silêncio até ele expirar. Este container acabou de
+# subir, então nenhuma execução dele está em andamento: os locks são limpos
+# antes dos laços. Com mais de uma instância, isso pode soltar o lock de uma
+# execução viva em outra instância -- a automação do Quadro de Vendas tolera,
+# porque a correção dela é do banco (reserva da tentativa sob lock e uniques).
+php artisan schedule:clear-cache --no-interaction || true
+
 # O symlink public/storage fica dentro do wwwroot e é destruído a cada deploy.
 # Recria apontando para a raiz pública configurada, senão as imagens públicas
 # (logos de bancos, mídias de medições) respondem 404 depois de cada deploy.
@@ -177,4 +187,11 @@ php artisan storage:link --force --no-interaction || true
 # encerra por `--max-time` após uma hora e o agendador nunca roda — as duas
 # coisas param em silêncio até o próximo deploy.
 while true; do php artisan queue:work --sleep=3 --tries=1 --timeout=600 --max-time=3600; sleep 5; done &
-while true; do php artisan schedule:work; sleep 5; done &
+#
+# O agendador roda com teto de memória explícito, e não com o `memory_limit` do
+# php.ini da imagem (128M quando nada o define). Atenção: o `-d` vale para o
+# processo do `schedule:work`, não para os comandos que ele dispara -- o Laravel
+# os inicia com o binário do PHP sem repassar flags. Por isso a automação do
+# Quadro de Vendas eleva o próprio limite (SALES_BOARD_AUTOMATION_MEMORY_LIMIT,
+# 512M por padrão) antes de gerar.
+while true; do php -d memory_limit=512M artisan schedule:work; sleep 5; done &

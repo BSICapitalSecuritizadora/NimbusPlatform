@@ -10,7 +10,6 @@ use App\Models\ConstructionUnit;
 use App\Models\Emission;
 use App\Models\SalesBoardAutomationRun;
 use App\Models\SalesDiscountPolicy;
-use App\Services\SalesBoards\ConfiguredSalesBoardAutomationEligibilityProvider;
 use App\Services\SalesBoards\DatabaseSalesBoardAutomationEligibilityProvider;
 use App\Services\SalesBoards\SalesBoardAutomationEligibilityProvider;
 use App\Services\SalesBoards\SalesBoardAutomationService;
@@ -20,11 +19,12 @@ use Illuminate\Support\Facades\Config;
 /**
  * Monta empreendimentos habilitados para a automação.
  *
- * Habilita **por configuração**, e por isso amarra explicitamente o provider de
- * configuração no container. Depois da Fase G o binding normal da aplicação é o
- * de banco -- rollout por Emissão --, e estes cenários continuam sendo o que
- * sempre foram: testes do **motor** da automação, dados alvos elegíveis. Quem
- * responde de onde a elegibilidade vem é a suíte da Fase G.
+ * Habilita **por declaração do teste**, e por isso amarra explicitamente o
+ * {@see ConfiguredSalesBoardAutomationEligibilityProvider} no container. O
+ * binding da aplicação é o de banco -- rollout por Emissão --, e estes cenários
+ * continuam sendo o que sempre foram: testes do **motor** da automação, dados
+ * alvos elegíveis. Quem responde de onde a elegibilidade vem é a suíte do
+ * rollout.
  *
  * Nenhum id real entra em arquivo versionado: cada teste declara quem quer ver
  * automatizado.

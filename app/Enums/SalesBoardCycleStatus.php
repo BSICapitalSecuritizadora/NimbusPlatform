@@ -5,11 +5,13 @@ namespace App\Enums;
 /**
  * Em que ponto do ciclo mensal do Quadro de Vendas uma competência está.
  *
- * Nesta fase só `Generated` é produzido: a Fase C congela e versiona o que a
- * derivação apura, e mais nada. Os outros estados existem porque a coluna é
- * texto e o vocabulário já está fechado -- declará-los agora evita renomear
- * dados persistidos depois -- mas **nenhuma transição está implementada**, e
- * nenhum caminho de código produz outro valor.
+ * O ciclo nasce `Generated` (a geração congela e versiona o que a derivação
+ * apura) e avança pelas transições dos fluxos seguintes: a abertura da
+ * validação leva a `BuilderReview`, a submissão a `ManagementReview`, a decisão
+ * da Gestão a `Approved` ou de volta à validação. `Returned` e `Cancelled` estão
+ * declarados porque a coluna é texto e o vocabulário foi fechado cedo --
+ * declará-los evita renomear dados persistidos depois --, e só passam a ser
+ * produzidos quando o fluxo que os usa existir.
  *
  * `stale` não está aqui de propósito: ficar obsoleto é condição do baseline
  * atual, não etapa do ciclo. Um ciclo com a fonte alterada continua Generated;
