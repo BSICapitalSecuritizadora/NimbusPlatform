@@ -48,7 +48,15 @@ class SalesBoardBuilderReviewSupersedingService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $outdated = $this->applicability->reviewsOutdatedBy($locked, $newBaseline);
+            /**
+             * A comparação é contra a versão vigente relida sob o lock, e não
+             * contra a que quem chamou tinha à mão. Um aviso atrasado -- ou uma
+             * reconciliação -- que comparasse com uma versão já superada
+             * substituiria revisões abertas sobre a vigente.
+             */
+            $current = SalesBoardCycleBaseline::query()->find($locked->current_baseline_id) ?? $newBaseline;
+
+            $outdated = $this->applicability->reviewsOutdatedBy($locked, $current);
 
             if ($outdated === []) {
                 return [];

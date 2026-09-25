@@ -172,7 +172,9 @@ it('lets the position reader see the approved position after publication', funct
 });
 
 it('sums both constructions of an emission after both are published', function () {
-    $emission = Emission::factory()->create(['status' => 'active']);
+    $emission = Emission::factory()
+        ->withAutomatedSalesBoard(CycleFixture::AUTOMATION_START)
+        ->create(['status' => 'active']);
 
     $first = ManagementReviewFixture::submittedCycleOn($emission, '1');
     $second = ManagementReviewFixture::submittedCycleOn($emission, '2');

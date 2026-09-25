@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\SalesBoardBuilderDivergenceType;
+use App\Enums\SalesBoardBuilderReviewStatus;
 use App\Enums\SalesBoardUnitClassification;
 use Database\Factories\SalesBoardBuilderDivergenceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -42,14 +43,31 @@ class SalesBoardBuilderDivergence extends Model
         'reason',
     ];
 
+    /**
+     * Criar, editar e apagar valem só enquanto a revisão é rascunho.
+     *
+     * A revisão é relida do banco, e não aceita como veio na relação carregada:
+     * uma relação carregada antes do envio diria "rascunho" para sempre, e uma
+     * divergência gravada naquele instante entraria numa declaração já enviada
+     * -- depois de a Gestão talvez já ter materializado as pendências dela. A
+     * leitura é compartilhada para enxergar a versão commitada mais recente e
+     * esperar quem estiver enviando a revisão naquele momento.
+     */
     protected static function booted(): void
     {
         $assertDraft = function (self $divergence): void {
-            if (! $divergence->review?->isEditable()) {
+            $status = SalesBoardBuilderReview::query()
+                ->whereKey($divergence->sales_board_builder_review_id)
+                ->sharedLock()
+                ->toBase()
+                ->value('status');
+
+            if (SalesBoardBuilderReviewStatus::tryFrom((string) $status) !== SalesBoardBuilderReviewStatus::Draft) {
                 throw new LogicException('A submitted builder divergence is immutable.');
             }
         };
 
+        static::creating($assertDraft);
         static::updating($assertDraft);
         static::deleting($assertDraft);
     }

@@ -14,6 +14,8 @@ use App\Enums\SalesBoardNonconformityDecision;
 use App\Enums\SalesBoardNonconformityOrigin;
 use App\Enums\SalesBoardStaleImpact;
 use App\Exceptions\SalesBoardManagementReviewException;
+use App\Models\Emission;
+use App\Models\SalesBoardBuilderDivergence;
 use App\Models\SalesBoardBuilderReview;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleBaseline;
@@ -24,6 +26,7 @@ use App\Models\SalesBoardPublication;
 use App\Models\User;
 use App\Support\SalesBoards\SalesBoardApprovalAuthority;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -94,10 +97,17 @@ class SalesBoardManagementApprovalService
                 ->with('construction')
                 ->firstOrFail();
 
+            /**
+             * As pendências vêm travadas, na mesma ordem: ciclo, análise, linhas
+             * filhas. A decisão segue essa ordem e espera a aprovação terminar;
+             * o lock das pendências é o que impede uma escrita fora dela de
+             * mudar uma conclusão entre o portão e a publicação -- que ainda
+             * passa pela derivação completa da fonte, logo abaixo.
+             */
             $review = SalesBoardManagementReview::query()
                 ->whereKey($review->getKey())
                 ->lockForUpdate()
-                ->with('nonconformities')
+                ->with(['nonconformities' => fn (HasMany $query): HasMany => $query->lockForUpdate()])
                 ->firstOrFail();
 
             /**
@@ -113,6 +123,7 @@ class SalesBoardManagementApprovalService
 
             $this->assertReviewOpen($review);
             $this->assertCycleInManagement($cycle);
+            $this->assertCoveredByAutomation($cycle);
 
             $baseline = SalesBoardCycleBaseline::query()
                 ->with(['lines', 'movements', 'cycle'])
@@ -124,7 +135,7 @@ class SalesBoardManagementApprovalService
 
             $this->assertReviewApplies($review, $baseline);
             $this->assertBuilderReviewApplies($review, $baseline);
-            $this->assertConformityFullyMaterialized($review, $baseline);
+            $this->assertFullyMaterialized($review, $baseline);
             $this->assertNonconformitiesResolved($review);
 
             /**
@@ -202,7 +213,23 @@ class SalesBoardManagementApprovalService
 
         $legacy = ($cycle === null) ? null : $this->publicationService->existingPosition($cycle);
 
+        $uncoveredSales = ($baseline === null) ? [] : $this->uncoveredSales($review, $baseline);
+        $uncoveredDivergences = $this->uncoveredDivergences($review);
+
+        $emission = ($cycle === null) ? null : Emission::query()->find($cycle->emission_id);
+        $automated = ($cycle !== null) && $this->automationCovers($emission, $cycle);
+
         $checks = [
+            [
+                'label' => 'Competência coberta pela automação',
+                'passed' => $automated,
+                'detail' => ($automated || ($cycle === null))
+                    ? null
+                    : sprintf(
+                        'A Emissão não cobre %s pela automação. Use "Cancelar competência" para encerrá-la.',
+                        $cycle->reference_month->format('m/Y'),
+                    ),
+            ],
             [
                 'label' => 'Validação da construtora aplicável',
                 'passed' => ($builderReview?->status === SalesBoardBuilderReviewStatus::Submitted)
@@ -210,6 +237,17 @@ class SalesBoardManagementApprovalService
                 'detail' => $builderReview === null
                     ? 'Nenhuma validação vinculada.'
                     : sprintf('%s · %s', $builderReview->attemptLabel(), $builderReview->status->label()),
+            ],
+            [
+                'label' => 'Pendências cobrem a versão vigente',
+                'passed' => ($baseline !== null) && ($uncoveredSales === []) && ($uncoveredDivergences === []),
+                'detail' => ($uncoveredSales === []) && ($uncoveredDivergences === [])
+                    ? null
+                    : sprintf(
+                        '%d venda(s) e %d divergência(s) sem pendência nesta análise.',
+                        count($uncoveredSales),
+                        count($uncoveredDivergences),
+                    ),
             ],
             [
                 'label' => 'Não conformidades decididas',
@@ -329,23 +367,87 @@ class SalesBoardManagementApprovalService
     }
 
     /**
-     * Toda venda apontada pela versão vigente tem pendência nesta análise.
+     * A competência só é publicada pelo ciclo enquanto a automação a cobre.
+     *
+     * O rollout decide quem escreve os quadros de uma Emissão. Publicar uma
+     * competência que a automação não cobre -- Emissão que voltou ao registro
+     * manual, ou competência anterior ao início -- criaria um quadro imutável
+     * sem homologação ao lado, e a competência ficaria congelada sem forma de
+     * correção. A saída para um ciclo nessa situação é cancelar a competência.
+     *
+     * A Emissão é relida aqui, dentro da transação: a tela pode ter sido aberta
+     * antes de a Emissão voltar ao legado.
+     *
+     * Sem lock na Emissão, de propósito. O rollout trava a Emissão antes de
+     * qualquer ciclo, e aqui o ciclo já está travado: travar a Emissão agora
+     * inverteria a ordem e abriria espaço para deadlock entre uma aprovação e
+     * um retorno ao legado. O custo é uma janela estreita, e conhecida: um
+     * retorno ao legado que feche enquanto esta aprovação deriva a fonte não a
+     * impede, e a competência sai publicada pelo ciclo.
+     */
+    private function assertCoveredByAutomation(SalesBoardCycle $cycle): void
+    {
+        $emission = Emission::query()->find($cycle->emission_id);
+
+        if (! $this->automationCovers($emission, $cycle)) {
+            throw SalesBoardManagementReviewException::competenceNotCoveredByAutomation(
+                (string) ($emission?->name ?? '—'),
+                $cycle->reference_month->format('m/Y'),
+            );
+        }
+    }
+
+    private function automationCovers(?Emission $emission, SalesBoardCycle $cycle): bool
+    {
+        return ($emission instanceof Emission)
+            && $emission->automationCovers(CarbonImmutable::parse($cycle->reference_month->toDateString()));
+    }
+
+    /**
+     * Todo fato da versão vigente que exige decisão tem pendência nesta análise.
      *
      * Defesa em profundidade, e não repetição da materialização: a abertura já
-     * cria uma pendência por venda decidível, e o caminho normal nunca falha
-     * aqui. Mas a aprovação é o último ponto antes de a posição virar Quadro de
-     * Vendas publicado, e uma venda fora da política -- ou sem conformidade
-     * determinável -- que atravessasse por um baseline escrito fora do fluxo,
-     * por uma materialização defeituosa ou por dado legado seria publicada sem
-     * que ninguém a tivesse analisado.
+     * cria uma pendência por venda decidível e por divergência declarada, e o
+     * caminho normal nunca falha aqui. Mas a aprovação é o último ponto antes de
+     * a posição virar Quadro de Vendas publicado, e uma venda fora da política
+     * -- ou sem conformidade determinável -- ou uma divergência da construtora
+     * que atravessasse por um baseline escrito fora do fluxo, por uma
+     * materialização defeituosa ou por dado legado seria publicada sem que
+     * ninguém a tivesse analisado.
      *
      * A conferência é contra o **baseline congelado**, nunca contra a fonte
      * viva: é o mesmo princípio da fase inteira.
      */
-    private function assertConformityFullyMaterialized(
+    private function assertFullyMaterialized(
         SalesBoardManagementReview $review,
         SalesBoardCycleBaseline $baseline,
     ): void {
+        $uncoveredSales = $this->uncoveredSales($review, $baseline);
+
+        if ($uncoveredSales !== []) {
+            throw SalesBoardManagementReviewException::conformityWithoutNonconformity($uncoveredSales);
+        }
+
+        $uncoveredDivergences = $this->uncoveredDivergences($review);
+
+        if ($uncoveredDivergences !== []) {
+            throw SalesBoardManagementReviewException::divergenceWithoutNonconformity($uncoveredDivergences);
+        }
+    }
+
+    /**
+     * As vendas decidíveis da versão vigente que nenhuma pendência cobre.
+     *
+     * A cobertura é pela chave natural do movimento -- tipo, contrato, unidade e
+     * veredito --, e não pelo id. Um recálculo que só troca a origem material
+     * cria uma versão nova com exatamente os mesmos fatos e movimentos de ids
+     * novos; a análise continua valendo para ela, e comparar ids faria toda
+     * venda já decidida parecer descoberta, travando a aprovação sem saída.
+     *
+     * @return list<string>
+     */
+    private function uncoveredSales(SalesBoardManagementReview $review, SalesBoardCycleBaseline $baseline): array
+    {
         $decidable = SalesBoardCycleMovement::query()
             ->where('sales_board_cycle_baseline_id', $baseline->getKey())
             ->where('movement_type', SalesBoardMovementType::Sale)
@@ -354,17 +456,26 @@ class SalesBoardManagementApprovalService
             ->get();
 
         if ($decidable->isEmpty()) {
-            return;
+            return [];
         }
 
-        $covered = $review->nonconformities
+        $movementIds = $review->nonconformities
             ->pluck('sales_board_cycle_movement_id')
             ->filter()
             ->map(fn (mixed $id): int => (int) $id)
+            ->values()
             ->all();
 
-        $uncovered = $decidable
-            ->reject(fn (SalesBoardCycleMovement $movement): bool => in_array((int) $movement->getKey(), $covered, true))
+        $covered = $movementIds === []
+            ? []
+            : SalesBoardCycleMovement::query()
+                ->whereKey($movementIds)
+                ->get()
+                ->map(fn (SalesBoardCycleMovement $movement): string => $this->naturalKey($movement))
+                ->all();
+
+        return $decidable
+            ->reject(fn (SalesBoardCycleMovement $movement): bool => in_array($this->naturalKey($movement), $covered, true))
             ->map(fn (SalesBoardCycleMovement $movement): string => sprintf(
                 '%s (%s)',
                 $movement->contract_code ?? $movement->displayName(),
@@ -372,10 +483,53 @@ class SalesBoardManagementApprovalService
             ))
             ->values()
             ->all();
+    }
 
-        if ($uncovered !== []) {
-            throw SalesBoardManagementReviewException::conformityWithoutNonconformity($uncovered);
+    /**
+     * O mesmo fato em qualquer versão do ciclo. Um contrato produz no máximo uma
+     * venda por competência -- a unique do movimento garante --, e o veredito
+     * entra na chave para que uma venda cujo veredito mudou não herde a decisão
+     * tomada sobre o anterior.
+     */
+    private function naturalKey(SalesBoardCycleMovement $movement): string
+    {
+        return implode('@', [
+            $movement->movement_type->value,
+            (int) $movement->contract_id,
+            (int) $movement->construction_unit_id,
+            $movement->conformity_status?->value ?? '',
+        ]);
+    }
+
+    /**
+     * As divergências da validação vinculada que nenhuma pendência cobre.
+     *
+     * @return list<string>
+     */
+    private function uncoveredDivergences(SalesBoardManagementReview $review): array
+    {
+        if ($review->sales_board_builder_review_id === null) {
+            return [];
         }
+
+        $covered = $review->nonconformities
+            ->pluck('sales_board_builder_divergence_id')
+            ->filter()
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
+
+        return SalesBoardBuilderDivergence::query()
+            ->where('sales_board_builder_review_id', $review->sales_board_builder_review_id)
+            ->orderBy('id')
+            ->get()
+            ->reject(fn (SalesBoardBuilderDivergence $divergence): bool => in_array((int) $divergence->getKey(), $covered, true))
+            ->map(fn (SalesBoardBuilderDivergence $divergence): string => sprintf(
+                '#%d %s',
+                (int) $divergence->getKey(),
+                $divergence->type->label(),
+            ))
+            ->values()
+            ->all();
     }
 
     /**
