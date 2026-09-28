@@ -473,12 +473,13 @@ class MeasurementCycleReportingService
     {
         $aggregates = [];
         $query = $this->applyStructuralFilters(
-            Measurement::query()->visibleTo($actor)->open(),
+            Measurement::query()->visibleTo($actor)->withPendingWork(),
             $filters,
         )->with([
             'operation:id,emission_id,responsible_user_id,stage2_reviewer_user_id,stage3_reviewer_user_id,payment_manager_user_id,payment_receipt_uploader_user_id,payment_finalizer_user_id',
             'reviews:id,measurement_id,stage,status,paused_at,created_at',
             'pauses:id,measurement_id,stage,paused_at,resumed_at',
+            'payments.currentReceiptEvidence',
         ]);
 
         $query
@@ -488,13 +489,10 @@ class MeasurementCycleReportingService
             ->each(function (LazyCollection $chunk) use (&$aggregates, $filters): void {
                 $measurements = $chunk->collect();
                 $responsibleIds = $measurements
-                    ->map(function (Measurement $measurement): ?int {
-                        $responsibility = $this->currentResponsibility($measurement);
-
-                        return $responsibility instanceof MeasurementResponsibility
-                            ? $measurement->operation?->responsibleUserIdFor($responsibility)
-                            : null;
-                    })
+                    ->flatMap(fn (Measurement $measurement): array => array_map(
+                        fn (MeasurementResponsibility $responsibility): ?int => $measurement->operation?->responsibleUserIdFor($responsibility),
+                        $this->workflow->pendingResponsibilities($measurement),
+                    ))
                     ->filter()
                     ->unique();
                 $names = $responsibleIds->isEmpty()
@@ -502,34 +500,33 @@ class MeasurementCycleReportingService
                     : User::query()->whereKey($responsibleIds)->pluck('name', 'id')->all();
 
                 foreach ($measurements as $measurement) {
-                    $responsibility = $this->currentResponsibility($measurement);
+                    foreach ($this->workflow->pendingResponsibilities($measurement) as $responsibility) {
+                        if ($filters->stage !== null && $responsibility->stage() !== $filters->stage) {
+                            continue;
+                        }
 
-                    if (! $responsibility instanceof MeasurementResponsibility
-                        || ($filters->stage !== null && $responsibility->stage() !== $filters->stage)) {
-                        continue;
+                        $responsibleId = $measurement->operation?->responsibleUserIdFor($responsibility);
+
+                        if ($filters->expectedResponsibleId !== null
+                            && $responsibleId !== $filters->expectedResponsibleId) {
+                            continue;
+                        }
+
+                        $key = ($responsibleId ?? 0).':'.$responsibility->value;
+                        $aggregates[$key] ??= [
+                            'responsible_id' => $responsibleId,
+                            'responsible_name' => $responsibleId !== null
+                                ? ($names[$responsibleId] ?? 'Responsável não localizado')
+                                : 'Não configurado',
+                            'responsibility' => $responsibility,
+                            'stage' => $responsibility->stage(),
+                            'pending' => 0,
+                            'overdue' => 0,
+                        ];
+                        $aggregates[$key]['pending']++;
+                        $aggregates[$key]['overdue'] += $this->sla->evaluate($measurement, responsibility: $responsibility)['status']
+                            === MeasurementSlaService::STATUS_OVERDUE ? 1 : 0;
                     }
-
-                    $responsibleId = $measurement->operation?->responsibleUserIdFor($responsibility);
-
-                    if ($filters->expectedResponsibleId !== null
-                        && $responsibleId !== $filters->expectedResponsibleId) {
-                        continue;
-                    }
-
-                    $key = ($responsibleId ?? 0).':'.$responsibility->value;
-                    $aggregates[$key] ??= [
-                        'responsible_id' => $responsibleId,
-                        'responsible_name' => $responsibleId !== null
-                            ? ($names[$responsibleId] ?? 'Responsável não localizado')
-                            : 'Não configurado',
-                        'responsibility' => $responsibility,
-                        'stage' => $responsibility->stage(),
-                        'pending' => 0,
-                        'overdue' => 0,
-                    ];
-                    $aggregates[$key]['pending']++;
-                    $aggregates[$key]['overdue'] += $this->sla->evaluate($measurement)['status']
-                        === MeasurementSlaService::STATUS_OVERDUE ? 1 : 0;
                 }
             });
 
@@ -546,18 +543,6 @@ class MeasurementCycleReportingService
             ))
             ->values()
             ->all();
-    }
-
-    private function currentResponsibility(Measurement $measurement): ?MeasurementResponsibility
-    {
-        return match ($measurement->status) {
-            'pending', 'in_review' => MeasurementResponsibility::primaryForStage((int) $measurement->current_stage),
-            'paused' => MeasurementResponsibility::primaryForStage($this->workflow->unifiedStage($measurement)),
-            'awaiting_payment' => MeasurementResponsibility::PaymentManager,
-            'awaiting_receipt' => MeasurementResponsibility::ReceiptUploader,
-            'approved' => MeasurementResponsibility::Finalizer,
-            default => null,
-        };
     }
 
     /** @return array<int, array<string, mixed>> */

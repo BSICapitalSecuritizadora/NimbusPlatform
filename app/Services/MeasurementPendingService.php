@@ -48,11 +48,12 @@ class MeasurementPendingService
                 'created_at',
             ])
             ->visibleTo($user)
-            ->open()
+            ->withPendingWork()
             ->with([
                 'operation:id,code,title,assigned_user_id,responsible_user_id,stage2_reviewer_user_id,stage3_reviewer_user_id,payment_manager_user_id,payment_receipt_uploader_user_id,payment_finalizer_user_id',
                 'reviews:id,measurement_id,stage,status,paused_at,created_at',
                 'pauses:id,measurement_id,stage,paused_at,resumed_at',
+                'payments.currentReceiptEvidence',
             ])
             ->orderBy('measurements.id')
             // O alias precisa ser explícito: sem ele o Laravel usa a própria
@@ -69,24 +70,18 @@ class MeasurementPendingService
                 &$overdueCount,
                 &$delegatedCount,
             ): void {
-                $action = $this->actionFor($measurement, $user);
+                foreach ($this->actionsFor($measurement, $user) as $action) {
+                    $evaluation = $this->sla->evaluate($measurement, responsibility: $action['responsibility']);
+                    $delegation = $this->delegationContextFor($action['authorization'], $isAdministrator);
 
-                if ($action === null) {
-                    return;
+                    $count++;
+                    $overdueCount += $evaluation['status'] === MeasurementSlaService::STATUS_OVERDUE ? 1 : 0;
+                    $delegatedCount += $delegation instanceof ResponsibilityDelegation ? 1 : 0;
+
+                    if (count($items) < $previewLimit) {
+                        $items[] = $this->item($measurement, $action, $evaluation, $delegation);
+                    }
                 }
-
-                $evaluation = $this->sla->evaluate($measurement);
-                $delegation = $this->delegationContextFor($action['authorization'], $isAdministrator);
-
-                $count++;
-                $overdueCount += $evaluation['status'] === MeasurementSlaService::STATUS_OVERDUE ? 1 : 0;
-                $delegatedCount += $delegation instanceof ResponsibilityDelegation ? 1 : 0;
-
-                if (count($items) >= $previewLimit) {
-                    return;
-                }
-
-                $items[] = $this->item($measurement, $action, $evaluation, $delegation);
             });
 
         return [
@@ -95,6 +90,33 @@ class MeasurementPendingService
             'overdue_count' => $overdueCount,
             'delegated_count' => $delegatedCount,
         ];
+    }
+
+    /** @return list<array{label: string, responsibility: MeasurementResponsibility, authorization: ResponsibilityAuthorization}> */
+    private function actionsFor(Measurement $measurement, User $user): array
+    {
+        if (! in_array($measurement->status, ['awaiting_receipt', 'approved', 'finalized'], true)) {
+            $action = $this->actionFor($measurement, $user);
+
+            return $action === null ? [] : [$action];
+        }
+
+        $actions = [];
+        $receipts = app(MeasurementReceiptEvidenceService::class);
+
+        foreach ($receipts->pendingResponsibilities($measurement) as $responsibility) {
+            $authorization = $this->authorization->resolveAuthorization($user, $measurement, $responsibility);
+
+            if ($authorization->authorizes()) {
+                $actions[] = [
+                    'label' => $receipts->pendingActionLabel($measurement, $responsibility),
+                    'responsibility' => $responsibility,
+                    'authorization' => $authorization,
+                ];
+            }
+        }
+
+        return $actions;
     }
 
     /**
@@ -137,24 +159,6 @@ class MeasurementPendingService
             return $this->action(
                 'Registrar e aprovar pagamento',
                 MeasurementResponsibility::PaymentManager,
-                $capture,
-            );
-        }
-
-        if ($measurement->status === 'awaiting_receipt'
-            && $this->workflow->canManageReceipts($measurement, $user, $capture)) {
-            return $this->action(
-                'Enviar comprovante',
-                MeasurementResponsibility::ReceiptUploader,
-                $capture,
-            );
-        }
-
-        if ($measurement->status === 'approved'
-            && $this->workflow->canFinalize($measurement, $user, $capture)) {
-            return $this->action(
-                'Finalizar medição',
-                MeasurementResponsibility::Finalizer,
                 $capture,
             );
         }
@@ -221,6 +225,7 @@ class MeasurementPendingService
             'stage' => $evaluation['stage'],
             'stage_label' => MeasurementWorkflow::STAGE_LABELS[$evaluation['stage']] ?? 'Etapa operacional',
             'action_label' => $action['label'],
+            'responsibility' => $action['responsibility']->value,
             'responsibility_label' => $action['responsibility']->label(),
             'url' => MeasurementResource::getUrl('view', ['record' => $measurement]),
             'sla_status' => $evaluation['status'],

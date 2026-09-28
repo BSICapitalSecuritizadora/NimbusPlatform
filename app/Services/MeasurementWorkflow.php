@@ -89,6 +89,22 @@ class MeasurementWorkflow
             && $this->authorizes($actor, $measurement, $stage, $capture);
     }
 
+    /** @return list<MeasurementResponsibility> */
+    public function pendingResponsibilities(Measurement $measurement): array
+    {
+        if (in_array($measurement->status, ['awaiting_receipt', 'approved', 'finalized'], true)) {
+            return app(MeasurementReceiptEvidenceService::class)->pendingResponsibilities($measurement);
+        }
+
+        $responsibility = match ($measurement->status) {
+            'pending', 'in_review', 'paused' => MeasurementResponsibility::primaryForStage($this->unifiedStage($measurement)),
+            'awaiting_payment' => MeasurementResponsibility::PaymentManager,
+            default => null,
+        };
+
+        return $responsibility === null ? [] : [$responsibility];
+    }
+
     public function canReject(Measurement $measurement, User $actor): bool
     {
         return $this->canApprove($measurement, $actor);

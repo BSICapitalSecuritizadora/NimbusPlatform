@@ -40,7 +40,7 @@
 
                 <ul class="mt-3 divide-y divide-gray-200/70 border-t border-gray-200/70 dark:divide-white/8 dark:border-white/8" aria-label="Prévia das medições pendentes">
                     @foreach($measurements as $pendingMeasurement)
-                        <li wire:key="cockpit-measurement-{{ $pendingMeasurement['measurement_id'] }}">
+                        <li wire:key="cockpit-measurement-{{ $pendingMeasurement['measurement_id'] }}-{{ $pendingMeasurement['responsibility'] }}">
                             <a href="{{ $pendingMeasurement['url'] }}" class="group -mx-2 flex min-h-16 items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-primary-50/60 focus-visible:outline-2 focus-visible:outline-primary-600 dark:hover:bg-primary-500/10">
                                 <span class="min-w-0 flex-1">
                                     <span class="flex flex-wrap items-center gap-2">

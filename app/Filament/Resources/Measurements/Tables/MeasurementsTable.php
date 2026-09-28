@@ -143,6 +143,9 @@ class MeasurementsTable
                     ->label('Situação')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => Measurement::STATUS_OPTIONS[$state] ?? $state)
+                    ->description(fn (Measurement $record): ?string => in_array($record->status, ['awaiting_receipt', 'approved', 'finalized'], true)
+                        ? static::readModel()->pendingLabel($record)
+                        : null)
                     ->color(fn (string $state): string => match ($state) {
                         'finalized', 'approved' => 'success',
                         'rejected' => 'danger',

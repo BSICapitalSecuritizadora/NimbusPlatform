@@ -17,8 +17,11 @@ use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use App\Models\User;
 use App\Services\MeasurementWorkflow;
+use App\Services\Security\ClamAvFileScanner;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
@@ -466,3 +469,51 @@ it('renders the create measurement page with custom subheading and stacked secti
         ->assertFormFieldExists('reference_month')
         ->assertFormFieldExists('notes');
 });
+
+it('persists clean engineering uploads and rolls back rejected uploads through the measurement form', function (string $disk, string $scanResult) {
+    $this->actingAs($admin = makeMeasurementAdminUser());
+    Notification::fake();
+    Storage::fake($disk);
+    config()->set('filesystems.private_disk', $disk);
+    if ($disk === 'private') {
+        config()->set('filesystems.disks.private.driver', 'azure');
+    }
+    $emission = Emission::factory()->create();
+    $construction = Construction::factory()->create(['emission_id' => $emission->id]);
+    $operation = Operation::factory()->forEmission($emission)->create(['status' => 'active', 'responsible_user_id' => $admin->id]);
+    $plan = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id, 'construction_id' => $construction->id]);
+    $line = MeasurementPlanLine::factory()->create([
+        'plan_set_id' => $plan->id, 'operation_id' => $operation->id, 'measurement_date' => '2026-09-01',
+    ]);
+    $this->mock(ClamAvFileScanner::class, function ($mock) use ($scanResult): void {
+        $mock->shouldReceive('isEnabled')->andReturnTrue();
+        $mock->shouldReceive('scanStream')->once()->andReturn($scanResult);
+    });
+
+    $component = Livewire::test(CreateMeasurement::class)
+        ->fillForm(['operation_id' => $operation->id]);
+    $assetKey = array_key_first($component->get('data.assets'));
+    $component->fillForm([
+        'reference_month' => '2026-09-01',
+        'assets' => [$assetKey => [
+            'plan_set_id' => $plan->id,
+            'plan_line_id' => $line->id,
+            'storage_path' => UploadedFile::fake()->createWithContent('medicao.pdf', '%PDF-1.7 engenharia'),
+        ]],
+    ])->call('create');
+
+    if ($scanResult === ClamAvFileScanner::RESULT_CLEAN) {
+        $component->assertHasNoFormErrors();
+        $measurement = $operation->measurements()->firstOrFail();
+        $asset = $measurement->assets()->firstOrFail();
+        expect($asset->storage_disk)->toBe($disk)
+            ->and($asset->sha256)->toBe(hash('sha256', '%PDF-1.7 engenharia'));
+        Storage::disk($disk)->assertExists($asset->storage_path);
+
+        return;
+    }
+
+    $component->assertHasErrors();
+    expect($operation->measurements()->count())->toBe(0)
+        ->and(Storage::disk($disk)->allFiles('nimbus_docs/measurements/assets'))->toBeEmpty();
+})->with(['local', 'private'])->with([ClamAvFileScanner::RESULT_CLEAN, ClamAvFileScanner::RESULT_INFECTED, ClamAvFileScanner::RESULT_UNAVAILABLE]);

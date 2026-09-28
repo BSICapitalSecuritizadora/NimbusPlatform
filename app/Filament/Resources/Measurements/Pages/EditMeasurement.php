@@ -11,6 +11,8 @@ class EditMeasurement extends EditRecord
 {
     protected static string $resource = MeasurementResource::class;
 
+    protected ?bool $hasDatabaseTransactions = true;
+
     protected static ?string $title = 'Editar Medição';
 
     protected static ?string $breadcrumb = 'Editar';

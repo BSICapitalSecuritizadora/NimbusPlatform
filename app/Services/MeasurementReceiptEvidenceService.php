@@ -272,10 +272,80 @@ class MeasurementReceiptEvidenceService
             ->filter(fn (MeasurementPaymentReceiptEvidence $evidence): bool => $evidence->is_post_finalization);
 
         return match (true) {
+            $corrections->contains('review_status', MeasurementReceiptReviewStatus::Rejected)
+                && $corrections->contains('review_status', MeasurementReceiptReviewStatus::Pending) => 'Correções documentais: substituir e conferir',
             $corrections->contains('review_status', MeasurementReceiptReviewStatus::Rejected) => 'Correção documental rejeitada',
             $corrections->contains('review_status', MeasurementReceiptReviewStatus::Pending) => 'Correção documental pendente',
             $corrections->isNotEmpty() => 'Correção documental regularizada',
             default => 'Sem pendência',
+        };
+    }
+
+    /** @return array{missing: int, rejected: int, pending: int, approved: int} */
+    public function documentarySummary(Measurement $measurement): array
+    {
+        $measurement->loadMissing('payments.currentReceiptEvidence');
+        $counts = ['missing' => 0, 'rejected' => 0, 'pending' => 0, 'approved' => 0];
+
+        foreach ($measurement->payments as $payment) {
+            $evidence = $payment->currentReceiptEvidence;
+
+            if ($measurement->status === 'finalized' && ! $evidence?->is_post_finalization) {
+                continue;
+            }
+
+            $key = match ($evidence?->review_status) {
+                MeasurementReceiptReviewStatus::Pending => 'pending',
+                MeasurementReceiptReviewStatus::Approved => 'approved',
+                MeasurementReceiptReviewStatus::Rejected => 'rejected',
+                default => 'missing',
+            };
+            $counts[$key]++;
+        }
+
+        return $counts;
+    }
+
+    /** @return list<MeasurementResponsibility> */
+    public function pendingResponsibilities(Measurement $measurement): array
+    {
+        if (! $this->isDocumentaryStage($measurement)) {
+            return [];
+        }
+
+        $counts = $this->documentarySummary($measurement);
+        $responsibilities = [];
+
+        if ($counts['missing'] + $counts['rejected'] > 0
+            || ($measurement->status === 'awaiting_receipt' && $measurement->payments->isEmpty())) {
+            $responsibilities[] = MeasurementResponsibility::ReceiptUploader;
+        }
+
+        if ($counts['pending'] > 0
+            || ($measurement->status !== 'finalized' && $responsibilities === [])) {
+            $responsibilities[] = MeasurementResponsibility::Finalizer;
+        }
+
+        return $responsibilities;
+    }
+
+    public function pendingActionLabel(Measurement $measurement, MeasurementResponsibility $responsibility): string
+    {
+        $counts = $this->documentarySummary($measurement);
+
+        if ($responsibility === MeasurementResponsibility::ReceiptUploader) {
+            return match (true) {
+                $measurement->status === 'finalized' => 'Substituir correção documental rejeitada',
+                $counts['rejected'] > 0 && $counts['missing'] > 0 => 'Enviar e substituir comprovantes',
+                $counts['rejected'] > 0 => 'Substituir comprovante rejeitado',
+                default => 'Enviar comprovante',
+            };
+        }
+
+        return match (true) {
+            $measurement->status === 'finalized' => 'Conferir correção documental',
+            $counts['pending'] > 0 => 'Conferir comprovante',
+            default => 'Finalizar medição',
         };
     }
 

@@ -1,8 +1,13 @@
 <?php
 
 use App\Enums\MeasurementReceiptReviewStatus;
+use App\Filament\Resources\Measurements\Pages\ListMeasurements;
 use App\Filament\Resources\Measurements\Pages\ViewMeasurement;
+use App\Filament\Resources\PaymentWorkspaces\Pages\ListPaymentWorkspace;
+use App\Filament\Widgets\Dashboard\MyPendingsWidget;
+use App\Models\MeasurementPayment;
 use App\Models\User;
+use App\Services\MeasurementPendingService;
 use App\Services\MeasurementReceiptEvidenceService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -115,4 +120,56 @@ it('hides documentary actions from a participant with permissions but no matchin
         ->assertActionHidden('attachReceipt')
         ->assertActionHidden('correctReceipt')
         ->assertActionHidden('reviewReceipt');
+});
+
+it('distinguishes receipt upload and review filters including finalized corrections with legacy payments', function (bool $finalized) {
+    $scenario = $finalized ? Scenario::legacy() : Scenario::open();
+    $service = app(MeasurementReceiptEvidenceService::class);
+    if ($finalized) {
+        $payment = MeasurementPayment::factory()->create([
+            'measurement_id' => $scenario['measurement']->id,
+            'operation_id' => $scenario['operation']->id,
+            'plan_set_id' => $scenario['payment']->plan_set_id,
+        ]);
+        $evidence = $service->correctFinalizedReceipt($payment, $scenario['actor'], Scenario::file(), 'Novo documento', null);
+    } else {
+        $evidence = $service->upload($scenario['payment'], $scenario['actor'], Scenario::file());
+    }
+    $this->actingAs($scenario['actor']);
+
+    Livewire::test(ListPaymentWorkspace::class)
+        ->filterTable('operational_pending', 'awaiting_receipt_review')
+        ->assertCanSeeTableRecords([$scenario['measurement']])
+        ->assertSee($finalized ? 'Conferir correção documental' : 'Conferir comprovante');
+    Livewire::test(ListPaymentWorkspace::class)
+        ->filterTable('operational_pending', 'awaiting_receipt')
+        ->assertCanNotSeeTableRecords([$scenario['measurement']]);
+    Livewire::test(ListMeasurements::class)
+        ->assertSee($finalized ? 'Conferir correção documental' : 'Conferir comprovante');
+
+    $service->review($evidence, $scenario['actor'], MeasurementReceiptReviewStatus::Rejected, true, rejectionReason: 'Substituir');
+    Livewire::test(ListPaymentWorkspace::class)
+        ->filterTable('operational_pending', 'awaiting_receipt')
+        ->assertCanSeeTableRecords([$scenario['measurement']]);
+    Livewire::test(ListPaymentWorkspace::class)
+        ->filterTable('operational_pending', 'awaiting_receipt_review')
+        ->assertCanNotSeeTableRecords([$scenario['measurement']]);
+})->with([false, true]);
+
+it('renders both documentary actions for a user holding upload and review responsibilities', function () {
+    $scenario = Scenario::open();
+    app(MeasurementReceiptEvidenceService::class)->upload($scenario['payment'], $scenario['actor'], Scenario::file());
+    MeasurementPayment::factory()->create([
+        'measurement_id' => $scenario['measurement']->id,
+        'operation_id' => $scenario['operation']->id,
+        'plan_set_id' => $scenario['payment']->plan_set_id,
+    ]);
+    $summary = app(MeasurementPendingService::class)->summaryFor($scenario['actor']);
+    expect($summary['count'])->toBe(2)
+        ->and(collect($summary['items'])->pluck('responsibility')->unique())->toHaveCount(2);
+
+    $this->actingAs($scenario['actor']);
+    Livewire::test(MyPendingsWidget::class)
+        ->assertSee('Enviar comprovante')
+        ->assertSee('Conferir comprovante');
 });

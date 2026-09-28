@@ -3,10 +3,13 @@
 namespace App\Services;
 
 use App\Domain\PuCalculator\Contracts\BusinessDayCalendar;
+use App\Enums\MeasurementReceiptReviewStatus;
+use App\Enums\MeasurementResponsibility;
 use App\Models\BusinessCalendar;
 use App\Models\BusinessCalendarYear;
 use App\Models\Measurement;
 use App\Models\MeasurementPause;
+use App\Models\MeasurementPaymentReceiptEvidence;
 use App\Models\MeasurementReview;
 use App\Models\SlaConfiguration;
 use App\Support\BusinessTime;
@@ -58,22 +61,26 @@ class MeasurementSlaService
      *
      * @return array<string, mixed>
      */
-    public function evaluate(Measurement $measurement, ?CarbonImmutable $now = null): array
+    public function evaluate(Measurement $measurement, ?CarbonImmutable $now = null, ?MeasurementResponsibility $responsibility = null): array
     {
         $now ??= CarbonImmutable::now();
         $stage = app(MeasurementWorkflow::class)->unifiedStage($measurement);
+        $correctionStartedAt = $measurement->status === 'finalized'
+            ? $this->correctionStartedAt($measurement, $responsibility)
+            : null;
 
-        if ($stage === 0 || in_array($measurement->status, ['finalized', 'rejected'], true)) {
+        if ($stage === 0 || $measurement->status === 'rejected'
+            || ($measurement->status === 'finalized' && $correctionStartedAt === null)) {
             return $this->result($stage, status: self::STATUS_COMPLETED, completed: true);
         }
 
         $review = $this->reviewForStage($measurement, $stage);
 
-        if (! $review instanceof MeasurementReview || $review->status !== 'pending') {
+        if ($correctionStartedAt === null && (! $review instanceof MeasurementReview || $review->status !== 'pending')) {
             return $this->result($stage, status: self::STATUS_NOT_APPLICABLE, completed: true);
         }
 
-        $startedAt = $this->stageStartedAt($measurement, $stage);
+        $startedAt = $correctionStartedAt ?? $this->stageStartedAt($measurement, $stage);
         $config = $this->resolveConfig($stage);
 
         if ($startedAt === null || $config['not_configured']) {
@@ -123,7 +130,7 @@ class MeasurementSlaService
 
         $durationSeconds = $this->durationSeconds($config);
         $totalBusinessSeconds = $this->businessSecondsBetween($startedAt, $now, $config['calendar_code']);
-        $pausedBusinessSeconds = $config['exclude_paused_time']
+        $pausedBusinessSeconds = $correctionStartedAt === null && $config['exclude_paused_time']
             ? $this->pausedBusinessSeconds($measurement, $stage, $startedAt, $now, $config['calendar_code'])
             : 0;
         $elapsedSeconds = max(0, $totalBusinessSeconds - $pausedBusinessSeconds);
@@ -176,6 +183,24 @@ class MeasurementSlaService
         $candidate = $review?->created_at ?? $measurement->created_at;
 
         return $candidate ? CarbonImmutable::instance($candidate) : null;
+    }
+
+    private function correctionStartedAt(Measurement $measurement, ?MeasurementResponsibility $responsibility): ?CarbonImmutable
+    {
+        $measurement->loadMissing('payments.currentReceiptEvidence');
+        $startedAt = $measurement->payments->pluck('currentReceiptEvidence')->filter()
+            ->filter(fn (MeasurementPaymentReceiptEvidence $evidence): bool => $evidence->is_post_finalization
+                && match ($responsibility) {
+                    MeasurementResponsibility::ReceiptUploader => $evidence->review_status === MeasurementReceiptReviewStatus::Rejected,
+                    MeasurementResponsibility::Finalizer => $evidence->review_status === MeasurementReceiptReviewStatus::Pending,
+                    default => in_array($evidence->review_status, [MeasurementReceiptReviewStatus::Pending, MeasurementReceiptReviewStatus::Rejected], true),
+                })
+            ->map(fn (MeasurementPaymentReceiptEvidence $evidence) => $evidence->review_status === MeasurementReceiptReviewStatus::Rejected
+                ? ($evidence->reviewed_at ?? $evidence->uploaded_at)
+                : $evidence->uploaded_at)
+            ->filter()->sort()->first();
+
+        return $startedAt === null ? null : CarbonImmutable::instance($startedAt);
     }
 
     /** @return array<string, mixed> */

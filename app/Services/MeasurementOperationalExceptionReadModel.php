@@ -173,6 +173,7 @@ class MeasurementOperationalExceptionReadModel
                 'operation.paymentFinalizer:id,name,is_active,approved_at',
                 'reviews:id,measurement_id,stage,status,created_at,reviewed_at',
                 'pauses:id,measurement_id,stage,paused_at,resumed_at',
+                'payments.currentReceiptEvidence',
             ]);
     }
 
@@ -241,46 +242,30 @@ class MeasurementOperationalExceptionReadModel
 
         $operation = $measurement->operation;
         $stage = $this->workflow->unifiedStage($measurement);
-        $responsibility = $this->requiredResponsibility($measurement, $stage);
+        $responsibilities = $this->workflow->pendingResponsibilities($measurement);
         $exceptions = [];
 
-        if ($responsibility instanceof MeasurementResponsibility
-            && ! $this->hasOperationalPermanentResponsible($operation, $responsibility)) {
-            $type = MeasurementOperationalExceptionType::forResponsibility($responsibility);
-            $exceptions[] = $this->makeException(
-                $measurement,
-                $operation,
-                $type,
-                $stage,
-                $responsibility,
-                null,
-            );
+        foreach ($responsibilities as $responsibility) {
+            if (! $this->hasOperationalPermanentResponsible($operation, $responsibility)) {
+                $type = MeasurementOperationalExceptionType::forResponsibility($responsibility);
+                $exceptions[] = $this->makeException(
+                    $measurement,
+                    $operation,
+                    $type,
+                    $stage,
+                    $responsibility,
+                    null,
+                );
+            }
         }
 
-        $slaException = $this->slaException($measurement, $operation, $stage, $responsibility);
+        $slaException = $this->slaException($measurement, $operation, $stage, $responsibilities[0] ?? null);
 
         if ($slaException instanceof MeasurementOperationalException) {
             $exceptions[] = $slaException;
         }
 
         return $exceptions;
-    }
-
-    private function requiredResponsibility(
-        Measurement $measurement,
-        int $stage,
-    ): ?MeasurementResponsibility {
-        return match ($measurement->status) {
-            'pending', 'in_review', 'paused' => match ($stage) {
-                1, 2, 3 => MeasurementResponsibility::primaryForStage($stage),
-                4 => MeasurementResponsibility::PaymentManager,
-                default => null,
-            },
-            'awaiting_payment' => MeasurementResponsibility::PaymentManager,
-            'awaiting_receipt' => MeasurementResponsibility::ReceiptUploader,
-            'approved' => MeasurementResponsibility::Finalizer,
-            default => null,
-        };
     }
 
     /**
@@ -297,28 +282,21 @@ class MeasurementOperationalExceptionReadModel
             }
 
             $operation = $measurement->operation;
-            $responsibility = $this->requiredResponsibility(
-                $measurement,
-                $this->workflow->unifiedStage($measurement),
-            );
+            foreach ($this->workflow->pendingResponsibilities($measurement) as $responsibility) {
+                $userId = $operation->responsibleUserIdFor($responsibility);
 
-            if (! $responsibility instanceof MeasurementResponsibility) {
-                continue;
-            }
+                if ($userId === null || ! $this->responsibleUser($operation, $responsibility) instanceof User) {
+                    continue;
+                }
 
-            $userId = $operation->responsibleUserIdFor($responsibility);
+                $key = $this->permanentResponsibleValidityKey($userId, $responsibility);
 
-            if ($userId === null || ! $this->responsibleUser($operation, $responsibility) instanceof User) {
-                continue;
-            }
-
-            $key = $this->permanentResponsibleValidityKey($userId, $responsibility);
-
-            if (! array_key_exists($key, $this->permanentResponsibleValidity)) {
-                $candidates[$key] = [
-                    'user_id' => $userId,
-                    'responsibility' => $responsibility,
-                ];
+                if (! array_key_exists($key, $this->permanentResponsibleValidity)) {
+                    $candidates[$key] = [
+                        'user_id' => $userId,
+                        'responsibility' => $responsibility,
+                    ];
+                }
             }
         }
 

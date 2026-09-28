@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PaymentWorkspaces\Tables;
 
+use App\Enums\MeasurementReceiptReviewStatus;
 use App\Filament\Resources\Measurements\MeasurementResource;
 use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Measurement;
@@ -115,11 +116,7 @@ class PaymentWorkspaceTable
                     ->label('Comprovantes')
                     ->badge()
                     ->state(fn (Measurement $record): string => self::readModel()->receiptStatusLabel($record))
-                    ->color(fn (Measurement $record): string => match (true) {
-                        (int) $record->payments_count === 0 => 'gray',
-                        (int) $record->payments_with_receipt_count === (int) $record->payments_count => 'success',
-                        default => 'warning',
-                    }),
+                    ->color(fn (Measurement $record): string => self::readModel()->receiptStatusColor($record)),
 
                 TextColumn::make('operational_pending')
                     ->label('Pendência atual')
@@ -315,7 +312,8 @@ class PaymentWorkspaceTable
                 ->options([
                     'awaiting_registration' => 'Aguardando registro',
                     'awaiting_approval' => 'Aguardando aprovação',
-                    'awaiting_receipt' => 'Aguardando comprovante',
+                    'awaiting_receipt' => 'Enviar ou substituir comprovante',
+                    'awaiting_receipt_review' => 'Conferir comprovante',
                     'ready_to_finalize' => 'Pronta para finalizar',
                 ])
                 ->query(function (Builder $query, array $data): Builder {
@@ -327,7 +325,23 @@ class PaymentWorkspaceTable
                             ->whereHas('reviews', fn (Builder $reviews): Builder => $reviews
                                 ->where('stage', MeasurementWorkflow::STAGE_PAYMENT)
                                 ->where('status', 'pending')),
-                        'awaiting_receipt' => $query->where('status', 'awaiting_receipt'),
+                        'awaiting_receipt' => $query->withPendingWork()->where('current_stage', MeasurementWorkflow::STAGE_FINALIZATION)
+                            ->where(fn (Builder $work): Builder => $work
+                                ->where(fn (Builder $open): Builder => $open->where('status', '!=', 'finalized')
+                                    ->whereHas('payments', fn (Builder $payments): Builder => $payments
+                                        ->where(fn (Builder $receipts): Builder => $receipts
+                                            ->whereDoesntHave('currentReceiptEvidence')
+                                            ->orWhereHas('currentReceiptEvidence', fn (Builder $evidences): Builder => $evidences
+                                                ->whereIn('review_status', [MeasurementReceiptReviewStatus::Rejected->value, MeasurementReceiptReviewStatus::LegacyUnreviewed->value])))))
+                                ->orWhere(fn (Builder $closed): Builder => $closed->where('status', 'finalized')
+                                    ->whereHas('payments.currentReceiptEvidence', fn (Builder $evidences): Builder => $evidences
+                                        ->where('is_post_finalization', true)
+                                        ->where('review_status', MeasurementReceiptReviewStatus::Rejected->value)))),
+                        'awaiting_receipt_review' => $query->withPendingWork()->where('current_stage', MeasurementWorkflow::STAGE_FINALIZATION)
+                            ->whereHas('payments.currentReceiptEvidence', fn (Builder $evidences): Builder => $evidences
+                                ->where('review_status', MeasurementReceiptReviewStatus::Pending->value)
+                                ->where(fn (Builder $current): Builder => $current->where('is_post_finalization', true)
+                                    ->orWhereHas('payment.measurement', fn (Builder $open): Builder => $open->where('status', '!=', 'finalized')))),
                         'ready_to_finalize' => $query->where('status', 'approved'),
                         default => $query,
                     };

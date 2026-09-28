@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\DerivesStoredFileMetadata;
+use App\Enums\MeasurementReceiptReviewStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Services\DocumentStorageService;
 use Database\Factories\MeasurementFactory;
@@ -31,7 +32,7 @@ class Measurement extends Model
         'rejected' => 'Recusada',
         'approved' => 'Documentação financeira completa',
         'awaiting_payment' => 'Etapa Pagamento',
-        'awaiting_receipt' => 'Finalização — aguardando comprovante',
+        'awaiting_receipt' => 'Finalização — documentação pendente',
         'finalized' => 'Finalizada',
     ];
 
@@ -238,6 +239,18 @@ class Measurement extends Model
     public function scopeOpen(Builder $query): Builder
     {
         return $query->whereIn($query->qualifyColumn('status'), self::OPEN_STATUSES);
+    }
+
+    /** @param Builder<self> $query */
+    public function scopeWithPendingWork(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $pending): Builder => $pending->open()
+            ->orWhere(fn (Builder $corrections): Builder => $corrections
+                ->where('status', 'finalized')
+                ->where('current_stage', 5)
+                ->whereHas('payments.currentReceiptEvidence', fn (Builder $evidences): Builder => $evidences
+                    ->where('is_post_finalization', true)
+                    ->whereIn('review_status', [MeasurementReceiptReviewStatus::Pending->value, MeasurementReceiptReviewStatus::Rejected->value]))));
     }
 
     /**

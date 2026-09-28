@@ -86,9 +86,9 @@ class MeasurementCockpit extends Widget
                     'url' => $this->paymentUrl($pageFilters, ['receipt_state' => 'pending']),
                 ],
                 [
-                    'label' => 'Aguardando comprovante',
+                    'label' => 'Documentação pendente',
                     'count' => $summary['awaiting_receipt'],
-                    'description' => 'Medições na etapa formal',
+                    'description' => 'Envio, substituição ou conferência',
                     'tone' => 'warning',
                     'url' => $this->paymentUrl($pageFilters, ['status' => 'awaiting_receipt']),
                 ],

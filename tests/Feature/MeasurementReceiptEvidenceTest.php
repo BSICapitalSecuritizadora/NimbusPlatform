@@ -1,19 +1,29 @@
 <?php
 
 use App\DTOs\Measurements\MeasurementCycleReportFilters;
+use App\Enums\MeasurementOperationalExceptionType;
 use App\Enums\MeasurementReceiptReviewStatus;
+use App\Enums\MeasurementResponsibility;
 use App\Exceptions\MeasurementWorkflowException;
+use App\Models\Measurement;
 use App\Models\MeasurementPayment;
+use App\Models\Operation;
 use App\Models\ResponsibilityDelegation;
+use App\Models\SlaConfiguration;
 use App\Models\User;
+use App\Notifications\MeasurementSlaNotification;
 use App\Services\DocumentStorageService;
 use App\Services\MeasurementCycleEventNormalizer;
 use App\Services\MeasurementCycleHistoryReadModel;
 use App\Services\MeasurementCycleReportingService;
 use App\Services\MeasurementFileValidationService;
+use App\Services\MeasurementOperationalExceptionReadModel;
 use App\Services\MeasurementOperationalReadModel;
+use App\Services\MeasurementPendingService;
 use App\Services\MeasurementReceiptEvidenceService;
+use App\Services\MeasurementSlaService;
 use App\Services\MeasurementWorkflow;
+use App\Services\Security\ClamAvFileScanner;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
@@ -578,4 +588,263 @@ it('preserves legacy download without a hash while refusing to approve an unhash
     $this->get(route('admin.measurements.receipt-evidences.download', ['payment' => $scenario['payment'], 'evidence' => $evidence]))->assertOk();
     expect(fn () => app(MeasurementReceiptEvidenceService::class)->review($evidence, $scenario['actor'], MeasurementReceiptReviewStatus::Approved, true))
         ->toThrow(ValidationException::class);
+});
+
+it('rejects unsafe receipt versions atomically including finalized corrections', function (string $result, string $flow, string $disk) {
+    $scenario = $flow === 'correction' ? Scenario::legacy() : Scenario::open();
+    $service = app(MeasurementReceiptEvidenceService::class);
+    $previous = match ($flow) {
+        'correction' => $scenario['payment']->currentReceiptEvidence,
+        'replacement' => $service->upload($scenario['payment'], $scenario['actor'], Scenario::file()),
+        default => null,
+    };
+    if ($previous !== null && $flow === 'replacement') {
+        $service->review($previous, $scenario['actor'], MeasurementReceiptReviewStatus::Approved, true);
+        $previous->refresh();
+    }
+    if ($disk === 'private') {
+        Storage::fake('private');
+        config()->set('filesystems.disks.private.driver', 'azure');
+    }
+    config()->set('filesystems.private_disk', $disk);
+    $files = Storage::disk($disk)->allFiles('nimbus_docs/measurements/receipts');
+    $state = $scenario['measurement']->fresh()->getRawOriginal();
+    $paymentState = $scenario['payment']->fresh()->getRawOriginal();
+    $evidenceState = $previous?->getRawOriginal();
+    $auditCount = Activity::query()->count();
+    $this->mock(ClamAvFileScanner::class, function ($mock) use ($result): void {
+        $mock->shouldReceive('isEnabled')->andReturnTrue();
+        $mock->shouldNotReceive('scan');
+        $mock->shouldReceive('scanStream')->once()->andReturn($result);
+    });
+
+    expect(fn () => $flow === 'correction'
+        ? app(MeasurementReceiptEvidenceService::class)->correctFinalizedReceipt($scenario['payment'], $scenario['actor'], Scenario::file(), 'Correção', $previous->id)
+        : app(MeasurementReceiptEvidenceService::class)->upload($scenario['payment'], $scenario['actor'], Scenario::file(), $previous?->id, $previous ? 'Substituição' : null))
+        ->toThrow(ValidationException::class);
+
+    expect($scenario['measurement']->fresh()->getRawOriginal())->toBe($state)
+        ->and($scenario['payment']->fresh()->getRawOriginal())->toBe($paymentState)
+        ->and($previous?->fresh()->getRawOriginal())->toBe($evidenceState)
+        ->and($scenario['payment']->receiptEvidences()->count())->toBe($previous === null ? 0 : 1)
+        ->and(Activity::query()->count())->toBe($auditCount)
+        ->and(Storage::disk($disk)->allFiles('nimbus_docs/measurements/receipts'))->toBe($files);
+    if ($previous !== null) {
+        Storage::disk($previous->storage_disk)->assertExists($previous->storage_path);
+    }
+})->with([ClamAvFileScanner::RESULT_INFECTED, ClamAvFileScanner::RESULT_UNAVAILABLE])
+    ->with(['new', 'replacement', 'correction'])->with(['local', 'private']);
+
+it('accepts a clean scanned receipt with its original integrity metadata on private disks', function (string $disk) {
+    $scenario = Scenario::open();
+    if ($disk === 'private') {
+        Storage::fake('private');
+        config()->set('filesystems.disks.private.driver', 'azure');
+    }
+    config()->set('filesystems.private_disk', $disk);
+    $bytes = '%PDF-1.7 scanned receipt';
+    $this->mock(ClamAvFileScanner::class, function ($mock) use ($bytes): void {
+        $mock->shouldReceive('isEnabled')->andReturnTrue();
+        $mock->shouldReceive('scanStream')->once()->andReturnUsing(function ($stream) use ($bytes): string {
+            expect(stream_get_contents($stream))->toBe($bytes);
+
+            return ClamAvFileScanner::RESULT_CLEAN;
+        });
+    });
+
+    $evidence = app(MeasurementReceiptEvidenceService::class)->upload($scenario['payment'], $scenario['actor'], Scenario::file('receipt.pdf', $bytes));
+
+    expect($evidence->sha256)->toBe(hash('sha256', $bytes))
+        ->and($evidence->storage_disk)->toBe($disk)
+        ->and($evidence->mime_type)->toBe('application/pdf')
+        ->and($evidence->size)->toBe(strlen($bytes))
+        ->and($evidence->review_status)->toBe(MeasurementReceiptReviewStatus::Pending);
+})->with(['local', 'private']);
+
+/** @return array{actor: User, finalizer: User, operation: Operation, measurement: Measurement, payment: MeasurementPayment} */
+function documentaryWorkScenario(bool $finalized = false): array
+{
+    $scenario = $finalized ? Scenario::legacy() : Scenario::open();
+    $finalizer = User::factory()->withTwoFactor()->create();
+    $finalizer->givePermissionTo(['measurements.view', 'measurements.finalize']);
+    $scenario['operation']->update(['payment_finalizer_user_id' => $finalizer->id]);
+    config(['measurements.sla.calendar_code' => null]);
+    SlaConfiguration::factory()->forStage(5, 3)->create();
+
+    return $scenario + ['finalizer' => $finalizer];
+}
+
+it('routes receipt work through upload review rejection replacement and finalization', function () {
+    $scenario = documentaryWorkScenario();
+    $service = app(MeasurementReceiptEvidenceService::class);
+    $pending = app(MeasurementPendingService::class);
+    expect($pending->summaryFor($scenario['actor'])['items'][0]['action_label'])->toBe('Enviar comprovante')
+        ->and($pending->summaryFor($scenario['finalizer'])['count'])->toBe(0);
+
+    $first = $service->upload($scenario['payment'], $scenario['actor'], Scenario::file());
+    expect($pending->summaryFor($scenario['actor'])['count'])->toBe(0)
+        ->and($pending->summaryFor($scenario['finalizer'])['items'][0]['action_label'])->toBe('Conferir comprovante');
+
+    $service->review($first, $scenario['finalizer'], MeasurementReceiptReviewStatus::Rejected, true, rejectionReason: 'Documento incorreto');
+    expect($pending->summaryFor($scenario['actor'])['items'][0]['action_label'])->toBe('Substituir comprovante rejeitado')
+        ->and($pending->summaryFor($scenario['finalizer'])['count'])->toBe(0);
+
+    $second = $service->upload($scenario['payment'], $scenario['actor'], Scenario::file(), $first->id, 'Documento correto');
+    $service->review($second, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
+    expect($pending->summaryFor($scenario['actor'])['count'])->toBe(0)
+        ->and($pending->summaryFor($scenario['finalizer'])['items'][0]['action_label'])->toBe('Finalizar medição')
+        ->and($scenario['measurement']->fresh()->status)->toBe('approved')
+        ->and($first->fresh()->review_status)->toBe(MeasurementReceiptReviewStatus::Rejected);
+});
+
+it('shows mixed documentary work in pendings workload exceptions and operational labels', function () {
+    $scenario = documentaryWorkScenario();
+    $service = app(MeasurementReceiptEvidenceService::class);
+    $service->upload($scenario['payment'], $scenario['actor'], Scenario::file());
+    foreach (['missing', 'rejected', 'approved'] as $state) {
+        $payment = MeasurementPayment::factory()->create([
+            'measurement_id' => $scenario['measurement']->id,
+            'operation_id' => $scenario['operation']->id,
+            'plan_set_id' => $scenario['payment']->plan_set_id,
+        ]);
+        if ($state === 'missing') {
+            continue;
+        }
+        $evidence = $service->upload($payment, $scenario['actor'], Scenario::file());
+        $service->review($evidence, $scenario['finalizer'], MeasurementReceiptReviewStatus::from($state), true, rejectionReason: 'Arquivo incorreto');
+    }
+    $measurement = $scenario['measurement']->fresh();
+    expect($service->documentarySummary($measurement))->toBe(['missing' => 1, 'rejected' => 1, 'pending' => 1, 'approved' => 1])
+        ->and(app(MeasurementPendingService::class)->summaryFor($scenario['actor'])['items'][0]['action_label'])->toBe('Enviar e substituir comprovantes')
+        ->and(app(MeasurementPendingService::class)->summaryFor($scenario['finalizer'])['items'][0]['action_label'])->toBe('Conferir comprovante')
+        ->and(app(MeasurementOperationalReadModel::class)->receiptStatusLabel($measurement))->toBe('1 a enviar · 1 rejeitado · 1 a conferir · 1 aprovado');
+
+    $workload = collect(app(MeasurementCycleReportingService::class)->report($scenario['actor'], MeasurementCycleReportFilters::fromArray([]))->workload);
+    expect($workload->where('responsibleId', $scenario['actor']->id)->where('responsibility', MeasurementResponsibility::ReceiptUploader)->first()?->pendingCount)->toBe(1)
+        ->and($workload->where('responsibleId', $scenario['finalizer']->id)->where('responsibility', MeasurementResponsibility::Finalizer)->first()?->pendingCount)->toBe(1);
+
+    $scenario['actor']->givePermissionTo('measurements.exceptions.view');
+    $scenario['operation']->update(['payment_receipt_uploader_user_id' => null, 'payment_finalizer_user_id' => null]);
+    $types = collect(app(MeasurementOperationalExceptionReadModel::class)->scanFor($scenario['actor'])->items)->pluck('type')->all();
+    expect($types)->toContain(MeasurementOperationalExceptionType::forResponsibility(MeasurementResponsibility::ReceiptUploader))
+        ->toContain(MeasurementOperationalExceptionType::forResponsibility(MeasurementResponsibility::Finalizer));
+});
+
+it('alerts only the documentary action owners and their effective delegates', function (string $state) {
+    $scenario = documentaryWorkScenario();
+    $service = app(MeasurementReceiptEvidenceService::class);
+    $evidence = $service->upload($scenario['payment'], $scenario['actor'], Scenario::file());
+    if ($state === 'rejected') {
+        $service->review($evidence, $scenario['finalizer'], MeasurementReceiptReviewStatus::Rejected, true, rejectionReason: 'Arquivo incorreto');
+    } elseif ($state === 'approved') {
+        $service->review($evidence, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
+    } elseif ($state === 'mixed') {
+        MeasurementPayment::factory()->create([
+            'measurement_id' => $scenario['measurement']->id,
+            'operation_id' => $scenario['operation']->id,
+            'plan_set_id' => $scenario['payment']->plan_set_id,
+        ]);
+    }
+    $delegate = User::factory()->withTwoFactor()->create();
+    $delegate->givePermissionTo(['measurements.view', 'measurements.finalize']);
+    ResponsibilityDelegation::factory()->active()->forStage(5, $scenario['operation'], MeasurementResponsibility::Finalizer)->create([
+        'delegator_user_id' => $scenario['finalizer']->id,
+        'delegate_user_id' => $delegate->id,
+    ]);
+    $scenario['measurement']->reviews()->where('stage', 5)->update(['created_at' => now()->subDays(30)]);
+    Notification::fake();
+
+    $this->artisan('measurements:evaluate-sla')->assertSuccessful();
+    $this->artisan('measurements:evaluate-sla')->assertSuccessful();
+
+    if (in_array($state, ['rejected', 'mixed'], true)) {
+        Notification::assertSentToTimes($scenario['actor'], MeasurementSlaNotification::class, 1);
+    } else {
+        Notification::assertNotSentTo($scenario['actor'], MeasurementSlaNotification::class);
+    }
+    foreach ([$scenario['finalizer'], $delegate] as $recipient) {
+        if ($state === 'rejected') {
+            Notification::assertNotSentTo($recipient, MeasurementSlaNotification::class);
+        } else {
+            Notification::assertSentToTimes($recipient, MeasurementSlaNotification::class, 1);
+            Notification::assertSentTo($recipient, MeasurementSlaNotification::class, fn ($notification): bool => $notification->slaContext['action_label'] === ($state === 'approved' ? 'Finalizar medição' : 'Conferir comprovante'));
+        }
+    }
+})->with(['pending', 'rejected', 'approved', 'mixed']);
+
+it('keeps finalized corrections actionable with their own SLA while preserving financial history', function (bool $reject) {
+    $scenario = documentaryWorkScenario(finalized: true);
+    $financialState = $scenario['measurement']->getRawOriginal();
+    $paymentState = $scenario['payment']->getRawOriginal();
+    $previous = $scenario['payment']->currentReceiptEvidence;
+    $service = app(MeasurementReceiptEvidenceService::class);
+    $pending = app(MeasurementPendingService::class);
+    $this->travelTo(now()->setDate(2026, 9, 10)->setTime(12, 0));
+    $correction = $service->correctFinalizedReceipt($scenario['payment'], $scenario['actor'], Scenario::file(), 'Correção documental', $previous->id);
+
+    expect($pending->summaryFor($scenario['actor'])['count'])->toBe(0)
+        ->and($pending->summaryFor($scenario['finalizer'])['items'][0]['action_label'])->toBe('Conferir correção documental')
+        ->and(app(MeasurementSlaService::class)->evaluate($scenario['measurement']->fresh())['status'])->toBe(MeasurementSlaService::STATUS_ON_TIME);
+    $workload = collect(app(MeasurementCycleReportingService::class)->report($scenario['actor'], MeasurementCycleReportFilters::fromArray([]))->workload);
+    expect($workload->where('responsibility', MeasurementResponsibility::Finalizer)->first()?->pendingCount)->toBe(1);
+
+    $this->travel(30)->days();
+    Notification::fake();
+    $this->artisan('measurements:evaluate-sla')->assertSuccessful();
+    Notification::assertSentToTimes($scenario['finalizer'], MeasurementSlaNotification::class, 1);
+    Notification::assertNotSentTo($scenario['actor'], MeasurementSlaNotification::class);
+
+    if ($reject) {
+        $service->review($correction, $scenario['finalizer'], MeasurementReceiptReviewStatus::Rejected, true, rejectionReason: 'Substituir o documento');
+        expect($pending->summaryFor($scenario['finalizer'])['count'])->toBe(0)
+            ->and($pending->summaryFor($scenario['actor'])['items'][0]['action_label'])->toBe('Substituir correção documental rejeitada')
+            ->and(app(MeasurementSlaService::class)->evaluate($scenario['measurement']->fresh())['status'])->toBe(MeasurementSlaService::STATUS_ON_TIME);
+        $this->travel(30)->days();
+        Notification::fake();
+        $this->artisan('measurements:evaluate-sla')->assertSuccessful();
+        Notification::assertSentToTimes($scenario['actor'], MeasurementSlaNotification::class, 1);
+        Notification::assertNotSentTo($scenario['finalizer'], MeasurementSlaNotification::class);
+        $correction = $service->correctFinalizedReceipt($scenario['payment'], $scenario['actor'], Scenario::file(), 'Nova correção', $correction->id);
+    }
+    $service->review($correction, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
+
+    expect($pending->summaryFor($scenario['actor'])['count'])->toBe(0)
+        ->and($pending->summaryFor($scenario['finalizer'])['count'])->toBe(0)
+        ->and(app(MeasurementSlaService::class)->evaluate($scenario['measurement']->fresh())['status'])->toBe(MeasurementSlaService::STATUS_COMPLETED)
+        ->and($scenario['measurement']->fresh()->getRawOriginal())->toBe($financialState)
+        ->and($scenario['payment']->fresh()->getRawOriginal())->toBe($paymentState)
+        ->and($previous->fresh()->review_status)->toBe(MeasurementReceiptReviewStatus::LegacyUnreviewed);
+})->with([false, true]);
+
+it('shows documentary review to an effective delegate and removes it after revocation or lost permission', function (string $restriction) {
+    $scenario = documentaryWorkScenario();
+    app(MeasurementReceiptEvidenceService::class)->upload($scenario['payment'], $scenario['actor'], Scenario::file());
+    $delegate = User::factory()->withTwoFactor()->create();
+    $delegate->givePermissionTo(['measurements.view', 'measurements.finalize']);
+    $delegation = ResponsibilityDelegation::factory()->active()->forStage(5, $scenario['operation'], MeasurementResponsibility::Finalizer)->create([
+        'delegator_user_id' => $scenario['finalizer']->id,
+        'delegate_user_id' => $delegate->id,
+    ]);
+    $summary = app(MeasurementPendingService::class)->summaryFor($delegate);
+    expect($summary['count'])->toBe(1)
+        ->and($summary['items'][0]['action_label'])->toBe('Conferir comprovante')
+        ->and($summary['items'][0]['delegation_id'])->toBe($delegation->id);
+
+    if ($restriction === 'permission') {
+        $delegate->revokePermissionTo('measurements.finalize');
+    } else {
+        $delegation->update(['revoked_at' => now()]);
+    }
+    expect(app(MeasurementPendingService::class)->summaryFor($delegate->fresh())['count'])->toBe(0);
+})->with(['permission', 'revocation']);
+
+it('allows receipt uploads when antivirus is disabled without contacting the scanner', function () {
+    $scenario = Scenario::open();
+    $this->mock(ClamAvFileScanner::class, function ($mock): void {
+        $mock->shouldReceive('isEnabled')->andReturnFalse();
+        $mock->shouldNotReceive('scanStream');
+        $mock->shouldNotReceive('scan');
+    });
+    $evidence = app(MeasurementReceiptEvidenceService::class)->upload($scenario['payment'], $scenario['actor'], Scenario::file());
+    expect($evidence->sha256)->toHaveLength(64);
 });

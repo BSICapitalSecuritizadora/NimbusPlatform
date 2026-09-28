@@ -5,13 +5,16 @@ use App\Models\MeasurementAsset;
 use App\Models\Operation;
 use App\Models\User;
 use App\Services\DocumentStorageService;
+use App\Services\MeasurementFileValidationService;
 use App\Services\MeasurementWorkflow;
+use App\Services\Security\ClamAvFileScanner;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\MeasurementReceiptEvidenceScenario;
 
@@ -336,4 +339,98 @@ test('example', function () {
     $response = $this->get('/');
 
     $response->assertStatus(200);
+});
+
+it('blocks unsafe engineering uploads without orphan files or changing the previous asset', function (string $result, bool $replacement) {
+    $scenario = createFileSecurityScenario();
+    $previous = $scenario['asset']->getRawOriginal();
+    $path = 'nimbus_docs/measurements/assets/rejected.pdf';
+    Storage::disk('local')->put($path, '%PDF-1.7 unsafe upload');
+    $this->mock(ClamAvFileScanner::class, function ($mock) use ($result): void {
+        $mock->shouldReceive('isEnabled')->andReturnTrue();
+        $mock->shouldReceive('scanStream')->once()->andReturn($result);
+        $mock->shouldNotReceive('scan');
+    });
+
+    expect(fn () => $replacement
+        ? $scenario['asset']->update(['storage_path' => $path])
+        : $scenario['measurement']->assets()->create(['storage_path' => $path, 'storage_disk' => 'local']))
+        ->toThrow(ValidationException::class);
+
+    expect($scenario['asset']->fresh()->getRawOriginal())->toBe($previous)
+        ->and($scenario['measurement']->assets()->count())->toBe(1);
+    Storage::disk('local')->assertMissing($path);
+    Storage::disk('local')->assertExists($previous['storage_path']);
+})->with([ClamAvFileScanner::RESULT_INFECTED, ClamAvFileScanner::RESULT_UNAVAILABLE])->with([false, true]);
+
+it('scans engineering uploads as streams on every supported private disk', function (string $disk) {
+    $scenario = createFileSecurityScenario();
+    if ($disk === 'private') {
+        Storage::fake($disk);
+        config()->set('filesystems.disks.private.driver', 'azure');
+    }
+    $path = 'nimbus_docs/measurements/assets/clean.pdf';
+    $bytes = '%PDF-1.7 clean engineering upload';
+    Storage::disk($disk)->put($path, $bytes);
+    $stream = null;
+    $this->mock(ClamAvFileScanner::class, function ($mock) use ($bytes, &$stream): void {
+        $mock->shouldReceive('isEnabled')->andReturnTrue();
+        $mock->shouldNotReceive('scan');
+        $mock->shouldReceive('scanStream')->once()->andReturnUsing(function ($input) use ($bytes, &$stream): string {
+            $stream = $input;
+            expect(stream_get_contents($input))->toBe($bytes);
+
+            return ClamAvFileScanner::RESULT_CLEAN;
+        });
+    });
+
+    $asset = $scenario['measurement']->assets()->create(['storage_path' => $path, 'storage_disk' => $disk]);
+
+    expect($asset->sha256)->toBe(hash('sha256', $bytes))
+        ->and(is_resource($stream))->toBeFalse();
+    Storage::disk($disk)->assertExists($path);
+})->with(['local', 'private']);
+
+it('compensates every staged engineering upload when a later asset is rejected', function () {
+    $measurementId = null;
+    $this->mock(ClamAvFileScanner::class, function ($mock): void {
+        $mock->shouldReceive('isEnabled')->andReturnTrue();
+        $mock->shouldReceive('scanStream')->twice()->andReturn(ClamAvFileScanner::RESULT_CLEAN, ClamAvFileScanner::RESULT_INFECTED);
+    });
+
+    expect(function () use (&$measurementId): void {
+        DB::transaction(function () use (&$measurementId): void {
+            $validation = app(MeasurementFileValidationService::class);
+            $paths = [
+                $validation->storeAsset(MeasurementReceiptEvidenceScenario::file('first.pdf')),
+                $validation->storeAsset(MeasurementReceiptEvidenceScenario::file('second.pdf')),
+                $validation->storeAsset(MeasurementReceiptEvidenceScenario::file('not-yet-saved.pdf')),
+            ];
+            $measurement = Measurement::factory()->create(['storage_path' => null]);
+            $measurementId = $measurement->id;
+            foreach ($paths as $path) {
+                $measurement->assets()->create(['storage_path' => $path, 'storage_disk' => 'local']);
+            }
+        });
+    })->toThrow(ValidationException::class);
+
+    expect($measurementId)->not->toBeNull();
+    expect(Measurement::query()->find($measurementId))->toBeNull()
+        ->and(MeasurementAsset::query()->where('measurement_id', $measurementId)->count())->toBe(0)
+        ->and(Storage::disk('local')->allFiles('nimbus_docs/measurements/assets'))->toBeEmpty();
+});
+
+it('does not delete an existing asset when a rejected upload references its path', function () {
+    $scenario = createFileSecurityScenario();
+    $this->mock(ClamAvFileScanner::class, function ($mock): void {
+        $mock->shouldReceive('isEnabled')->andReturnTrue();
+        $mock->shouldReceive('scanStream')->once()->andReturn(ClamAvFileScanner::RESULT_UNAVAILABLE);
+    });
+
+    expect(fn () => $scenario['measurement']->assets()->create([
+        'storage_disk' => 'local', 'storage_path' => $scenario['asset']->storage_path,
+    ]))->toThrow(ValidationException::class);
+
+    Storage::disk('local')->assertExists($scenario['asset']->storage_path);
+    expect($scenario['measurement']->assets()->count())->toBe(1);
 });

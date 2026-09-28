@@ -1,10 +1,10 @@
 name: tests
 
 on:
+  workflow_call:
   push:
     branches:
       - develop
-      - main
       - master
       - workos
   pull_request:

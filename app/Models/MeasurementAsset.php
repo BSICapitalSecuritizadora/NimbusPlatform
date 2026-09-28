@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class MeasurementAsset extends Model
 {
@@ -37,20 +39,39 @@ class MeasurementAsset extends Model
     protected static function booted(): void
     {
         static::saving(function (self $asset): void {
-            $measurement = $asset->measurement()->first();
+            $newFile = $asset->isDirty(['storage_path', 'storage_disk']) && filled($asset->storage_path);
+            $validation = app(MeasurementFileValidationService::class);
 
-            if ($measurement?->hasApprovedEngineering()) {
-                throw new MeasurementWorkflowException('Os arquivos aprovados pela Engenharia estão bloqueados. Devolva a medição à Engenharia para alterá-los.', [
-                    'measurement_id' => $measurement->getKey(),
-                    'asset_id' => $asset->getKey(),
-                ]);
+            if ($newFile) {
+                $validation->compensateAssetOnRollback((string) $asset->storage_path, $asset->resolved_storage_disk);
             }
 
-            if ($asset->isDirty(['storage_path', 'storage_disk']) && filled($asset->storage_path)) {
-                app(MeasurementFileValidationService::class)->validateAsset(
-                    (string) $asset->storage_path,
-                    $asset->resolved_storage_disk,
-                );
+            try {
+                $measurement = $asset->measurement()->first();
+
+                if ($measurement?->hasApprovedEngineering()) {
+                    throw new MeasurementWorkflowException('Os arquivos aprovados pela Engenharia estão bloqueados. Devolva a medição à Engenharia para alterá-los.', [
+                        'measurement_id' => $measurement->getKey(),
+                        'asset_id' => $asset->getKey(),
+                    ]);
+                }
+
+                if ($newFile) {
+                    $validation->validateAsset(
+                        (string) $asset->storage_path,
+                        $asset->resolved_storage_disk,
+                    );
+
+                    if (! is_string($asset->sha256) || strlen($asset->sha256) !== 64) {
+                        throw ValidationException::withMessages(['asset' => 'Não foi possível calcular o SHA-256 do arquivo da medição.']);
+                    }
+                }
+            } catch (Throwable $exception) {
+                if ($newFile) {
+                    $validation->discardUnreferencedAsset((string) $asset->storage_path, $asset->resolved_storage_disk);
+                }
+
+                throw $exception;
             }
 
             if (blank($asset->filename) && filled($asset->storage_path)) {

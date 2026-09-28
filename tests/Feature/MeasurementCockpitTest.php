@@ -894,7 +894,7 @@ it('highlights populated stages and preserves every cockpit label and action', f
         ->assertSee('Valor registrado', false)
         ->assertSee('Soma dos registros operacionais; não representa saldo contábil ou valor liquidado.', false);
 
-    foreach (['SLA vencido', 'SLA em atenção', 'Pausadas', 'Delegadas no meu escopo', 'Comprovantes pendentes', 'Aguardando comprovante', 'Prontas para finalizar', 'Calendário indisponível', 'Finalizado'] as $label) {
+    foreach (['SLA vencido', 'SLA em atenção', 'Pausadas', 'Delegadas no meu escopo', 'Comprovantes pendentes', 'Documentação pendente', 'Prontas para finalizar', 'Calendário indisponível', 'Finalizado'] as $label) {
         $component->assertSee($label, false);
     }
 

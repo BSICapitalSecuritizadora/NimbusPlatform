@@ -2,16 +2,86 @@
 
 namespace App\Services;
 
+use App\Models\Measurement;
+use App\Models\MeasurementAsset;
+use App\Models\MeasurementPayment;
+use App\Models\MeasurementPaymentReceiptEvidence;
+use App\Services\Security\ClamAvFileScanner;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class MeasurementFileValidationService
 {
-    public function __construct(private DocumentStorageService $storage) {}
+    public function __construct(
+        private DocumentStorageService $storage,
+        private ClamAvFileScanner $scanner,
+    ) {}
+
+    public function storeAsset(UploadedFile $file): string
+    {
+        Validator::make(['asset' => $file], [
+            'asset' => ['required', 'file', 'extensions:'.implode(',', config('uploads.measurement.allowed_extensions', [])), 'max:'.config('uploads.measurement.max_kb', 51200)],
+        ])->validate();
+
+        $directory = 'measurements/assets/'.Str::uuid();
+        $disk = DocumentStorageService::privateDisk();
+        $path = $this->storage->privateDirectoryPath($directory).'/'.$file->hashName();
+        $this->compensateAssetOnRollback($path, $disk);
+
+        try {
+            $this->storage->storePrivateFile($file, $directory);
+        } catch (Throwable $exception) {
+            $this->discardUnreferencedAsset($path, $disk);
+
+            throw $exception;
+        }
+
+        return $path;
+    }
+
+    public function compensateAssetOnRollback(string $path, string $disk): void
+    {
+        foreach (app('db.transactions')->getPendingTransactions() as $transaction) {
+            if ($transaction->connection === DB::connection()->getName()) {
+                $transaction->addCallbackForRollback(fn () => $this->discardUnreferencedAsset($path, $disk));
+            }
+        }
+    }
+
+    public function discardUnreferencedAsset(string $path, string $disk): void
+    {
+        rescue(function () use ($path, $disk): void {
+            if (! $this->storage->isAllowedMeasurementWriteDisk($disk)
+                || ! $this->storage->isSafeStoredPath($path)
+                || ! str_starts_with($path, DocumentStorageService::PRIVATE_PREFIX.'/measurements/assets/')) {
+                return;
+            }
+
+            foreach ([MeasurementAsset::class, Measurement::class, MeasurementPaymentReceiptEvidence::class] as $model) {
+                if ($model::query()->where('storage_disk', $disk)->where('storage_path', $path)->exists()) {
+                    return;
+                }
+            }
+
+            if (MeasurementPayment::query()->where('receipt_disk', $disk)->where('receipt_path', $path)->exists()) {
+                return;
+            }
+
+            if (! Storage::disk($disk)->delete($path)) {
+                throw new \RuntimeException('Não foi possível compensar o arquivo de Engenharia rejeitado.');
+            }
+        }, report: true);
+    }
 
     public function validateAsset(string $path, string $disk): void
     {
         $this->validate($path, $disk, 'measurement', 'asset', allowLegacyPublic: false);
+        $this->scanStoredFile($path, $disk, 'asset');
     }
 
     public function validateStoredAsset(string $path, string $disk): void
@@ -22,11 +92,39 @@ class MeasurementFileValidationService
     public function validateReceipt(string $path, string $disk): void
     {
         $this->validate($path, $disk, 'measurement_receipt', 'receipt', allowLegacyPublic: false);
+        $this->scanStoredFile($path, $disk, 'receipt');
     }
 
     public function validateStoredReceipt(string $path, string $disk): void
     {
         $this->validate($path, $disk, 'measurement_receipt', 'receipt', allowLegacyPublic: true);
+    }
+
+    private function scanStoredFile(string $path, string $disk, string $errorKey): void
+    {
+        if (! $this->scanner->isEnabled()) {
+            return;
+        }
+
+        $stream = rescue(fn () => Storage::disk($disk)->readStream($path), null, report: false);
+
+        try {
+            $result = is_resource($stream)
+                ? rescue(fn (): string => $this->scanner->scanStream($stream), ClamAvFileScanner::RESULT_UNAVAILABLE)
+                : ClamAvFileScanner::RESULT_UNAVAILABLE;
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }
+
+        if ($result !== ClamAvFileScanner::RESULT_CLEAN) {
+            throw ValidationException::withMessages([
+                $errorKey => $result === ClamAvFileScanner::RESULT_INFECTED
+                    ? 'O arquivo foi bloqueado pelo antivírus. Envie um arquivo seguro.'
+                    : 'Não foi possível verificar a segurança do arquivo. Tente novamente quando o antivírus estiver disponível.',
+            ]);
+        }
     }
 
     private function validate(

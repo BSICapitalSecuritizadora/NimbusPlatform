@@ -47,8 +47,8 @@ class MeasurementCockpitService
         ];
 
         (clone $query)
-            ->open()
-            ->with(['reviews', 'pauses'])
+            ->withPendingWork()
+            ->with(['reviews', 'pauses', 'payments.currentReceiptEvidence'])
             ->reorder('measurements.id')
             ->lazyById(100, column: 'measurements.id', alias: 'id')
             ->each(function (Measurement $measurement) use (&$slaCounts): void {

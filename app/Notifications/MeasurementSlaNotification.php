@@ -44,6 +44,7 @@ class MeasurementSlaNotification extends Notification implements ShouldQueue
             ->line("A medição #{$this->measurement->getKey()} referência ".($this->measurement->reference_month?->format('m/Y') ?? '—')." está com {$typeLabel} na etapa {$stageLabel}.")
             ->line('Operação: '.($operation?->code.' — '.$operation?->title ?? '—'))
             ->line("Deadline (dias úteis): {$deadline} — decorrentes: {$elapsed}")
+            ->when(filled($this->slaContext['action_label'] ?? null), fn (MailMessage $mail): MailMessage => $mail->line('Ação pendente: '.$this->slaContext['action_label']))
             ->when($this->delegation !== null, fn (MailMessage $mail): MailMessage => $mail->line(
                 'Responsabilidade delegada por '.($this->delegation?->delegator?->name ?? 'responsável original')
                 .' até '.$this->delegation?->ends_at?->format('d/m/Y H:i').'.',
@@ -59,6 +60,7 @@ class MeasurementSlaNotification extends Notification implements ShouldQueue
             'operation_id' => $this->measurement->operation_id,
             'stage' => $this->slaContext['stage'] ?? null,
             'alert_type' => $this->alertType,
+            'action_label' => $this->slaContext['action_label'] ?? null,
             'status' => $this->slaContext['status'] ?? null,
             'deadline_at' => $this->slaContext['deadline_at']?->toDateTimeString(),
             'elapsed_business_days' => $this->slaContext['elapsed_business_days'] ?? null,

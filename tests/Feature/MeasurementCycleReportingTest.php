@@ -146,7 +146,7 @@ function p3b2ReportingServiceFor(Collection $records, ?int &$batchCalls = null):
         $batchReader,
         Mockery::mock(MeasurementCycleHistoryReadModel::class),
         Mockery::mock(MeasurementSlaService::class),
-        Mockery::mock(MeasurementWorkflow::class),
+        app(MeasurementWorkflow::class),
     );
 }
 
@@ -634,7 +634,7 @@ it('keeps current workload separate and groups each pending measurement once by 
         $batchReader,
         Mockery::mock(MeasurementCycleHistoryReadModel::class),
         $sla,
-        Mockery::mock(MeasurementWorkflow::class),
+        app(MeasurementWorkflow::class),
     );
 
     $result = $service->report($actor, new MeasurementCycleReportFilters);

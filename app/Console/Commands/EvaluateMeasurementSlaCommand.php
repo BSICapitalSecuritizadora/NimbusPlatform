@@ -4,10 +4,10 @@ namespace App\Console\Commands;
 
 use App\Enums\MeasurementResponsibility;
 use App\Models\Measurement;
-use App\Models\MeasurementReview;
 use App\Models\ResponsibilityDelegation;
 use App\Models\User;
 use App\Notifications\MeasurementSlaNotification;
+use App\Services\MeasurementReceiptEvidenceService;
 use App\Services\MeasurementSlaService;
 use App\Services\MeasurementWorkflow;
 use App\Services\ResponsibilityDelegationService;
@@ -54,16 +54,11 @@ class EvaluateMeasurementSlaCommand extends Command
         // no fim deste `handle()`. A próxima execução recomeça do banco.
         $users = new UserIdentityMap(['roles', 'permissions']);
 
-        MeasurementReview::query()
-            ->where('status', 'pending')
-            ->whereHas('measurement', fn ($query) => $query->open())
-            ->with([
-                'measurement.operation',
-                'measurement.reviews',
-                'measurement.pauses',
-            ])
+        Measurement::query()
+            ->withPendingWork()
+            ->with(['operation', 'reviews', 'pauses', 'payments.currentReceiptEvidence'])
             ->lazyById(100)
-            ->each(function (MeasurementReview $review) use (
+            ->each(function (Measurement $measurement) use (
                 $sla,
                 $workflow,
                 $delegations,
@@ -71,105 +66,99 @@ class EvaluateMeasurementSlaCommand extends Command
                 $dryRun,
                 &$counters,
             ): void {
-                $measurement = $review->measurement;
-
-                if (! $measurement instanceof Measurement) {
-                    return;
-                }
-
                 if ($measurement->status === 'paused') {
                     $counters['skipped_paused']++;
 
                     return;
                 }
 
-                $stage = (int) $review->stage;
+                $stage = $workflow->unifiedStage($measurement);
 
-                if ($stage !== $workflow->unifiedStage($measurement)) {
-                    return;
-                }
+                foreach ($workflow->pendingResponsibilities($measurement) as $responsibility) {
+                    $evaluation = $sla->evaluate($measurement, responsibility: $responsibility);
+                    $counters['evaluated']++;
 
-                $evaluation = $sla->evaluate($measurement);
-                $counters['evaluated']++;
+                    match ($evaluation['status']) {
+                        MeasurementSlaService::STATUS_CALENDAR_UNAVAILABLE => $counters['calendar_unavailable']++,
+                        MeasurementSlaService::STATUS_NOT_CONFIGURED => $counters['not_configured']++,
+                        MeasurementSlaService::STATUS_INVALID_CONFIG => $counters['invalid_config']++,
+                        default => null,
+                    };
 
-                match ($evaluation['status']) {
-                    MeasurementSlaService::STATUS_CALENDAR_UNAVAILABLE => $counters['calendar_unavailable']++,
-                    MeasurementSlaService::STATUS_NOT_CONFIGURED => $counters['not_configured']++,
-                    MeasurementSlaService::STATUS_INVALID_CONFIG => $counters['invalid_config']++,
-                    default => null,
-                };
+                    $alertType = match ($evaluation['status']) {
+                        MeasurementSlaService::STATUS_OVERDUE => 'overdue',
+                        MeasurementSlaService::STATUS_APPROACHING => 'warning',
+                        default => null,
+                    };
 
-                $alertType = match ($evaluation['status']) {
-                    MeasurementSlaService::STATUS_OVERDUE => 'overdue',
-                    MeasurementSlaService::STATUS_APPROACHING => 'warning',
-                    default => null,
-                };
+                    if ($alertType === null) {
+                        continue;
+                    }
 
-                if ($alertType === null) {
-                    return;
-                }
+                    $alertType === 'warning' ? $counters['approaching']++ : $counters['overdue']++;
 
-                $alertType === 'warning' ? $counters['approaching']++ : $counters['overdue']++;
+                    if (! $measurement->operation) {
+                        continue;
+                    }
 
-                $responsibility = $this->responsibilityFor($measurement, $stage);
+                    $recipients = $this->recipients($measurement, $responsibility, $delegations, $users);
 
-                if (! $responsibility instanceof MeasurementResponsibility || ! $measurement->operation) {
-                    return;
-                }
-
-                $recipients = $this->recipients($measurement, $responsibility, $delegations, $users);
-
-                if ($recipients === []) {
-                    // Prazo estourando e ninguém a avisar: nem responsável direto
-                    // efetivo, nem delegado efetivo. É o caso que passava calado.
-                    $counters['recipients_unavailable']++;
-
-                    return;
-                }
-
-                foreach ($recipients as $recipient) {
-                    $inserted = $dryRun || DB::table('measurement_sla_alerts')->insertOrIgnore([
-                        'measurement_id' => $measurement->getKey(),
-                        'stage' => $stage,
-                        'alert_type' => $alertType,
-                        'recipient_user_id' => $recipient['user']->getKey(),
-                        'stage_started_at' => $evaluation['started_at'],
-                        'business_day' => BusinessTime::dateString(),
-                        'notified_at' => now(),
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]) === 1;
-
-                    if (! $inserted) {
-                        $counters['alerts_deduplicated']++;
+                    if ($recipients === []) {
+                        // Prazo estourando e ninguém a avisar: nem responsável direto
+                        // efetivo, nem delegado efetivo. É o caso que passava calado.
+                        $counters['recipients_unavailable']++;
 
                         continue;
                     }
 
-                    if (! $dryRun) {
-                        try {
-                            $recipient['user']->notify((new MeasurementSlaNotification(
-                                $measurement,
-                                $alertType,
-                                $evaluation,
-                                $recipient['delegation'],
-                            ))->afterCommit());
-                        } catch (\Throwable $exception) {
-                            DB::table('measurement_sla_alerts')
-                                ->where('measurement_id', $measurement->getKey())
-                                ->where('stage', $stage)
-                                ->where('alert_type', $alertType)
-                                ->where('recipient_user_id', $recipient['user']->getKey())
-                                ->where('stage_started_at', $evaluation['started_at'])
-                                ->delete();
-                            report($exception);
-                            $counters['notification_failures']++;
+                    foreach ($recipients as $recipient) {
+                        $inserted = $dryRun || DB::table('measurement_sla_alerts')->insertOrIgnore([
+                            'measurement_id' => $measurement->getKey(),
+                            'stage' => $stage,
+                            'alert_type' => $alertType,
+                            'recipient_user_id' => $recipient['user']->getKey(),
+                            'stage_started_at' => $evaluation['started_at'],
+                            'business_day' => BusinessTime::dateString(),
+                            'notified_at' => now(),
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]) === 1;
+
+                        if (! $inserted) {
+                            $counters['alerts_deduplicated']++;
 
                             continue;
                         }
-                    }
 
-                    $counters['alerts_created']++;
+                        if (! $dryRun) {
+                            try {
+                                $recipient['user']->notify((new MeasurementSlaNotification(
+                                    $measurement,
+                                    $alertType,
+                                    $evaluation + [
+                                        'action_label' => $stage === MeasurementWorkflow::STAGE_FINALIZATION
+                                            ? app(MeasurementReceiptEvidenceService::class)->pendingActionLabel($measurement, $responsibility)
+                                            : $responsibility->label(),
+                                    ],
+                                    $recipient['delegation'],
+                                ))->afterCommit());
+                            } catch (\Throwable $exception) {
+                                DB::table('measurement_sla_alerts')
+                                    ->where('measurement_id', $measurement->getKey())
+                                    ->where('stage', $stage)
+                                    ->where('alert_type', $alertType)
+                                    ->where('recipient_user_id', $recipient['user']->getKey())
+                                    ->where('stage_started_at', $evaluation['started_at'])
+                                    ->delete();
+                                report($exception);
+                                $counters['notification_failures']++;
+
+                                continue;
+                            }
+                        }
+
+                        $counters['alerts_created']++;
+                    }
                 }
             });
 
@@ -213,17 +202,6 @@ class EvaluateMeasurementSlaCommand extends Command
             ->implode(', '));
     }
 
-    private function responsibilityFor(Measurement $measurement, int $stage): ?MeasurementResponsibility
-    {
-        if ($stage !== MeasurementWorkflow::STAGE_FINALIZATION) {
-            return MeasurementResponsibility::primaryForStage($stage);
-        }
-
-        return $measurement->status === 'awaiting_receipt'
-            ? MeasurementResponsibility::ReceiptUploader
-            : MeasurementResponsibility::Finalizer;
-    }
-
     /**
      * Quem deve ser alertado sobre esta responsabilidade: o responsável direto,
      * se ainda for efetivo, e os delegados efetivos -- deduplicados por usuário,
@@ -250,7 +228,7 @@ class EvaluateMeasurementSlaCommand extends Command
         }
 
         foreach ($delegations->activeDelegatesForResponsibility($operation, $responsibility, $users) as $delegation) {
-            $recipients[$delegation->delegate_user_id] = [
+            $recipients[$delegation->delegate_user_id] ??= [
                 'user' => $delegation->delegate,
                 'delegation' => $delegation,
             ];

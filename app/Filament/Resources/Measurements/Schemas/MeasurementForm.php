@@ -4,10 +4,12 @@ namespace App\Filament\Resources\Measurements\Schemas;
 
 use App\Enums\OperationStatus;
 use App\Models\Measurement;
+use App\Models\MeasurementAsset;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use App\Services\DocumentStorageService;
+use App\Services\MeasurementFileValidationService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -20,8 +22,10 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\HtmlString;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class MeasurementForm
 {
@@ -111,6 +115,14 @@ class MeasurementForm
 
                         Repeater::make('assets')
                             ->relationship()
+                            ->mutateRelationshipDataBeforeCreateUsing(fn (array $data): array => array_merge($data, [
+                                'storage_disk' => DocumentStorageService::privateDisk(),
+                            ]))
+                            ->mutateRelationshipDataBeforeSaveUsing(fn (array $data, MeasurementAsset $record): array => array_merge($data, [
+                                'storage_disk' => ($data['storage_path'] ?? null) !== $record->storage_path
+                                    ? DocumentStorageService::privateDisk()
+                                    : $record->storage_disk,
+                            ]))
                             ->hiddenLabel()
                             ->addable(false)
                             ->deletable(true)
@@ -158,8 +170,11 @@ class MeasurementForm
                                 FileUpload::make('storage_path')
                                     ->label('Arquivo da Medição')
                                     ->columnSpanFull()
-                                    ->disk(DocumentStorageService::privateDisk())
+                                    ->disk(fn (?Model $record): string => $record instanceof MeasurementAsset
+                                        ? $record->resolved_storage_disk
+                                        : DocumentStorageService::privateDisk())
                                     ->directory(DocumentStorageService::PRIVATE_PREFIX.'/measurements/assets')
+                                    ->saveUploadedFileUsing(fn (TemporaryUploadedFile $file): string => app(MeasurementFileValidationService::class)->storeAsset($file))
                                     ->acceptedFileTypes((array) config('uploads.measurement.allowed_mimes', ['application/pdf']))
                                     ->maxSize((int) config('uploads.measurement.max_kb', 51200))
                                     ->required()

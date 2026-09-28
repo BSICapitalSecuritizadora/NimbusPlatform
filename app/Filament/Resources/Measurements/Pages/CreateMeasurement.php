@@ -20,6 +20,8 @@ class CreateMeasurement extends CreateRecord
 {
     protected static string $resource = MeasurementResource::class;
 
+    protected ?bool $hasDatabaseTransactions = true;
+
     protected static ?string $title = 'Enviar Medição';
 
     protected static ?string $breadcrumb = 'Enviar';

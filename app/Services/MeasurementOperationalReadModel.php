@@ -195,7 +195,7 @@ class MeasurementOperationalReadModel
         }
 
         $matchingIds = (clone $query)
-            ->with(['reviews', 'pauses'])
+            ->with(['reviews', 'pauses', 'payments.currentReceiptEvidence'])
             ->reorder('measurements.id')
             ->lazyById(100, column: 'measurements.id', alias: 'id')
             ->filter(fn (Measurement $measurement): bool => $this->slaEvaluation($measurement)['status'] === $status)
@@ -234,24 +234,41 @@ class MeasurementOperationalReadModel
                 : 'Aguardando aprovação';
         }
 
-        return match ($measurement->status) {
-            'awaiting_receipt' => 'Aguardando comprovante',
-            'approved' => 'Pronta para finalizar',
-            'finalized' => 'Concluída',
-            default => 'Acompanhamento',
-        };
+        if (in_array($measurement->status, ['awaiting_receipt', 'approved', 'finalized'], true)) {
+            $receipts = app(MeasurementReceiptEvidenceService::class);
+            $actions = $receipts->pendingResponsibilities($measurement);
+
+            return $actions === [] ? 'Concluída' : collect($actions)
+                ->map(fn (MeasurementResponsibility $responsibility): string => $receipts->pendingActionLabel($measurement, $responsibility))
+                ->implode(' · ');
+        }
+
+        return 'Acompanhamento';
     }
 
     public function receiptStatusLabel(Measurement $measurement): string
     {
-        $payments = (int) $measurement->payments_count;
-        $withReceipt = (int) $measurement->payments_with_receipt_count;
+        if ($measurement->status === 'finalized') {
+            return app(MeasurementReceiptEvidenceService::class)->documentaryStatus($measurement);
+        }
+
+        $counts = app(MeasurementReceiptEvidenceService::class)->documentarySummary($measurement);
+        $labels = ['missing' => 'a enviar', 'rejected' => 'rejeitado', 'pending' => 'a conferir', 'approved' => 'aprovado'];
+
+        return array_sum($counts) === 0 ? 'Sem pagamentos' : collect($counts)
+            ->filter()->map(fn (int $count, string $key): string => $count.' '.$labels[$key]
+                .($count > 1 && in_array($key, ['rejected', 'approved'], true) ? 's' : ''))->implode(' · ');
+    }
+
+    public function receiptStatusColor(Measurement $measurement): string
+    {
+        $counts = app(MeasurementReceiptEvidenceService::class)->documentarySummary($measurement);
 
         return match (true) {
-            $payments === 0 => 'Sem pagamentos',
-            $withReceipt === $payments => 'Todos anexados',
-            $withReceipt === 0 => 'Todos pendentes',
-            default => sprintf('%d de %d anexados', $withReceipt, $payments),
+            $counts['rejected'] > 0 => 'danger',
+            $counts['missing'] + $counts['pending'] > 0 => 'warning',
+            $counts['approved'] > 0 => 'success',
+            default => 'gray',
         };
     }
 
