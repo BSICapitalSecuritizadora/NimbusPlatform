@@ -6,6 +6,7 @@ use App\Domain\PuCalculator\Enums\PuCurveStatus;
 use App\Domain\PuCalculator\Exceptions\PuMakerCheckerException;
 use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Domain\PuCalculator\Services\PuCurveVersionService;
+use App\Domain\PuCalculator\Services\PuPaymentScheduleService;
 use App\Enums\BusinessArea;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
@@ -18,6 +19,7 @@ class HomologatePuCurve
         private readonly PuCurveVersionService $versionService,
         private readonly PuAuditLogService $auditLogService,
         private readonly AreaResponsibilityService $areaResponsibilities,
+        private readonly PuPaymentScheduleService $paymentSchedule,
     ) {}
 
     public function handle(
@@ -56,6 +58,10 @@ class HomologatePuCurve
             $selfHomologation,
             $justification,
         );
+
+        // A versão homologada passa a ser a curva oficial das outras áreas: os
+        // pagamentos que ela já calculou substituem o previsto.
+        $this->paymentSchedule->reconcile($emission->fresh(), $requestedByUserId);
 
         return $version;
     }

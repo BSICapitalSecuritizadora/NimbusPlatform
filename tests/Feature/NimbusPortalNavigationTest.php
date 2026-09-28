@@ -373,17 +373,14 @@ it('stacks the announcement form cards vertically', function () {
 it('stacks the general document form cards vertically', function () {
     $schema = GeneralDocumentForm::configure(Schema::make(makeNimbusSchemaTestLivewire()));
 
-    $layout = collect($schema->getComponents())
-        ->first(fn (mixed $component): bool => $component instanceof Grid);
-
-    $sections = collect($layout?->getChildSchema()?->getComponents() ?? [])
+    // Desde o refinamento de 24/09 as seções ficam direto no formulário, sem Grid
+    // intermediário: o empilhamento vem da coluna única do schema.
+    $sections = collect($schema->getComponents())
         ->filter(fn (mixed $component): bool => $component instanceof Section)
         ->values();
 
-    expect($layout)->toBeInstanceOf(Grid::class)
-        ->and($layout?->getColumns())->toMatchArray([
-            'default' => 1,
-        ])
+    // Coluna única em todos os pontos de quebra: nada fica lado a lado.
+    expect(array_filter($schema->getColumns(), fn (?int $columns): bool => $columns !== null && $columns > 1))->toBe([])
         ->and($sections)->toHaveCount(2)
         ->and($sections[0]->getHeading())->toBe('Dados da Publicação')
         ->and($sections[1]->getHeading())->toBe('Disponibilidade')
@@ -393,10 +390,7 @@ it('stacks the general document form cards vertically', function () {
         ->and($sections[1]->getColumnSpan())->toMatchArray([
             'default' => 'full',
         ])
-        ->and($sections[0]->getColumns())->toMatchArray([
-            'default' => 1,
-            '3xl' => 2,
-        ])
+        ->and(array_filter($sections[0]->getColumns(), fn (?int $columns): bool => $columns !== null && $columns > 1))->toBe([])
         ->and($sections[0]->getChildSchema()->getComponentByStatePath('title'))->not->toBeNull()
         ->and($sections[1]->getChildSchema()->getComponentByStatePath('is_active'))->not->toBeNull();
 });

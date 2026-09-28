@@ -3,8 +3,10 @@
 namespace App\Actions\Emissions;
 
 use App\Models\Emission;
+use App\Models\EmissionPuEvent;
 use App\Models\Payment;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Support\Str;
 use Spatie\SimpleExcel\SimpleExcelReader;
@@ -56,10 +58,20 @@ class ImportPaymentsFromSpreadsheet
             $payment = Payment::query()
                 ->where('emission_id', $emission->id)
                 ->whereDate('payment_date', $paymentDate)
-                ->first();
+                ->first()
+                ?? $this->paymentMovedByCalendar($emission, $paymentDate);
 
             if ($payment) {
-                $payment->fill($paymentValues['values']);
+                // Pagamento já calculado pela curva oficial: a planilha só
+                // atualiza o previsto guardado ao lado do valor calculado.
+                if ($payment->isCalculatedByOfficialCurve()) {
+                    foreach ($paymentValues['values'] as $field => $value) {
+                        $payment->{'expected_'.$field} = $value;
+                    }
+                } else {
+                    $payment->fill($paymentValues['values']);
+                }
+
                 $payment->save();
 
                 $importedPayments++;
@@ -78,6 +90,32 @@ class ImportPaymentsFromSpreadsheet
         }
 
         return $importedPayments;
+    }
+
+    /**
+     * A planilha traz a data do cronograma do Termo; se o calendário adiou esse
+     * evento e a curva oficial já calculou o pagamento na data efetiva, é essa
+     * a linha -- não uma duplicata na data original.
+     */
+    protected function paymentMovedByCalendar(Emission $emission, mixed $paymentDate): ?Payment
+    {
+        $originalDate = CarbonImmutable::parse($paymentDate)->toDateString();
+        $event = EmissionPuEvent::query()
+            ->where('emission_id', $emission->id)
+            ->whereDate('original_date', $originalDate)
+            ->whereDate('effective_date', '!=', $originalDate)
+            ->orderBy('effective_date')
+            ->first();
+
+        if (! $event instanceof EmissionPuEvent) {
+            return null;
+        }
+
+        return Payment::query()
+            ->where('emission_id', $emission->id)
+            ->whereDate('payment_date', $event->effective_date->toDateString())
+            ->where('value_source', Payment::SOURCE_OFFICIAL_CURVE)
+            ->first();
     }
 
     /**

@@ -3,11 +3,13 @@
 namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
+use App\Domain\PuCalculator\Enums\PuEventDateChangeReason;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Domain\PuCalculator\Services\PuBaselineCandidateFactory;
 use App\Domain\PuCalculator\Services\PuContractualEventScheduleService;
 use App\Models\Emission;
+use App\Models\EmissionPuEvent;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
@@ -52,10 +54,34 @@ class PuEventsRelationManager extends RelationManager
                     ->live()
                     ->required(),
                 DatePicker::make('original_date')
-                    ->label('Data original'),
+                    ->label('Data original')
+                    ->helperText('Data do cronograma do Termo.')
+                    ->live(),
                 DatePicker::make('effective_date')
                     ->label('Data efetiva')
+                    ->helperText('Data em que o pagamento acontece e até onde os juros correm.')
+                    ->live()
                     ->required(),
+                Select::make('effective_date_reason')
+                    ->label('Motivo da mudança de data')
+                    ->options(PuEventDateChangeReason::options())
+                    ->visible(fn (Get $get): bool => self::datesDiffer($get))
+                    ->required(fn (Get $get): bool => self::datesDiffer($get)),
+                Textarea::make('effective_date_justification')
+                    ->label('Justificativa')
+                    ->placeholder('Ex.: 08/02/2027 é Carnaval, sem expediente no mercado; pagamento no Dia Útil seguinte.')
+                    ->rows(2)
+                    ->visible(fn (Get $get): bool => self::datesDiffer($get))
+                    ->required(fn (Get $get): bool => self::datesDiffer($get)),
+                TextInput::make('effective_date_evidence_reference')
+                    ->label('Documento e cláusula')
+                    ->placeholder('Ex.: Termo de Securitização, cláusula 4.10, p. 31')
+                    ->maxLength(255)
+                    ->visible(fn (Get $get): bool => self::datesDiffer($get)),
+                Textarea::make('effective_date_evidence_excerpt')
+                    ->label('Trecho do documento')
+                    ->rows(3)
+                    ->visible(fn (Get $get): bool => self::datesDiffer($get)),
                 Select::make('amortization_type')
                     ->label('Tipo de amortização')
                     ->options([
@@ -106,6 +132,20 @@ class PuEventsRelationManager extends RelationManager
                         PuEventType::Amortization->value => 'warning',
                         default => 'gray',
                     }),
+                TextColumn::make('effective_date_reason')
+                    ->label('Data mudou por')
+                    ->badge()
+                    ->state(fn (EmissionPuEvent $record): ?string => match (true) {
+                        $record->effective_date_reason !== null => $record->effective_date_reason->label(),
+                        $record->hasUnjustifiedDateChange() => 'Sem motivo registrado',
+                        default => null,
+                    })
+                    ->color(fn (EmissionPuEvent $record): string => $record->hasUnjustifiedDateChange() ? 'danger' : 'gray')
+                    ->tooltip(fn (EmissionPuEvent $record): ?string => $record->effective_date_justification
+                        ?? ($record->hasUnjustifiedDateChange()
+                            ? sprintf('Data original %s. Edite o evento para registrar o motivo.', $record->original_date->format('d/m/Y'))
+                            : null))
+                    ->placeholder('—'),
                 TextColumn::make('amortization_type')
                     ->label('Tipo de Amortização')
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
@@ -213,7 +253,7 @@ class PuEventsRelationManager extends RelationManager
         $lines[] = $plan['creatable_events'] === []
             ? 'Nenhum evento novo a criar.'
             : sprintf(
-                'Serão criados %d evento(s), de %s a %s, com a data efetiva no dia útil seguinte do calendário da curva.',
+                'Serão criados %d evento(s), de %s a %s, com a data efetiva no dia útil seguinte do calendário da curva e o motivo de cada adiamento registrado.',
                 count($plan['creatable_events']),
                 $this->brazilianDate($plan['creatable_events'][0]['effective_date']),
                 $this->brazilianDate($plan['creatable_events'][array_key_last($plan['creatable_events'])]['effective_date']),
@@ -243,14 +283,24 @@ class PuEventsRelationManager extends RelationManager
         $actor = auth()->user();
         $result = app(PuContractualEventScheduleService::class)->write($this->getOwnerRecord(), $actor);
 
+        $justifiedLine = $result['justified'] > 0
+            ? sprintf(' %d evento(s) já cadastrado(s) ganharam o motivo do adiamento pelo calendário.', $result['justified'])
+            : '';
+
         match ($result['action']) {
             PuContractualEventScheduleService::ACTION_CREATED => Notification::make()
                 ->title(sprintf('%d evento(s) criado(s).', $result['created']))
                 ->body(sprintf(
-                    'Cronograma contratual cadastrado de %s a %s.',
+                    'Cronograma contratual cadastrado de %s a %s.%s',
                     $this->brazilianDate($result['first_date']),
                     $this->brazilianDate($result['last_date']),
+                    $justifiedLine,
                 ))
+                ->success()
+                ->send(),
+            PuContractualEventScheduleService::ACTION_JUSTIFIED => Notification::make()
+                ->title('Motivos de data registrados.')
+                ->body(trim($justifiedLine).' Nenhum evento novo foi criado.')
                 ->success()
                 ->send(),
             PuContractualEventScheduleService::ACTION_NOTHING_TO_CREATE => Notification::make()
@@ -274,6 +324,17 @@ class PuEventsRelationManager extends RelationManager
         };
 
         return null;
+    }
+
+    /**
+     * As duas datas estão preenchidas e são dias diferentes.
+     */
+    private static function datesDiffer(Get $get): bool
+    {
+        $original = substr((string) $get('original_date'), 0, 10);
+        $effective = substr((string) $get('effective_date'), 0, 10);
+
+        return $original !== '' && $effective !== '' && $original !== $effective;
     }
 
     private function brazilianDate(?string $date): string

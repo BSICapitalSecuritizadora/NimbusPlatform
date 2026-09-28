@@ -106,8 +106,10 @@ Schedule::command('pu:index-rates:sync --indexer=cdi --queue')
     ->name('pu-index-sync-cdi')
     ->withoutOverlapping();
 
-// Após a sincronização do CDI, estende a parte realizada das curvas de PU (não homologadas) com o
-// índice recém-publicado. Curvas homologadas são preservadas; curvas já completas são ignoradas.
+// Após a sincronização do CDI, estende a parte realizada das curvas de PU vigentes -- homologadas
+// inclusive -- anexando só os dias novos; o passado já gravado nunca é trocado. Na curva oficial
+// (homologada), os pagamentos que os dias novos trouxerem entram no Cronograma de Pagamentos.
+// Curvas já completas são ignoradas.
 Schedule::command('pu:curves:generate-realized')
     ->dailyAt('07:15')
     ->name('pu-curves-generate-realized')

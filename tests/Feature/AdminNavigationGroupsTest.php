@@ -178,6 +178,7 @@ it('groups the construction resources under Obras', function () {
             'Unidades',
             'Workspace de Pagamentos',
             'Exceções Operacionais',
+            'Regras Financeiras de Medições',
         ]);
 });
 

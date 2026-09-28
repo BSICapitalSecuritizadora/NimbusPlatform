@@ -63,6 +63,7 @@ final class PuCurveExtensionService
         private readonly PuOperationalProfileGuard $operationalProfiles,
         private readonly LegacyProjectionService $legacyProjections,
         private readonly PuAuditLogService $auditLog,
+        private readonly PuPaymentScheduleService $paymentSchedule,
     ) {}
 
     public function extend(Emission $emission): PuCurveExtensionResult
@@ -155,6 +156,12 @@ final class PuCurveExtensionService
         $fromDate = $tail[0]->date->toDateString();
         $toDate = $tail[array_key_last($tail)]->date->toDateString();
         $this->auditLog->logCurveExtended($emission, $version, count($tail), $fromDate, $toDate);
+
+        // Dias novos da curva oficial podem trazer pagamentos: o Cronograma de
+        // Pagamentos acompanha na mesma rodada.
+        if ($version->status === PuCurveStatus::Homologated) {
+            $this->paymentSchedule->reconcile($emission);
+        }
 
         return new PuCurveExtensionResult(
             action: self::ACTION_EXTENDED,

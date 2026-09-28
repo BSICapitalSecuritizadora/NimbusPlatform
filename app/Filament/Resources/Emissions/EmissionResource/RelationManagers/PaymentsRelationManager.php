@@ -5,10 +5,13 @@ namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 use App\Actions\Emissions\ImportPaymentsFromSpreadsheet;
 use App\Actions\Emissions\PaymentSpreadsheetTemplate;
 use App\Actions\Emissions\RemovePaymentFromSchedule;
+use App\Domain\PuCalculator\Services\EmissionPuReader;
+use App\Domain\PuCalculator\Services\PuPaymentScheduleService;
 use App\Enums\AccessPermission;
 use App\Enums\PaymentRemovalOutcome;
 use App\Filament\Pages\SpreadsheetTemplates as SpreadsheetTemplatesPage;
 use App\Models\Payment;
+use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -116,6 +119,21 @@ class PaymentsRelationManager extends RelationManager
                     ->money('BRL')
                     ->alignEnd()
                     ->sortable(),
+                TextColumn::make('value_source')
+                    ->label('Origem do valor')
+                    ->badge()
+                    ->state(fn (Payment $record): string => $record->isCalculatedByOfficialCurve() ? 'Curva oficial' : 'Previsto')
+                    ->color(fn (Payment $record): string => $record->isCalculatedByOfficialCurve() ? 'success' : 'gray')
+                    ->tooltip(fn (Payment $record): string => $record->isCalculatedByOfficialCurve()
+                        ? sprintf(
+                            'Calculado pela curva %s em %s.%s',
+                            $record->puCurveVersion?->calculation_version ?? 'oficial',
+                            $record->calculated_at?->format('d/m/Y H:i') ?? '—',
+                            $record->expectedTotal() !== null
+                                ? ' Previsto (planilha ou cadastro): R$ '.number_format((float) $record->expectedTotal(), 2, ',', '.').'.'
+                                : '',
+                        )
+                        : 'Valor da planilha ou do cadastro manual. É substituído pelo valor da curva oficial quando ela calcular esta data.'),
             ])
             ->defaultSort('payment_date', 'desc')
             ->filters([
@@ -171,13 +189,47 @@ class PaymentsRelationManager extends RelationManager
                             ->success()
                             ->send();
                     }),
+                Action::make('reconcileWithOfficialCurve')
+                    ->label('Atualizar pela curva oficial')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('gray')
+                    ->visible(fn (): bool => ! $this->isReadOnly()
+                        && (auth()->user()?->can(AccessPermission::EmissionsUpdate->value) ?? false)
+                        && app(EmissionPuReader::class)->officialVersion($this->getOwnerRecord()) !== null)
+                    ->requiresConfirmation()
+                    ->modalHeading('Atualizar pela curva oficial')
+                    ->modalDescription('Os pagamentos que a curva oficial homologada já calculou passam a mostrar o valor dela; o valor atual fica guardado como previsto. Datas futuras continuam com o previsto.')
+                    ->action(function (): void {
+                        $result = app(PuPaymentScheduleService::class)->reconcile($this->getOwnerRecord(), auth()->id());
+
+                        Notification::make()
+                            ->title(sprintf(
+                                'Cronograma atualizado pela curva %s.',
+                                $result['version'] ?? 'oficial',
+                            ))
+                            ->body(sprintf(
+                                '%d atualizado(s), %d criado(s), %d movido(s) para a data efetiva, %d de volta ao previsto.%s',
+                                $result['updated'],
+                                $result['created'],
+                                $result['moved'],
+                                $result['reverted'],
+                                $result['unmatched_dates'] === []
+                                    ? ''
+                                    : ' Previstos sem pagamento na curva: '.collect($result['unmatched_dates'])
+                                        ->map(fn (string $date): string => CarbonImmutable::parse($date)->format('d/m/Y'))
+                                        ->implode(', ').'.',
+                            ))
+                            ->success()
+                            ->send();
+                    }),
                 CreateAction::make()
                     ->label('Novo Pagamento')
                     ->icon('heroicon-m-plus')
                     ->tooltip('Lançar pagamento individual'),
             ])
             ->actions([
-                EditAction::make(),
+                EditAction::make()
+                    ->visible(fn (Payment $record): bool => ! $record->isCalculatedByOfficialCurve()),
                 $this->makeRemoveScheduleDateAction(),
             ])
             ->bulkActions([

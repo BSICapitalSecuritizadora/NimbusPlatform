@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Actions\Emissions\ImportPuHistoriesFromSpreadsheet;
 use App\Actions\Emissions\PuHistorySpreadsheetTemplate;
+use App\Domain\PuCalculator\Services\EmissionPuReader;
 use App\Filament\Pages\SpreadsheetTemplates as SpreadsheetTemplatesPage;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -52,6 +53,12 @@ class PuHistoriesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->description(fn (): ?string => ($version = app(EmissionPuReader::class)->officialVersion($this->getOwnerRecord())) !== null
+                ? sprintf(
+                    'Esta emissão tem curva oficial homologada (%s): relatório, garantias e site usam o PU dela. Este histórico só vale para datas que a curva não cobre.',
+                    $version->calculation_version,
+                )
+                : null)
             ->recordTitleAttribute('date')
             ->searchPlaceholder('Buscar por data...')
             ->columns([

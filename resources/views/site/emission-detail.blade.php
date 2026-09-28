@@ -622,15 +622,13 @@
                         <div class="col-lg-6">
                             <div class="tech-data-card h-100 p-4">
                                 @php
-                                    $lastFiveDays = collect();
-                                    for ($i = 0; $i < 5; $i++) {
-                                        $date = \Carbon\Carbon::today()->subDays($i);
-                                        $pu = $emission->puHistories()->where('date', '<=', $date->format('Y-m-d'))->orderByDesc('date')->first();
-                                        $lastFiveDays->push([
-                                            'date' => $date,
-                                            'value' => $pu?->unit_value,
-                                        ]);
-                                    }
+                                    /** @var \Illuminate\Support\Collection<int, \App\Domain\PuCalculator\DTOs\PuReading> $puReadings */
+                                    $puReadings ??= app(\App\Domain\PuCalculator\Services\EmissionPuReader::class)
+                                        ->latestReadings($emission, \Carbon\CarbonImmutable::today(), 5);
+                                    $lastFiveDays = $puReadings->map(fn ($reading) => [
+                                        'date' => $reading->date,
+                                        'value' => $reading->unitValue,
+                                    ]);
                                     $todayPu = $lastFiveDays->first()['value'] ?? $emission->current_pu;
                                 @endphp
 

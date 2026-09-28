@@ -86,6 +86,7 @@ function emissionFilterSourceFiles(): array
         'app/Filament/Resources/EmissionMonthlyReportNotes/Tables/EmissionMonthlyReportNotesTable.php',
         'app/Filament/Resources/Expenses/Tables/ExpensesTable.php',
         'app/Filament/Resources/Funds/Tables/FundsTable.php',
+        'app/Filament/Resources/MeasurementFinancialRules/MeasurementFinancialRuleResource.php',
         'app/Filament/Resources/Measurements/Tables/MeasurementsTable.php',
         'app/Filament/Resources/Negotiations/Tables/NegotiationsTable.php',
         'app/Filament/Resources/Operations/Tables/OperationsTable.php',
@@ -340,7 +341,7 @@ it('wires every SelectFilter labeled Emissão to the shared dropdown', function 
     // quando os dois moram na mesma tabela; este confere filtro a filtro. Os filtros do
     // campo emissão rotulados "Série" (um por arquivo) ficam com o de cima; os rotulados
     // "Operação", com o contrato de Operação abaixo.
-    expect($chains)->toHaveCount(13)
+    expect($chains)->toHaveCount(14)
         ->and($unwired)->toBe([]);
 });
 
@@ -2333,7 +2334,10 @@ it('keeps the shared dropdown out of registration forms, modals and relation man
         ->filter(fn (SplFileInfo $file): bool => str_contains(file_get_contents($file->getPathname()), 'AnchoredFilterDropdown'))
         ->map(fn (SplFileInfo $file): string => str_replace(base_path().'/', '', $file->getPathname()))
         ->reject(fn (string $path): bool => in_array($path, $allowed, true) || str_contains($path, '/Tables/'))
-        ->reject(fn (string $path): bool => str_contains($path, '/RelationManagers/') && onlyWiresTableFilters(file_get_contents(base_path($path))))
+        // RelationManagers e Resources que declaram a tabela no próprio arquivo só
+        // podem mencionar o dropdown no gancho de filtro -- nunca num formulário.
+        ->reject(fn (string $path): bool => (str_contains($path, '/RelationManagers/') || str_ends_with($path, 'Resource.php'))
+            && onlyWiresTableFilters(file_get_contents(base_path($path))))
         ->values()
         ->all();
 

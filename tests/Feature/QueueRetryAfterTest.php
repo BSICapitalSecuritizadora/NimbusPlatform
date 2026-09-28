@@ -38,11 +38,32 @@ function queueWorkerTimeouts(string $contents): array
  *
  * O padrão de 90s que vem do Laravel pressupõe job curto e não cobre este app.
  */
+/**
+ * `$timeout` declarado em cada job: ele vale mais que o `--timeout` do worker,
+ * então um job de 900 s roda 900 s mesmo num worker de 600 s.
+ *
+ * @return list<int>
+ */
+function queuedJobTimeouts(): array
+{
+    return collect(File::allFiles(app_path('Jobs')))
+        ->flatMap(function ($file): array {
+            preg_match_all('/public int \$timeout = (\d+);/', $file->getContents(), $matches);
+
+            return array_map(intval(...), $matches[1]);
+        })
+        ->values()
+        ->all();
+}
+
 it('keeps retry_after above the longest queue worker timeout', function (): void {
-    $timeouts = collect(queueWorkerDefinitionPaths())
+    $workerTimeouts = collect(queueWorkerDefinitionPaths())
         ->flatMap(fn (string $path): array => queueWorkerTimeouts(File::get($path)));
 
-    expect($timeouts)->not->toBeEmpty();
+    expect($workerTimeouts)->not->toBeEmpty()
+        ->and(queuedJobTimeouts())->not->toBeEmpty();
+
+    $timeouts = $workerTimeouts->merge(queuedJobTimeouts());
 
     $longestTimeout = $timeouts->max();
 
@@ -59,7 +80,7 @@ it('keeps retry_after above the longest queue worker timeout', function (): void
 
     expect($tooShort->all())->toBe(
         [],
-        "Conexões com retry_after menor ou igual ao timeout de {$longestTimeout}s do worker."
+        "Conexões com retry_after menor ou igual ao timeout de {$longestTimeout}s (worker ou job)."
     );
 });
 

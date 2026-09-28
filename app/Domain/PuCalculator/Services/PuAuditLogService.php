@@ -594,6 +594,7 @@ class PuAuditLogService
      * @param  list<int>  $insertedEventIds
      * @param  list<array<string, mixed>>  $missingInCalculatedPeriod
      * @param  list<array<string, mixed>>  $conflicts
+     * @param  list<int>  $justifiedEventIds  eventos já cadastrados que ganharam o motivo da data efetiva
      */
     public function logContractualScheduleGenerated(
         Emission $emission,
@@ -602,6 +603,7 @@ class PuAuditLogService
         array $missingInCalculatedPeriod,
         array $conflicts,
         ?string $lastCalculatedDate,
+        array $justifiedEventIds = [],
     ): void {
         activity(self::LOG_NAME)
             ->performedOn($emission)
@@ -610,12 +612,41 @@ class PuAuditLogService
                 'engine_version' => self::ENGINE_VERSION,
                 'action' => 'contractual_schedule_generated',
                 'inserted_event_ids' => $insertedEventIds,
+                'justified_event_ids' => $justifiedEventIds,
                 'missing_in_calculated_period' => $missingInCalculatedPeriod,
                 'conflicts' => $conflicts,
                 'last_calculated_date' => $lastCalculatedDate,
             ])
             ->event('event_changed')
             ->log('pu_event_changed');
+    }
+
+    /**
+     * @param  array{updated: int, created: int, moved: int, reverted: int}  $counts
+     * @param  list<string>  $unmatchedDates
+     */
+    public function logPaymentsReconciled(
+        Emission $emission,
+        ?string $calculationVersion,
+        array $counts,
+        array $unmatchedDates,
+        ?int $requestedByUserId,
+    ): void {
+        $logger = activity(self::LOG_NAME)
+            ->performedOn($emission)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'action' => 'payments_reconciled',
+                'calculation_version' => $calculationVersion,
+                ...$counts,
+                'unmatched_forecast_dates' => $unmatchedDates,
+            ]);
+
+        if (($causer = $this->causer($requestedByUserId)) !== null) {
+            $logger->causedBy($causer);
+        }
+
+        $logger->event('payments_reconciled')->log('pu_payments_reconciled');
     }
 
     public function logCurveExtended(

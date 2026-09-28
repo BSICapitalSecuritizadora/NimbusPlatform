@@ -42,7 +42,6 @@ class EmissionOperationalDataset
             'salesBoards',
             'receivables',
             'funds.balanceHistories',
-            'puHistories',
             'integralizationHistories',
         ]);
 

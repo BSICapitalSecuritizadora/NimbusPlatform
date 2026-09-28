@@ -185,7 +185,36 @@ final class PuBaselineCandidateFactory
             calendarToDate: $calendarWindow['to'],
             calendarWindowLimitations: $calendarWindow['limitations'],
             contractCalendarCode: $this->contractCalendarCode($resolved),
+            paymentConventionEvidence: $this->paymentConventionEvidence($resolved),
         );
+    }
+
+    /**
+     * Onde o Termo manda pagar no Dia Útil seguinte: é a base documental de toda
+     * data efetiva que o calendário empurra para frente.
+     *
+     * @param  array<string, array<string, mixed>>  $resolved
+     * @return array{reference: ?string, excerpt: ?string}|null
+     */
+    private function paymentConventionEvidence(array $resolved): ?array
+    {
+        $source = $resolved[LegalInstrumentFieldKey::PaymentConvention->value];
+        $evidence = $source['valid'] ? $this->evidence($source['field']) : null;
+
+        if ($evidence === null) {
+            return null;
+        }
+
+        $reference = collect([
+            $evidence['document'] ?? null,
+            filled($evidence['clause'] ?? null) ? 'cláusula '.$evidence['clause'] : null,
+            filled($evidence['page'] ?? null) ? 'p. '.$evidence['page'] : null,
+        ])->filter()->implode(', ');
+
+        return [
+            'reference' => $reference !== '' ? $reference : null,
+            'excerpt' => $evidence['excerpt'] ?? null,
+        ];
     }
 
     /**

@@ -13,6 +13,7 @@ use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Models\Emission;
+use App\Models\EmissionPuEvent;
 use App\Models\EmissionPuParameter;
 use Carbon\CarbonImmutable;
 
@@ -173,6 +174,7 @@ class PuCurvePrerequisiteService
         }
 
         $this->validateContractualEventSchedule($issues, $emission);
+        $this->validateEffectiveDateJustifications($issues, $emission);
 
         return new PuCurvePrerequisiteCheckResult($issues);
     }
@@ -223,6 +225,33 @@ class PuCurvePrerequisiteService
                 ),
             );
         }
+    }
+
+    /**
+     * Data efetiva diferente da original precisa dizer por quê. Não bloqueia: a
+     * data é a que vale para o cálculo, e o motivo é registro de governança.
+     *
+     * @param  list<PuCurvePrerequisiteIssue>  $issues
+     */
+    private function validateEffectiveDateJustifications(array &$issues, Emission $emission): void
+    {
+        $unjustified = $emission->puEvents
+            ->filter(fn (EmissionPuEvent $event): bool => $event->hasUnjustifiedDateChange())
+            ->sortBy('effective_date')
+            ->values();
+
+        if ($unjustified->isEmpty()) {
+            return;
+        }
+
+        $issues[] = PuCurvePrerequisiteIssue::warning(
+            'pu_events_effective_date_unjustified',
+            sprintf(
+                '%d evento(s) com data efetiva diferente da original sem motivo registrado (o primeiro em %s). Informe o motivo na aba Eventos de PU ou use "Gerar eventos do cronograma contratual" para registrar os adiamentos de calendário.',
+                $unjustified->count(),
+                $unjustified->first()->effective_date->format('d/m/Y'),
+            ),
+        );
     }
 
     /**

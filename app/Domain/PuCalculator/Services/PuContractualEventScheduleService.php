@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\Services;
 
+use App\Domain\PuCalculator\Enums\PuEventDateChangeReason;
+use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Enums\AccessPermission;
+use App\Models\BusinessCalendarDate;
+use App\Models\BusinessHoliday;
 use App\Models\Emission;
 use App\Models\EmissionPuDailyCurve;
 use App\Models\EmissionPuEvent;
@@ -28,6 +32,11 @@ use Illuminate\Support\Facades\DB;
  * gravada o ignorou e precisa ser refeita por decisão explícita. Eventos
  * gravados que divergem do contrato também só são reportados -- nada é
  * sobrescrito.
+ *
+ * Toda data efetiva que o calendário empurra para frente sai com o motivo
+ * registrado (fim de semana ou feriado, com a cláusula de convenção de
+ * pagamento do Termo). Eventos já cadastrados cujo adiamento o calendário
+ * explica ganham o mesmo registro; datas e valores nunca mudam aqui.
  */
 final class PuContractualEventScheduleService
 {
@@ -38,6 +47,8 @@ final class PuContractualEventScheduleService
     public const ACTION_UNAVAILABLE = 'contractual_schedule_unavailable';
 
     public const ACTION_CONCURRENT_CHANGE = 'contractual_events_concurrent_change';
+
+    public const ACTION_JUSTIFIED = 'contractual_events_justified';
 
     /**
      * A data efetiva segue o dia útil seguinte e pode passar do vencimento; a
@@ -51,12 +62,15 @@ final class PuContractualEventScheduleService
         private readonly PuEventPlanService $eventPlans,
         private readonly BusinessCalendarCoverageService $calendarCoverage,
         private readonly PuAuditLogService $auditLog,
+        private readonly BusinessCalendarService $calendar,
     ) {}
 
     /**
      * @return array{
      *     available: bool,
      *     reason: ?string,
+     *     calendar_code?: string,
+     *     payment_convention_evidence?: array{reference: ?string, excerpt: ?string}|null,
      *     maturity_date: ?string,
      *     last_calculated_date: ?string,
      *     contractual_events: list<array<string, mixed>>,
@@ -113,6 +127,8 @@ final class PuContractualEventScheduleService
         return [
             'available' => true,
             'reason' => null,
+            'calendar_code' => $calendarCode,
+            'payment_convention_evidence' => $candidate->paymentConventionEvidence,
             'maturity_date' => $maturityDate->toDateString(),
             'last_calculated_date' => $lastCalculatedDate,
             'contractual_events' => $schedule['required_events'],
@@ -127,7 +143,7 @@ final class PuContractualEventScheduleService
     /**
      * Cria os eventos contratuais que faltam depois do último dia calculado.
      *
-     * @return array{action: string, created: int, first_date: ?string, last_date: ?string, plan: array<string, mixed>}
+     * @return array{action: string, created: int, justified: int, first_date: ?string, last_date: ?string, plan: array<string, mixed>}
      *
      * @throws AuthorizationException
      */
@@ -146,7 +162,9 @@ final class PuContractualEventScheduleService
                     return $this->result(self::ACTION_UNAVAILABLE, [], $plan);
                 }
 
-                if ($plan['creatable_events'] === []) {
+                $justified = $this->justifyCalendarShifts($lockedEmission, $plan);
+
+                if ($plan['creatable_events'] === [] && $justified === []) {
                     return $this->result(self::ACTION_NOTHING_TO_CREATE, [], $plan);
                 }
 
@@ -160,6 +178,12 @@ final class PuContractualEventScheduleService
                         'amortization_value' => $event['amortization_value'],
                         'sequence' => $event['sequence'],
                         'description' => 'Gerado do cronograma contratual confirmado em Instrumentos Jurídicos.',
+                        ...$this->calendarJustification(
+                            (string) $event['original_date'],
+                            (string) $event['effective_date'],
+                            (string) $plan['calendar_code'],
+                            $plan['payment_convention_evidence'],
+                        ),
                     ]))
                     ->all();
 
@@ -170,9 +194,15 @@ final class PuContractualEventScheduleService
                     missingInCalculatedPeriod: $plan['missing_in_calculated_period'],
                     conflicts: $plan['conflicting_events'],
                     lastCalculatedDate: $plan['last_calculated_date'],
+                    justifiedEventIds: $justified,
                 );
 
-                return $this->result(self::ACTION_CREATED, $plan['creatable_events'], $plan);
+                return $this->result(
+                    $created === [] ? self::ACTION_JUSTIFIED : self::ACTION_CREATED,
+                    $plan['creatable_events'],
+                    $plan,
+                    count($justified),
+                );
             });
         } catch (UniqueConstraintViolationException) {
             // unique(emission_id, event_type, effective_date, sequence): outra
@@ -182,15 +212,116 @@ final class PuContractualEventScheduleService
     }
 
     /**
+     * Motivo registrado de uma data efetiva que o calendário empurrou para
+     * frente. Datas iguais não têm o que justificar.
+     *
+     * @param  array{reference: ?string, excerpt: ?string}|null  $conventionEvidence
+     * @return array{effective_date_reason: ?PuEventDateChangeReason, effective_date_justification: ?string, effective_date_evidence_reference: ?string, effective_date_evidence_excerpt: ?string}
+     */
+    public function calendarJustification(
+        string $originalDate,
+        string $effectiveDate,
+        string $calendarCode,
+        ?array $conventionEvidence,
+    ): array {
+        $original = CarbonImmutable::parse($originalDate);
+        $effective = CarbonImmutable::parse($effectiveDate);
+
+        if ($original->isSameDay($effective)) {
+            return [
+                'effective_date_reason' => null,
+                'effective_date_justification' => null,
+                'effective_date_evidence_reference' => null,
+                'effective_date_evidence_excerpt' => null,
+            ];
+        }
+
+        $cause = $original->isWeekend()
+            ? sprintf('%s cai num %s', $original->format('d/m/Y'), $original->locale('pt_BR')->dayName)
+            : sprintf(
+                '%s (%s) é %s, sem expediente no calendário da curva (%s)',
+                $original->format('d/m/Y'),
+                $original->locale('pt_BR')->dayName,
+                $this->holidayName($original, $calendarCode),
+                BusinessCalendarRegistry::label($calendarCode),
+            );
+
+        return [
+            'effective_date_reason' => $original->isWeekend() ? PuEventDateChangeReason::Weekend : PuEventDateChangeReason::Holiday,
+            'effective_date_justification' => sprintf(
+                '%s. Pela convenção de pagamento do Termo, o evento passa para o Dia Útil seguinte, %s.',
+                $cause,
+                $effective->format('d/m/Y'),
+            ),
+            'effective_date_evidence_reference' => $conventionEvidence['reference'] ?? null,
+            'effective_date_evidence_excerpt' => $conventionEvidence['excerpt'] ?? null,
+        ];
+    }
+
+    /**
+     * Registra o motivo nos eventos já cadastrados cujo adiamento é exatamente o
+     * Dia Útil seguinte do calendário da curva. Adiamento de outra natureza fica
+     * sem motivo: só uma pessoa pode justificá-lo.
+     *
+     * @param  array<string, mixed>  $plan
+     * @return list<int>
+     */
+    private function justifyCalendarShifts(Emission $emission, array $plan): array
+    {
+        $calendarCode = (string) $plan['calendar_code'];
+        $justified = [];
+
+        EmissionPuEvent::query()
+            ->whereBelongsTo($emission)
+            ->whereNull('effective_date_reason')
+            ->whereNotNull('original_date')
+            ->get()
+            ->filter(fn (EmissionPuEvent $event): bool => $event->hasUnjustifiedDateChange())
+            ->each(function (EmissionPuEvent $event) use ($calendarCode, $plan, &$justified): void {
+                $original = CarbonImmutable::instance($event->original_date);
+                $following = $this->calendar->nextBusinessDay($original, $calendarCode);
+
+                if (! $following->isSameDay(CarbonImmutable::instance($event->effective_date))) {
+                    return;
+                }
+
+                $event->forceFill($this->calendarJustification(
+                    $original->toDateString(),
+                    $following->toDateString(),
+                    $calendarCode,
+                    $plan['payment_convention_evidence'],
+                ))->save();
+                $justified[] = (int) $event->id;
+            });
+
+        return $justified;
+    }
+
+    private function holidayName(CarbonImmutable $date, string $calendarCode): string
+    {
+        $name = BusinessCalendarDate::query()
+            ->where('calendar_code', $calendarCode)
+            ->whereDate('calendar_date', $date->toDateString())
+            ->value('description')
+            ?? BusinessHoliday::query()
+                ->where('calendar_code', $calendarCode)
+                ->whereDate('holiday_date', $date->toDateString())
+                ->value('name');
+
+        return filled($name) ? (string) $name : 'feriado';
+    }
+
+    /**
      * @param  list<array<string, mixed>>  $createdEvents
      * @param  array<string, mixed>  $plan
-     * @return array{action: string, created: int, first_date: ?string, last_date: ?string, plan: array<string, mixed>}
+     * @return array{action: string, created: int, justified: int, first_date: ?string, last_date: ?string, plan: array<string, mixed>}
      */
-    private function result(string $action, array $createdEvents, array $plan): array
+    private function result(string $action, array $createdEvents, array $plan, int $justified = 0): array
     {
         return [
             'action' => $action,
             'created' => count($createdEvents),
+            'justified' => $justified,
             'first_date' => $createdEvents[0]['effective_date'] ?? null,
             'last_date' => $createdEvents === [] ? null : $createdEvents[array_key_last($createdEvents)]['effective_date'],
             'plan' => $plan,

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\MeasurementFinancialRules;
 
 use App\Enums\AccessPermission;
 use App\Filament\Resources\MeasurementFinancialRules\Pages\ManageMeasurementFinancialRules;
+use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\MeasurementFinancialRule;
@@ -108,7 +109,8 @@ class MeasurementFinancialRuleResource extends Resource
                     ->color(fn (string $state): string => $state === 'Ativa' ? 'success' : 'gray'),
             ])
             ->filters([
-                SelectFilter::make('emission_id')->label('Emissão')->relationship('emission', 'name')->searchable()->preload(),
+                SelectFilter::make('emission_id')->label('Emissão')->relationship('emission', 'name')->searchable()->preload()
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
                 TernaryFilter::make('retired_at')->label('Encerradas')->nullable(),
             ])
             ->recordActions([

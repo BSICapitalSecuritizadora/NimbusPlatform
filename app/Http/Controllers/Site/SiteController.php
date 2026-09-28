@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Site;
 
+use App\Domain\PuCalculator\Services\EmissionPuReader;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Site\ContactFormRequest;
 use App\Mail\ContactFormMail;
 use App\Models\ContactMessage;
 use App\Models\Document;
 use App\Models\Emission;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -116,16 +118,16 @@ class SiteController extends Controller
                 'payments' => function ($query) {
                     $query->where('payment_date', '<=', today())->orderBy('payment_date');
                 },
-                'puHistories' => function ($query) {
-                    $query->orderByDesc('date');
-                },
                 'integralizationHistories' => function ($query) {
                     $query->orderByDesc('date');
                 },
             ])
             ->firstOrFail();
 
-        return view('site.emission-detail', compact('emission'));
+        // A curva oficial homologada prevalece; sem ela, o Histórico de PU importado.
+        $puReadings = app(EmissionPuReader::class)->latestReadings($emission, CarbonImmutable::today(), 5);
+
+        return view('site.emission-detail', compact('emission', 'puReadings'));
     }
 
     public function ri(Request $request)

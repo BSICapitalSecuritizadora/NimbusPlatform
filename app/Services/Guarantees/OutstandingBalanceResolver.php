@@ -2,17 +2,18 @@
 
 namespace App\Services\Guarantees;
 
+use App\Domain\PuCalculator\Services\EmissionPuReader;
 use App\Models\Emission;
 use App\Models\IntegralizationHistory;
-use App\Models\PuHistory;
 use Carbon\Carbon;
 
 /**
  * Saldo devedor da emissão numa competência.
  *
- * Fonte única do número (§16 do escopo): a regra é a que o módulo de PU já
- * usava — último PU registrado dentro do mês multiplicado pela quantidade
- * integralizada acumulada até o fim do mês.
+ * Fonte única do número (§16 do escopo): último PU dentro do mês multiplicado
+ * pela quantidade integralizada acumulada até o fim do mês. O PU vem de
+ * `EmissionPuReader`: a curva oficial homologada quando existe, o Histórico de
+ * PU importado quando não.
  *
  * O booleano de retorno distingue "saldo zero porque nada foi integralizado"
  * de "não há PU no mês": o primeiro é um saldo legítimo, o segundo é dado
@@ -20,12 +21,16 @@ use Carbon\Carbon;
  */
 class OutstandingBalanceResolver
 {
+    public function __construct(
+        private readonly EmissionPuReader $puReader,
+    ) {}
+
     /**
      * @return array{0: float, 1: bool} valor e se a fonte tinha dado
      */
     public function resolve(Emission $emission, string $referenceMonth): array
     {
-        $emission->loadMissing(['puHistories', 'integralizationHistories']);
+        $emission->loadMissing(['integralizationHistories']);
 
         $referenceStart = Carbon::parse($referenceMonth)->startOfMonth();
         $referenceEndString = $referenceStart->copy()->endOfMonth()->toDateString();
@@ -46,24 +51,18 @@ class OutstandingBalanceResolver
             return [0.0, true];
         }
 
-        /** @var PuHistory|null $latestPuHistory */
-        $latestPuHistory = $emission->puHistories
-            ->filter(function (PuHistory $puHistory) use ($monthStartString, $referenceEndString): bool {
-                $historyDate = $puHistory->date?->toDateString();
+        $reading = $this->puReader->readingWithin(
+            $emission,
+            Carbon::parse($monthStartString),
+            Carbon::parse($referenceEndString),
+        );
 
-                return filled($historyDate)
-                    && ($historyDate >= $monthStartString)
-                    && ($historyDate <= $referenceEndString);
-            })
-            ->sortByDesc(fn (PuHistory $puHistory): string => $puHistory->date?->toDateString() ?? '')
-            ->first();
-
-        if (! $latestPuHistory instanceof PuHistory) {
+        if ($reading === null) {
             return [0.0, false];
         }
 
         return [
-            round((float) $latestPuHistory->unit_value * $integralizedQuantity, 2),
+            round((float) $reading->unitValue * $integralizedQuantity, 2),
             true,
         ];
     }

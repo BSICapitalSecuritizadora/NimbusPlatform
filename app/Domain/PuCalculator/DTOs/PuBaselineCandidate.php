@@ -18,6 +18,8 @@ final readonly class PuBaselineCandidate
      * @param  list<string>  $calendarWindowLimitations
      * @param  ?string  $contractCalendarCode  Calendário do Dia Útil do Termo, só para comparação: a curva oficial
      *                                         usa `BusinessCalendarRegistry::MARKET_CALENDAR`.
+     * @param  array{reference: ?string, excerpt: ?string}|null  $paymentConventionEvidence  Cláusula confirmada da
+     *                                                                                       convenção de pagamento (prorrogação para o Dia Útil seguinte).
      */
     public function __construct(
         public array $configuration,
@@ -31,6 +33,7 @@ final readonly class PuBaselineCandidate
         public ?CarbonImmutable $calendarToDate = null,
         public array $calendarWindowLimitations = [],
         public ?string $contractCalendarCode = null,
+        public ?array $paymentConventionEvidence = null,
     ) {}
 
     /**
