@@ -2,10 +2,12 @@
 
 namespace App\Actions\Emissions;
 
+use App\Support\SpreadsheetTemplates\CustomizableSpreadsheetTemplate;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
-class PuHistorySpreadsheetTemplate
+class PuHistorySpreadsheetTemplate implements CustomizableSpreadsheetTemplate
 {
     public const DOWNLOAD_NAME = "Template - Hist\u{00F3}rico de PU.xlsx";
 
@@ -53,5 +55,16 @@ class PuHistorySpreadsheetTemplate
     public function restoreDefault(): void
     {
         Storage::disk(self::CUSTOM_TEMPLATE_DISK)->delete(self::CUSTOM_TEMPLATE_PATH);
+    }
+
+    public function customTemplateUpdatedAt(): ?CarbonImmutable
+    {
+        if (! $this->hasCustomTemplate()) {
+            return null;
+        }
+
+        return CarbonImmutable::createFromTimestamp(
+            Storage::disk(self::CUSTOM_TEMPLATE_DISK)->lastModified(self::CUSTOM_TEMPLATE_PATH)
+        );
     }
 }

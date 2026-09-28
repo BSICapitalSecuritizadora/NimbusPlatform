@@ -31,6 +31,7 @@ return [
         'measurement_payments',      // MeasurementPayment (LogsActivity) — valor, data, comprovante
         'operations',                // Operation (LogsActivity) + OperationLifecycleService — transições de ciclo de vida
         'delegations',               // ResponsibilityDelegation (LogsActivity) + criação/revogação explícitas
+        'areas',                     // AreaResponsibilityService — quem responde por cada área (habilita a auto-homologação do PU)
         'nimbus',                    // portal: documentos, arquivos de submissão, tokens de acesso
         // Sem produtor hoje, mantidos porque já constavam da lista efetiva do
         // comando: removê-los seria estreitar a política sem decisão.

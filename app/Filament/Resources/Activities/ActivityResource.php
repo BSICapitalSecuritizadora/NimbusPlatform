@@ -228,19 +228,41 @@ class ActivityResource extends Resource
                     ->preload()
                     ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
                 Filter::make('created_at')
+                    ->columns(2)
                     ->form([
-                        DatePicker::make('created_from')->label('Data Inicial'),
-                        DatePicker::make('created_until')->label('Data Final'),
+                        DatePicker::make('created_from')
+                            ->label('Data Inicial')
+                            ->placeholder('dd/mm/aaaa')
+                            ->displayFormat('d/m/Y')
+                            ->native(false)
+                            ->closeOnDateSelection(),
+                        DatePicker::make('created_until')
+                            ->label('Data Final')
+                            ->placeholder('dd/mm/aaaa')
+                            ->displayFormat('d/m/Y')
+                            ->native(false)
+                            ->closeOnDateSelection()
+                            ->afterOrEqual('created_from')
+                            ->validationMessages([
+                                'after_or_equal' => 'A Data Final deve ser igual ou posterior à Data Inicial.',
+                            ]),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
+                        $from = $data['created_from'] ?? null;
+                        $until = $data['created_until'] ?? null;
+
+                        if ($from && $until && $from > $until) {
+                            return $query->whereRaw('1 = 0');
+                        }
+
                         return $query
                             ->when(
-                                $data['created_from'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                $from,
+                                fn (Builder $query, string $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
-                                $data['created_until'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                $until,
+                                fn (Builder $query, string $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     }),
             ])

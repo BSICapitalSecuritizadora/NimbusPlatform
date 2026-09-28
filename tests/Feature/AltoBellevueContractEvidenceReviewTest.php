@@ -4,6 +4,7 @@ use App\Domain\PuCalculator\Enums\PuBaselineReadinessStatus;
 use App\Domain\PuCalculator\Enums\PuBaselineRequirementStatus;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Services\PuBaselineReadinessService;
+use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Enums\LegalInstrumentFieldKey;
 use App\Enums\LegalInstrumentFieldStatus;
 use App\Enums\LegalInstrumentType;
@@ -210,7 +211,7 @@ it('derives the gate candidate only from confirmed governing-instrument evidence
         'index_percentage' => '100.00000000',
         'spread_rate' => '6.00000000',
         'business_day_basis' => 252,
-        'calendar_code' => 'BR_NATIONAL_HOLIDAYS',
+        'calendar_code' => BusinessCalendarRegistry::MARKET_CALENDAR,
         'index_rate_lookup_mode' => 'business_day_lag_exact',
         'index_rate_lag_business_days' => -5,
         'curve_start_date' => 'PENDING',
@@ -222,6 +223,7 @@ it('derives the gate candidate only from confirmed governing-instrument evidence
         'first_coupon_pre_integralization_apply_spread_factor' => true,
     ])
         ->and($report->candidateConfiguration['legacy_projection_enabled'])->toBeFalse()
+        ->and(collect($report->candidateFields)->firstWhere('field', 'contract_calendar_code')['value'])->toBe('BR_NATIONAL_HOLIDAYS')
         ->and($report->pendingFields)->toContain('curve_start_date')
         ->and($report->pendingFields)->not->toContain('indexer', 'spread_rate', 'calendar_code')
         ->and($report->requirement('contract_spread')->status)->toBe(PuBaselineRequirementStatus::Satisfied)

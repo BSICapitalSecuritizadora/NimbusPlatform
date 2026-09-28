@@ -134,6 +134,8 @@ class EmissionPuCurveVersion extends Model
         'generated_at',
         'validated_at',
         'homologated_at',
+        'self_homologated',
+        'homologation_justification',
         'invalidated_at',
         'reviewed_at',
         'review_reason',
@@ -158,6 +160,7 @@ class EmissionPuCurveVersion extends Model
             'generated_at' => 'datetime',
             'validated_at' => 'datetime',
             'homologated_at' => 'datetime',
+            'self_homologated' => 'boolean',
             'invalidated_at' => 'datetime',
             'reviewed_at' => 'datetime',
         ];

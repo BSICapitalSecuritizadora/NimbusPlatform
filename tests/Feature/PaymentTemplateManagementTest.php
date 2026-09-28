@@ -19,6 +19,7 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     app(PermissionRegistrar::class)->forgetCachedPermissions();
     $this->seed(RolesAndPermissionsSeeder::class);
+    Storage::fake('local');
 });
 
 it('shows download and settings actions on the payments relation manager', function () {
@@ -66,12 +67,12 @@ it('renders the settings page and allows replacing the payment template', functi
         ->assertSee('wire:confirm="Restaurar o template padrão do histórico de integralizações?', false);
 
     Livewire::test(SpreadsheetTemplates::class)
-        ->set('paymentTemplateFile', UploadedFile::fake()->create(
+        ->set('templateFiles.payments', UploadedFile::fake()->create(
             'template-personalizado.xlsx',
             32,
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ))
-        ->call('savePaymentTemplate')
+        ->call('saveTemplate', 'payments')
         ->assertHasNoErrors();
 
     Storage::disk('local')->assertExists('payment-templates/template-fluxo-de-pagamento.xlsx');
@@ -85,13 +86,13 @@ it('restores the default payment template after a custom upload', function () {
     $this->actingAs($user);
 
     Livewire::test(SpreadsheetTemplates::class)
-        ->set('paymentTemplateFile', UploadedFile::fake()->create(
+        ->set('templateFiles.payments', UploadedFile::fake()->create(
             'template-personalizado.xlsx',
             32,
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ))
-        ->call('savePaymentTemplate')
-        ->call('restoreDefaultPaymentTemplate')
+        ->call('saveTemplate', 'payments')
+        ->call('restoreDefaultTemplate', 'payments')
         ->assertHasNoErrors();
 
     Storage::disk('local')->assertMissing('payment-templates/template-fluxo-de-pagamento.xlsx');
@@ -105,19 +106,19 @@ it('allows replacing and restoring the PU history template', function () {
     $this->actingAs($user);
 
     Livewire::test(SpreadsheetTemplates::class)
-        ->set('puHistoryTemplateFile', UploadedFile::fake()->create(
+        ->set('templateFiles.pu-histories', UploadedFile::fake()->create(
             'template-pu-personalizado.xlsx',
             32,
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ))
-        ->call('savePuHistoryTemplate')
+        ->call('saveTemplate', 'pu-histories')
         ->assertHasNoErrors();
 
     Storage::disk('local')->assertExists('pu-history-templates/template-historico-de-pu.xlsx');
     expect(app(PuHistorySpreadsheetTemplate::class)->hasCustomTemplate())->toBeTrue();
 
     Livewire::test(SpreadsheetTemplates::class)
-        ->call('restoreDefaultPuHistoryTemplate')
+        ->call('restoreDefaultTemplate', 'pu-histories')
         ->assertHasNoErrors();
 
     Storage::disk('local')->assertMissing('pu-history-templates/template-historico-de-pu.xlsx');
@@ -130,19 +131,19 @@ it('allows replacing and restoring the integralization history template', functi
     $this->actingAs($user);
 
     Livewire::test(SpreadsheetTemplates::class)
-        ->set('integralizationHistoryTemplateFile', UploadedFile::fake()->create(
+        ->set('templateFiles.integralization-histories', UploadedFile::fake()->create(
             'template-integralizacao-personalizado.xlsx',
             32,
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ))
-        ->call('saveIntegralizationHistoryTemplate')
+        ->call('saveTemplate', 'integralization-histories')
         ->assertHasNoErrors();
 
     Storage::disk('local')->assertExists('integralization-history-templates/template-historico-de-integralizacoes.xlsx');
     expect(app(IntegralizationHistorySpreadsheetTemplate::class)->hasCustomTemplate())->toBeTrue();
 
     Livewire::test(SpreadsheetTemplates::class)
-        ->call('restoreDefaultIntegralizationHistoryTemplate')
+        ->call('restoreDefaultTemplate', 'integralization-histories')
         ->assertHasNoErrors();
 
     Storage::disk('local')->assertMissing('integralization-history-templates/template-historico-de-integralizacoes.xlsx');

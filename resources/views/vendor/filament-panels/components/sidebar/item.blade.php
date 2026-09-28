@@ -46,12 +46,16 @@
         ]);
     }
 
-    $liAttributes = $attributes->class([
-        'fi-sidebar-item',
-        'fi-active' => $active,
-        'fi-sidebar-item-has-active-child-items' => $activeChildItems,
-        'fi-sidebar-item-has-url' => filled($url),
-    ]);
+    $slugLabel = \Illuminate\Support\Str::slug($rawLabel);
+
+    $liAttributes = $attributes
+        ->merge(filled($slugLabel) ? ['data-sidebar-item' => $slugLabel] : [])
+        ->class([
+            'fi-sidebar-item',
+            'fi-active' => $active,
+            'fi-sidebar-item-has-active-child-items' => $activeChildItems,
+            'fi-sidebar-item-has-url' => filled($url),
+        ]);
 @endphp
 
 <li {{ $liAttributes }}>
@@ -85,6 +89,7 @@
                     x-show="$store.sidebar.isOpen"
                 @endif
                 class="fi-sidebar-item-grouped-border"
+                aria-hidden="true"
             >
                 @if (! $first)
                     <div class="fi-sidebar-item-grouped-border-part-not-first"></div>
@@ -131,7 +136,10 @@
     </a>
 
     @if ($childItems && (blank($url) || $active || $activeChildItems))
-        <ul class="fi-sidebar-sub-group-items">
+        <ul
+            class="fi-sidebar-sub-group-items"
+            @if ($slugLabel === 'configuracoes') data-sidebar-sub-group="configuracoes" @endif
+        >
             @foreach ($childItems as $childItem)
                 @php
                     $isChildItemChildItemsActive = $childItem->isChildItemsActive();

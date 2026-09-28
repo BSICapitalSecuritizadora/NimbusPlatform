@@ -2,6 +2,7 @@
 
 namespace App\Actions\ConstructionUnits;
 
+use App\Support\SpreadsheetTemplates\GeneratedSpreadsheetTemplate;
 use App\Support\TemporarySpreadsheetFile;
 use Spatie\SimpleExcel\SimpleExcelWriter;
 
@@ -15,7 +16,7 @@ use Spatie\SimpleExcel\SimpleExcelWriter;
  * The example deliberately leaves one row without a base value: informing it is
  * optional, and a template where every row is filled in suggests otherwise.
  */
-class ConstructionUnitSpreadsheetTemplate
+class ConstructionUnitSpreadsheetTemplate implements GeneratedSpreadsheetTemplate
 {
     public const DOWNLOAD_NAME = 'Modelo - Unidades dos Empreendimentos.xlsx';
 

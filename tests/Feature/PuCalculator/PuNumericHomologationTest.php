@@ -49,6 +49,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Permission;
+use Tests\Support\Pu\PuMarketCalendarFixture;
 
 uses(RefreshDatabase::class);
 
@@ -162,6 +163,7 @@ function puNumericHomologationProveBaseline(Emission $emission): LegalInstrument
 
 function puNumericHomologationCalendar(): void
 {
+    PuMarketCalendarFixture::prepare();
     $responsible = User::factory()->create();
     app(NationalLegalHolidayMaterializationService::class)->materialize(2026, 2031, $responsible->id);
 
@@ -632,14 +634,16 @@ it('builds a synthetic state that is truly ready for numeric homologation', func
         ->and($readiness->requirement('index_source_operational_approval')->status)
         ->toBe(PuBaselineRequirementStatus::Satisfied)
         ->and($preparation->state)->toBe(PuNumericPreparationPlanService::STATE_READY)
-        ->and($preparation->requiredRateDates)->toHaveCount(76)
+        // Corpus Christi (04/06/2026) não é dia útil de mercado: sem CDI a exigir.
+        ->and($preparation->requiredRateDates)->toHaveCount(75)
+        ->and($preparation->requiredRateDates)->not->toContain('2026-06-04')
         ->and($preparation->requiredRateDates[0])->toBe('2026-05-06')
         ->and($preparation->requiredRateDates[array_key_last($preparation->requiredRateDates)])
         ->toBe('2026-08-19')
         ->and($preparation->eventRequirements)->toHaveCount(3)
         ->and($preparation->presentEvents)->toHaveCount(3)
-        ->and($readiness->rateWindow['required_rate_count'])->toBe(76)
-        ->and($readiness->rateWindow['loaded_rate_count'])->toBe(76)
+        ->and($readiness->rateWindow['required_rate_count'])->toBe(75)
+        ->and($readiness->rateWindow['loaded_rate_count'])->toBe(75)
         ->and($readiness->eventDiagnostics['required_event_count'])->toBe(3)
         ->and($readiness->eventDiagnostics['loaded_required_event_count'])->toBe(3)
         ->and($readiness->requirement('index_snapshots_loaded')->status)
@@ -666,7 +670,7 @@ it('builds a synthetic state that is truly ready for numeric homologation', func
         ->and($readiness->indexSourceDiagnostics['source_code'])->toBe('bcb_sgs_4389')
         ->and($readiness->indexSourceDiagnostics['rate_source_value'])->toBe('bcb_sgs')
         ->and($readiness->indexSourceDiagnostics['approved'])->toBeTrue()
-        ->and(IndexRate::query()->count())->toBe(76)
+        ->and(IndexRate::query()->count())->toBe(75)
         ->and(EmissionPuEvent::query()->whereBelongsTo($emission)->count())->toBe(3)
         ->and(EmissionPuBaselineEvidence::query()
             ->whereBelongsTo($emission)
@@ -890,7 +894,7 @@ it('carries the calendar provenance into the input fingerprint', function () {
     $calendarYears = collect($before->inputPayload['calendar']['years'] ?? []);
 
     BusinessCalendarYear::query()
-        ->where('calendar_code', BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS)
+        ->where('calendar_code', BusinessCalendarRegistry::MARKET_CALENDAR)
         ->where('year', 2026)
         ->update(['revision' => 7]);
 

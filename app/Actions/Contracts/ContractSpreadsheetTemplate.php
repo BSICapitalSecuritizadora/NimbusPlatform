@@ -2,6 +2,7 @@
 
 namespace App\Actions\Contracts;
 
+use App\Support\SpreadsheetTemplates\GeneratedSpreadsheetTemplate;
 use App\Support\TemporarySpreadsheetFile;
 use Spatie\SimpleExcel\SimpleExcelWriter;
 
@@ -13,7 +14,7 @@ use Spatie\SimpleExcel\SimpleExcelWriter;
  * importer never reads -- and one of the examples is a contract with two buyers,
  * because that is the part of the format nobody guesses.
  */
-class ContractSpreadsheetTemplate
+class ContractSpreadsheetTemplate implements GeneratedSpreadsheetTemplate
 {
     public const DOWNLOAD_NAME = 'Modelo - Contratos.xlsx';
 

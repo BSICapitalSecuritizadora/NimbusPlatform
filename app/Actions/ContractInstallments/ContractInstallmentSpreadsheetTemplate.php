@@ -2,6 +2,7 @@
 
 namespace App\Actions\ContractInstallments;
 
+use App\Support\SpreadsheetTemplates\GeneratedSpreadsheetTemplate;
 use App\Support\TemporarySpreadsheetFile;
 use Spatie\SimpleExcel\SimpleExcelWriter;
 
@@ -16,7 +17,7 @@ use Spatie\SimpleExcel\SimpleExcelWriter;
  * example shows a blank cell, never the word NULL, matching every other import
  * in the platform.
  */
-class ContractInstallmentSpreadsheetTemplate
+class ContractInstallmentSpreadsheetTemplate implements GeneratedSpreadsheetTemplate
 {
     public const DOWNLOAD_NAME = 'Modelo - Parcelas dos Contratos.xlsx';
 

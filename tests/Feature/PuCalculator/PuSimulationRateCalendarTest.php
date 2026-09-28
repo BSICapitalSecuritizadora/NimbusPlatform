@@ -30,28 +30,33 @@ beforeEach(function () {
 /**
  * 04/06/2026 é Corpus Christi.
  *
- * `BR_NATIONAL_HOLIDAYS` materializa somente feriados FIXOS de lei federal e
- * exclui Corpus Christi por decisão registrada, então esse dia é dia útil ali.
- * O calendário bancário é outro: não há expediente e o Banco Central não divulga
- * CDI. Como a planilha oficial da ANBIMA ainda não foi importada neste projeto,
- * a linha abaixo é a HIPÓTESE DE TESTE que representa essa divergência --
- * gravada pelo mesmo mecanismo de exceção que o importador oficial usaria, e
- * suficiente porque `BR_BANKING_ANBIMA` decide por regra-base de dia de semana
- * complementada por exceções.
+ * `BR_NATIONAL_HOLIDAYS` -- o Dia Útil literal do Termo -- materializa somente
+ * feriados FIXOS de lei federal e exclui Corpus Christi, então esse dia é dia
+ * útil ali. No calendário de mercado da curva oficial
+ * (`BusinessCalendarRegistry::MARKET_CALENDAR`) não há expediente e o Banco
+ * Central não divulga CDI. O fixture de mercado já grava essa exceção; o helper
+ * abaixo só garante que ela exista, pelo mesmo mecanismo do importador oficial.
  */
 const RATE_CALENDAR_CORPUS_CHRISTI_2026 = '2026-06-04';
 
 function assumeBankHolidayOnCorpusChristi(): void
 {
-    BusinessCalendarDate::query()->create([
-        'calendar_code' => BusinessCalendarRegistry::BR_BANKING_ANBIMA,
-        'calendar_date' => RATE_CALENDAR_CORPUS_CHRISTI_2026,
-        'is_business_day' => false,
-        'description' => 'Corpus Christi (hipótese de teste: feriado bancário sem divulgação de CDI).',
-        'data_origin' => 'imported',
-        'source' => 'ANBIMA',
-        'source_is_official' => false,
-    ]);
+    $exists = BusinessCalendarDate::query()
+        ->where('calendar_code', BusinessCalendarRegistry::BR_BANKING_ANBIMA)
+        ->whereDate('calendar_date', RATE_CALENDAR_CORPUS_CHRISTI_2026)
+        ->exists();
+
+    if (! $exists) {
+        BusinessCalendarDate::query()->create([
+            'calendar_code' => BusinessCalendarRegistry::BR_BANKING_ANBIMA,
+            'calendar_date' => RATE_CALENDAR_CORPUS_CHRISTI_2026,
+            'is_business_day' => false,
+            'description' => 'Corpus Christi (feriado bancário sem divulgação de CDI).',
+            'data_origin' => 'imported',
+            'source' => 'ANBIMA',
+            'source_is_official' => false,
+        ]);
+    }
 
     app(BusinessCalendarService::class)->flushCache();
 }
@@ -60,7 +65,7 @@ function assumeBankHolidayOnCorpusChristi(): void
  * Garante as taxas que a hipótese exige e devolve a simulação já resolvida.
  *
  * O calendário de observação desloca o conjunto de datas requeridas, então o
- * seed do fixture (resolvido sobre o calendário contratual) não o cobre por
+ * seed do fixture (resolvido sobre o calendário da curva) não o cobre por
  * inteiro. As taxas que faltam são criadas pelo mesmo helper sintético do
  * fixture -- nenhuma consulta ao Banco Central, nenhum valor inventado para uma
  * data já existente.
@@ -81,13 +86,16 @@ function simulateWithSeededRates(Emission $emission, PuSimulationInput $input): 
     return $service->simulate($emission, $input);
 }
 
-/** Hipótese bancária sobre o cenário calculável do fixture. */
-function bankingHypothesis(): PuSimulationInput
+/**
+ * Hipótese de observar o CDI no calendário literal do Termo, sobre a curva
+ * oficial de mercado: a defasagem passa a contar Corpus Christi como dia útil.
+ */
+function contractualObservationHypothesis(): PuSimulationInput
 {
     return new PuSimulationInput(
         firstIntegralizationDate: PuSimulationFixture::integralizationDate(),
         simulationEndDate: PuSimulationFixture::windowEndDate(),
-        indexRateCalendarCode: BusinessCalendarRegistry::BR_BANKING_ANBIMA,
+        indexRateCalendarCode: BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS,
     );
 }
 
@@ -139,24 +147,24 @@ it('shifts the observation lag differently in each calendar', function () {
 });
 
 // ---------------------------------------------------------------------------
-// Default preservado: sem hipótese, nada muda
+// Default: o CDI é observado no calendário de mercado da curva oficial
 // ---------------------------------------------------------------------------
 
-it('keeps the contractual calendar for rate observation when no hypothesis is given', function () {
+it('observes the CDI in the market calendar of the official curve when no hypothesis is given', function () {
     $scenario = PuSimulationFixture::calculableScenario();
     assumeBankHolidayOnCorpusChristi();
 
     $withoutHypothesis = app(PuSimulationService::class)->simulate($scenario['emission'], $scenario['input']);
-    $explicitlyContractual = app(PuSimulationService::class)->simulate($scenario['emission'], new PuSimulationInput(
+    $explicitlyMarket = app(PuSimulationService::class)->simulate($scenario['emission'], new PuSimulationInput(
         firstIntegralizationDate: PuSimulationFixture::integralizationDate(),
         simulationEndDate: PuSimulationFixture::windowEndDate(),
-        indexRateCalendarCode: BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS,
+        indexRateCalendarCode: BusinessCalendarRegistry::MARKET_CALENDAR,
     ));
 
     // Informar o próprio calendário da curva é indistinguível de não informar.
-    expect($withoutHypothesis->requiredRateDates)->toContain(RATE_CALENDAR_CORPUS_CHRISTI_2026)
-        ->and($withoutHypothesis->requiredRateDates)->toBe($explicitlyContractual->requiredRateDates)
-        ->and($withoutHypothesis->state)->toBe($explicitlyContractual->state);
+    expect($withoutHypothesis->requiredRateDates)->not->toContain(RATE_CALENDAR_CORPUS_CHRISTI_2026)
+        ->and($withoutHypothesis->requiredRateDates)->toBe($explicitlyMarket->requiredRateDates)
+        ->and($withoutHypothesis->state)->toBe($explicitlyMarket->state);
 });
 
 // ---------------------------------------------------------------------------
@@ -168,19 +176,19 @@ it('moves the required rate dates without touching curve, events or business day
     assumeBankHolidayOnCorpusChristi();
     $service = app(PuSimulationService::class);
 
-    $contractual = $service->simulate($scenario['emission'], $scenario['input']);
-    $banking = $service->simulate($scenario['emission'], bankingHypothesis());
+    $market = $service->simulate($scenario['emission'], $scenario['input']);
+    $contractual = $service->simulate($scenario['emission'], contractualObservationHypothesis());
 
-    // A data de observação sai do feriado bancário...
-    expect($contractual->requiredRateDates)->toContain(RATE_CALENDAR_CORPUS_CHRISTI_2026)
-        ->and($banking->requiredRateDates)->not->toContain(RATE_CALENDAR_CORPUS_CHRISTI_2026);
+    // A observação pelo calendário do Termo cai no feriado bancário...
+    expect($market->requiredRateDates)->not->toContain(RATE_CALENDAR_CORPUS_CHRISTI_2026)
+        ->and($contractual->requiredRateDates)->toContain(RATE_CALENDAR_CORPUS_CHRISTI_2026);
 
-    // ...e nada da semântica contratual se move.
-    expect($banking->events)->toBe($contractual->events)
-        ->and($banking->parameters['calendar_code'])->toBe(BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS)
-        ->and($banking->parameters)->toBe($contractual->parameters)
-        ->and($banking->startDate->toDateString())->toBe($contractual->startDate->toDateString())
-        ->and($banking->endDate->toDateString())->toBe($contractual->endDate->toDateString());
+    // ...e nada da curva oficial se move.
+    expect($contractual->events)->toBe($market->events)
+        ->and($contractual->parameters['calendar_code'])->toBe(BusinessCalendarRegistry::MARKET_CALENDAR)
+        ->and($contractual->parameters)->toBe($market->parameters)
+        ->and($contractual->startDate->toDateString())->toBe($market->startDate->toDateString())
+        ->and($contractual->endDate->toDateString())->toBe($market->endDate->toDateString());
 });
 
 it('keeps every curve row date, business day flag and DUP/DUT identical under the hypothesis', function () {
@@ -188,15 +196,15 @@ it('keeps every curve row date, business day flag and DUP/DUT identical under th
     assumeBankHolidayOnCorpusChristi();
     $service = app(PuSimulationService::class);
 
-    $contractual = $service->simulate($scenario['emission'], $scenario['input']);
-    $banking = simulateWithSeededRates($scenario['emission'], bankingHypothesis());
+    $market = $service->simulate($scenario['emission'], $scenario['input']);
+    $contractual = simulateWithSeededRates($scenario['emission'], contractualObservationHypothesis());
 
-    expect($contractual->state)->toBe(PuSimulationState::Calculated)
-        ->and($banking->state)->toBe(PuSimulationState::Calculated)
-        ->and(count($banking->rows))->toBe(count($contractual->rows));
+    expect($market->state)->toBe(PuSimulationState::Calculated)
+        ->and($contractual->state)->toBe(PuSimulationState::Calculated)
+        ->and(count($contractual->rows))->toBe(count($market->rows));
 
-    foreach ($contractual->rows as $index => $row) {
-        $other = $banking->rows[$index];
+    foreach ($market->rows as $index => $row) {
+        $other = $contractual->rows[$index];
 
         // Calendário da curva: intocado.
         expect($other->date->toDateString())->toBe($row->date->toDateString())
@@ -209,15 +217,15 @@ it('keeps every curve row date, business day flag and DUP/DUT identical under th
     }
 });
 
-it('uses the shifted observation date for the engine lookup, never corpus christi', function () {
+it('never observes corpus christi in the official market curve', function () {
     $scenario = PuSimulationFixture::calculableScenario();
     assumeBankHolidayOnCorpusChristi();
 
-    $banking = simulateWithSeededRates($scenario['emission'], bankingHypothesis());
+    $market = simulateWithSeededRates($scenario['emission'], $scenario['input']);
 
-    expect($banking->state)->toBe(PuSimulationState::Calculated);
+    expect($market->state)->toBe(PuSimulationState::Calculated);
 
-    $observationDates = collect($banking->rows)
+    $observationDates = collect($market->rows)
         ->map(fn ($row): ?string => $row->indexRateDate?->toDateString())
         ->filter()
         ->unique()
@@ -240,10 +248,10 @@ it('persists nothing when the observation calendar hypothesis is used', function
     assumeBankHolidayOnCorpusChristi();
     // As taxas da hipótese são semeadas ANTES do retrato: o que está sob prova
     // é a simulação, que não pode escrever nada por conta própria.
-    $calculated = simulateWithSeededRates($scenario['emission'], bankingHypothesis());
+    $calculated = simulateWithSeededRates($scenario['emission'], contractualObservationHypothesis());
     $before = PuSimulationFixture::counts();
 
-    app(PuSimulationService::class)->simulate($scenario['emission'], bankingHypothesis());
+    app(PuSimulationService::class)->simulate($scenario['emission'], contractualObservationHypothesis());
 
     expect($calculated->state)->toBe(PuSimulationState::Calculated)
         ->and(PuSimulationFixture::counts())->toBe($before);
@@ -265,18 +273,18 @@ it('offers the observation calendar as an explicit simulation hypothesis on the 
 
     // Sem hipótese: a tela declara que o CDI segue o calendário da curva.
     expect($component->instance()->indexRateCalendarOverride())->toBeNull()
-        ->and($component->instance()->curveCalendarCode())->toBe(BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS)
+        ->and($component->instance()->curveCalendarCode())->toBe(BusinessCalendarRegistry::MARKET_CALENDAR)
         ->and($component->instance()->indexRateCalendarOptions())
-        ->toHaveKey(BusinessCalendarRegistry::BR_BANKING_ANBIMA);
+        ->toHaveKey(BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS);
 
-    $component->set('indexRateCalendarCode', BusinessCalendarRegistry::BR_BANKING_ANBIMA)
+    $component->set('indexRateCalendarCode', BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS)
         ->call('calculate')
         ->assertSee('Calendário de observação do CDI')
         ->assertSee('Hipótese de simulação');
 
     expect($component->instance()->indexRateCalendarOverride())
-        ->toBe(BusinessCalendarRegistry::BR_BANKING_ANBIMA)
-        ->and($component->instance()->result()->requiredRateDates)->not->toContain(RATE_CALENDAR_CORPUS_CHRISTI_2026);
+        ->toBe(BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS)
+        ->and($component->instance()->result()->requiredRateDates)->toContain(RATE_CALENDAR_CORPUS_CHRISTI_2026);
 });
 
 it('forgets the hypothesis on a fresh component', function () {
@@ -285,7 +293,7 @@ it('forgets the hypothesis on a fresh component', function () {
     assumeBankHolidayOnCorpusChristi();
 
     Livewire::test(PuCalculatorSimulator::class, ['record' => $scenario['emission']->getRouteKey()])
-        ->set('indexRateCalendarCode', BusinessCalendarRegistry::BR_BANKING_ANBIMA);
+        ->set('indexRateCalendarCode', BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS);
 
     // A hipótese vive só na sessão de Livewire: nada a recupera.
     $fresh = Livewire::test(PuCalculatorSimulator::class, ['record' => $scenario['emission']->getRouteKey()]);

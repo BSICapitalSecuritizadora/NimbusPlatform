@@ -43,6 +43,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Permission;
+use Tests\Support\Pu\PuMarketCalendarFixture;
 
 uses(RefreshDatabase::class);
 
@@ -130,6 +131,7 @@ function numericPreparationProveBaseline(Emission $emission): LegalInstrument
 
 function numericPreparationCalendar(): void
 {
+    PuMarketCalendarFixture::prepare();
     $responsible = User::factory()->create();
     app(NationalLegalHolidayMaterializationService::class)->materialize(2026, 2031, $responsible->id);
 

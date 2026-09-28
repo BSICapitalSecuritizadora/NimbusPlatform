@@ -65,6 +65,8 @@ class PuHomologationReportService
                 'validated_by' => $version->validatedBy?->name,
                 'homologated_at' => $version->homologated_at?->format('d/m/Y H:i'),
                 'homologated_by' => $version->homologatedBy?->name,
+                'self_homologated' => (bool) $version->self_homologated,
+                'homologation_justification' => $version->homologation_justification,
                 'curve_role' => $version->curve_role->value,
                 'candidate_as_of' => $version->candidate_as_of?->toDateString(),
                 'input_fingerprint' => $version->input_fingerprint,

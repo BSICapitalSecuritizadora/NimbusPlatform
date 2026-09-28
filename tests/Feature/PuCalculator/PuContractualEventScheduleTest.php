@@ -27,7 +27,7 @@ uses(RefreshDatabase::class);
 /**
  * Emissão com o cronograma do Termo confirmado: juros mensais no dia 8, de
  * 08/06/2026 a 08/05/2031, bullet no vencimento e dia útil seguinte no
- * calendário de feriados nacionais -- 60 juros e 1 amortização.
+ * calendário de mercado da curva oficial -- 60 juros e 1 amortização.
  */
 function contractualScheduleEmission(): Emission
 {
@@ -78,6 +78,8 @@ it('plans the full contractual schedule through maturity', function () {
         ->and($events)->toHaveCount(61)
         ->and($events->where('event_type', PuEventType::InterestPayment->value))->toHaveCount(60)
         ->and($events->firstWhere('original_date', '2026-11-08')['effective_date'])->toBe('2026-11-09')
+        // Segunda de Carnaval: útil no Termo, sem liquidação no mercado.
+        ->and($events->firstWhere('original_date', '2027-02-08')['effective_date'])->toBe('2027-02-10')
         ->and($events->firstWhere('event_type', PuEventType::Amortization->value))->toMatchArray([
             'original_date' => '2031-05-08',
             'effective_date' => '2031-05-08',
@@ -114,14 +116,14 @@ it('creates only the events after the last calculated day and keeps the manual o
 
 it('keeps an event that diverges from the contract without creating a duplicate', function () {
     $emission = contractualScheduleEmission();
-    $divergent = contractualInterestEvent($emission, '2027-02-08', '2027-02-10');
+    $divergent = contractualInterestEvent($emission, '2027-03-08', '2027-03-10');
 
     $result = contractualSchedule()->write($emission, puEventsConfigurator());
 
     expect($result['created'])->toBe(60)
         ->and(collect($result['plan']['conflicting_events'])->pluck('reason')->all())->toBe(['event_semantics_mismatch'])
-        ->and($divergent->fresh()->effective_date->toDateString())->toBe('2027-02-10')
-        ->and(EmissionPuEvent::query()->whereBelongsTo($emission)->whereDate('original_date', '2027-02-08')->count())->toBe(1);
+        ->and($divergent->fresh()->effective_date->toDateString())->toBe('2027-03-10')
+        ->and(EmissionPuEvent::query()->whereBelongsTo($emission)->whereDate('original_date', '2027-03-08')->count())->toBe(1);
 });
 
 it('refuses to create events for a user without PU configuration permission', function () {
@@ -136,7 +138,7 @@ it('blocks curve generation while contractual events are missing and releases it
     $emission = contractualScheduleEmission();
     EmissionPuParameter::factory()->create([
         'emission_id' => $emission->id,
-        'calendar_code' => BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS,
+        'calendar_code' => BusinessCalendarRegistry::MARKET_CALENDAR,
         'index_rate_lookup_mode' => PuIndexRateLookupMode::BusinessDayLagExact->value,
         'index_rate_lag_business_days' => -5,
     ]);
@@ -159,9 +161,9 @@ it('only warns when a registered event diverges from the contract', function () 
     $emission = contractualScheduleEmission();
     EmissionPuParameter::factory()->create([
         'emission_id' => $emission->id,
-        'calendar_code' => BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS,
+        'calendar_code' => BusinessCalendarRegistry::MARKET_CALENDAR,
     ]);
-    contractualInterestEvent($emission, '2027-02-08', '2027-02-10');
+    contractualInterestEvent($emission, '2027-03-08', '2027-03-10');
     contractualSchedule()->write($emission->fresh(), puEventsConfigurator());
 
     $result = app(PuCurvePrerequisiteService::class)->handle($emission->fresh());

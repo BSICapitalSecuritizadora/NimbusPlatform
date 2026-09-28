@@ -3,8 +3,9 @@
         @php
             $hasUsers = $this->canAccessUsers();
             $hasRoles = $this->canAccessRoles();
+            $hasAreas = $this->canAccessAreas();
             $hasTemplates = $this->canAccessSpreadsheetTemplates();
-            $hasAccessSection = $hasUsers || $hasRoles;
+            $hasAccessSection = $hasUsers || $hasRoles || $hasAreas;
             $hasOperationSection = $hasTemplates;
         @endphp
 
@@ -16,7 +17,7 @@
                         Acesso e Segurança
                     </h2>
                     <p class="text-xs text-slate-400 sm:text-sm">
-                        Gerencie usuários, perfis e permissões administrativas.
+                        Gerencie usuários, perfis, permissões e os responsáveis de cada área.
                     </p>
                 </div>
 
@@ -66,6 +67,33 @@
                                     </h3>
                                     <p class="text-xs leading-relaxed text-slate-300/90 sm:text-sm">
                                         Configure papéis e permissões disponíveis para os usuários.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 flex items-center gap-1.5 pt-2 text-xs font-semibold text-primary-400 transition-colors group-hover:text-[#d49e47] sm:text-sm">
+                                <span>Gerenciar</span>
+                                <span class="transition-transform group-hover:translate-x-0.5">→</span>
+                            </div>
+                        </a>
+                    @endif
+                    {{-- Card Áreas e responsáveis --}}
+                    @if ($hasAreas)
+                        <a
+                            href="{{ $this->getAreasUrl() }}"
+                            aria-label="Acessar Áreas e responsáveis"
+                            class="group relative flex h-full flex-col justify-between rounded-2xl border border-slate-700/50 bg-[#0d2530] p-6 shadow-sm transition duration-150 hover:border-[#a06e28]/50 hover:bg-[#12313b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a06e28] focus-visible:ring-offset-2 focus-visible:ring-offset-[#091b23]"
+                        >
+                            <div class="space-y-4">
+                                <div class="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-700/60 bg-[#091b23] text-primary-400 transition-colors group-hover:border-[#a06e28]/40 group-hover:text-primary-300">
+                                    <x-filament::icon :icon="\Filament\Support\Icons\Heroicon::OutlinedRectangleGroup" class="h-6 w-6" />
+                                </div>
+                                <div class="space-y-1.5">
+                                    <h3 class="text-base font-bold text-white transition-colors group-hover:text-[#e6e4e4]">
+                                        Áreas e responsáveis
+                                    </h3>
+                                    <p class="text-xs leading-relaxed text-slate-300/90 sm:text-sm">
+                                        Defina quem responde por cada área, como a homologação da curva de PU.
                                     </p>
                                 </div>
                             </div>

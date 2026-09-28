@@ -425,7 +425,7 @@
                             </div>
                             <p class="mt-1 text-[11px] text-gray-300 leading-relaxed">
                                 Decide quais dias da curva contam como Dia Útil nesta simulação: contagem de DU, DUP/DUT e
-                                incidência do fator diário. Pagamentos continuam no calendário contratual.
+                                incidência do fator diário. Pagamentos continuam no calendário da curva oficial.
                             </p>
                             <select
                                 id="accrualCalendarCode"
@@ -449,8 +449,8 @@
                                 </span>
                             </div>
                             <p class="mt-1 text-[11px] text-gray-300 leading-relaxed">
-                                Utilizado somente para resolver as datas de observação do CDI nesta simulação. Não altera a
-                                definição contratual de Dia Útil e não modifica a emissão.
+                                Utilizado somente para resolver as datas de observação do CDI nesta simulação. Não altera os
+                                dias úteis da curva e não modifica a emissão.
                             </p>
                             <select
                                 id="indexRateCalendarCode"
@@ -470,7 +470,7 @@
                             <dt class="font-medium text-gray-400">Calendário da curva</dt>
                             <dd class="mt-0.5 text-[#E6E4E4]">
                                 {{ $this->curveCalendarCode() ?? '—' }}
-                                <span class="text-gray-400">— Contratual</span>
+                                <span class="text-gray-400">— Curva oficial</span>
                             </dd>
                         </div>
                         <div>
@@ -480,7 +480,7 @@
                                     <span class="text-amber-300 font-medium">{{ $this->accrualCalendarOverride() }}</span>
                                     <span class="text-[11px] text-gray-300">— Override</span>
                                 @else
-                                    <span class="text-gray-400">Mesmo calendário contratual</span>
+                                    <span class="text-gray-400">Mesmo calendário da curva oficial</span>
                                 @endif
                             </dd>
                         </div>

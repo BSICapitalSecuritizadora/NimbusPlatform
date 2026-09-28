@@ -239,7 +239,7 @@ it('creates the exact persistable configuration for an authorized actor and reco
         ->and($parameter->spread_rate)->toBe('6.00000000')
         ->and($parameter->calculation_method)->toBe(PuCalculationMethod::CdiSpread->value)
         ->and($parameter->business_day_basis)->toBe(252)
-        ->and($parameter->calendar_code)->toBe(BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS)
+        ->and($parameter->calendar_code)->toBe(BusinessCalendarRegistry::MARKET_CALENDAR)
         ->and($parameter->index_rate_lookup_mode)->toBe(PuIndexRateLookupMode::BusinessDayLagExact->value)
         ->and($parameter->index_rate_lag_business_days)->toBe(-5)
         ->and($parameter->curve_start_date->toDateString())->toBe('2026-05-15')

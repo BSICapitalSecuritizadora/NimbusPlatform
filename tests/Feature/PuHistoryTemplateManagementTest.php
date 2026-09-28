@@ -17,6 +17,7 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     app(PermissionRegistrar::class)->forgetCachedPermissions();
     $this->seed(RolesAndPermissionsSeeder::class);
+    Storage::fake('local');
 });
 
 it('shows download and settings actions on the pu histories relation manager', function () {
@@ -58,12 +59,12 @@ it('renders the settings page and allows replacing the pu history template', fun
         ->assertSee('Salvar template');
 
     Livewire::test(SpreadsheetTemplates::class)
-        ->set('puHistoryTemplateFile', UploadedFile::fake()->create(
+        ->set('templateFiles.pu-histories', UploadedFile::fake()->create(
             'template-pu-personalizado.xlsx',
             32,
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ))
-        ->call('savePuHistoryTemplate')
+        ->call('saveTemplate', 'pu-histories')
         ->assertHasNoErrors();
 
     Storage::disk('local')->assertExists('pu-history-templates/template-historico-de-pu.xlsx');
@@ -77,13 +78,13 @@ it('restores the default pu history template after a custom upload', function ()
     $this->actingAs($user);
 
     Livewire::test(SpreadsheetTemplates::class)
-        ->set('puHistoryTemplateFile', UploadedFile::fake()->create(
+        ->set('templateFiles.pu-histories', UploadedFile::fake()->create(
             'template-pu-personalizado.xlsx',
             32,
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ))
-        ->call('savePuHistoryTemplate')
-        ->call('restoreDefaultPuHistoryTemplate')
+        ->call('saveTemplate', 'pu-histories')
+        ->call('restoreDefaultTemplate', 'pu-histories')
         ->assertHasNoErrors();
 
     Storage::disk('local')->assertMissing('pu-history-templates/template-historico-de-pu.xlsx');

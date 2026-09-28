@@ -23,7 +23,6 @@ use App\Enums\LegalInstrumentType;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Filament\Widgets\PuCalculator\PuBaselineReadinessWidget;
 use App\Models\BusinessCalendar;
-use App\Models\BusinessCalendarDate;
 use App\Models\BusinessCalendarImportRun;
 use App\Models\BusinessCalendarYear;
 use App\Models\Document;
@@ -48,6 +47,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
+use Tests\Support\Pu\PuMarketCalendarFixture;
 
 uses(RefreshDatabase::class);
 
@@ -200,7 +200,7 @@ it('becomes ready for candidate configuration from verified documentary fields w
             'index_percentage' => '100.00000000',
             'spread_rate' => '6.00000000',
             'business_day_basis' => 252,
-            'calendar_code' => BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS,
+            'calendar_code' => BusinessCalendarRegistry::MARKET_CALENDAR,
             'index_rate_lookup_mode' => 'business_day_lag_exact',
             'index_rate_lag_business_days' => -5,
             'curve_start_date' => '2026-05-15',
@@ -317,32 +317,25 @@ it('derives the snapshot window from the saved CDI publication calendar', functi
     $emission = cdiEmission();
     proveContractualBaseline($emission);
     prepareCandidatePrerequisites($emission);
-    BusinessCalendarDate::query()->create([
-        'calendar_code' => BusinessCalendarRegistry::BR_BANKING_ANBIMA,
-        'calendar_date' => '2026-06-04',
-        'is_business_day' => false,
-        'description' => 'Corpus Christi',
-        'data_origin' => 'imported',
-        'source' => 'ANBIMA',
-        'source_is_official' => true,
-    ]);
     $asOf = CarbonImmutable::parse('2026-06-15');
     $readiness = app(PuBaselineReadinessService::class);
 
-    $contractual = $readiness->evaluate($emission->fresh(), $asOf)->requirement('index_snapshots_loaded')->expected;
+    $market = $readiness->evaluate($emission->fresh(), $asOf)->requirement('index_snapshots_loaded')->expected;
 
     EmissionPuParameter::factory()->create([
         'emission_id' => $emission->id,
-        'calendar_code' => BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS,
-        'index_rate_calendar_code' => BusinessCalendarRegistry::BR_BANKING_ANBIMA,
+        'calendar_code' => BusinessCalendarRegistry::MARKET_CALENDAR,
+        'index_rate_calendar_code' => BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS,
     ]);
     app(BusinessDayCalendarService::class)->flushCache();
 
     $publication = $readiness->evaluate($emission->fresh(), $asOf)->requirement('index_snapshots_loaded')->expected;
 
-    expect($contractual)->toContain('2026-06-04')
-        ->and($publication)->not->toContain('2026-06-04')
-        ->and($publication)->toContain('2026-06-03');
+    // Corpus Christi não é dia útil de mercado; contada a defasagem no calendário
+    // nacional salvo como calendário de divulgação, a data volta a ser exigida.
+    expect($market)->not->toContain('2026-06-04')
+        ->and($market)->toContain('2026-06-03')
+        ->and($publication)->toContain('2026-06-04');
 });
 
 it('allows numeric homologation without an external reference but never labels it externally validated', function () {
@@ -385,7 +378,7 @@ it('prevents the next readiness level when one material field is pending', funct
     prepareCandidatePrerequisites($emission);
 
     BusinessCalendarYear::query()
-        ->where('calendar_code', BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS)
+        ->where('calendar_code', BusinessCalendarRegistry::MARKET_CALENDAR)
         ->where('year', 2031)
         ->update([
             'status' => BusinessCalendarYear::STATUS_PROVISIONAL,
@@ -466,6 +459,7 @@ it('serves a second synthetic emission with different data through the same serv
     $emission = prefixedEmission();
     provePrefixedContractualBaseline($emission);
     prepareContractualCalendar('CONTRACT_SYNTHETIC_2027', 2027, 2028);
+    PuMarketCalendarFixture::prepare(2027, 2028);
     proveFirstIntegralizationDate($emission, '2027-01-11');
     $asOf = CarbonImmutable::parse('2027-06-30');
 
@@ -478,7 +472,7 @@ it('serves a second synthetic emission with different data through the same serv
         'index_rate_lookup_mode' => null,
         'index_rate_lag_business_days' => null,
         'business_day_basis' => 360,
-        'calendar_code' => 'CONTRACT_SYNTHETIC_2027',
+        'calendar_code' => BusinessCalendarRegistry::MARKET_CALENDAR,
         'curve_start_date' => '2027-01-11',
         'curve_end_date' => '2028-01-10',
         'initial_unit_value' => '5000.0000000000000000',
@@ -489,7 +483,8 @@ it('serves a second synthetic emission with different data through the same serv
         ->and($report->requirement('index_source_technical_homologation')->status)->toBe(PuBaselineRequirementStatus::Satisfied)
         ->and($report->requirement('index_source_operational_approval')->status)->toBe(PuBaselineRequirementStatus::Satisfied)
         ->and($report->indexSourceDiagnostics['required'])->toBeFalse()
-        ->and($report->calendarDiagnostics['calendar_code'])->toBe('CONTRACT_SYNTHETIC_2027')
+        ->and(collect($report->candidateFields)->firstWhere('field', 'contract_calendar_code')['value'])->toBe('CONTRACT_SYNTHETIC_2027')
+        ->and($report->calendarDiagnostics['calendar_code'])->toBe(BusinessCalendarRegistry::MARKET_CALENDAR)
         ->and($report->calendarDiagnostics['is_national_legal_calendar'])->toBeFalse()
         ->and($report->requirement('calendar_technical_coverage')->status)->toBe(PuBaselineRequirementStatus::Satisfied);
 });
@@ -692,7 +687,7 @@ it('does not suggest an inferred curve start date in the configuration form', fu
         ]);
 });
 
-it('prefills calendar and premium evidence from the confirmed contractual clauses', function () {
+it('prefills the market calendar policy and the premium evidence from the confirmed contractual clauses', function () {
     foreach (['emissions.view', 'emissions.update', AccessPermission::PuParametersConfigure->value] as $permission) {
         Permission::findOrCreate($permission);
     }
@@ -722,11 +717,11 @@ it('prefills calendar and premium evidence from the confirmed contractual clause
         ->mountAction('configurePuCalculation')
         ->assertActionDataSet([
             'curve_start_date' => '2026-05-15',
-            'calendar_code' => BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS,
-            'calendar_evidence_document' => $documentTitle,
-            'calendar_evidence_clause' => 'Definição “Dia(s) Útil(eis)”',
-            'calendar_evidence_page' => '8',
-            'calendar_evidence_excerpt' => 'Qualquer dia que não seja sábado, domingo ou feriado nacional.',
+            'calendar_code' => BusinessCalendarRegistry::MARKET_CALENDAR,
+            'calendar_evidence_document' => 'Política de calendário de mercado',
+            'calendar_evidence_clause' => null,
+            'calendar_evidence_page' => null,
+            'calendar_evidence_excerpt' => BusinessCalendarRegistry::marketCalendarPolicy(BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS),
             'calendar_evidence_confirmed' => false,
             'first_coupon_premium_evidence_document' => $documentTitle,
             'first_coupon_premium_evidence_clause' => '4.1.8, observação (vii)',
@@ -739,7 +734,17 @@ it('prefills calendar and premium evidence from the confirmed contractual clause
             $reviewer,
         ))
         ->assertFormFieldExists('calendar_evidence_document', fn (Field $field): bool => fieldHelperText($field)
-            === 'Preenchido com a cláusula confirmada em Instrumentos Jurídicos. Altere só se a fonte for outra.');
+            === 'Preenchido com a política de calendário de mercado da securitizadora.');
+
+    $contractCalendar = collect(app(PuBaselineReadinessService::class)->evaluate($emission->fresh())->candidateFields)
+        ->firstWhere('field', 'contract_calendar_code');
+
+    expect($contractCalendar)->toMatchArray([
+        'value' => BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS,
+        'status' => 'proven',
+        'clause' => 'Definição “Dia(s) Útil(eis)”',
+        'excerpt' => 'Qualquer dia que não seja sábado, domingo ou feriado nacional.',
+    ]);
 });
 
 it('leaves the calendar evidence empty while the gate withholds the proven calendar', function () {
@@ -1038,6 +1043,7 @@ function prepareCandidatePrerequisites(Emission $emission): void
 
 function prepareNationalCalendar(bool $confirmed): void
 {
+    PuMarketCalendarFixture::prepare(confirmed: $confirmed);
     $responsible = User::factory()->create();
     app(NationalLegalHolidayMaterializationService::class)->materialize(2026, 2031, $responsible->id);
 

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Clients;
 
+use App\Support\SpreadsheetTemplates\GeneratedSpreadsheetTemplate;
 use App\Support\TemporarySpreadsheetFile;
 use Spatie\SimpleExcel\SimpleExcelWriter;
 
@@ -13,7 +14,7 @@ use Spatie\SimpleExcel\SimpleExcelWriter;
  * importer never reads, and use documents with valid check digits so the example
  * never teaches an invalid CPF/CNPJ.
  */
-class ClientSpreadsheetTemplate
+class ClientSpreadsheetTemplate implements GeneratedSpreadsheetTemplate
 {
     public const DOWNLOAD_NAME = 'Modelo - Clientes.xlsx';
 

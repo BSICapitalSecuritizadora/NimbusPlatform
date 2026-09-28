@@ -16,6 +16,8 @@ final readonly class PuBaselineCandidate
      * @param  array<string, PuBaselineRequirement>  $contractRequirements
      * @param  array<string, mixed>  $contractualSchedule
      * @param  list<string>  $calendarWindowLimitations
+     * @param  ?string  $contractCalendarCode  Calendário do Dia Útil do Termo, só para comparação: a curva oficial
+     *                                         usa `BusinessCalendarRegistry::MARKET_CALENDAR`.
      */
     public function __construct(
         public array $configuration,
@@ -28,6 +30,7 @@ final readonly class PuBaselineCandidate
         public ?CarbonImmutable $curveEndDate,
         public ?CarbonImmutable $calendarToDate = null,
         public array $calendarWindowLimitations = [],
+        public ?string $contractCalendarCode = null,
     ) {}
 
     /**

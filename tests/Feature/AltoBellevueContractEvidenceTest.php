@@ -3,6 +3,7 @@
 use App\Domain\PuCalculator\Enums\PuBaselineReadinessStatus;
 use App\Domain\PuCalculator\Enums\PuBaselineRequirementStatus;
 use App\Domain\PuCalculator\Services\PuBaselineReadinessService;
+use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Enums\LegalDocumentType;
 use App\Enums\LegalInstrumentDocumentRole;
 use App\Enums\LegalInstrumentFieldKey;
@@ -122,7 +123,7 @@ it('uses the securitization term after review without treating CCB terms as conf
             'index_percentage' => '100.00000000',
             'spread_rate' => '6.00000000',
             'business_day_basis' => 252,
-            'calendar_code' => 'BR_NATIONAL_HOLIDAYS',
+            'calendar_code' => BusinessCalendarRegistry::MARKET_CALENDAR,
             'index_rate_lookup_mode' => 'business_day_lag_exact',
             'index_rate_lag_business_days' => -5,
             'curve_start_date' => 'PENDING',
@@ -133,6 +134,7 @@ it('uses the securitization term after review without treating CCB terms as conf
             'first_coupon_pre_integralization_apply_index_factor' => true,
             'first_coupon_pre_integralization_apply_spread_factor' => true,
         ])
+        ->and(collect($report->candidateFields)->firstWhere('field', 'contract_calendar_code')['value'])->toBe('BR_NATIONAL_HOLIDAYS')
         ->and($report->eventDiagnostics['schedule'])->toMatchArray([
             'first_interest_payment_date' => '2026-06-08',
             'interest_payment_frequency' => 'monthly',

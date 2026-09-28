@@ -13,6 +13,7 @@ use App\Domain\PuCalculator\Enums\PuBaselineRequirementStatus;
 use App\Domain\PuCalculator\Enums\PuCalculationMethod;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
+use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\DTOs\LegalInstruments\ConsolidatedFieldData;
 use App\Enums\LegalInstrumentFieldKey;
 use App\Enums\LegalInstrumentFieldValueType;
@@ -183,7 +184,75 @@ final class PuBaselineCandidateFactory
             curveEndDate: $this->dateValue($resolved[LegalInstrumentFieldKey::MaturityDate->value]['value']),
             calendarToDate: $calendarWindow['to'],
             calendarWindowLimitations: $calendarWindow['limitations'],
+            contractCalendarCode: $this->contractCalendarCode($resolved),
         );
+    }
+
+    /**
+     * O calendário da curva oficial é regra da securitizadora, não prova do
+     * contrato: a linha mostra a política, e a evidência do Termo vai para a linha
+     * do calendário de comparação.
+     *
+     * @param  array<string, array<string, mixed>>  $resolved
+     * @return array<string, mixed>
+     */
+    private function marketCalendarField(string $calendarCode, array $resolved): array
+    {
+        return [
+            'field' => 'calendar_code',
+            'label' => 'Calendário da curva oficial',
+            'value' => $calendarCode,
+            'document' => 'Política de calendário de mercado',
+            'document_id' => null,
+            'reference' => 'Decisão da securitizadora de 28/09/2026',
+            'clause' => null,
+            'page' => null,
+            'excerpt' => BusinessCalendarRegistry::marketCalendarPolicy($this->contractCalendarCode($resolved)),
+            'validation_status' => 'system_control',
+            'reviewer' => null,
+            'reviewed_at' => null,
+            'status' => 'governance_control',
+            'confidence' => 'not_applicable',
+            'ready_for_future_persistence' => true,
+        ];
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $resolved
+     * @return array<string, mixed>
+     */
+    private function contractCalendarField(array $resolved): array
+    {
+        $source = $resolved[LegalInstrumentFieldKey::CalendarCode->value];
+        $evidence = $this->evidence($source['field']);
+
+        return [
+            'field' => 'contract_calendar_code',
+            'label' => 'Calendário do Termo (só para comparação)',
+            'value' => $this->contractCalendarCode($resolved) ?? self::PENDING,
+            'document' => $evidence['document'] ?? 'Evidência pendente',
+            'document_id' => $evidence['document_id'] ?? null,
+            'reference' => $evidence['reference'] ?? null,
+            'clause' => $evidence['clause'] ?? null,
+            'page' => $evidence['page'] ?? null,
+            'excerpt' => $evidence['excerpt'] ?? null,
+            'validation_status' => $evidence['validation_status'] ?? null,
+            'reviewer' => $evidence['reviewer'] ?? null,
+            'reviewed_at' => $evidence['reviewed_at'] ?? null,
+            'status' => $source['valid'] ? 'proven' : 'blocked',
+            'confidence' => $this->confidence($source['field']),
+            'ready_for_future_persistence' => (bool) $source['valid'],
+        ];
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $resolved
+     */
+    private function contractCalendarCode(array $resolved): ?string
+    {
+        $code = $this->upperText($resolved[LegalInstrumentFieldKey::CalendarCode->value]);
+
+        return $code === self::PENDING ? null : $code;
     }
 
     /**
@@ -503,7 +572,8 @@ final class PuBaselineCandidateFactory
                 ? self::PENDING
                 : PuCalculationMethod::forIndexer($indexer)->value,
             'business_day_basis' => $this->integer($resolved[LegalInstrumentFieldKey::BusinessDayBasis->value]),
-            'calendar_code' => $this->upperText($resolved[LegalInstrumentFieldKey::CalendarCode->value]),
+            // Política de mercado: o calendário do Termo não decide a curva oficial.
+            'calendar_code' => BusinessCalendarRegistry::MARKET_CALENDAR,
             'index_rate_lookup_mode' => $requiresRates
                 ? ($lookupMode?->value ?? self::PENDING)
                 : null,
@@ -719,6 +789,11 @@ final class PuBaselineCandidateFactory
                 $premiumEnabled,
             ): array {
                 $source = $resolved[$key->value];
+
+                if ($candidateField === 'calendar_code') {
+                    return $this->marketCalendarField($configuration[$candidateField], $resolved);
+                }
+
                 $notRequired = $this->fieldIsNotApplicable($candidateField, $configuration, $premiumEnabled);
                 $evidence = $this->evidence($source['field']);
 
@@ -743,6 +818,8 @@ final class PuBaselineCandidateFactory
             })
             ->values()
             ->all();
+        $calendarRow = array_search('calendar_code', array_column($rows, 'field'), true);
+        array_splice($rows, $calendarRow + 1, 0, [$this->contractCalendarField($resolved)]);
         $rows[] = $this->curveStartField($configuration['curve_start_date'], $curveStartEvidence);
         $rows[] = [
             'field' => 'legacy_projection_enabled',

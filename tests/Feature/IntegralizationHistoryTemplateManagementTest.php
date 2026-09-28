@@ -17,6 +17,7 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     app(PermissionRegistrar::class)->forgetCachedPermissions();
     $this->seed(RolesAndPermissionsSeeder::class);
+    Storage::fake('local');
 });
 
 it('shows download and settings actions on the integralization histories relation manager', function () {
@@ -59,12 +60,12 @@ it('renders the settings page and allows replacing the integralization history t
         ->assertSee('Salvar template');
 
     Livewire::test(SpreadsheetTemplates::class)
-        ->set('integralizationHistoryTemplateFile', UploadedFile::fake()->create(
+        ->set('templateFiles.integralization-histories', UploadedFile::fake()->create(
             'template-integralizacoes-personalizado.xlsx',
             32,
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ))
-        ->call('saveIntegralizationHistoryTemplate')
+        ->call('saveTemplate', 'integralization-histories')
         ->assertHasNoErrors();
 
     Storage::disk('local')->assertExists('integralization-history-templates/template-historico-de-integralizacoes.xlsx');
@@ -78,13 +79,13 @@ it('restores the default integralization history template after a custom upload'
     $this->actingAs($user);
 
     Livewire::test(SpreadsheetTemplates::class)
-        ->set('integralizationHistoryTemplateFile', UploadedFile::fake()->create(
+        ->set('templateFiles.integralization-histories', UploadedFile::fake()->create(
             'template-integralizacoes-personalizado.xlsx',
             32,
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ))
-        ->call('saveIntegralizationHistoryTemplate')
-        ->call('restoreDefaultIntegralizationHistoryTemplate')
+        ->call('saveTemplate', 'integralization-histories')
+        ->call('restoreDefaultTemplate', 'integralization-histories')
         ->assertHasNoErrors();
 
     Storage::disk('local')->assertMissing('integralization-history-templates/template-historico-de-integralizacoes.xlsx');

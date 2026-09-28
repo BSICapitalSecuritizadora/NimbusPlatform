@@ -103,12 +103,18 @@ class PuCurveVersionService
         return $version;
     }
 
-    public function markHomologated(EmissionPuCurveVersion $version, ?int $homologatedByUserId): EmissionPuCurveVersion
-    {
+    public function markHomologated(
+        EmissionPuCurveVersion $version,
+        ?int $homologatedByUserId,
+        bool $selfHomologated = false,
+        ?string $justification = null,
+    ): EmissionPuCurveVersion {
         $version->forceFill([
             'status' => PuCurveStatus::Homologated,
             'homologated_at' => now(),
             'homologated_by' => $homologatedByUserId,
+            'self_homologated' => $selfHomologated,
+            'homologation_justification' => $justification,
         ])->save();
 
         return $version;

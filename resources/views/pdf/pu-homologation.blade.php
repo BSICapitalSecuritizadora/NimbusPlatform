@@ -61,6 +61,12 @@
         <tr><td class="label">Gerada em</td><td class="value">{{ $version['generated_at'] ?? '-' }} {{ $version['generated_by'] ? '— '.$version['generated_by'] : '' }}</td></tr>
         <tr><td class="label">Validada em</td><td class="value">{{ $version['validated_at'] ?? '-' }} {{ $version['validated_by'] ? '— '.$version['validated_by'] : '' }}</td></tr>
         <tr><td class="label">Homologada em</td><td class="value">{{ $version['homologated_at'] ?? '-' }} {{ $version['homologated_by'] ? '— '.$version['homologated_by'] : '' }}</td></tr>
+        @if (!empty($version['self_homologated']))
+            <tr><td class="label">Segregação</td><td class="value">Auto-homologação do responsável da área Curva de PU e Índices, após validação contra planilha sem divergências</td></tr>
+        @endif
+        @if (!empty($version['homologation_justification']))
+            <tr><td class="label">Justificativa da homologação</td><td class="value">{{ $version['homologation_justification'] }}</td></tr>
+        @endif
         @if (!empty($version['obsolete_reason']))
             <tr><td class="label">Motivo de obsolescência</td><td class="value">{{ $version['obsolete_reason'] }}</td></tr>
         @endif

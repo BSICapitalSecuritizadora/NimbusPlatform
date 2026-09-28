@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Resources\Areas\AreaResource;
 use App\Filament\Resources\Roles\RoleResource;
 use App\Filament\Resources\Users\UserResource;
 use Filament\Pages\Page;
@@ -41,6 +42,7 @@ class Settings extends Page
 
         return UserResource::canViewAny()
             || RoleResource::canViewAny()
+            || AreaResource::canViewAny()
             || SpreadsheetTemplates::canAccess();
     }
 
@@ -52,6 +54,11 @@ class Settings extends Page
     public function canAccessRoles(): bool
     {
         return RoleResource::canViewAny();
+    }
+
+    public function canAccessAreas(): bool
+    {
+        return AreaResource::canViewAny();
     }
 
     public function canAccessSpreadsheetTemplates(): bool
@@ -67,6 +74,11 @@ class Settings extends Page
     public function getRolesUrl(): string
     {
         return RoleResource::getUrl(panel: 'admin');
+    }
+
+    public function getAreasUrl(): string
+    {
+        return AreaResource::getUrl(panel: 'admin');
     }
 
     public function getSpreadsheetTemplatesUrl(): string

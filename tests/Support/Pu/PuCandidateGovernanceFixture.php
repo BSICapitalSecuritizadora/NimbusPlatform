@@ -506,6 +506,7 @@ final class PuCandidateGovernanceFixture
 
     public static function confirmCalendar(): void
     {
+        PuMarketCalendarFixture::prepare();
         $responsible = User::factory()->create();
         app(NationalLegalHolidayMaterializationService::class)->materialize(2026, 2031, $responsible->id);
 

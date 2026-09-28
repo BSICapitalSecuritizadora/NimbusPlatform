@@ -153,6 +153,12 @@
                                     @if ($version->homologatedBy?->name)
                                         <span class="text-gray-500 dark:text-gray-400">— {{ $version->homologatedBy->name }}</span>
                                     @endif
+                                    @if ($version->self_homologated)
+                                        <span class="font-semibold text-warning-600 dark:text-warning-400">(auto-homologação do responsável da área)</span>
+                                    @endif
+                                    @if (filled($version->homologation_justification))
+                                        <span class="mt-0.5 block text-gray-500 dark:text-gray-400">Justificativa: {{ $version->homologation_justification }}</span>
+                                    @endif
                                 </div>
                                 <div>
                                     <span class="text-gray-500 dark:text-gray-400">Linhas geradas:</span>

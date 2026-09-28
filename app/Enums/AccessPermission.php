@@ -12,6 +12,8 @@ enum AccessPermission: string
     case RolesCreate = 'roles.create';
     case RolesUpdate = 'roles.update';
     case RolesDelete = 'roles.delete';
+    case AreasView = 'areas.view';
+    case AreasManage = 'areas.manage';
     case InvitationsView = 'invitations.view';
     case InvitationsCreate = 'invitations.create';
     case InvitationsUpdate = 'invitations.update';
@@ -264,6 +266,8 @@ enum AccessPermission: string
             self::RolesCreate => 'Perfis: criar',
             self::RolesUpdate => 'Perfis: editar',
             self::RolesDelete => 'Perfis: excluir',
+            self::AreasView => 'Áreas: visualizar responsáveis',
+            self::AreasManage => 'Áreas: definir responsáveis',
             self::InvitationsView => 'Convites: visualizar',
             self::InvitationsCreate => 'Convites: criar',
             self::InvitationsUpdate => 'Convites: editar',
@@ -474,6 +478,7 @@ enum AccessPermission: string
         return match (true) {
             str_starts_with($this->value, 'users.'),
             str_starts_with($this->value, 'roles.'),
+            str_starts_with($this->value, 'areas.'),
             str_starts_with($this->value, 'invitations.') => 'Acessos Externos',
             str_starts_with($this->value, 'nimbus.') => 'Gestão Documental Externa',
             str_starts_with($this->value, 'recruitment.') => 'Recrutamento',
@@ -673,6 +678,7 @@ enum AccessPermission: string
 
             str_starts_with($this->value, 'users.'),
             str_starts_with($this->value, 'roles.'),
+            str_starts_with($this->value, 'areas.'),
             str_starts_with($this->value, 'invitations.'),
             str_starts_with($this->value, 'settings.') => 'Administração & Usuários',
 
@@ -687,6 +693,7 @@ enum AccessPermission: string
             || str_contains($this->value, '.invalidate')
             || str_contains($this->value, '.release')
             || str_contains($this->value, 'manage-responsibilities')
+            || $this === self::AreasManage
             || str_contains($this->value, 'roles.')
             || str_contains($this->value, 'permissions');
     }

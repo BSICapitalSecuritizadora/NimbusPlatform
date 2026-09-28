@@ -8,6 +8,7 @@ use RuntimeException;
 
 /**
  * Lançada quando a segregação maker/checker é violada: o mesmo usuário que gerou/validou a curva
- * (ou importou a série projetada) tenta homologá-la/aprová-la sem ser super admin.
+ * (ou importou a série projetada) tenta homologá-la/aprová-la. Na curva, a exceção é o responsável
+ * pela área Curva de PU (ver `HomologatePuCurve::selfHomologationBlocker()`).
  */
 class PuMakerCheckerException extends RuntimeException {}

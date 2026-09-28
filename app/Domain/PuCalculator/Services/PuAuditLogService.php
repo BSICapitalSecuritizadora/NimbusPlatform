@@ -15,6 +15,7 @@ use App\Domain\PuCalculator\DTOs\PuValidationRowResult;
 use App\Domain\PuCalculator\Enums\PuCandidateReviewDecision;
 use App\Domain\PuCalculator\Enums\PuCurvePromotionDecision;
 use App\Domain\PuCalculator\Enums\PuExternalValidationDecision;
+use App\Enums\BusinessArea;
 use App\Models\Emission;
 use App\Models\EmissionPuCurvePromotion;
 use App\Models\EmissionPuCurveVersion;
@@ -454,13 +455,25 @@ class PuAuditLogService
         $logger->event('exported')->log('pu_curve_exported');
     }
 
-    public function logHomologation(Emission $emission, ?string $calculationVersion, ?int $requestedByUserId): void
-    {
+    /**
+     * Na auto-homologação quem homologa é o próprio maker, autorizado como
+     * responsável pela área Curva de PU; o registro guarda isso e a justificativa.
+     */
+    public function logHomologation(
+        Emission $emission,
+        ?string $calculationVersion,
+        ?int $requestedByUserId,
+        bool $selfHomologated = false,
+        ?string $justification = null,
+    ): void {
         $logger = activity(self::LOG_NAME)
             ->performedOn($emission)
             ->withProperties([
                 'engine_version' => self::ENGINE_VERSION,
                 'calculation_version' => $calculationVersion,
+                'self_homologated' => $selfHomologated,
+                'justification' => $justification,
+                'authorized_by_area' => $selfHomologated ? BusinessArea::PuCurve->value : null,
             ]);
 
         if (($causer = $this->causer($requestedByUserId)) !== null) {

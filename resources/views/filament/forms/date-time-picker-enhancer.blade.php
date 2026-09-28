@@ -89,6 +89,41 @@
             }
         }
 
+        // 3. Ensure Table Filter DatePicker Panels do not overflow the viewport or filter container
+        function adjustFilterPanelPosition(panel) {
+            if (!panel || panel.style.display === 'none' || panel.__bsiAdjusting) return;
+            var filterContainer = panel.closest('.fi-ta-filters form, .fi-ta-filters .fi-sc, .fi-ta-filters');
+            if (!filterContainer) return;
+
+            var panelRect = panel.getBoundingClientRect();
+            if (panelRect.width === 0 || panelRect.height === 0) return;
+
+            var containerRect = filterContainer.getBoundingClientRect();
+            var viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+            var maxRight = Math.min(containerRect.right - 8, viewportWidth - 12);
+
+            if (panelRect.right > maxRight + 1) {
+                var overflowX = panelRect.right - maxRight;
+                panel.__bsiAdjusting = true;
+
+                var transform = panel.style.transform || '';
+                var translateMatch = transform.match(/translate(?:3d)?\(\s*(-?[\d.]+)px\s*,\s*(-?[\d.]+)px/);
+                if (translateMatch) {
+                    var currentX = parseFloat(translateMatch[1]);
+                    var currentY = parseFloat(translateMatch[2]);
+                    var newX = Math.round(currentX - overflowX);
+                    panel.style.transform = transform.replace(translateMatch[0], 'translate3d(' + newX + 'px, ' + currentY + 'px');
+                } else {
+                    var currentLeft = parseFloat(panel.style.left) || 0;
+                    panel.style.left = Math.round(currentLeft - overflowX) + 'px';
+                }
+
+                requestAnimationFrame(function () {
+                    panel.__bsiAdjusting = false;
+                });
+            }
+        }
+
         var observer = new MutationObserver(function (mutations) {
             for (var i = 0; i < mutations.length; i++) {
                 var m = mutations[i];
@@ -98,10 +133,12 @@
                         if (node.nodeType === 1) {
                             if (node.classList && node.classList.contains('fi-fo-date-time-picker-panel')) {
                                 enhancePanel(node);
+                                adjustFilterPanelPosition(node);
                             } else if (node.querySelectorAll) {
                                 var panels = node.querySelectorAll('.fi-fo-date-time-picker-panel');
                                 for (var k = 0; k < panels.length; k++) {
                                     enhancePanel(panels[k]);
+                                    adjustFilterPanelPosition(panels[k]);
                                 }
                             }
                         }
@@ -110,6 +147,7 @@
                     if (m.target && m.target.classList && m.target.classList.contains('fi-fo-date-time-picker-panel')) {
                         if (m.target.style.display !== 'none') {
                             enhancePanel(m.target);
+                            adjustFilterPanelPosition(m.target);
                         }
                     }
                 }
@@ -122,7 +160,26 @@
                 var panels = document.querySelectorAll('.fi-fo-date-time-picker-panel');
                 for (var i = 0; i < panels.length; i++) {
                     enhancePanel(panels[i]);
+                    adjustFilterPanelPosition(panels[i]);
                 }
+
+                window.addEventListener('resize', function () {
+                    var openPanels = document.querySelectorAll('.fi-ta-filters .fi-fo-date-time-picker-panel');
+                    for (var r = 0; r < openPanels.length; r++) {
+                        if (openPanels[r].style.display !== 'none') {
+                            adjustFilterPanelPosition(openPanels[r]);
+                        }
+                    }
+                });
+
+                window.addEventListener('scroll', function () {
+                    var openPanels = document.querySelectorAll('.fi-ta-filters .fi-fo-date-time-picker-panel');
+                    for (var s = 0; s < openPanels.length; s++) {
+                        if (openPanels[s].style.display !== 'none') {
+                            adjustFilterPanelPosition(openPanels[s]);
+                        }
+                    }
+                }, true);
             }
         };
 

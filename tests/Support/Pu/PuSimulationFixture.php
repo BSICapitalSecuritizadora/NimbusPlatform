@@ -48,7 +48,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class PuSimulationFixture
 {
-    public const CALENDAR_CODE = BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS;
+    /** Calendário da curva oficial: a política de mercado, não o Dia Útil literal do Termo. */
+    public const CALENDAR_CODE = BusinessCalendarRegistry::MARKET_CALENDAR;
 
     /** Hipótese de primeira integralização usada apenas no teste. */
     private const INTEGRALIZATION_DATE = '2026-05-15';

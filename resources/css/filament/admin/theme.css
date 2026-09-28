@@ -10,6 +10,7 @@
 @import './receivable-view.css';
 @import './pu-curve-history.css';
 @import './general-documents-list.css';
+@import './areas-and-responsibles.css';
 
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
@@ -2565,7 +2566,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     background: #06151c !important;
     border: 1px solid rgba(148, 163, 184, 0.22) !important;
     border-radius: 8px !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     box-sizing: border-box !important;
     margin: 0 !important;
 }
@@ -2629,6 +2630,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     background-repeat: no-repeat !important;
     background-size: 1.125rem 1.125rem !important;
     margin: 0 !important;
+    pointer-events: none !important;
 }
 
 .fi-ta-filters input.fi-fo-date-time-picker-display-text-input::placeholder,
@@ -2656,6 +2658,10 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     min-width: 270px !important;
     max-width: min(340px, calc(100vw - 2rem)) !important;
     box-sizing: border-box !important;
+}
+
+.fi-ta-filters .fi-fo-date-time-picker-panel {
+    z-index: 10001 !important;
 }
 
 /* Cabeçalho do Painel: Mês, Ano e Navegação */
@@ -16599,6 +16605,169 @@ body.bsi-negotiation-view-page,
 
 .fi-sidebar-sub-group-items .fi-sidebar-item-label {
     font-size: 0.75rem !important; /* 12px */
+}
+
+/* ── Hierarquia Refinada do Submenu de Configurações (BSI Capital) ── */
+
+/* 1. Container do submenu: remove borda contínua do container para eliminar sobras no rodapé */
+.fi-sidebar-sub-group-items[data-sidebar-sub-group="configuracoes"],
+li[data-sidebar-item="configuracoes"] > .fi-sidebar-sub-group-items {
+    margin-inline-start: 1rem !important;
+    padding-inline-start: 0.375rem !important;
+    border-inline-start: none !important;
+    border-left: none !important;
+    margin-top: 0.1875rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.1875rem !important;
+}
+
+/* 2. Botão do item filho: alinhamento vertical e spacing horizontal compacto e refinado */
+.fi-sidebar-sub-group-items[data-sidebar-sub-group="configuracoes"] .fi-sidebar-item-btn,
+li[data-sidebar-item="configuracoes"] > .fi-sidebar-sub-group-items .fi-sidebar-item-btn {
+    min-height: 2.125rem !important; /* 34px */
+    height: 2.125rem !important;
+    padding: 0 0.5rem !important;
+    gap: 0.5rem !important; /* Proporção ideal entre indicador e texto */
+    position: relative !important;
+}
+
+.fi-sidebar-sub-group-items[data-sidebar-sub-group="configuracoes"] .fi-sidebar-item-label,
+li[data-sidebar-item="configuracoes"] > .fi-sidebar-sub-group-items .fi-sidebar-item-label {
+    font-size: 0.75rem !important; /* 12px */
+    line-height: 1.125rem !important;
+    font-weight: 500 !important;
+}
+
+/* 3. Container do indicador (marcador + segmentos de linha): perfeitamente centrado */
+.fi-sidebar-sub-group-items[data-sidebar-sub-group="configuracoes"] .fi-sidebar-item-grouped-border,
+li[data-sidebar-item="configuracoes"] > .fi-sidebar-sub-group-items .fi-sidebar-item-grouped-border {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 0.875rem !important; /* 14px */
+    min-width: 0.875rem !important;
+    height: 100% !important;
+    flex-shrink: 0 !important;
+    pointer-events: none !important;
+}
+
+/* 4. Linha vertical contínua (1px, discreta e institucional: rgba(230, 228, 228, 0.14)) */
+
+/* 4a. Conector inicial vindo do item pai (Configurações) até o marcador do primeiro filho (Usuários) */
+.fi-sidebar-sub-group-items[data-sidebar-sub-group="configuracoes"] > li:first-child .fi-sidebar-item-grouped-border::before,
+li[data-sidebar-item="configuracoes"] > .fi-sidebar-sub-group-items > li:first-child .fi-sidebar-item-grouped-border::before {
+    content: '' !important;
+    position: absolute !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    top: -0.375rem !important;
+    bottom: 50% !important;
+    width: 1px !important;
+    background-color: rgba(230, 228, 228, 0.14) !important;
+    box-shadow: none !important;
+    border: none !important;
+    z-index: 1 !important;
+    pointer-events: none !important;
+}
+
+/* 4b. Segmento ascendente (do topo/gap até o centro do marcador) */
+.fi-sidebar-sub-group-items[data-sidebar-sub-group="configuracoes"] .fi-sidebar-item-grouped-border-part-not-first,
+li[data-sidebar-item="configuracoes"] > .fi-sidebar-sub-group-items .fi-sidebar-item-grouped-border-part-not-first {
+    position: absolute !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    top: -0.1875rem !important;
+    bottom: 50% !important;
+    width: 1px !important;
+    background-color: rgba(230, 228, 228, 0.14) !important;
+    box-shadow: none !important;
+    border: none !important;
+    z-index: 1 !important;
+    pointer-events: none !important;
+}
+
+/* 4c. Segmento descendente (do centro do marcador até o gap com o próximo item) */
+.fi-sidebar-sub-group-items[data-sidebar-sub-group="configuracoes"] .fi-sidebar-item-grouped-border-part-not-last,
+li[data-sidebar-item="configuracoes"] > .fi-sidebar-sub-group-items .fi-sidebar-item-grouped-border-part-not-last {
+    position: absolute !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    top: 50% !important;
+    bottom: -0.1875rem !important;
+    width: 1px !important;
+    background-color: rgba(230, 228, 228, 0.14) !important;
+    box-shadow: none !important;
+    border: none !important;
+    z-index: 1 !important;
+    pointer-events: none !important;
+}
+
+/* 4d. Terminação da linha: o último filho (Templates de Planilhas) encerra no marcador sem qualquer rastro abaixo */
+.fi-sidebar-sub-group-items[data-sidebar-sub-group="configuracoes"] > li:last-child .fi-sidebar-item-grouped-border-part-not-last,
+li[data-sidebar-item="configuracoes"] > .fi-sidebar-sub-group-items > li:last-child .fi-sidebar-item-grouped-border-part-not-last {
+    display: none !important;
+}
+
+.fi-sidebar-sub-group-items[data-sidebar-sub-group="configuracoes"] > li:last-child .fi-sidebar-item-grouped-border::after,
+li[data-sidebar-item="configuracoes"] > .fi-sidebar-sub-group-items > li:last-child .fi-sidebar-item-grouped-border::after {
+    display: none !important;
+}
+
+/* 5. Marcadores normais (inativos): circulares de 4.5px, cor secundária discreta off-white */
+.fi-sidebar-sub-group-items[data-sidebar-sub-group="configuracoes"] .fi-sidebar-item-grouped-border-part,
+li[data-sidebar-item="configuracoes"] > .fi-sidebar-sub-group-items .fi-sidebar-item-grouped-border-part {
+    position: relative !important;
+    width: 4.5px !important;
+    height: 4.5px !important;
+    min-width: 4.5px !important;
+    min-height: 4.5px !important;
+    border-radius: 9999px !important;
+    background-color: rgba(230, 228, 228, 0.35) !important;
+    border: none !important;
+    box-shadow: none !important;
+    z-index: 2 !important;
+    transition: background-color 150ms ease, opacity 150ms ease !important;
+    pointer-events: none !important;
+}
+
+/* Hover nos marcadores inativos: leve aumento de contraste sem animação chamativa */
+.fi-sidebar-sub-group-items[data-sidebar-sub-group="configuracoes"] .fi-sidebar-item:not(.fi-active) > .fi-sidebar-item-btn:hover .fi-sidebar-item-grouped-border-part,
+li[data-sidebar-item="configuracoes"] > .fi-sidebar-sub-group-items .fi-sidebar-item:not(.fi-active) > .fi-sidebar-item-btn:hover .fi-sidebar-item-grouped-border-part {
+    background-color: rgba(230, 228, 228, 0.65) !important;
+}
+
+/* 6. Marcador ativo: dourado institucional #A06E28, 5.5px, nítido e sem glow/sombra */
+.fi-sidebar-sub-group-items[data-sidebar-sub-group="configuracoes"] .fi-sidebar-item.fi-active > .fi-sidebar-item-btn .fi-sidebar-item-grouped-border-part,
+li[data-sidebar-item="configuracoes"] > .fi-sidebar-sub-group-items .fi-sidebar-item.fi-active > .fi-sidebar-item-btn .fi-sidebar-item-grouped-border-part {
+    width: 5.5px !important;
+    height: 5.5px !important;
+    min-width: 5.5px !important;
+    min-height: 5.5px !important;
+    background-color: #A06E28 !important; /* Dourado institucional BSI Capital */
+    box-shadow: none !important;
+    border: none !important;
+}
+
+/* 7. Preserva a neutralidade da linha no item ativo (sem linha dourada) */
+.fi-sidebar-sub-group-items[data-sidebar-sub-group="configuracoes"] .fi-sidebar-item.fi-active .fi-sidebar-item-grouped-border-part-not-first,
+li[data-sidebar-item="configuracoes"] > .fi-sidebar-sub-group-items .fi-sidebar-item.fi-active .fi-sidebar-item-grouped-border-part-not-first,
+.fi-sidebar-sub-group-items[data-sidebar-sub-group="configuracoes"] .fi-sidebar-item.fi-active .fi-sidebar-item-grouped-border-part-not-last,
+li[data-sidebar-item="configuracoes"] > .fi-sidebar-sub-group-items .fi-sidebar-item.fi-active .fi-sidebar-item-grouped-border-part-not-last {
+    background-color: rgba(230, 228, 228, 0.14) !important;
+}
+
+/* 8. Não duplicar o destaque do item ativo: suprime a barra vertical lateral ::before no submenu */
+.fi-sidebar-sub-group-items[data-sidebar-sub-group="configuracoes"] .fi-sidebar-item.fi-active > .fi-sidebar-item-btn::before,
+li[data-sidebar-item="configuracoes"] > .fi-sidebar-sub-group-items .fi-sidebar-item.fi-active > .fi-sidebar-item-btn::before {
+    display: none !important;
+}
+
+/* 9. Sidebar recolhida: sem resquícios ou artefatos do submenu */
+.fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-sub-group-items[data-sidebar-sub-group="configuracoes"],
+.fi-sidebar:not(.fi-sidebar-open) li[data-sidebar-item="configuracoes"] > .fi-sidebar-sub-group-items {
+    display: none !important;
 }
 
 /* ── Badges Polish & Semantic Differentiation ── */

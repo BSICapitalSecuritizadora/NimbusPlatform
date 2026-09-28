@@ -296,6 +296,7 @@ it('consolidates the audit trails and internal access inside Administração', f
             'Usuários',
             'Perfis de acesso',
             'Templates de Planilhas',
+            'Áreas e responsáveis',
         ]);
 });
 

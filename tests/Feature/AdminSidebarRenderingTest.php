@@ -106,3 +106,75 @@ it('renders the collapsed header controls with proper tooltips and accessibility
         ->and($content)->toContain('fi-sidebar-compact-logo-link')
         ->and($content)->toContain('aria-label="BSI Capital"');
 });
+
+it('renders the refined settings submenu tree structure with proper scoping and decorative accessibility', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'admin-settings-tree-test@bsicapital.com.br',
+    ]);
+    $user->assignRole('super-admin');
+    $user->givePermissionTo(Permission::all());
+
+    $response = $this->actingAs($user)->get('/admin/settings');
+
+    $response->assertOk();
+
+    $content = $response->getContent();
+
+    // Settings item has data-sidebar-item attribute
+    expect($content)->toContain('data-sidebar-item="configuracoes"')
+        ->and($content)->toContain('data-sidebar-sub-group="configuracoes"');
+
+    // Child items exist with proper data attributes
+    expect($content)->toContain('data-sidebar-item="usuarios"')
+        ->and($content)->toContain('data-sidebar-item="perfis-de-acesso"')
+        ->and($content)->toContain('data-sidebar-item="templates-de-planilhas"');
+
+    // Grouped border indicators have aria-hidden for accessibility
+    expect($content)->toContain('fi-sidebar-item-grouped-border')
+        ->and($content)->toContain('aria-hidden="true"');
+});
+
+it('activates templates de planilhas when visiting its settings route', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'admin-templates-active-test@bsicapital.com.br',
+    ]);
+    $user->assignRole('super-admin');
+    $user->givePermissionTo(Permission::all());
+
+    $response = $this->actingAs($user)->get('/admin/settings/templates');
+    $response->assertOk();
+    $content = $response->getContent();
+
+    expect($content)->toContain('data-sidebar-item="templates-de-planilhas"')
+        ->and($content)->toMatch('/class="[^"]*fi-sidebar-item[^"]*fi-active[^"]*"[^>]*data-sidebar-item="templates-de-planilhas"/');
+});
+
+it('activates users when visiting its resource route', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'admin-users-active-test@bsicapital.com.br',
+    ]);
+    $user->assignRole('super-admin');
+    $user->givePermissionTo(Permission::all());
+
+    $response = $this->actingAs($user)->get('/admin/users');
+    $response->assertOk();
+    $content = $response->getContent();
+
+    expect($content)->toContain('data-sidebar-item="usuarios"')
+        ->and($content)->toMatch('/class="[^"]*fi-sidebar-item[^"]*fi-active[^"]*"[^>]*data-sidebar-item="usuarios"/');
+});
+
+it('activates roles when visiting its resource route', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'admin-roles-active-test@bsicapital.com.br',
+    ]);
+    $user->assignRole('super-admin');
+    $user->givePermissionTo(Permission::all());
+
+    $response = $this->actingAs($user)->get('/admin/roles');
+    $response->assertOk();
+    $content = $response->getContent();
+
+    expect($content)->toContain('data-sidebar-item="perfis-de-acesso"')
+        ->and($content)->toMatch('/class="[^"]*fi-sidebar-item[^"]*fi-active[^"]*"[^>]*data-sidebar-item="perfis-de-acesso"/');
+});

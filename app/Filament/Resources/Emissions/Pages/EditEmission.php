@@ -18,6 +18,7 @@ use App\Domain\PuCalculator\Services\BusinessCalendarSelectionEvidenceService;
 use App\Domain\PuCalculator\Services\FirstCouponPreIntegralizationPremiumCalculator;
 use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Domain\PuCalculator\Services\PuBaselineReadinessService;
+use App\Domain\PuCalculator\Services\PuContractCalendarComparisonService;
 use App\Domain\PuCalculator\Services\PuCurveExportService;
 use App\Domain\PuCalculator\Services\PuCurvePrerequisiteService;
 use App\Domain\PuCalculator\Services\PuCurveVersionService;
@@ -96,6 +97,30 @@ class EditEmission extends EditRecord
         if (Cache::get($this->puCurveValidationStatusCacheKey()) === 'processing') {
             $this->isValidatingPuCurve = true;
         }
+    }
+
+    /**
+     * A versão vigente foi gerada ou validada pelo próprio usuário logado.
+     */
+    private function isSelfHomologatingPuCurve(): bool
+    {
+        $version = $this->getRecord()->currentPuCurveVersion();
+
+        return $version !== null
+            && app(HomologatePuCurve::class)->isSelfHomologation($version, auth()->id());
+    }
+
+    private function homologationModalDescription(): string
+    {
+        $version = $this->getRecord()->currentPuCurveVersion();
+        $default = 'A versao corrente sera marcada como homologada e protegida contra sobrescrita.';
+
+        if ($version === null || ! $this->isSelfHomologatingPuCurve()) {
+            return $default;
+        }
+
+        return app(HomologatePuCurve::class)->selfHomologationBlocker($version, auth()->id())
+            ?? 'Você gerou ou validou esta versão. Como responsável pela área Curva de PU e Índices, pode homologá-la registrando a justificativa. '.$default;
     }
 
     protected function getHeaderActions(): array
@@ -212,12 +237,20 @@ class EditEmission extends EditRecord
                 ->icon('heroicon-o-check-badge')
                 ->color('success')
                 ->visible(fn (): bool => auth()->user()?->can('pu.curve.homologate') ?? false)
-                ->requiresConfirmation()
                 ->modalHeading('Homologar Curva PU')
-                ->modalDescription('A versao corrente sera marcada como homologada e protegida contra sobrescrita.')
-                ->action(function (): void {
+                ->modalDescription(fn (): string => $this->homologationModalDescription())
+                ->modalSubmitActionLabel('Homologar')
+                ->form(fn (): array => [
+                    Textarea::make('justification')
+                        ->label(fn (): string => $this->isSelfHomologatingPuCurve() ? 'Justificativa da auto-homologação' : 'Observação (opcional)')
+                        ->helperText(fn (): ?string => $this->isSelfHomologatingPuCurve() ? 'Fica registrada na versão e na auditoria da curva.' : null)
+                        ->required(fn (): bool => $this->isSelfHomologatingPuCurve())
+                        ->rows(3)
+                        ->maxLength(2000),
+                ])
+                ->action(function (array $data): void {
                     try {
-                        $version = app(HomologatePuCurve::class)->handle($this->getRecord(), null, auth()->id());
+                        $version = app(HomologatePuCurve::class)->handle($this->getRecord(), null, auth()->id(), $data['justification'] ?? null);
                     } catch (\InvalidArgumentException|PuMakerCheckerException $exception) {
                         Notification::make()->title('Nao foi possivel homologar.')->body($exception->getMessage())->danger()->persistent()->send();
 
@@ -355,6 +388,18 @@ class EditEmission extends EditRecord
                         'emission' => $this->getRecord(),
                         'summary' => app(PuCurveExportService::class)->summary($this->getRecord()),
                         'rows' => app(PuCurveExportService::class)->rows($this->getRecord())->take(30),
+                    ])),
+
+                Action::make('comparePuContractCalendar')
+                    ->label('Comparar com o calendário do Termo')
+                    ->icon('heroicon-o-scale')
+                    ->visible(fn (): bool => auth()->user()?->can('pu.curve.view') ?? false)
+                    ->modalWidth(Width::SevenExtraLarge)
+                    ->modalHeading('Curva oficial × calendário do Termo')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar')
+                    ->modalContent(fn () => view('filament.emissions.pu-contract-calendar-comparison', [
+                        'comparison' => app(PuContractCalendarComparisonService::class)->compare($this->getRecord()),
                     ])),
 
                 Action::make('viewPuValidationReport')
@@ -797,14 +842,21 @@ class EditEmission extends EditRecord
             Select::make('calendar_code')
                 ->label('Calendário de dias úteis')
                 ->options(fn (): array => $this->puCalendarOptions())
-                ->helperText('Seleção explícita obrigatória. B3 legado só permanece disponível quando já está gravado; calendários HML não aparecem aqui.')
+                ->helperText(fn (): string => $this->puBaselineReport() !== null
+                    ? 'A curva oficial usa o calendário de mercado ('.BusinessCalendarRegistry::label(BusinessCalendarRegistry::MARKET_CALENDAR).'). O calendário do Termo fica só para comparação.'
+                    : 'Seleção explícita obrigatória. B3 legado só permanece disponível quando já está gravado; calendários HML não aparecem aqui.')
                 ->searchable()
                 ->required(),
             TextInput::make('calendar_evidence_document')
                 ->label('Documento que fundamenta o calendário')
-                ->helperText(fn (Get $get): string => $this->contractualEvidenceFor('calendar_code', $get('calendar_code'))['document'] !== null
-                    ? 'Preenchido com a cláusula confirmada em Instrumentos Jurídicos. Altere só se a fonte for outra.'
-                    : 'Opcional. Informe somente quando houver evidência contratual ou normativa aplicável.'),
+                ->helperText(fn (Get $get): string => match ($this->provenContractualField('calendar_code')['status'] ?? null) {
+                    'governance_control' => $this->contractualEvidenceFor('calendar_code', $get('calendar_code'))['document'] !== null
+                        ? 'Preenchido com a política de calendário de mercado da securitizadora.'
+                        : 'Opcional. Informe somente quando houver evidência contratual ou normativa aplicável.',
+                    default => $this->contractualEvidenceFor('calendar_code', $get('calendar_code'))['document'] !== null
+                        ? 'Preenchido com a cláusula confirmada em Instrumentos Jurídicos. Altere só se a fonte for outra.'
+                        : 'Opcional. Informe somente quando houver evidência contratual ou normativa aplicável.',
+                }),
             TextInput::make('calendar_evidence_clause')
                 ->label('Cláusula / item da regra'),
             TextInput::make('calendar_evidence_page')
@@ -937,7 +989,7 @@ class EditEmission extends EditRecord
             return $options;
         }
 
-        $options[$calendar->code] = $calendar->selectionLabel().' — comprovado pelo contrato e liberado pelo gate';
+        $options[$calendar->code] = $calendar->selectionLabel().' — calendário de mercado da curva oficial';
 
         return $options;
     }
@@ -1033,14 +1085,16 @@ class EditEmission extends EditRecord
     }
 
     /**
-     * Linha do candidato cujo valor o contrato comprovou.
+     * Linha do candidato cujo valor o contrato comprovou -- ou, no calendário da
+     * curva, que a política de mercado da securitizadora fixou.
      *
      * @return array<string, mixed>|null
      */
     private function provenContractualField(string $field): ?array
     {
         return collect($this->puBaselineReport()?->candidateFields ?? [])
-            ->first(fn (array $row): bool => $row['field'] === $field && $row['status'] === 'proven');
+            ->first(fn (array $row): bool => $row['field'] === $field
+                && in_array($row['status'], ['proven', 'governance_control'], true));
     }
 
     /**

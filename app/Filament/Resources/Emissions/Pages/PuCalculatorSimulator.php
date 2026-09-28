@@ -11,6 +11,7 @@ use App\Domain\PuCalculator\Enums\PuCalculationProfile;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuSimulationState;
 use App\Domain\PuCalculator\Services\IndexRateSyncService;
+use App\Domain\PuCalculator\Services\PuBaselineCandidateFactory;
 use App\Domain\PuCalculator\Services\PuSimulationParameterFactory;
 use App\Domain\PuCalculator\Services\PuSimulationService;
 use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
@@ -92,6 +93,11 @@ class PuCalculatorSimulator extends Page
     public bool $hasCalculated = false;
 
     private ?PuSimulationResult $result = null;
+
+    /** Memo por requisição: a candidata é cara e a tela a consulta a cada render. */
+    private ?string $contractCalendar = null;
+
+    private bool $contractCalendarResolved = false;
 
     public function mount(int|string $record): void
     {
@@ -239,7 +245,7 @@ class PuCalculatorSimulator extends Page
      *
      * A opção vazia é o padrão e significa "o que a configuração gravada usa":
      * o calendário de divulgação salvo, quando existe, ou o calendário
-     * contratual da curva -- nenhuma mudança silenciosa de semântica.
+     * da curva -- nenhuma mudança silenciosa de semântica.
      *
      * @return array<string, string>
      */
@@ -249,7 +255,7 @@ class PuCalculatorSimulator extends Page
 
         return ['' => $saved !== null
             ? sprintf('Configuração salva — %s', $saved)
-            : 'Mesmo calendário da curva (contratual)'] + BusinessCalendarRegistry::options();
+            : 'Mesmo calendário da curva'] + BusinessCalendarRegistry::options();
     }
 
     /** Calendário de divulgação do CDI gravado na configuração, se houver. */
@@ -263,17 +269,39 @@ class PuCalculatorSimulator extends Page
     /**
      * Calendários oferecidos como hipótese de accrual da curva.
      *
-     * A opção vazia é o padrão e significa "o mesmo calendário contratual" --
-     * nenhuma emissão muda de calendário por abrir esta tela.
+     * A opção vazia é o padrão e significa "o mesmo calendário da curva
+     * oficial" -- nenhuma emissão muda de calendário por abrir esta tela. O
+     * calendário do Termo aparece como hipótese quando difere do da curva: é a
+     * comparação que a política de mercado preserva.
      *
      * @return array<string, string>
      */
     public function accrualCalendarOptions(): array
     {
-        return [
-            '' => 'Mesmo calendário contratual',
+        $options = ['' => 'Mesmo calendário da curva oficial'];
+        $contractCalendar = $this->contractCalendarCode();
+
+        if ($contractCalendar !== null && $contractCalendar !== $this->curveCalendarCode()) {
+            $options[$contractCalendar] = 'Calendário do Termo — '.BusinessCalendarRegistry::label($contractCalendar);
+        }
+
+        return $options + [
             BusinessCalendarRegistry::BR_FINANCIAL_MARKET => 'Mercado financeiro — FEBRABAN/ANBIMA',
         ];
+    }
+
+    /** Calendário do Dia Útil do Termo, quando a emissão tem contrato confirmado. */
+    private function contractCalendarCode(): ?string
+    {
+        if (! $this->contractCalendarResolved) {
+            $candidates = app(PuBaselineCandidateFactory::class);
+            $this->contractCalendar = $candidates->supports($this->record)
+                ? $candidates->make($this->record, null)->contractCalendarCode
+                : null;
+            $this->contractCalendarResolved = true;
+        }
+
+        return $this->contractCalendar;
     }
 
     /** Rótulo da hipótese de accrual, ou null quando não há hipótese. */

@@ -2,6 +2,7 @@
 
 namespace App\Actions\ConstructionUnitValues;
 
+use App\Support\SpreadsheetTemplates\GeneratedSpreadsheetTemplate;
 use App\Support\TemporarySpreadsheetFile;
 use Spatie\SimpleExcel\SimpleExcelWriter;
 
@@ -12,7 +13,7 @@ use Spatie\SimpleExcel\SimpleExcelWriter;
  * so nothing is imported by accident, and the demonstration rows live on a
  * sheet the importer never reads.
  */
-class UnitValueSpreadsheetTemplate
+class UnitValueSpreadsheetTemplate implements GeneratedSpreadsheetTemplate
 {
     public const DOWNLOAD_NAME = 'Modelo - Atualização de Valores das Unidades.xlsx';
 
