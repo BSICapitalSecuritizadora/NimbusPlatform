@@ -8,13 +8,13 @@ use App\Models\Emission;
 use App\Models\SalesBoard;
 use App\Models\SalesBoardHistory;
 use App\Models\SalesBoardPublication;
-use App\Models\User;
 use App\Services\SalesBoards\SalesBoardPositionReader;
 use App\Services\SalesBoards\SalesBoardPublicationProjection;
 use App\Support\Money\IntegerMoney;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\SalesBoards\CycleFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 uses(RefreshDatabase::class);
@@ -93,7 +93,9 @@ it('refuses to publish over a position registered by hand for the same competenc
     $scenario = ManagementReviewFixture::submittedCycle();
     $cycle = $scenario['cycle']->fresh();
 
-    $manual = SalesBoard::factory()->create([
+    // Digitado enquanto a Emissão ainda era legada: depois da ativação o guard
+    // de escrita já não deixaria esse quadro nascer.
+    $manual = CycleFixture::whileLegacy($cycle->emission_id, fn (): SalesBoard => SalesBoard::factory()->create([
         'emission_id' => $cycle->emission_id,
         'construction_id' => $cycle->construction_id,
         'reference_month' => $cycle->reference_month->toDateString(),
@@ -105,7 +107,7 @@ it('refuses to publish over a position registered by hand for the same competenc
         'financed_value' => '0.00',
         'paid_value' => '0.00',
         'exchanged_value' => '0.00',
-    ]);
+    ]));
 
     $review = ManagementReviewFixture::open($cycle);
 
@@ -130,11 +132,11 @@ it('detects the conflict even when the manual board belongs to another emission'
     // publicar ao lado criaria duas posições para o mesmo mês.
     $otherEmission = Emission::factory()->create(['status' => 'active']);
 
-    SalesBoard::factory()->create([
+    CycleFixture::whileLegacy($cycle->emission_id, fn (): SalesBoard => SalesBoard::factory()->create([
         'emission_id' => $otherEmission->id,
         'construction_id' => $cycle->construction_id,
         'reference_month' => $cycle->reference_month->toDateString(),
-    ]);
+    ]));
 
     $review = ManagementReviewFixture::open($cycle);
 
@@ -170,7 +172,9 @@ it('lets the position reader see the approved position after publication', funct
 });
 
 it('sums both constructions of an emission after both are published', function () {
-    $emission = Emission::factory()->create(['status' => 'active']);
+    $emission = Emission::factory()
+        ->withAutomatedSalesBoard(CycleFixture::AUTOMATION_START)
+        ->create(['status' => 'active']);
 
     $first = ManagementReviewFixture::submittedCycleOn($emission, '1');
     $second = ManagementReviewFixture::submittedCycleOn($emission, '2');
@@ -210,7 +214,7 @@ it('never lets a publication be edited or deleted', function () {
 it('never lets an approved management review be edited or deleted', function () {
     $scenario = ManagementReviewFixture::submittedCycle();
     $review = ManagementReviewFixture::open($scenario['cycle']);
-    ManagementReviewFixture::approve($review, User::factory()->create());
+    ManagementReviewFixture::approve($review, GovernanceFixture::approver());
 
     $approved = $review->fresh();
 

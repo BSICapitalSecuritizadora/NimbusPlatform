@@ -10,6 +10,11 @@ namespace App\Enums;
  * exatamente o que devia: ela é `CompletedWithBlockers`, e o que precisa de
  * ação é o cadastro, não o scheduler. `CompletedWithFailures` é o alarme de
  * verdade, e `Failed` é a execução que não conseguiu nem descobrir os alvos.
+ *
+ * `Interrupted` é a execução que nunca chegou ao fim -- o processo morreu no meio
+ * (falta de memória, deploy, reinício do contêiner). Ninguém consegue gravar o
+ * próprio fim quando morre, então quem grava é a execução seguinte, ao encontrar
+ * a linha ainda "executando" muito tempo depois do início.
  */
 enum SalesBoardAutomationRunStatus: string
 {
@@ -23,6 +28,8 @@ enum SalesBoardAutomationRunStatus: string
 
     case Failed = 'falhou';
 
+    case Interrupted = 'interrompido';
+
     /**
      * A execução chegou ao fim sem erro técnico do orquestrador.
      */
@@ -33,11 +40,15 @@ enum SalesBoardAutomationRunStatus: string
 
     /**
      * O desfecho de uma execução que processou os alvos até o fim.
+     *
+     * Aviso que não conseguiu sair (`$alertsFailed`) também é falha técnica: um
+     * SMTP fora do ar não é bloqueio de cadastro, e uma execução em que nenhum
+     * aviso saiu não pode parecer saudável.
      */
-    public static function fromCounters(int $failed, int $blocked): self
+    public static function fromCounters(int $failed, int $blocked, int $alertsFailed = 0): self
     {
         return match (true) {
-            $failed > 0 => self::CompletedWithFailures,
+            $failed > 0, $alertsFailed > 0 => self::CompletedWithFailures,
             $blocked > 0 => self::CompletedWithBlockers,
             default => self::Completed,
         };
@@ -51,6 +62,7 @@ enum SalesBoardAutomationRunStatus: string
             self::CompletedWithBlockers => 'Concluída com bloqueios',
             self::CompletedWithFailures => 'Concluída com falhas',
             self::Failed => 'Falhou',
+            self::Interrupted => 'Interrompida',
         };
     }
 
@@ -60,7 +72,7 @@ enum SalesBoardAutomationRunStatus: string
             self::Running => 'info',
             self::Completed => 'success',
             self::CompletedWithBlockers => 'warning',
-            self::CompletedWithFailures, self::Failed => 'danger',
+            self::CompletedWithFailures, self::Failed, self::Interrupted => 'danger',
         };
     }
 }

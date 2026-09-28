@@ -34,6 +34,9 @@ class ConstructionUnitExchange extends Model
         'exchange_value',
         'effective_from',
         'ended_on',
+        'ended_at',
+        'ended_by_id',
+        'end_reason',
         'kind',
         'reason',
         'created_by_id',
@@ -45,13 +48,20 @@ class ConstructionUnitExchange extends Model
             'exchange_value' => 'decimal:2',
             'effective_from' => 'date',
             'ended_on' => 'date',
+            'ended_at' => 'datetime',
             'kind' => ConstructionUnitExchangeKind::class,
         ];
     }
 
+    /**
+     * A permuta decide a classificação "permutado" do Quadro de Vendas. A
+     * trilha grava em `construction_unit_exchanges`, categoria protegida, e não
+     * em `default`, que é descartado em um ano.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('construction_unit_exchanges')
             ->logFillable()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
@@ -70,6 +80,11 @@ class ConstructionUnitExchange extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_id');
+    }
+
+    public function endedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'ended_by_id');
     }
 
     /**

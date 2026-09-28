@@ -24,6 +24,8 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Callout;
+use Filament\Schemas\Components\EmbeddedTable;
+use Filament\Schemas\Components\RenderHook;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\Utilities\Get;
@@ -31,6 +33,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -45,7 +48,13 @@ use Throwable;
  * massa. Cada política tem início e fim; mudar o limite é registrar outra, que
  * substitui a anterior a partir do próprio início -- com confirmação explícita
  * quando os períodos se cruzam. A anterior continua respondendo pelas vendas
- * feitas enquanto ela valia.
+ * feitas enquanto ela valia. Um início anterior a hoje rejulga vendas já feitas:
+ * pede uma segunda confirmação, sobre as competências alcançadas, e é recusado
+ * quando alcança competência já publicada.
+ *
+ * Acima da tabela, um aviso quando a cobertura de política da obra termina em
+ * até {@see self::EXPIRY_WARNING_DAYS} dias ou já terminou: sem política, uma
+ * venda bloqueia a competência inteira, e é melhor saber antes.
  */
 class SalesDiscountPoliciesRelationManager extends RelationManager
 {
@@ -56,6 +65,12 @@ class SalesDiscountPoliciesRelationManager extends RelationManager
     protected static ?string $modelLabel = 'Política de desconto';
 
     protected static ?string $pluralModelLabel = 'Políticas de desconto';
+
+    /**
+     * Antecedência do aviso de vencimento: um mês cobre o fechamento de uma
+     * competência inteira.
+     */
+    public const EXPIRY_WARNING_DAYS = 30;
 
     /**
      * Avaliações de período já calculadas nesta requisição, por `início|fim`.
@@ -80,6 +95,26 @@ class SalesDiscountPoliciesRelationManager extends RelationManager
     public function form(Schema $schema): Schema
     {
         return $schema->components([]);
+    }
+
+    /**
+     * O conteúdo padrão do relation manager, com o aviso de cobertura antes da
+     * tabela.
+     */
+    public function content(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                $this->getTabsContentComponent(),
+                RenderHook::make(PanelsRenderHook::RESOURCE_RELATION_MANAGER_BEFORE),
+                Callout::make(fn (): ?string => $this->coverageWarning()['heading'] ?? null)
+                    ->description(fn (): ?string => $this->coverageWarning()['description'] ?? null)
+                    ->status(fn (): ?string => $this->coverageWarning()['status'] ?? null)
+                    ->visible(fn (): bool => $this->coverageWarning() !== null)
+                    ->extraAttributes(['class' => 'bsi-sales-discount-coverage-warning']),
+                EmbeddedTable::make(),
+                RenderHook::make(PanelsRenderHook::RESOURCE_RELATION_MANAGER_AFTER),
+            ]);
     }
 
     /**
@@ -238,6 +273,17 @@ class SalesDiscountPoliciesRelationManager extends RelationManager
                     ->minValue(SalesDiscountPolicy::MINIMUM_DISCOUNT_PERCENT)
                     ->maxValue(SalesDiscountPolicy::MAXIMUM_DISCOUNT_PERCENT)
                     ->step('0.01')
+                    /**
+                     * O `step` é só atributo HTML. A coluna é `decimal(5,2)` e
+                     * arredondaria uma terceira casa; o registrador também a
+                     * recusa, mas aqui o erro aparece no campo.
+                     *
+                     * A tela é mais estrita que o registrador de propósito: ele
+                     * aceita zeros à direita (`4.2500` = 4,25%), que não mudam
+                     * o valor e podem vir de outros chamadores; quem digita não
+                     * precisa deles.
+                     */
+                    ->rule('decimal:0,2')
                     ->placeholder('5,00')
                     ->helperText('Limite máximo. Uma venda pode ter desconto menor, nunca maior.')
                     ->extraInputAttributes(['class' => 'text-right font-mono tabular-nums'])
@@ -245,10 +291,11 @@ class SalesDiscountPoliciesRelationManager extends RelationManager
                         'required' => 'Informe o desconto máximo autorizado.',
                         'min' => 'O desconto não pode ser negativo.',
                         'max' => 'O desconto não pode ultrapassar 100%.',
+                        'decimal' => 'Informe o desconto com no máximo duas casas decimais.',
                     ]),
 
                 Section::make('Período de vigência')
-                    ->description('Período em que esta política poderá ser aplicada às vendas. Datas futuras são permitidas e não retroagem.')
+                    ->description('Período em que esta política poderá ser aplicada às vendas. Um início anterior a hoje alcança vendas já feitas: pede confirmação própria e não pode chegar a uma competência já aprovada.')
                     ->compact()
                     ->columns(['default' => 1, 'sm' => 2])
                     ->extraAttributes(['class' => 'bsi-sales-discount-period-section'])
@@ -265,11 +312,25 @@ class SalesDiscountPoliciesRelationManager extends RelationManager
                              * depois de um fim escolhido para hoje.
                              */
                             ->default(fn (): CarbonImmutable => self::businessToday())
+                            /**
+                             * Início no passado é permitido -- é assim que uma
+                             * política errada é corrigida --, mas não até uma
+                             * competência já publicada: o veredito dela não é
+                             * rejulgado.
+                             */
+                            ->rule(fn (Get $get): Closure => function (string $attribute, mixed $value, Closure $fail) use ($get): void {
+                                $approvedMessage = $this->periodAssessment($get)?->approvedCompetenceMessage();
+
+                                if ($approvedMessage !== null) {
+                                    $fail($approvedMessage);
+                                }
+                            })
                             ->live()
                             ->afterStateUpdated(function (DatePicker $component, Get $get, Set $set): void {
-                                self::resetSubstitutionConfirmation($set);
+                                self::resetConfirmations($set);
 
                                 if (filled($get('effective_until'))) {
+                                    $this->validateLive($component, $component->getStatePath());
                                     $this->validateLive($component, $component->resolveRelativeStatePath('effective_until'));
                                 }
                             })
@@ -304,8 +365,17 @@ class SalesDiscountPoliciesRelationManager extends RelationManager
                                 }
                             })
                             ->live()
-                            ->afterStateUpdated(function (DatePicker $component, Set $set): void {
-                                self::resetSubstitutionConfirmation($set);
+                            ->afterStateUpdated(function (DatePicker $component, Get $get, Set $set): void {
+                                self::resetConfirmations($set);
+
+                                /**
+                                 * O fim decide até onde um início no passado
+                                 * alcança, e com isso se ele chega a uma
+                                 * competência publicada.
+                                 */
+                                if (filled($get('effective_from'))) {
+                                    $this->validateLive($component, $component->resolveRelativeStatePath('effective_from'));
+                                }
 
                                 $this->validateLive($component, $component->getStatePath());
                             })
@@ -350,6 +420,30 @@ class SalesDiscountPoliciesRelationManager extends RelationManager
                  */
                 Hidden::make('confirmed_substitution_id'),
 
+                Callout::make('Esta política alcança vendas já feitas')
+                    ->warning()
+                    ->description(fn (Get $get): ?string => $this->periodAssessment($get)?->retroactivityMessage())
+                    ->visible(fn (Get $get): bool => $this->periodAssessment($get)?->needsRetroactiveConfirmation() ?? false),
+
+                Checkbox::make('confirm_retroactive')
+                    ->label('Confirmo que a política alcança essas vendas')
+                    ->accepted()
+                    ->live()
+                    ->visible(fn (Get $get): bool => $this->periodAssessment($get)?->needsRetroactiveConfirmation() ?? false)
+                    ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
+                        $set('confirmed_retroactive_through', $state ? $this->periodAssessment($get)?->retroactiveThroughDate() : null);
+                    })
+                    ->validationMessages([
+                        'accepted' => 'Confirme o alcance retroativo para registrar a política.',
+                    ]),
+
+                /**
+                 * Até que dia o alcance ia quando o usuário confirmou. O
+                 * servidor recalcula; se o dia de negócio virou no meio, o
+                 * alcance cresceu e a confirmação não vale.
+                 */
+                Hidden::make('confirmed_retroactive_through'),
+
                 Textarea::make('reason')
                     ->label('Motivo')
                     ->required()
@@ -379,12 +473,19 @@ class SalesDiscountPoliciesRelationManager extends RelationManager
                             ? (int) $data['confirmed_substitution_id']
                             : null,
                         registeredBy: $user instanceof User ? $user : null,
+                        confirmedRetroactiveThrough: filled($data['confirmed_retroactive_through'] ?? null)
+                            ? (string) $data['confirmed_retroactive_through']
+                            : null,
                     );
                 } catch (SalesDiscountPolicyPeriodException $exception) {
+                    $withdrew = $this->withdrawConfirmations();
+
                     Notification::make()
                         ->danger()
                         ->title('Não foi possível registrar a política.')
-                        ->body($exception->getMessage())
+                        ->body($withdrew
+                            ? $exception->getMessage().' As confirmações foram desmarcadas: marque-as de novo depois de revisar.'
+                            : $exception->getMessage())
                         ->persistent()
                         ->send();
 
@@ -453,13 +554,120 @@ class SalesDiscountPoliciesRelationManager extends RelationManager
     }
 
     /**
-     * A confirmação vale para a substituição que estava na tela. Mudou o
-     * período, mudou a substituição: a confirmação precisa ser dada de novo.
+     * As confirmações valem para a substituição e o alcance que estavam na
+     * tela. Mudou o período, mudou o que foi confirmado: as duas precisam ser
+     * dadas de novo.
      */
-    protected static function resetSubstitutionConfirmation(Set $set): void
+    protected static function resetConfirmations(Set $set): void
     {
         $set('confirm_substitution', false);
         $set('confirmed_substitution_id', null);
+        $set('confirm_retroactive', false);
+        $set('confirmed_retroactive_through', null);
+    }
+
+    /**
+     * Desmarca as confirmações do formulário aberto depois de uma recusa do
+     * registrador.
+     *
+     * A recusa quer dizer que o servidor encontrou outra situação -- o dia de
+     * negócio virou e o alcance cresceu, outra política foi registrada no meio
+     * --, e o que foi confirmado valia para a de antes. Sem isto a caixa
+     * continuaria marcada com a confirmação velha, e só desmarcar e marcar de
+     * novo a atualizaria. As avaliações em memória também saem: a tela precisa
+     * mostrar o que o servidor acabou de encontrar.
+     *
+     * Devolve se alguma confirmação estava marcada, para a mensagem avisar que
+     * ela precisa ser dada de novo.
+     */
+    protected function withdrawConfirmations(): bool
+    {
+        $this->periodAssessments = [];
+        $this->positionContext = null;
+
+        $statePath = $this->getMountedActionSchema()?->getStatePath();
+
+        if (blank($statePath)) {
+            return false;
+        }
+
+        $wasConfirmed = ((bool) data_get($this, "{$statePath}.confirm_substitution"))
+            || ((bool) data_get($this, "{$statePath}.confirm_retroactive"));
+
+        $this->fill([
+            "{$statePath}.confirm_substitution" => false,
+            "{$statePath}.confirmed_substitution_id" => null,
+            "{$statePath}.confirm_retroactive" => false,
+            "{$statePath}.confirmed_retroactive_through" => null,
+        ]);
+
+        return $wasConfirmed;
+    }
+
+    /**
+     * Aviso de cobertura da obra, a partir do dia de negócio de hoje.
+     *
+     * Obra sem nenhuma política fica de fora: o estado vazio da tabela já diz
+     * isso. Cobertura sem fim também: só acontece com linha anterior ao fim
+     * explícito e sem sucessora.
+     *
+     * @return array{status: string, heading: string, description: string}|null
+     */
+    protected function coverageWarning(): ?array
+    {
+        ['today' => $today, 'timeline' => $timeline] = $this->positionContext();
+
+        if ($timeline->isEmpty()) {
+            return null;
+        }
+
+        $firstUncoveredDay = $timeline->firstUncoveredDayFrom($today);
+
+        if ($firstUncoveredDay === null) {
+            return null;
+        }
+
+        $next = $timeline->firstStartingAfter($firstUncoveredDay);
+
+        if ($firstUncoveredDay->equalTo($today)) {
+            $since = $timeline->uncoveredSince($today);
+
+            return [
+                'status' => 'danger',
+                'heading' => 'Obra sem política de desconto vigente',
+                'description' => implode(' ', array_filter([
+                    $since === null
+                        ? 'Nenhuma política vale hoje.'
+                        : sprintf('Nenhuma política vale desde %s.', $since->format('d/m/Y')),
+                    'Vendas feitas sem política vigente ficam sem veredito de conformidade e bloqueiam a competência até que uma política seja registrada.',
+                    $next === null ? null : sprintf('A próxima registrada começa em %s.', $next->effective_from->format('d/m/Y')),
+                ])),
+            ];
+        }
+
+        $lastCoveredDay = $firstUncoveredDay->subDay();
+        $daysLeft = (int) $today->diffInDays($lastCoveredDay);
+
+        if ($daysLeft > self::EXPIRY_WARNING_DAYS) {
+            return null;
+        }
+
+        return [
+            'status' => 'warning',
+            'heading' => match ($daysLeft) {
+                0 => 'A política de desconto vence hoje',
+                1 => 'A política de desconto vence amanhã',
+                default => sprintf('A política de desconto vence em %d dias', $daysLeft),
+            },
+            'description' => implode(' ', array_filter([
+                sprintf(
+                    'A cobertura termina em %s e não há política registrada para %s. Vendas feitas a partir desse dia ficarão sem política vigente e bloquearão a competência até que outra seja registrada.',
+                    $lastCoveredDay->format('d/m/Y'),
+                    $firstUncoveredDay->format('d/m/Y'),
+                ),
+                $next === null ? null : sprintf('A próxima registrada só começa em %s.', $next->effective_from->format('d/m/Y')),
+            ])),
+        ];
     }
 
     protected static function previewDuration(mixed $from, mixed $until): string

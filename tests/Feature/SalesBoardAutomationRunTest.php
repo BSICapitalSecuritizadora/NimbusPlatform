@@ -5,6 +5,7 @@ use App\Enums\SalesBoardAutomationRunStatus;
 use App\Enums\SalesBoardAutomationSatisfiedVia;
 use App\Enums\SalesBoardAutomationTargetStatus;
 use App\Enums\SalesBoardCycleStatus;
+use App\Enums\SalesBoardSource;
 use App\Models\SalesBoard;
 use App\Models\SalesBoardAutomationAlert;
 use App\Models\SalesBoardAutomationAttempt;
@@ -205,7 +206,10 @@ it('catches up on every competence due since activation', function () {
     $construction = AutomationFixture::readyConstruction();
     AutomationFixture::enable([$construction], '2026-08-01');
 
-    // O scheduler ficou fora do ar: só volta em 15/11.
+    // O scheduler ficou fora do ar: só volta em 15/11. O relógio também está em
+    // 15/11 -- a geração só congela competência já encerrada no dia de hoje.
+    $this->travelTo(CarbonImmutable::parse('2026-11-15 12:00:00', 'UTC'));
+
     $run = AutomationFixture::run('2026-11-15');
 
     expect($run->targets_discovered)->toBe(3)
@@ -229,17 +233,23 @@ it('never reaches back before the activation month', function () {
         ->and($months)->not->toContain('2026-06');
 });
 
-it('discards a configured target that never declared an activation month', function () {
+it('discards an automated emission that never declared an activation month', function () {
     $construction = AutomationFixture::readyConstruction();
 
+    /**
+     * O provider de produção (o de banco, amarrado pelo beforeEach). O teste
+     * antigo preenchia uma chave de configuração que esse provider nunca lê, e
+     * passava com qualquer código.
+     */
+    $construction->emission->forceFill([
+        'sales_board_source' => SalesBoardSource::Automated,
+        'sales_board_automation_start_reference_month' => null,
+    ])->save();
     config()->set('sales_board.automation.enabled', true);
-    config()->set('sales_board.automation.targets', [
-        ['construction_id' => $construction->id],
-    ]);
 
     $run = AutomationFixture::run();
 
-    // Sem ativação declarada não existe "desde sempre": o alvo é descartado.
+    // Sem ativação declarada não existe "desde sempre": a Emissão é descartada.
     expect($run->targets_discovered)->toBe(0)
         ->and(SalesBoardCycle::query()->count())->toBe(0);
 });

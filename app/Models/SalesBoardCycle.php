@@ -32,13 +32,17 @@ class SalesBoardCycle extends Model
      * O que pode mudar depois de o ciclo nascer.
      *
      * `updated_at` entra porque o Eloquent toca o timestamp em qualquer save --
-     * sem ele o guard bloquearia a própria troca de versão vigente.
+     * sem ele o guard bloquearia a própria troca de versão vigente. Os campos
+     * de cancelamento só são gravados junto com o status `Cancelled`.
      *
      * @var list<string>
      */
     public const MUTABLE_FIELDS = [
         'current_baseline_id',
         'status',
+        'cancelled_at',
+        'cancelled_by_user_id',
+        'cancellation_reason',
         'updated_at',
     ];
 
@@ -50,12 +54,15 @@ class SalesBoardCycle extends Model
         'status',
         'current_baseline_id',
         'created_by_id',
+        'cancelled_at',
+        'cancelled_by_user_id',
+        'cancellation_reason',
     ];
 
     /**
      * Um ciclo é registro financeiro: não se corrige apagando. O encerramento de
-     * um ciclo que não deve seguir adiante é o estado `Cancelled`, das fases
-     * seguintes -- e mesmo ele preserva tudo o que foi apurado.
+     * um ciclo que não deve seguir adiante é o estado `Cancelled` -- e mesmo ele
+     * preserva tudo o que foi apurado.
      */
     protected static function booted(): void
     {
@@ -76,12 +83,19 @@ class SalesBoardCycle extends Model
             'reference_month' => 'immutable_date',
             'position_date' => 'immutable_date',
             'status' => SalesBoardCycleStatus::class,
+            'cancelled_at' => 'immutable_datetime',
         ];
     }
 
+    /**
+     * Toda a governança do Quadro grava em `sales_board`, a categoria que o
+     * `audit:clean-filtered` retém por sete anos. No balde `default` ela seria
+     * descartada em um ano.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('sales_board')
             ->logFillable()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
@@ -100,6 +114,11 @@ class SalesBoardCycle extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_id');
+    }
+
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by_user_id');
     }
 
     /**

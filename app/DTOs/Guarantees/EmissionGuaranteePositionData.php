@@ -18,6 +18,8 @@ readonly class EmissionGuaranteePositionData extends BaseDTO
     /**
      * @param  Collection<int, GuaranteePositionData>  $positions
      * @param  array<int, string>  $pendingSources  rótulos das fontes sem dado na competência
+     * @param  GuaranteeSalesBoardCoverage|null  $salesBoardCoverage  quadros que alimentaram as
+     *                                                                garantias de estoque; nulo quando nenhuma depende do quadro
      */
     public function __construct(
         public string $referenceMonth,
@@ -32,6 +34,7 @@ readonly class EmissionGuaranteePositionData extends BaseDTO
         public GuaranteeCoverageStatus $coverageStatus,
         public int $activeGuaranteesCount,
         public array $pendingSources = [],
+        public ?GuaranteeSalesBoardCoverage $salesBoardCoverage = null,
     ) {}
 
     public function referenceMonthLabel(): string
@@ -53,6 +56,28 @@ readonly class EmissionGuaranteePositionData extends BaseDTO
     public function pendingPositions(): Collection
     {
         return $this->positions->filter(fn (GuaranteePositionData $position): bool => $position->isPending())->values();
+    }
+
+    /**
+     * Algum empreendimento das garantias de estoque está sem o quadro da própria
+     * competência? É a condição que exige confirmação para fechar.
+     */
+    public function hasSalesBoardGaps(): bool
+    {
+        return $this->salesBoardCoverage?->hasGaps() ?? false;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function salesBoardGapDescriptions(): array
+    {
+        return $this->salesBoardCoverage?->gapDescriptions() ?? [];
+    }
+
+    public function salesBoardGapsFingerprint(): ?string
+    {
+        return $this->hasSalesBoardGaps() ? $this->salesBoardCoverage->gapsFingerprint() : null;
     }
 
     /**
@@ -79,6 +104,7 @@ readonly class EmissionGuaranteePositionData extends BaseDTO
             'coverage_status' => $this->coverageStatus,
             'active_guarantees_count' => $this->activeGuaranteesCount,
             'pending_sources' => $this->pendingSources,
+            'sales_board_coverage' => $this->salesBoardCoverage?->toArray(),
         ];
     }
 }

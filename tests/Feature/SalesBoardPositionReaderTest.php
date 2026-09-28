@@ -1,5 +1,6 @@
 <?php
 
+use App\DTOs\SalesBoards\ConstructionSalesPosition;
 use App\Enums\SalesBoardPositionStatus;
 use App\Models\Construction;
 use App\Models\Emission;
@@ -303,4 +304,28 @@ it('keeps a board attached to the emission even when the construction is not lis
 
     expect($position->totalUnits)->toBe(14)
         ->and($position->constructionsCovered)->toBe(2);
+});
+
+it('lists the constructions of the emission by name, then by id', function () {
+    // A ordem vinha de closures de um argumento passadas ao sortBy(), que a
+    // Collection chama como comparadores: o nome virava o resultado da
+    // comparação, convertido no seu número inicial, e 1ª, 2ª, 3ª saíam como
+    // 2ª, 3ª, 1ª.
+    $emission = Emission::factory()->create();
+    $third = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => '3ª Etapa']);
+    $first = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => '1ª Etapa']);
+    $second = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => '2ª Etapa']);
+    $firstTwin = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => '1ª Etapa']);
+
+    $position = salesBoardReader()->forEmission($emission, CarbonImmutable::parse('2026-07-01'));
+    $months = salesBoardReader()->forEmissionMonths($emission, [CarbonImmutable::parse('2026-07-01')]);
+    $expected = [$first->id, $firstTwin->id, $second->id, $third->id];
+
+    $constructionIds = fn (array $positions): array => array_map(
+        fn (ConstructionSalesPosition $construction): int => $construction->constructionId,
+        $positions,
+    );
+
+    expect($constructionIds($position->positions))->toBe($expected)
+        ->and($constructionIds($months->get('2026-07')->positions))->toBe($expected);
 });

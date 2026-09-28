@@ -113,6 +113,19 @@ class SalesBoardCycleInfolist
                     ->label('Congelado por')
                     ->placeholder(fn (SalesBoardCycle $record): string => static::withoutUserLabel($record))
                     ->icon('heroicon-m-user'),
+
+                TextEntry::make('cancelledBy.name')
+                    ->label('Cancelada por')
+                    ->placeholder('Sem usuário registrado')
+                    ->icon('heroicon-m-no-symbol')
+                    ->helperText(fn (SalesBoardCycle $record): ?string => $record->cancelled_at?->format('d/m/Y \à\s H:i'))
+                    ->visible(fn (SalesBoardCycle $record): bool => $record->status === SalesBoardCycleStatus::Cancelled),
+
+                TextEntry::make('cancellation_reason')
+                    ->label('Motivo do cancelamento')
+                    ->placeholder('—')
+                    ->columnSpanFull()
+                    ->visible(fn (SalesBoardCycle $record): bool => $record->status === SalesBoardCycleStatus::Cancelled),
             ]);
     }
 

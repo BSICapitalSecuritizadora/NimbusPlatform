@@ -55,7 +55,9 @@ class ImportContractInstallmentsFromSpreadsheet
         return [
             'created' => $toCreate->count(),
             'updated' => $updated,
-            'unchanged' => $analysis->unchangedCount(),
+            // An informative divergence writes nothing either: for the run it
+            // is a row left as it was.
+            'unchanged' => $analysis->unchangedCount() + $analysis->informativeDivergenceCount(),
             'contracts' => $toCreate->concat($toUpdate)->pluck('contract_id')->unique()->count(),
         ];
     }

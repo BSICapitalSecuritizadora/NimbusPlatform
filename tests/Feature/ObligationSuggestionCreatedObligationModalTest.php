@@ -7,6 +7,7 @@ use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\Obligatio
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationsRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationSuggestionsRelationManager;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
+use App\Filament\Resources\Emissions\Pages\ViewEmission;
 use App\Models\Document;
 use App\Models\Emission;
 use App\Models\ExtractedObligation;
@@ -359,12 +360,17 @@ it('renders the modal when the obligation has no source reference', function () 
         ->assertMountedActionModalDontSee(['Fundamentação', 'Abrir no documento']);
 });
 
+/**
+ * Abrir a edição da Emissão exige `emissions.update`. Para quem só a visualiza,
+ * a página completa da obrigação é o dossiê -- a página de visualização, na
+ * mesma aba --, e é para lá que o link aponta.
+ */
 it('links the full page to the obligations tab of the emission', function () {
     $emission = Emission::factory()->create();
     $suggestion = createdObligationModalApprovedSuggestion($emission);
     $relationKey = array_search(ObligationsRelationManager::class, EmissionResource::getRelations(), true);
-    $expectedUrl = EmissionResource::getUrl('edit', ['record' => $emission, 'relation' => $relationKey]);
     $this->actingAs(createdObligationModalViewer());
+    $expectedUrl = EmissionResource::getUrl('view', ['record' => $emission, 'relation' => $relationKey]);
 
     createdObligationModalTable($emission)
         ->mountAction(createdObligationModalAction($suggestion))
@@ -372,8 +378,10 @@ it('links the full page to the obligations tab of the emission', function () {
         ->assertMountedActionModalSeeHtml('href="'.e($expectedUrl).'"');
 
     Livewire::withQueryParams(['relation' => (string) $relationKey])
-        ->test(EditEmission::class, ['record' => $emission->getRouteKey()])
+        ->test(ViewEmission::class, ['record' => $emission->getRouteKey()])
         ->assertSet('activeRelationManager', (string) $relationKey);
+
+    Livewire::test(EditEmission::class, ['record' => $emission->getRouteKey()])->assertForbidden();
 });
 
 it('hides the full page link from users who cannot open the emission', function () {

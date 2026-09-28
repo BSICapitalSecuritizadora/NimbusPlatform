@@ -30,7 +30,8 @@ class EditContract extends EditRecord
             DeleteAction::make()
                 ->label('Excluir')
                 ->modalHeading('Excluir contrato')
-                ->modalDescription('O contrato deixa de aparecer na listagem e libera a unidade, mas é preservado para manter o histórico comercial.'),
+                ->modalDescription(ContractResource::DELETE_MODAL_DESCRIPTION)
+                ->authorizationTooltip(),
         ];
     }
 

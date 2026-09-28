@@ -13,6 +13,10 @@
     $canCreate ??= false;
     $isCompetenceClosed ??= false;
 
+    // Notas informativas não são pendência: ficam fora do bloco de alertas e da contagem.
+    $notices = $alerts->where('severity', \App\Services\Guarantees\GuaranteeAlertBuilder::SEVERITY_INFO)->values();
+    $alerts = $alerts->reject(fn (array $alert): bool => $alert['severity'] === \App\Services\Guarantees\GuaranteeAlertBuilder::SEVERITY_INFO)->values();
+
     // Ausência é indicada com traço elegante (§25 do escopo)
     $money = static fn (?float $value): string => $value === null
         ? '—'
@@ -181,6 +185,16 @@
         </div>
     @endif
 
+    @foreach ($notices as $notice)
+        <div class="flex items-start gap-2 rounded-xl border border-[#1d4554]/50 bg-[#0c232e] px-5 py-2.5 text-xs text-slate-300">
+            <x-heroicon-m-information-circle class="mt-0.5 h-4 w-4 shrink-0 text-cyan-300/80" />
+            <span>
+                <strong class="font-semibold text-slate-200">{{ $notice['title'] }}.</strong>
+                {{ $notice['description'] }}
+            </span>
+        </div>
+    @endforeach
+
     {{-- 3. Garantias Detectadas (Aviso) --}}
     @if ($pendingDetections > 0)
         <section class="rounded-2xl border border-amber-500/25 bg-[#0d2632] px-5 py-3.5 sm:px-6 shadow-sm">
@@ -252,7 +266,7 @@
                                         </div>
                                     @endif
                                 </td>
-                                <td class="px-4 py-3 text-slate-300">
+                                <td class="px-4 py-3 text-slate-300" @if (filled($row->value->metadata['reason'] ?? null)) title="{{ $row->value->metadata['reason'] }}" @endif>
                                     {{ $row->value->status->label() }}
                                 </td>
                                 <td class="px-4 py-3">

@@ -50,6 +50,32 @@ class SalesBoardHistoriesRelationManager extends RelationManager
             ->all();
     }
 
+    /**
+     * Id da versão que a tela do quadro mostra como início da operação; `false`
+     * marca "consultado e ausente".
+     */
+    protected int|false|null $constructionInitialPositionId = null;
+
+    /**
+     * O selo "Início da Operação" vai só na versão que a seção de mesmo nome
+     * mostra acima. A consolidação também marca competências só da elaboração;
+     * rotular cada versão marcada fazia o histórico de 06/2026 anunciar um
+     * início diferente do 07/2026 exibido na seção.
+     */
+    protected function isConstructionInitialPosition(SalesBoardHistory $record): bool
+    {
+        if ($this->constructionInitialPositionId === null) {
+            /** @var SalesBoard $salesBoard */
+            $salesBoard = $this->getOwnerRecord();
+
+            $initialPosition = $salesBoard->constructionInitialPosition();
+
+            $this->constructionInitialPositionId = $initialPosition === null ? false : (int) $initialPosition->getKey();
+        }
+
+        return $this->constructionInitialPositionId === (int) $record->getKey();
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -65,7 +91,7 @@ class SalesBoardHistoriesRelationManager extends RelationManager
                             ->label('Posição')
                             ->badge()
                             ->state(fn (SalesBoardHistory $record): ?string => match (true) {
-                                $record->is_initial => 'Início da Operação',
+                                $this->isConstructionInitialPosition($record) => 'Início da Operação',
                                 in_array($record->getKey(), $this->versionsInForce(), true) => 'Vigente',
                                 default => null,
                             })

@@ -80,7 +80,7 @@ final class SalesBoardIssuePresenter
             SalesBoardIssueCode::NoConstructionUnits => 'Cadastre as unidades do empreendimento em Obras › Unidades.',
             SalesBoardIssueCode::AmbiguousOccupancy => 'Revise os contratos da unidade: apenas um pode ocupá-la na data da posição.',
             SalesBoardIssueCode::AmbiguousExchange => 'A unidade tem mais de uma permuta vigente na data. Permutas não são editadas nem excluídas pela tela: leve o caso à Gestão.',
-            SalesBoardIssueCode::ExchangeOccupancyConflict => 'A permuta vigente aponta para outro contrato que não o que ocupa a unidade. Confira o contrato; se o erro estiver na permuta, leve o caso à Gestão, porque permutas não são editadas pela tela.',
+            SalesBoardIssueCode::ExchangeOccupancyConflict => 'A permuta vigente não bate com o contrato que ocupa a unidade: aponta para outro contrato, ou não tem contrato e a unidade está com uma venda comum. Confira o contrato; se o erro estiver na permuta, leve o caso à Gestão, porque permutas não são editadas pela tela.',
             SalesBoardIssueCode::ExchangeSourceMissing => 'O contrato está como permutado, mas a unidade não tem permuta registrada. A permuta só é declarada pela tela (Unidades › Permutas) enquanto a Emissão está em elaboração; com a operação em curso, leve o caso à Gestão.',
             SalesBoardIssueCode::SettlementUndetermined => 'Confira as parcelas do contrato: vencimentos e pagamentos precisam explicar a quitação na data. Se o contrato é de permuta, o que falta é a permuta registrada na unidade.',
             SalesBoardIssueCode::UnitValueMissing => 'Registre o valor da unidade vigente na data da posição: “Atualizar Valores” em Obras › Unidades (em lote) ou “Atualizar valor” na aba Histórico de Valores da unidade.',
@@ -88,6 +88,8 @@ final class SalesBoardIssuePresenter
             SalesBoardIssueCode::SaleDiscountPolicyMissing => 'Cadastre a política de desconto vigente na data da venda: na obra, aba Política Comercial de Desconto › “Nova política”.',
             SalesBoardIssueCode::UnitConstructionMismatch => 'Corrija o empreendimento do contrato ou da unidade: os dois precisam ser o mesmo.',
             SalesBoardIssueCode::SaleNonConform => 'Não impede a apuração: a venda será analisada pela Gestão.',
+            SalesBoardIssueCode::SettlementStatusDivergence => 'Não impede a apuração: o Quadro segue o cronograma de parcelas. Confira as parcelas do contrato (pagamento abaixo do previsto, parcelas renegociadas sem data de cancelamento) ou corrija o status do contrato.',
+            SalesBoardIssueCode::FutureSaleDate => 'Não impede a apuração, mas a unidade conta como estoque até a data da venda: confira a data da venda do contrato.',
         };
     }
 }

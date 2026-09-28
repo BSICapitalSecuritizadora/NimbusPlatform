@@ -16,6 +16,7 @@ use App\Support\SalesBoards\CanonicalDigest;
 use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Testing\TestAction;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Features\SupportTesting\Testable;
@@ -56,6 +57,20 @@ function periodTestPolicyIdAt(Construction $construction, string $date): ?int
         ->policy?->id;
 }
 
+/**
+ * As políticas desta obra, e só dela.
+ *
+ * O arquivo roda no MySQL depois dos testes de concorrência, que commitam fora
+ * de transação: um `count()` ou `sole()` global contaria as políticas que eles
+ * deixaram no banco. Toda busca e toda contagem parte da obra do próprio teste.
+ *
+ * @return Builder<SalesDiscountPolicy>
+ */
+function periodTestPoliciesOf(Construction $construction): Builder
+{
+    return SalesDiscountPolicy::query()->where('construction_id', $construction->id);
+}
+
 function periodTestRegister(
     Construction $construction,
     string $from,
@@ -89,7 +104,7 @@ it('registers a policy with explicit start and end dates', function () {
         ->assertHasNoActionErrors()
         ->assertNotified('Política registrada.');
 
-    $policy = SalesDiscountPolicy::sole();
+    $policy = periodTestPoliciesOf($construction)->sole();
 
     expect($policy->construction_id)->toBe($construction->id)
         ->and($policy->maximum_discount_percent)->toBe('5.00')
@@ -124,7 +139,9 @@ it('counts the duration inclusively, both ends included', function (string $from
 ]);
 
 it('recalculates the duration as the dates change, without saving', function () {
-    periodTestManager(Construction::factory()->create())
+    $construction = Construction::factory()->create();
+
+    periodTestManager($construction)
         ->mountAction(TestAction::make('newPolicy')->table())
         ->assertMountedActionModalSee('Calculada automaticamente após informar início e fim.')
         ->fillForm(['effective_from' => '2026-09-24', 'effective_until' => '2026-12-31'])
@@ -137,7 +154,7 @@ it('recalculates the duration as the dates change, without saving', function () 
         ->fillForm(['effective_until' => '2026-09-24'])
         ->assertMountedActionModalSee('1 dia');
 
-    expect(SalesDiscountPolicy::count())->toBe(0);
+    expect(periodTestPoliciesOf($construction)->count())->toBe(0);
 });
 
 it('shows a validation error, not a duration, when the end comes before the start', function () {
@@ -164,7 +181,7 @@ it('refuses to register an end date before the start date', function () {
         ])
         ->assertHasActionErrors(['effective_until']);
 
-    expect(SalesDiscountPolicy::count())->toBe(0)
+    expect(periodTestPoliciesOf($construction)->count())->toBe(0)
         ->and(fn () => periodTestRegister($construction, '2026-12-31', '2026-09-24'))
         ->toThrow(SalesDiscountPolicyPeriodException::class, 'O fim da vigência precisa ser igual ou posterior ao início.');
 });
@@ -183,14 +200,16 @@ it('accepts a one-day policy that keeps the default start date', function () {
         ->callMountedAction()
         ->assertHasNoActionErrors();
 
-    $policy = SalesDiscountPolicy::sole();
+    $policy = periodTestPoliciesOf($construction)->sole();
 
     expect($policy->effective_from->toDateString())->toBe('2026-09-24')
         ->and($policy->effective_until->toDateString())->toBe('2026-09-24');
 });
 
 it('requires start, end, discount and reason', function () {
-    periodTestManager(Construction::factory()->create())
+    $construction = Construction::factory()->create();
+
+    periodTestManager($construction)
         ->callAction(TestAction::make('newPolicy')->table(), [
             'maximum_discount_percent' => null,
             'effective_from' => null,
@@ -204,7 +223,7 @@ it('requires start, end, discount and reason', function () {
             'reason' => 'required',
         ]);
 
-    expect(SalesDiscountPolicy::count())->toBe(0);
+    expect(periodTestPoliciesOf($construction)->count())->toBe(0);
 });
 
 it('accepts back-to-back periods without asking for confirmation', function () {
@@ -226,7 +245,7 @@ it('accepts back-to-back periods without asking for confirmation', function () {
         ])
         ->assertHasNoActionErrors();
 
-    expect(SalesDiscountPolicy::count())->toBe(2);
+    expect(periodTestPoliciesOf($construction)->count())->toBe(2);
 });
 
 it('blocks a period that a later-starting policy would hide', function () {
@@ -243,7 +262,7 @@ it('blocks a period that a later-starting policy would hide', function () {
         ->assertHasActionErrors(['effective_until'])
         ->assertMountedActionModalSee('Já existe a política de 4,00% com início em 01/01/2027, dentro do período informado. O fim desta política precisa ser anterior a 01/01/2027.');
 
-    expect(SalesDiscountPolicy::count())->toBe(1)
+    expect(periodTestPoliciesOf($construction)->count())->toBe(1)
         ->and(fn () => periodTestRegister($construction, '2026-10-01', '2027-03-31'))
         ->toThrow(SalesDiscountPolicyPeriodException::class, 'Já existe a política de 4,00% com início em 01/01/2027');
 });
@@ -278,7 +297,7 @@ it('asks for explicit confirmation before a new policy substitutes the current o
         ->callMountedAction()
         ->assertHasActionErrors(['confirm_substitution']);
 
-    expect(SalesDiscountPolicy::count())->toBe(1)
+    expect(periodTestPoliciesOf($construction)->count())->toBe(1)
         ->and(fn () => periodTestRegister($construction, '2026-09-24', '2026-12-31'))
         ->toThrow(SalesDiscountPolicyPeriodException::class, 'Revise o período e confirme a substituição.');
 });
@@ -301,7 +320,7 @@ it('registers a confirmed substitution and keeps the substituted policy for the 
         ->assertHasNoActionErrors()
         ->assertNotified('Política registrada.');
 
-    $substitute = SalesDiscountPolicy::query()->whereKeyNot($current->id)->sole();
+    $substitute = periodTestPoliciesOf($construction)->whereKeyNot($current->id)->sole();
 
     // A tabela é redesenhada na mesma requisição do registro: a posição já
     // precisa refletir a política nova, sem recarregar a página.
@@ -349,13 +368,25 @@ it('refuses a confirmation that no longer matches the policy being substituted',
         ->fillForm(['confirm_substitution' => true]);
 
     // Enquanto o formulário estava aberto, outra pessoa substituiu a política
-    // vigente. A confirmação dada valia para outra situação.
-    $intervening = periodTestRegister($construction, '2026-09-20', '2026-12-31', $current->id, '4.00');
+    // vigente. A confirmação dada valia para outra situação. O início dela é
+    // anterior a hoje, então ela confirmou também o alcance retroativo.
+    $intervening = app(SalesDiscountPolicyRegistrar::class)->register(
+        $construction,
+        [
+            'maximum_discount_percent' => '4.00',
+            'effective_from' => '2026-09-20',
+            'effective_until' => '2026-12-31',
+            'reason' => 'Revisão comercial',
+        ],
+        $current->id,
+        null,
+        confirmedRetroactiveThrough: '2026-09-24',
+    );
 
     $form->callMountedAction()
         ->assertNotified('Não foi possível registrar a política.');
 
-    expect(SalesDiscountPolicy::count())->toBe(2)
+    expect(periodTestPoliciesOf($construction)->count())->toBe(2)
         ->and(fn () => periodTestRegister($construction, '2026-10-01', '2026-12-31', $current->id))
         ->toThrow(SalesDiscountPolicyPeriodException::class, 'A política de 4,00% (20/09/2026 a 31/12/2026) deixa de valer a partir de 01/10/2026.')
         ->and(periodTestRegister($construction, '2026-10-01', '2026-12-31', $intervening->id)->exists)->toBeTrue();
@@ -398,7 +429,7 @@ it('lets a correction with the same start replace the policy entirely', function
 
     expect(periodTestPolicyIdAt($construction, '2026-09-24'))->toBe($fixed->id)
         ->and(periodTestPolicyIdAt($construction, '2026-12-31'))->toBe($fixed->id)
-        ->and(SalesDiscountPolicy::count())->toBe(2);
+        ->and(periodTestPoliciesOf($construction)->count())->toBe(2);
 
     periodTestManager($construction)
         ->assertTableColumnStateSet('position', SalesDiscountPolicyPosition::Superseded, $wrong)
@@ -418,7 +449,7 @@ it('accepts a future policy that does not retroact', function () {
         ])
         ->assertHasNoActionErrors();
 
-    $future = SalesDiscountPolicy::query()->whereKeyNot($current->id)->sole();
+    $future = periodTestPoliciesOf($construction)->whereKeyNot($current->id)->sole();
 
     expect(periodTestPolicyIdAt($construction, '2026-09-24'))->toBe($current->id)
         ->and(periodTestPolicyIdAt($construction, '2026-12-31'))->toBe($current->id)
@@ -538,7 +569,8 @@ it('keeps the fingerprint row of a legacy policy unchanged and adds the end only
     $sale = DerivationFixture::contract($units[0], '2026-07-05', '600000.00');
     DerivationFixture::installment($sale, '001', '2026-08-05', '600000.00');
 
-    $legacy = SalesDiscountPolicy::query()->where('construction_id', $construction->id)->sole();
+    // O fixture registra política com fim, como a tela; a legada vem à parte.
+    $legacy = SalesDiscountPolicy::factory()->forConstruction($construction)->effectiveFrom('2020-01-01')->allowing('10.00')->create();
     $bounded = SalesDiscountPolicy::factory()->forConstruction($construction)->during('2026-07-01', '2026-12-31')->allowing('4.00')->create();
 
     $observe = fn (): array => app(SalesBoardFingerprintService::class)
@@ -551,7 +583,9 @@ it('keeps the fingerprint row of a legacy policy unchanged and adds the end only
         ->and($rows)->toContain(CanonicalDigest::row([$legacy->id, $construction->id, 1000, $legacy->effective_from]))
         ->and($rows)->toContain(CanonicalDigest::row([$bounded->id, $construction->id, 400, $bounded->effective_from, $bounded->effective_until]));
 
-    $bounded->forceFill(['effective_until' => '2026-07-31'])->save();
+    // O model recusa a edição; o fingerprint ainda precisa notar uma mudança
+    // feita por fora dele.
+    SalesDiscountPolicy::query()->whereKey($bounded->id)->update(['effective_until' => '2026-07-31']);
 
     expect($observe())->not->toBe($rows);
 });
@@ -568,5 +602,5 @@ it('only lets users who can update emissions register a policy', function () {
         ->call('mountAction', 'newPolicy', [], ['table' => true])
         ->assertSet('mountedActions', []);
 
-    expect(SalesDiscountPolicy::count())->toBe(0);
+    expect(periodTestPoliciesOf($construction)->count())->toBe(0);
 });

@@ -84,7 +84,36 @@ it('keeps the queue worker and the scheduler alive under supervision loops', fun
 
     expect($startupScript)
         ->toContain('while true; do php artisan queue:work --sleep=3 --tries=1 --timeout=600 --max-time=3600; sleep 5; done &')
-        ->toContain('while true; do php artisan schedule:work; sleep 5; done &');
+        // Teto de memória explícito: sem ele o agendador herda o php.ini da imagem.
+        ->toContain('while true; do php -d memory_limit=512M artisan schedule:work; sleep 5; done &');
+});
+
+it('clears the scheduler overlap locks before starting the loops', function () {
+    $startupLines = preg_split('/\R/', File::get(base_path('startup.sh')));
+
+    $firstLineMatching = function (string $pattern) use ($startupLines): ?int {
+        foreach ($startupLines as $index => $line) {
+            if (preg_match($pattern, $line) === 1) {
+                return $index;
+            }
+        }
+
+        return null;
+    };
+
+    $clearLine = $firstLineMatching('/^\s*php artisan schedule:clear-cache\b/');
+    $schedulerLine = $firstLineMatching('/^\s*while true; do php .*schedule:work/');
+
+    /**
+     * Um lock de `withoutOverlapping()` gravado por um processo morto num
+     * deploy fica no store de cache e silenciava o evento até expirar.
+     */
+    expect($clearLine)->not->toBeNull()
+        ->and($schedulerLine)->not->toBeNull()
+        ->and($clearLine)->toBeLessThan($schedulerLine)
+        ->and(File::get(base_path('App_Data/jobs/continuous/scheduler/run.sh')))
+        ->toContain('php artisan schedule:clear-cache')
+        ->toContain('php -d memory_limit=512M artisan schedule:work');
 });
 
 it('never starts the queue worker or the scheduler without a restart loop', function () {

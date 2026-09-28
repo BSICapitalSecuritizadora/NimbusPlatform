@@ -10,7 +10,6 @@ use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardManagementReview;
 use App\Models\User;
 use App\Services\SalesBoards\SalesBoardAutomationDiscoveryService;
-use App\Services\SalesBoards\SalesBoardAutomationRecipientResolver;
 use App\Services\SalesBoards\SalesBoardAutomationReminderService;
 use App\Services\SalesBoards\SalesBoardAutomationTargetProcessor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -19,6 +18,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Tests\Support\SalesBoards\AutomationFixture;
 use Tests\Support\SalesBoards\BuilderReviewFixture;
+use Tests\Support\SalesBoards\FixedSalesBoardAutomationRecipientResolver;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 uses(RefreshDatabase::class);
@@ -69,36 +69,7 @@ function salesBoardAutomationFootprint(): array
  */
 function resolveKillSwitchRecipientsTo(User ...$users): void
 {
-    app()->instance(SalesBoardAutomationRecipientResolver::class, new class(array_values($users)) implements SalesBoardAutomationRecipientResolver
-    {
-        /** @param list<User> $users */
-        public function __construct(private readonly array $users) {}
-
-        public function forGenerationBlocked($target): array
-        {
-            return $this->users;
-        }
-
-        public function forGenerationFailed($target): array
-        {
-            return $this->users;
-        }
-
-        public function forBuilderHandoff($cycle): array
-        {
-            return $this->users;
-        }
-
-        public function forBuilderReminder($review): array
-        {
-            return $this->users;
-        }
-
-        public function forManagementReminder($cycle): array
-        {
-            return $this->users;
-        }
-    });
+    FixedSalesBoardAutomationRecipientResolver::bind(...$users);
 }
 
 it('writes nothing at all when the command runs while disabled', function () {
@@ -187,7 +158,7 @@ it('sends no builder reminder while disabled, and does when enabled', function (
 
     AutomationFixture::run('2026-08-13');
 
-    expect(SalesBoardAutomationAlert::query()->sole()->alert_type)->toBe(SalesBoardAutomationAlertType::BuilderReminder);
+    expect(SalesBoardAutomationAlert::query()->where('channel', 'mail')->sole()->alert_type)->toBe(SalesBoardAutomationAlertType::BuilderReminder);
 });
 
 it('sends no management reminder while disabled', function () {

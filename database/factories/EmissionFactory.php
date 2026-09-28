@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\SalesBoardSource;
 use App\Models\Emission;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -109,6 +110,22 @@ class EmissionFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'status' => 'closed',
+        ]);
+    }
+
+    /**
+     * Emissão com a automação do Quadro de Vendas ativa a partir da competência
+     * indicada.
+     *
+     * Só o modo e a competência inicial, sem homologação: é o mínimo para a
+     * geração do ciclo aceitar a competência. O rollout completo -- homologar e
+     * ativar -- é exercitado pelo serviço de ativação, não por aqui.
+     */
+    public function withAutomatedSalesBoard(string $startReferenceMonth = '2026-01-01'): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'sales_board_source' => SalesBoardSource::Automated,
+            'sales_board_automation_start_reference_month' => $startReferenceMonth,
         ]);
     }
 

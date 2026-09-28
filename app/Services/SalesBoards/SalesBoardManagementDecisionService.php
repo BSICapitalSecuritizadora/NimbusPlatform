@@ -6,9 +6,12 @@ namespace App\Services\SalesBoards;
 
 use App\Enums\SalesBoardNonconformityDecision;
 use App\Exceptions\SalesBoardManagementReviewException;
+use App\Models\SalesBoardCycle;
+use App\Models\SalesBoardCycleBaseline;
 use App\Models\SalesBoardManagementNonconformity;
 use App\Models\SalesBoardManagementReview;
 use App\Models\User;
+use App\Support\SalesBoards\SalesBoardApprovalAuthority;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -18,7 +21,13 @@ use Illuminate\Support\Facades\DB;
  *
  * Mudar de ideia é normal: uma conclusão precipitada não pode obrigar a abrir
  * outra rodada. O congelamento acontece no encerramento -- aprovação, devolução
- * ou substituição -- e a partir dali o model recusa qualquer gravação.
+ * ou substituição -- e a partir dali o model da pendência recusa qualquer
+ * gravação, relendo a análise do banco.
+ *
+ * A decisão trava ciclo, análise e só então a pendência: a mesma ordem da
+ * aprovação e da devolução. Travar só a pendência deixava uma "correção
+ * necessária" entrar enquanto a aprovação derivava a fonte, e o Quadro saía
+ * publicado ao lado de uma pendência que exige corrigir a fonte.
  *
  * Não há histórico de cada clique. As decisões que importam são as que
  * atravessaram o portão, e elas ficam nas linhas duráveis; registrar cada
@@ -47,14 +56,40 @@ class SalesBoardManagementDecisionService
         ?string $reason,
         ?User $actor = null,
     ): SalesBoardManagementNonconformity {
-        return DB::transaction(function () use ($nonconformity, $decision, $reason, $actor): SalesBoardManagementNonconformity {
+        SalesBoardApprovalAuthority::authorize($actor);
+
+        /**
+         * Pendência, análise e ciclo são identidade imutável, e lê-los fora da
+         * transação é de propósito: no `REPEATABLE READ` a primeira leitura
+         * simples fixa o retrato da transação, e fixá-lo antes dos locks faria
+         * a versão vigente ser lida como era antes de quem segurava o ciclo.
+         */
+        $reviewId = SalesBoardManagementNonconformity::query()
+            ->whereKey($nonconformity->getKey())
+            ->valueOrFail('sales_board_management_review_id');
+
+        $cycleId = SalesBoardManagementReview::query()
+            ->whereKey($reviewId)
+            ->valueOrFail('sales_board_cycle_id');
+
+        return DB::transaction(function () use ($nonconformity, $decision, $reason, $actor, $reviewId, $cycleId): SalesBoardManagementNonconformity {
+            $cycle = SalesBoardCycle::query()
+                ->whereKey($cycleId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $review = SalesBoardManagementReview::query()
+                ->whereKey($reviewId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
             $nonconformity = SalesBoardManagementNonconformity::query()
                 ->whereKey($nonconformity->getKey())
                 ->lockForUpdate()
-                ->with('review')
-                ->firstOrFail();
+                ->firstOrFail()
+                ->setRelation('review', $review);
 
-            $this->assertEditable($nonconformity->review);
+            $this->assertEditable($review, $cycle);
 
             /**
              * A origem decide o que é conclusão admissível. Uma declaração da
@@ -113,7 +148,7 @@ class SalesBoardManagementDecisionService
      * decidindo sobre a versão anterior só acumularia conclusões que a
      * aprovação teria de recusar.
      */
-    private function assertEditable(SalesBoardManagementReview $review): void
+    private function assertEditable(SalesBoardManagementReview $review, SalesBoardCycle $cycle): void
     {
         if ($review->isSuperseded()) {
             throw SalesBoardManagementReviewException::reviewSuperseded();
@@ -123,7 +158,7 @@ class SalesBoardManagementDecisionService
             throw SalesBoardManagementReviewException::reviewNotEditable();
         }
 
-        $current = $review->cycle?->currentBaseline;
+        $current = SalesBoardCycleBaseline::query()->find($cycle->current_baseline_id);
 
         if (! $review->appliesTo($current)) {
             throw SalesBoardManagementReviewException::baselineChanged();

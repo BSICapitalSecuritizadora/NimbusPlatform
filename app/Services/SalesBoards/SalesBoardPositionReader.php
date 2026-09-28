@@ -131,7 +131,7 @@ class SalesBoardPositionReader
      * nova. É o mesmo cálculo de {@see self::forEmission()}.
      *
      * @param  Collection<int, SalesBoard>  $salesBoards
-     * @param  Collection<int, Construction>  $constructions
+     * @param  Collection<int, Construction>  $constructions  na ordem em que as posições devem sair
      */
     public function fromLoadedSalesBoards(
         int $emissionId,
@@ -163,21 +163,23 @@ class SalesBoardPositionReader
      * A união importa. Descartar um quadro porque o empreendimento não aparece
      * na lista da emissão apagaria silenciosamente uma posição que existe.
      *
+     * Os empreendimentos saem na ordem recebida, que em
+     * {@see self::loadConstructions()} é a do banco, por nome e id. Não se
+     * reordena aqui: em PHP a comparação seria byte a byte e desfaria a
+     * collation. O `sortBy()` que existia aqui não ordenava nada, porque as
+     * closures de um argumento viravam comparadores e o nome, convertido no seu
+     * número inicial, embaralhava "1ª Etapa", "2ª Etapa", "3ª Etapa". Quem ficou
+     * fora da lista da emissão vai para o fim, por id.
+     *
      * @param  Collection<int, Construction>  $constructions
      * @param  Collection<int, Collection<int, SalesBoard>>  $salesBoardsByConstruction
-     * @return array<int, string|null> nome por id, em ordem determinística
+     * @return array<int, string|null> nome por id, na ordem de `$constructions`
      */
     private function eligibleConstructions(Collection $constructions, Collection $salesBoardsByConstruction): array
     {
         $eligible = [];
 
-        $ordered = $constructions
-            ->sortBy([
-                fn (Construction $construction): string => (string) $construction->development_name,
-                fn (Construction $construction): int => (int) $construction->getKey(),
-            ]);
-
-        foreach ($ordered as $construction) {
+        foreach ($constructions as $construction) {
             $eligible[(int) $construction->getKey()] = $construction->development_name;
         }
 
@@ -238,12 +240,20 @@ class SalesBoardPositionReader
     }
 
     /**
+     * Empreendimentos da emissão por nome e, no empate, por id.
+     *
+     * A ordem vem do banco para seguir a collation, como a Evolução da Obra do
+     * relatório mensal: no MySQL "Ágata" vem antes de "Residencial", e byte a
+     * byte viria depois.
+     *
      * @return Collection<int, Construction>
      */
     private function loadConstructions(int $emissionId): Collection
     {
         return Construction::query()
             ->where('emission_id', $emissionId)
+            ->orderBy('development_name')
+            ->orderBy('id')
             ->get();
     }
 

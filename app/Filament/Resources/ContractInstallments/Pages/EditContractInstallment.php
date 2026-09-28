@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\ContractInstallments\Pages;
 
 use App\Filament\Resources\ContractInstallments\ContractInstallmentResource;
-use App\Models\ContractInstallment;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Resources\Pages\EditRecord;
@@ -26,15 +25,20 @@ class EditContractInstallment extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            /**
+             * Autorizadas pela policy da parcela. Sem a permissão, ou com a
+             * parcela no estado errado, a ação some; com o contrato já congelado
+             * num ciclo, ela aparece desabilitada e o tooltip diz por quê.
+             */
             DeleteAction::make()
                 ->label('Excluir')
                 ->modalHeading('Excluir parcela')
                 ->modalDescription('Use a exclusão apenas para um registro criado por engano. Para tirar uma parcela do fluxo contratual preservando o histórico, informe a data de cancelamento.')
-                ->visible(fn (ContractInstallment $record): bool => ContractInstallmentResource::canDelete($record)),
+                ->authorizationTooltip(),
 
             RestoreAction::make()
                 ->label('Restaurar')
-                ->visible(fn (ContractInstallment $record): bool => ContractInstallmentResource::canRestore($record)),
+                ->authorizationTooltip(),
         ];
     }
 

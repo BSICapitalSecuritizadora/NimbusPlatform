@@ -13,12 +13,13 @@ use App\Models\SalesBoardAutomationTarget;
 use App\Models\SalesBoardBuilderReview;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardRolloutEvent;
-use App\Models\User;
 use App\Services\SalesBoards\DatabaseSalesBoardAutomationEligibilityProvider;
 use App\Services\SalesBoards\SalesBoardAutomationEligibilityProvider;
 use App\Services\SalesBoards\SalesBoardAutomationService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\RolloutFixture;
 
 uses(RefreshDatabase::class);
@@ -49,7 +50,7 @@ function eligibleConstructionIds(): array
 it('activates the emission and records the event', function () {
     $scenario = activatableEmission();
     $homologation = RolloutFixture::approvedHomologation($scenario['emission']);
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::approver();
 
     $emission = RolloutFixture::activate($scenario['emission'], $homologation, $actor);
 
@@ -212,12 +213,13 @@ it('suspends the whole emission when a construction is removed after activation'
 
     expect(eligibleConstructionIds())->toHaveCount(3);
 
-    // Sair da Emissão é a forma real de o escopo encolher: apagar o
-    // empreendimento é recusado pela FK da homologação, que é registro de
-    // auditoria e não evapora.
-    $scenario['constructions'][2]->update([
-        'emission_id' => Emission::factory()->create(['status' => 'active'])->id,
-    ]);
+    // Apagar o empreendimento é recusado pela FK da homologação, e trocá-lo de
+    // Emissão é recusado pela guarda das fontes do Quadro. A saída do escopo
+    // só acontece por baixo dos eventos -- como numa base anterior à guarda --,
+    // e é esse o caso que a suspensão continua cobrindo.
+    DB::table('constructions')
+        ->where('id', $scenario['constructions'][2]->id)
+        ->update(['emission_id' => Emission::factory()->create(['status' => 'active'])->id]);
 
     expect(eligibleConstructionIds())->toBe([]);
 });
@@ -238,7 +240,7 @@ it('returns to legacy without erasing any history', function () {
 
     expect($cyclesBefore)->toBe(2)->and($targetsBefore)->toBe(2);
 
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::approver();
     $emission = RolloutFixture::returnToLegacy($scenario['emission'], $actor);
 
     expect($emission->sales_board_source)->toBe(SalesBoardSource::Legacy)

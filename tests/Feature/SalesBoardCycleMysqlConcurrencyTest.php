@@ -16,6 +16,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Concurrency;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\CommittedRowsSweeper;
 
 /**
  * As corridas que o SQLite não consegue mostrar.
@@ -31,26 +32,24 @@ beforeEach(function () {
     }
 
     Artisan::call('migrate:fresh', ['--no-interaction' => true]);
+
+    $this->committedRows = CommittedRowsSweeper::afterFreshMigration();
 });
 
 /**
- * Os processos concorrentes escrevem em conexões próprias e commitam: nada disso
- * é desfeito por transação de teste. Sem esta limpeza, o arquivo seguinte da
- * suíte começaria com ciclos de outra pessoa no banco.
- *
- * A remoção é pelo query builder porque os models recusam exclusão -- e é assim
- * que devem se comportar em produção.
+ * O cenário e os processos filhos commitam fora de qualquer transação de teste.
+ * A limpeza devolve o banco ao estado recém-migrado -- tudo o que entrou depois
+ * da foto do `beforeEach`, em qualquer tabela -- e a verificação garante que o
+ * arquivo seguinte da suíte não herda nada daqui.
  */
 afterEach(function () {
-    if (DB::getDriverName() !== 'mysql') {
+    if (DB::getDriverName() !== 'mysql' || ! isset($this->committedRows)) {
         return;
     }
 
-    DB::table('sales_board_cycles')->update(['current_baseline_id' => null]);
-    DB::table('sales_board_cycle_movements')->delete();
-    DB::table('sales_board_cycle_lines')->delete();
-    DB::table('sales_board_cycle_baselines')->delete();
-    DB::table('sales_board_cycles')->delete();
+    $this->committedRows->sweep();
+
+    expect($this->committedRows->leftovers())->toBe([]);
 });
 
 /**
@@ -60,7 +59,7 @@ afterEach(function () {
  */
 function salesBoardCycleRaceScenario(): array
 {
-    $emission = Emission::factory()->create(['status' => 'active']);
+    $emission = Emission::factory()->withAutomatedSalesBoard()->create(['status' => 'active']);
     $construction = Construction::factory()->create(['emission_id' => $emission->id]);
 
     SalesDiscountPolicy::factory()

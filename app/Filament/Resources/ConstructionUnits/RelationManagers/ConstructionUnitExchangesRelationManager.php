@@ -4,11 +4,15 @@ namespace App\Filament\Resources\ConstructionUnits\RelationManagers;
 
 use App\Concerns\MoneyFormatter;
 use App\Enums\ConstructionUnitExchangeKind;
+use App\Exceptions\ConstructionUnitExchangeException;
 use App\Filament\Resources\ConstructionUnits\Pages\ViewConstructionUnit;
 use App\Models\ConstructionUnit;
 use App\Models\ConstructionUnitExchange;
 use App\Models\Contract;
+use App\Services\SalesBoards\ConstructionUnitExchangeService;
+use App\Services\SalesBoards\SalesBoardManagementDecisionService;
 use App\Support\Money\IntegerMoney;
+use App\Support\SalesBoards\SalesBoardApprovalAuthority;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -22,6 +26,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Auth\Access\AuthorizationException;
 
 /**
  * Permutas da unidade.
@@ -31,9 +36,10 @@ use Filament\Tables\Table;
  * contra a qual todo o resto é comparado, e deixá-la editável apagaria essa
  * referência sem deixar rastro.
  *
- * Alterar permuta com a operação em curso é permuta extraordinária: pede
- * contrato, evidência, não conformidade e Gestão -- workflow das fases D/E. Por
- * isso aqui não há editar, não há excluir, e depois do draft não há nem incluir.
+ * Com a operação em curso, a permuta só muda pela Gestão: "Registrar permuta
+ * extraordinária" e "Encerrar permuta", com motivo e autor, pelo
+ * {@see ConstructionUnitExchangeService}. Aqui não há editar nem excluir: nada
+ * do que decidiu uma competência some.
  */
 class ConstructionUnitExchangesRelationManager extends RelationManager
 {
@@ -119,8 +125,10 @@ class ConstructionUnitExchangesRelationManager extends RelationManager
             ->defaultSort('effective_from', 'desc')
             ->headerActions([
                 $this->declareBaselineAction(),
+                $this->registerExtraordinaryAction(),
             ])
             ->actions([
+                $this->endExchangeAction(),
                 Action::make('viewReason')
                     ->label('Ver motivo')
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
@@ -143,13 +151,27 @@ class ConstructionUnitExchangesRelationManager extends RelationManager
                             ->label('Motivo')
                             ->state((string) $record->reason)
                             ->columnSpanFull(),
+                        TextEntry::make('ended')
+                            ->label('Encerrada')
+                            ->state(sprintf(
+                                'A partir de %s, por %s em %s.',
+                                $record->ended_on?->format('d/m/Y') ?? '—',
+                                $record->endedBy?->name ?? 'usuário não identificado',
+                                $record->ended_at?->format('d/m/Y H:i') ?? '—',
+                            ))
+                            ->visible(filled($record->end_reason)),
+                        TextEntry::make('end_reason')
+                            ->label('Motivo do encerramento')
+                            ->state((string) $record->end_reason)
+                            ->visible(filled($record->end_reason))
+                            ->columnSpanFull(),
                     ]),
             ])
             ->bulkActions([])
             ->emptyStateHeading('Nenhuma permuta registrada')
             ->emptyStateDescription($this->emissionIsInDraft()
                 ? 'Declare aqui a posição inicial de permuta da unidade enquanto a operação está em elaboração.'
-                : 'A operação já saiu da elaboração: a posição inicial de permuta não pode mais ser declarada por aqui.')
+                : 'A operação já saiu da elaboração: uma permuta nova é registrada pela Gestão como permuta extraordinária.')
             ->emptyStateIcon('heroicon-o-arrows-right-left');
     }
 
@@ -255,6 +277,196 @@ class ConstructionUnitExchangesRelationManager extends RelationManager
                         MoneyFormatter::formatCurrencyForDisplay($data['exchange_value']),
                         CarbonImmutable::parse($data['effective_from'])->format('d/m/Y'),
                     ))
+                    ->send();
+            });
+    }
+
+    /**
+     * A Gestão vê o botão habilitado; quem opera o cadastro vê o botão
+     * desabilitado, dizendo de quem é a decisão. O serviço confere de novo.
+     */
+    private function operationIsLive(): bool
+    {
+        /** @var ConstructionUnit $unit */
+        $unit = $this->getOwnerRecord();
+
+        return ($unit->construction?->emission !== null) && ! $this->emissionIsInDraft();
+    }
+
+    private function canSeeExchangeGovernance(): bool
+    {
+        $user = auth()->user();
+
+        return ($user?->can('constructions.update') ?? false) || SalesBoardApprovalAuthority::holds($user);
+    }
+
+    private function managementOnlyTooltip(): ?string
+    {
+        return SalesBoardApprovalAuthority::holds(auth()->user())
+            ? null
+            : 'Alterar permuta com a operação em curso é decisão da Gestão: exige a permissão de aprovação do Quadro de Vendas.';
+    }
+
+    private function registerExtraordinaryAction(): Action
+    {
+        return Action::make('registerExtraordinary')
+            ->label('Registrar permuta extraordinária')
+            ->icon('heroicon-o-plus')
+            ->color('warning')
+            ->modalHeading('Registrar permuta extraordinária')
+            ->modalDescription(function (): string {
+                $lastPublished = app(ConstructionUnitExchangeService::class)->lastPublishedCompetence($this->getOwnerRecord());
+
+                return 'Permuta com a operação em curso. Fica registrada com o seu nome e o motivo, e passa a valer nas competências a partir da vigência.'
+                    .($lastPublished === null
+                        ? ''
+                        : sprintf(' A vigência precisa ser posterior a %s, a última competência publicada.', $lastPublished->endOfMonth()->format('d/m/Y')));
+            })
+            ->modalSubmitActionLabel('Registrar permuta')
+            ->visible(fn (): bool => $this->operationIsLive() && $this->canSeeExchangeGovernance())
+            ->disabled(fn (): bool => ! SalesBoardApprovalAuthority::holds(auth()->user()))
+            ->tooltip(fn (): ?string => $this->managementOnlyTooltip())
+            ->schema([
+                TextInput::make('exchange_value')
+                    ->label('Valor da permuta')
+                    ->required()
+                    ->prefix('R$')
+                    ->inputMode('decimal')
+                    ->mask(RawJs::make(<<<'JS'
+                        $money($input, ',', '.')
+                    JS))
+                    ->dehydrateStateUsing(fn (mixed $state): ?string => self::normalizeValue($state))
+                    ->mutateStateForValidationUsing(fn (mixed $state): ?string => self::normalizeValue($state))
+                    ->rule('numeric')
+                    ->minValue(0)
+                    ->helperText('Valor próprio da permuta. Não é o valor de venda do contrato.')
+                    ->extraInputAttributes(['class' => 'text-right font-mono tabular-nums'])
+                    ->validationMessages([
+                        'required' => 'Informe o valor da permuta.',
+                        'min' => 'O valor da permuta não pode ser negativo.',
+                    ]),
+
+                DatePicker::make('effective_from')
+                    ->label('Vigência')
+                    ->required()
+                    ->native(false)
+                    ->displayFormat('d/m/Y')
+                    ->helperText('Data a partir da qual a unidade passa a contar como permutada.')
+                    ->validationMessages([
+                        'required' => 'Informe a vigência da permuta.',
+                    ]),
+
+                Select::make('contract_id')
+                    ->label('Contrato')
+                    ->options(fn (): array => Contract::query()
+                        ->where('construction_unit_id', $this->getOwnerRecord()->getKey())
+                        ->orderByDesc('sale_date')
+                        ->pluck('code', 'id')
+                        ->all())
+                    ->searchable()
+                    ->placeholder('Sem contrato vinculado'),
+
+                Textarea::make('reason')
+                    ->label('Motivo')
+                    ->required()
+                    ->rows(3)
+                    ->minLength(SalesBoardManagementDecisionService::MINIMUM_REASON_LENGTH)
+                    ->maxLength(SalesBoardManagementDecisionService::MAXIMUM_REASON_LENGTH)
+                    ->columnSpanFull()
+                    ->validationMessages([
+                        'required' => 'Informe o motivo da permuta.',
+                    ]),
+            ])
+            ->action(function (array $data): void {
+                try {
+                    $exchange = app(ConstructionUnitExchangeService::class)->registerExtraordinary(
+                        $this->getOwnerRecord(),
+                        auth()->user(),
+                        $data['exchange_value'],
+                        CarbonImmutable::parse($data['effective_from']),
+                        filled($data['contract_id'] ?? null) ? (int) $data['contract_id'] : null,
+                        (string) $data['reason'],
+                    );
+                } catch (ConstructionUnitExchangeException|AuthorizationException $exception) {
+                    Notification::make()
+                        ->danger()
+                        ->title('Permuta não registrada.')
+                        ->body($exception->getMessage())
+                        ->persistent()
+                        ->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->success()
+                    ->title('Permuta extraordinária registrada.')
+                    ->body(sprintf(
+                        'Permuta de R$ %s vigente a partir de %s. A competência em andamento percebe a mudança na verificação de fonte.',
+                        MoneyFormatter::formatCurrencyForDisplay($exchange->exchange_value),
+                        $exchange->effective_from->format('d/m/Y'),
+                    ))
+                    ->send();
+            });
+    }
+
+    private function endExchangeAction(): Action
+    {
+        return Action::make('endExchange')
+            ->label('Encerrar permuta')
+            ->icon('heroicon-o-stop-circle')
+            ->color('danger')
+            ->modalHeading('Encerrar a permuta')
+            ->modalDescription('A permuta deixa de valer no próprio dia do encerramento, e a unidade volta a ser classificada pelo contrato. A permuta continua registrada.')
+            ->modalSubmitActionLabel('Encerrar permuta')
+            ->visible(fn (ConstructionUnitExchange $record): bool => ($record->ended_on === null)
+                && $this->operationIsLive()
+                && $this->canSeeExchangeGovernance())
+            ->disabled(fn (): bool => ! SalesBoardApprovalAuthority::holds(auth()->user()))
+            ->tooltip(fn (): ?string => $this->managementOnlyTooltip())
+            ->schema([
+                DatePicker::make('ended_on')
+                    ->label('Encerrada a partir de')
+                    ->required()
+                    ->native(false)
+                    ->displayFormat('d/m/Y')
+                    ->helperText('Primeiro dia em que a unidade deixa de contar como permutada.')
+                    ->validationMessages([
+                        'required' => 'Informe a data do encerramento.',
+                    ]),
+
+                Textarea::make('end_reason')
+                    ->label('Motivo do encerramento')
+                    ->required()
+                    ->rows(3)
+                    ->minLength(SalesBoardManagementDecisionService::MINIMUM_REASON_LENGTH)
+                    ->maxLength(SalesBoardManagementDecisionService::MAXIMUM_REASON_LENGTH)
+                    ->validationMessages([
+                        'required' => 'Informe o motivo do encerramento.',
+                    ]),
+            ])
+            ->action(function (ConstructionUnitExchange $record, array $data): void {
+                try {
+                    app(ConstructionUnitExchangeService::class)->end(
+                        $record,
+                        auth()->user(),
+                        CarbonImmutable::parse($data['ended_on']),
+                        (string) $data['end_reason'],
+                    );
+                } catch (ConstructionUnitExchangeException|AuthorizationException $exception) {
+                    Notification::make()
+                        ->danger()
+                        ->title('Permuta não encerrada.')
+                        ->body($exception->getMessage())
+                        ->persistent()
+                        ->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->success()
+                    ->title('Permuta encerrada.')
                     ->send();
             });
     }

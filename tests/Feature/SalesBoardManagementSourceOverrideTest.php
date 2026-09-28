@@ -9,10 +9,10 @@ use App\Models\ContractInstallment;
 use App\Models\SalesBoard;
 use App\Models\SalesBoardManagementReview;
 use App\Models\SalesBoardPublication;
-use App\Models\User;
 use App\Services\SalesBoards\SalesBoardManagementApprovalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\SalesBoards\CycleFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 uses(RefreshDatabase::class);
@@ -71,7 +71,7 @@ it('blocks a source-only approval whose justification says nothing', function (s
 
 it('approves a source-only position with a justification and freezes the override', function () {
     $context = sourceOnlyManagementReview();
-    $manager = User::factory()->create();
+    $manager = GovernanceFixture::approver();
     $baseline = CycleFixture::currentBaseline($context['scenario']['cycle']);
 
     $result = ManagementReviewFixture::approve(

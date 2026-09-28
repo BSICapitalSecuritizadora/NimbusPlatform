@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use App\DTOs\Guarantees\GuaranteeSalesBoardCoverage;
 use App\Enums\GuaranteeCoverageStatus;
+use App\Support\BusinessTime;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Database\Factories\GuaranteeSnapshotFactory;
 use DateTimeInterface;
@@ -34,9 +37,14 @@ class GuaranteeSnapshot extends Model
         'active_guarantees_count',
         'pending_sources',
         'metadata',
+        'sales_board_coverage',
+        'sales_board_outdated_at',
         'computed_at',
         'closed_at',
         'closed_by',
+        'partial_coverage_confirmation',
+        'partial_coverage_confirmed_at',
+        'partial_coverage_confirmed_by',
         'updated_by',
     ];
 
@@ -59,8 +67,12 @@ class GuaranteeSnapshot extends Model
             'active_guarantees_count' => 'integer',
             'pending_sources' => 'array',
             'metadata' => 'array',
+            'sales_board_coverage' => 'array',
+            'sales_board_outdated_at' => 'datetime',
             'computed_at' => 'datetime',
             'closed_at' => 'datetime',
+            'partial_coverage_confirmation' => 'array',
+            'partial_coverage_confirmed_at' => 'datetime',
         ];
     }
 
@@ -73,9 +85,74 @@ class GuaranteeSnapshot extends Model
         return $this->closed_at !== null;
     }
 
+    /**
+     * Um Quadro de Vendas publicado ou registrado depois da apuração passou a
+     * responder pela competência: o número gravado não é mais o que o motor
+     * apuraria hoje.
+     */
+    public function isSalesBoardOutdated(): bool
+    {
+        return $this->sales_board_outdated_at !== null;
+    }
+
+    /**
+     * Quem fechou aceitou explicitamente uma posição parcial do Quadro de Vendas.
+     */
+    public function hasPartialCoverageConfirmation(): bool
+    {
+        return $this->partial_coverage_confirmed_at !== null;
+    }
+
+    public function salesBoardCoverage(): ?GuaranteeSalesBoardCoverage
+    {
+        return GuaranteeSalesBoardCoverage::fromArray($this->sales_board_coverage);
+    }
+
+    /**
+     * Empreendimentos e meses aceitos na confirmação do fechamento parcial.
+     *
+     * @return list<string>
+     */
+    public function partialCoverageDescriptions(): array
+    {
+        $confirmation = $this->partial_coverage_confirmation;
+
+        if (! is_array($confirmation)) {
+            return [];
+        }
+
+        return GuaranteeSalesBoardCoverage::fromArray([
+            'constructions' => $confirmation['gaps'] ?? [],
+        ])?->gapDescriptions() ?? [];
+    }
+
+    /**
+     * Competência corrente do calendário de negócio (America/Sao_Paulo), no
+     * formato gravado (`Y-m-01`).
+     */
+    public static function currentBusinessMonth(?DateTimeInterface $instant = null): string
+    {
+        return BusinessTime::at($instant ?? CarbonImmutable::now())->startOfMonth()->toDateString();
+    }
+
+    /**
+     * Competência que se espera consolidar agora: o mês de negócio anterior. O
+     * Quadro de Vendas de um mês só é publicado no seguinte, então o mês
+     * corrente ainda não tem posição própria para fechar.
+     */
+    public static function previousBusinessMonth(?DateTimeInterface $instant = null): string
+    {
+        return BusinessTime::at($instant ?? CarbonImmutable::now())->startOfMonth()->subMonthNoOverflow()->toDateString();
+    }
+
     public function closedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'closed_by');
+    }
+
+    public function partialCoverageConfirmedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'partial_coverage_confirmed_by');
     }
 
     public function updatedBy(): BelongsTo

@@ -8,20 +8,25 @@ use App\Filament\Resources\Constructions\Pages\ListConstructions;
 use App\Filament\Resources\Constructions\RelationManagers\SalesDiscountPoliciesRelationManager;
 use App\Filament\Resources\Constructions\Schemas\ConstructionForm;
 use App\Filament\Resources\Constructions\Tables\ConstructionsTable;
+use App\Filament\Support\AuthorizesThroughModelPolicy;
 use App\Models\Construction;
-use App\Models\ConstructionUnitValue;
-use App\Models\Contract;
+use App\Policies\ConstructionPolicy;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
+/**
+ * Autorizado pela {@see ConstructionPolicy}: as permissões
+ * `emissions.*` e as guardas da obra que já tem história vivem lá.
+ */
 class ConstructionResource extends Resource
 {
+    use AuthorizesThroughModelPolicy;
+
     protected static ?string $model = Construction::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
@@ -61,48 +66,6 @@ class ConstructionResource extends Resource
             'emission',
             'measurementCompany.type',
         ]);
-    }
-
-    public static function canViewAny(): bool
-    {
-        return auth()->user()?->can('emissions.view') ?? false;
-    }
-
-    public static function canCreate(): bool
-    {
-        return auth()->user()?->can('emissions.create') ?? false;
-    }
-
-    public static function canEdit(Model $record): bool
-    {
-        return auth()->user()?->can('emissions.update') ?? false;
-    }
-
-    /**
-     * Excluir a obra removeria em cascata as unidades dela; se alguma já tiver
-     * contrato, isso apagaria histórico comercial. Nesse caso a exclusão não é
-     * oferecida -- o banco também a recusaria.
-     */
-    public static function canDelete(Model $record): bool
-    {
-        if (! (auth()->user()?->can('emissions.delete') ?? false)) {
-            return false;
-        }
-
-        if (! ($record instanceof Construction)) {
-            return true;
-        }
-
-        /**
-         * A política comercial é histórico financeiro da obra e a FK a protege
-         * no banco. Sem esta guarda o usuário receberia um erro cru de
-         * constraint em vez de saber por que a exclusão não é possível.
-         */
-        return ! Contract::withTrashed()->where('construction_id', $record->getKey())->exists()
-            && ! $record->salesDiscountPolicies()->exists()
-            && ! ConstructionUnitValue::query()
-                ->whereIn('construction_unit_id', $record->units()->select('id'))
-                ->exists();
     }
 
     public static function getPages(): array

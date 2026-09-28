@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\ConstructionUnits\Schemas;
 
 use App\Concerns\MoneyFormatter;
+use App\Exceptions\SalesBoardSourceException;
 use App\Models\ConstructionUnit;
+use App\Services\SalesBoards\SalesBoardSourceGuard;
 use App\Support\Money\IntegerMoney;
 use Closure;
 use Filament\Forms\Components\DatePicker;
@@ -49,6 +51,7 @@ class ConstructionUnitForm
                                 $set('construction_id', null);
                             }
                         })
+                        ->disabled(fn (mixed $record): bool => self::constructionLockReason($record) !== null)
                         ->columnSpanFull()
                         ->validationMessages([
                             'required' => 'Selecione a emissão.',
@@ -68,8 +71,10 @@ class ConstructionUnitForm
                         ->preload()
                         ->required()
                         ->live()
-                        ->disabled(fn (Get $get): bool => blank($get(self::EMISSION_FIELD)))
-                        ->helperText('Selecione primeiro a emissão para listar apenas os empreendimentos vinculados.')
+                        ->disabled(fn (Get $get, mixed $record): bool => blank($get(self::EMISSION_FIELD))
+                            || (self::constructionLockReason($record) !== null))
+                        ->helperText(fn (mixed $record): string => self::constructionLockReason($record)
+                            ?? 'Selecione primeiro a emissão para listar apenas os empreendimentos vinculados.')
                         ->columnSpanFull()
                         ->validationMessages([
                             'required' => 'Selecione o empreendimento.',
@@ -116,6 +121,27 @@ class ConstructionUnitForm
     }
 
     /**
+     * Por que a unidade em edição não pode trocar de empreendimento, ou `null`.
+     *
+     * Contrato, valor, permuta ou posição congelada prendem a unidade à obra
+     * dela ({@see SalesBoardSourceGuard::unitAnchors()}). O campo fica travado
+     * e o motivo aparece no lugar da dica; o model recusa a troca vinda de
+     * qualquer outro caminho.
+     */
+    private static function constructionLockReason(mixed $record): ?string
+    {
+        if (! ($record instanceof ConstructionUnit) || (! $record->exists)) {
+            return null;
+        }
+
+        $anchors = app(SalesBoardSourceGuard::class)->unitAnchors($record);
+
+        return $anchors === []
+            ? null
+            : SalesBoardSourceException::unitConstructionLocked($anchors)->getMessage();
+    }
+
+    /**
      * Valor de referência inicial da unidade.
      *
      * O par é indivisível: um valor sem data não é posicionável no tempo, e uma
@@ -148,13 +174,18 @@ class ConstructionUnitForm
                     ->mutateStateForValidationUsing(fn (mixed $state): ?string => self::normalizeBaseValue($state))
                     ->requiredWith('base_value_reference_date')
                     ->rule('numeric')
-                    ->minValue(0)
+                    /**
+                     * Zero não é valor informado: usado como marcador de "sem
+                     * preço", fazia toda venda da unidade sair conforme e o
+                     * estoque sair a R$ 0,00 sem nenhum achado.
+                     */
+                    ->minValue(0.01)
                     ->placeholder('900.000,00')
-                    ->helperText('Deixe em branco se o valor ainda não foi informado. Zero é um valor informado, não um valor ausente.')
+                    ->helperText('Deixe em branco se o valor ainda não foi informado. Quando informado, precisa ser maior que zero.')
                     ->extraInputAttributes(['class' => 'text-right font-mono tabular-nums'])
                     ->validationMessages([
                         'required_with' => 'Informe o valor base ou limpe a data de referência.',
-                        'min' => 'O valor base não pode ser negativo.',
+                        'min' => 'O valor base precisa ser maior que zero.',
                     ]),
 
                 DatePicker::make('base_value_reference_date')

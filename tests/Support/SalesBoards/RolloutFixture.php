@@ -50,7 +50,7 @@ final class RolloutFixture
         $construction = Construction::factory()->create(['emission_id' => $emission->getKey()]);
 
         SalesDiscountPolicy::factory()->forConstruction($construction)
-            ->effectiveFrom('2020-01-01')->allowing('10.00')->create();
+            ->effectiveFrom('2020-01-01')->closedPeriod()->allowing('10.00')->create();
 
         DerivationFixture::unit($construction, $unitPrefix.'01');
         DerivationFixture::unit($construction, $unitPrefix.'02');
@@ -124,11 +124,12 @@ final class RolloutFixture
     }
 
     /**
-     * Marca as duas atestações de impacto.
+     * Marca as duas atestações de impacto. Atestar é da Gestão: sem ator
+     * informado, atesta alguém com a permissão de aprovação.
      */
     public static function reviewImpacts(SalesBoardRolloutHomologation $homologation, ?User $actor = null): void
     {
-        $actor ??= User::factory()->create();
+        $actor ??= GovernanceFixture::approver();
         $service = app(SalesBoardRolloutHomologationService::class);
 
         $service->markGuaranteesReviewed($homologation, $actor);
@@ -141,7 +142,7 @@ final class RolloutFixture
         string $reason = self::REASON,
     ): SalesBoardRolloutHomologation {
         return app(SalesBoardRolloutHomologationService::class)
-            ->approve($homologation->fresh(), $actor ?? User::factory()->create(), $reason);
+            ->approve($homologation->fresh(), $actor ?? GovernanceFixture::approver(), $reason);
     }
 
     public static function activate(
@@ -151,7 +152,7 @@ final class RolloutFixture
         string $reason = 'Ativação acordada com a operação.',
     ): Emission {
         return app(SalesBoardRolloutActivationService::class)
-            ->activate($emission->fresh(), $homologation->fresh(), $actor ?? User::factory()->create(), $reason);
+            ->activate($emission->fresh(), $homologation->fresh(), $actor ?? GovernanceFixture::approver(), $reason);
     }
 
     public static function returnToLegacy(
@@ -160,26 +161,31 @@ final class RolloutFixture
         string $reason = 'Retorno ao legado para revisar o cadastro.',
     ): Emission {
         return app(SalesBoardRolloutActivationService::class)
-            ->returnToLegacy($emission->fresh(), $actor ?? User::factory()->create(), $reason);
+            ->returnToLegacy($emission->fresh(), $actor ?? GovernanceFixture::approver(), $reason);
     }
 
     /**
      * O caminho feliz inteiro: homologar, cobrir papéis, atestar e aprovar.
+     *
+     * Duas pessoas, como a segregação exige: `$actor` abre e define os
+     * responsáveis; `$approver`, da Gestão, atesta e aprova.
      */
     public static function approvedHomologation(
         Emission $emission,
         ?User $actor = null,
         string $startMonth = self::START_MONTH,
         bool $autoOpen = false,
+        ?User $approver = null,
     ): SalesBoardRolloutHomologation {
         $actor ??= User::factory()->create();
+        $approver ??= GovernanceFixture::approver();
 
         $homologation = self::open($emission, $actor, $startMonth, $autoOpen);
 
         self::recipients($emission, $actor);
-        self::reviewImpacts($homologation, $actor);
+        self::reviewImpacts($homologation, $approver);
 
-        return self::approve($homologation, $actor);
+        return self::approve($homologation, $approver);
     }
 
     /**

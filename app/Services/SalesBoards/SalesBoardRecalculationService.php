@@ -53,6 +53,7 @@ class SalesBoardRecalculationService
         private readonly SalesBoardFingerprintService $fingerprintService,
         private readonly SalesBoardBaselineDiffService $diffService,
         private readonly SalesBoardBaselineWriter $baselineWriter,
+        private readonly SalesBoardReviewSupersessionReconciler $reconciler,
     ) {}
 
     /**
@@ -173,6 +174,17 @@ class SalesBoardRecalculationService
                 && ($snapshotFingerprint === (string) $current->snapshot_fingerprint)) {
                 $this->markUnchanged($current, $sourceFingerprint, $snapshotFingerprint);
 
+                /**
+                 * Sem versão nova não há aviso, e é por isso que o recálculo sem
+                 * alteração reconcilia: se o aviso da versão anterior não chegou
+                 * a substituir alguma revisão, recalcular de novo -- o gesto
+                 * natural de quem encontra a competência travada -- conclui a
+                 * substituição em vez de devolver "sem alteração" e deixar tudo
+                 * como estava. O ciclo já está travado; a reconciliação roda
+                 * dentro desta transação.
+                 */
+                $this->reconciler->reconcile($locked);
+
                 return new SalesBoardRecalculationResult(
                     outcome: SalesBoardRecalculationOutcome::Unchanged,
                     previousBaseline: $current,
@@ -193,6 +205,21 @@ class SalesBoardRecalculationService
             );
 
             $locked->forceFill(['current_baseline_id' => $baseline->getKey()])->save();
+
+            /**
+             * Uma versão que só troca a origem material também reconcilia.
+             *
+             * Os ouvintes ignoram a troca que não muda a posição, e com razão --
+             * nada mudou para quem conferiu. Mas se o aviso de uma versão
+             * anterior não chegou a substituir alguma revisão, ela continua
+             * desatualizada também contra esta, e sem a reconciliação aqui o
+             * recálculo sairia gravado com a competência presa como estava. No
+             * caminho normal ela só lê. O ponteiro já aponta para a versão nova,
+             * e o ciclo continua travado por esta transação.
+             */
+            if ($snapshotFingerprint === (string) $current->snapshot_fingerprint) {
+                $this->reconciler->reconcile($locked);
+            }
 
             /**
              * O aviso de que a versão vigente mudou sai **depois** do commit.

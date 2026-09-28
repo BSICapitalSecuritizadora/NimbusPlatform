@@ -10,6 +10,8 @@ use App\Exceptions\SalesBoardBuilderReviewException;
 use App\Models\SalesBoardBuilderDivergence;
 use App\Models\SalesBoardBuilderReview;
 use App\Models\SalesBoardBuilderReviewSection;
+use App\Models\SalesBoardCycle;
+use App\Models\SalesBoardCycleBaseline;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -25,6 +27,11 @@ use Illuminate\Support\Facades\DB;
  * botão na tela não é garantia de nada: entre carregar a página e clicar, a
  * revisão pode ter sido enviada por outra pessoa ou uma nova versão do quadro
  * pode ter sido gerada.
+ *
+ * A reconferência só vale sob a mesma ordem de locks do envio e da abertura:
+ * ciclo, revisão, seção e, por último, a divergência. Travar só a seção deixava
+ * o envio passar no meio da edição -- e a declaração enviada ganhava uma
+ * divergência, ou uma seção voltava a "pendente", depois de congelada.
  */
 class SalesBoardBuilderReviewEditor
 {
@@ -44,9 +51,10 @@ class SalesBoardBuilderReviewEditor
         SalesBoardBuilderReviewSection $section,
         ?string $comment = null,
     ): SalesBoardBuilderReviewSection {
-        return DB::transaction(function () use ($section, $comment): SalesBoardBuilderReviewSection {
-            $section = $this->lockedSection($section);
-            $this->assertEditable($section->review);
+        $anchors = $this->anchorsOfSection((int) $section->getKey());
+
+        return DB::transaction(function () use ($anchors, $comment): SalesBoardBuilderReviewSection {
+            $section = $this->lockedSection($anchors);
 
             if ($section->divergences()->exists()) {
                 throw SalesBoardBuilderReviewException::cannotConfirmWithDivergences($section->section);
@@ -69,9 +77,10 @@ class SalesBoardBuilderReviewEditor
      */
     public function reopenSection(SalesBoardBuilderReviewSection $section): SalesBoardBuilderReviewSection
     {
-        return DB::transaction(function () use ($section): SalesBoardBuilderReviewSection {
-            $section = $this->lockedSection($section);
-            $this->assertEditable($section->review);
+        $anchors = $this->anchorsOfSection((int) $section->getKey());
+
+        return DB::transaction(function () use ($anchors): SalesBoardBuilderReviewSection {
+            $section = $this->lockedSection($anchors);
 
             $section->forceFill([
                 'status' => $section->divergences()->exists()
@@ -88,10 +97,11 @@ class SalesBoardBuilderReviewEditor
         SalesBoardBuilderReviewSection $section,
         SalesBoardBuilderDivergenceInput $input,
     ): SalesBoardBuilderDivergence {
-        return DB::transaction(function () use ($section, $input): SalesBoardBuilderDivergence {
-            $section = $this->lockedSection($section);
+        $anchors = $this->anchorsOfSection((int) $section->getKey());
+
+        return DB::transaction(function () use ($anchors, $input): SalesBoardBuilderDivergence {
+            $section = $this->lockedSection($anchors);
             $review = $section->review;
-            $this->assertEditable($review);
 
             $this->validator->validate($review, $section, $input);
 
@@ -111,14 +121,11 @@ class SalesBoardBuilderReviewEditor
         SalesBoardBuilderDivergence $divergence,
         SalesBoardBuilderDivergenceInput $input,
     ): SalesBoardBuilderDivergence {
-        return DB::transaction(function () use ($divergence, $input): SalesBoardBuilderDivergence {
-            $divergence = SalesBoardBuilderDivergence::query()
-                ->whereKey($divergence->getKey())
-                ->lockForUpdate()
-                ->firstOrFail();
+        $anchors = $this->anchorsOfDivergence((int) $divergence->getKey());
 
-            $section = $this->lockedSection($divergence->section);
-            $this->assertEditable($section->review);
+        return DB::transaction(function () use ($anchors, $input): SalesBoardBuilderDivergence {
+            $section = $this->lockedSection($anchors);
+            $divergence = $this->lockedDivergence($anchors);
 
             $this->validator->validate($section->review, $section, $input);
 
@@ -139,14 +146,11 @@ class SalesBoardBuilderReviewEditor
      */
     public function removeDivergence(SalesBoardBuilderDivergence $divergence): void
     {
-        DB::transaction(function () use ($divergence): void {
-            $divergence = SalesBoardBuilderDivergence::query()
-                ->whereKey($divergence->getKey())
-                ->lockForUpdate()
-                ->firstOrFail();
+        $anchors = $this->anchorsOfDivergence((int) $divergence->getKey());
 
-            $section = $this->lockedSection($divergence->section);
-            $this->assertEditable($section->review);
+        DB::transaction(function () use ($anchors): void {
+            $section = $this->lockedSection($anchors);
+            $divergence = $this->lockedDivergence($anchors);
 
             $divergence->delete();
 
@@ -156,13 +160,19 @@ class SalesBoardBuilderReviewEditor
 
     public function updateOverallComment(SalesBoardBuilderReview $review, ?string $comment): SalesBoardBuilderReview
     {
-        return DB::transaction(function () use ($review, $comment): SalesBoardBuilderReview {
+        $cycleId = (int) SalesBoardBuilderReview::query()
+            ->whereKey($review->getKey())
+            ->valueOrFail('sales_board_cycle_id');
+
+        return DB::transaction(function () use ($review, $comment, $cycleId): SalesBoardBuilderReview {
+            $cycle = $this->lockedCycle($cycleId);
+
             $review = SalesBoardBuilderReview::query()
                 ->whereKey($review->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $this->assertEditable($review);
+            $this->assertEditable($review, $cycle);
 
             $review->forceFill(['overall_comment' => $this->normalizeComment($comment)])->save();
 
@@ -182,12 +192,84 @@ class SalesBoardBuilderReviewEditor
         ])->save();
     }
 
-    private function lockedSection(SalesBoardBuilderReviewSection $section): SalesBoardBuilderReviewSection
+    /**
+     * Seção, revisão e ciclo de uma seção, lidos antes da transação.
+     *
+     * São identidade imutável, e lê-los fora dela é de propósito: no
+     * `REPEATABLE READ` a primeira leitura simples fixa o retrato da transação,
+     * e fixá-lo antes dos locks faria o status da revisão ser lido como era
+     * antes de quem segurava o ciclo.
+     *
+     * @return array{cycle: int, review: int, section: int, divergence: int|null}
+     */
+    private function anchorsOfSection(int $sectionId): array
     {
-        return SalesBoardBuilderReviewSection::query()
-            ->whereKey($section->getKey())
+        $reviewId = (int) SalesBoardBuilderReviewSection::query()
+            ->whereKey($sectionId)
+            ->valueOrFail('sales_board_builder_review_id');
+
+        return [
+            'cycle' => (int) SalesBoardBuilderReview::query()->whereKey($reviewId)->valueOrFail('sales_board_cycle_id'),
+            'review' => $reviewId,
+            'section' => $sectionId,
+            'divergence' => null,
+        ];
+    }
+
+    /**
+     * @return array{cycle: int, review: int, section: int, divergence: int|null}
+     */
+    private function anchorsOfDivergence(int $divergenceId): array
+    {
+        $sectionId = (int) SalesBoardBuilderDivergence::query()
+            ->whereKey($divergenceId)
+            ->valueOrFail('sales_board_builder_review_section_id');
+
+        return [
+            ...$this->anchorsOfSection($sectionId),
+            'divergence' => $divergenceId,
+        ];
+    }
+
+    private function lockedCycle(int $cycleId): SalesBoardCycle
+    {
+        return SalesBoardCycle::query()
+            ->whereKey($cycleId)
             ->lockForUpdate()
-            ->with('review')
+            ->firstOrFail();
+    }
+
+    /**
+     * Trava ciclo, revisão e seção, nessa ordem, e confere a revisão sob o lock.
+     *
+     * @param  array{cycle: int, review: int, section: int, divergence: int|null}  $anchors
+     */
+    private function lockedSection(array $anchors): SalesBoardBuilderReviewSection
+    {
+        $cycle = $this->lockedCycle($anchors['cycle']);
+
+        $review = SalesBoardBuilderReview::query()
+            ->whereKey($anchors['review'])
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        $this->assertEditable($review, $cycle);
+
+        return SalesBoardBuilderReviewSection::query()
+            ->whereKey($anchors['section'])
+            ->lockForUpdate()
+            ->firstOrFail()
+            ->setRelation('review', $review);
+    }
+
+    /**
+     * @param  array{cycle: int, review: int, section: int, divergence: int|null}  $anchors
+     */
+    private function lockedDivergence(array $anchors): SalesBoardBuilderDivergence
+    {
+        return SalesBoardBuilderDivergence::query()
+            ->whereKey($anchors['divergence'])
+            ->lockForUpdate()
             ->firstOrFail();
     }
 
@@ -198,14 +280,13 @@ class SalesBoardBuilderReviewEditor
      * registrando divergências contra a versão anterior só acumularia trabalho
      * que a Gestão teria de descartar.
      */
-    private function assertEditable(SalesBoardBuilderReview $review): void
+    private function assertEditable(SalesBoardBuilderReview $review, SalesBoardCycle $cycle): void
     {
         if (! $review->isEditable()) {
             throw SalesBoardBuilderReviewException::reviewNotEditable();
         }
 
-        $cycle = $review->cycle;
-        $current = $cycle?->currentBaseline;
+        $current = SalesBoardCycleBaseline::query()->find($cycle->current_baseline_id);
 
         if (! $review->appliesTo($current)) {
             throw SalesBoardBuilderReviewException::baselineChanged();

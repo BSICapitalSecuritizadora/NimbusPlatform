@@ -16,11 +16,13 @@ use Throwable;
  * A porta de entrada da automação mensal.
  *
  * O código de saída é semântico e vale para o monitoramento: `0` significa que a
- * execução técnica terminou, **mesmo com bloqueios de domínio**. Um
- * empreendimento com cadastro incompleto é operação normal antes do fechamento,
- * e fazer o comando falhar por isso ensinaria o time a ignorar o alarme. Saída
- * diferente de zero é falha técnica do orquestrador -- aí sim alguém precisa
- * olhar.
+ * execução terminou tecnicamente saudável ("concluída" ou "concluída com
+ * bloqueios"), **mesmo com bloqueios de domínio**. Um empreendimento com cadastro
+ * incompleto é operação normal antes do fechamento, e fazer o comando falhar por
+ * isso ensinaria o time a ignorar o alarme. Qualquer outro desfecho -- falha
+ * técnica de alvo, aviso que não saiu, lembretes que estouraram, orquestração
+ * que caiu -- sai com código diferente de zero, e o scheduler registra a falha
+ * no log da aplicação: aí sim alguém precisa olhar.
  *
  * Desligado também é `0`. O scheduler continua chamando o comando de hora em
  * hora, e desligado não é falha: é a automação fazendo exatamente o que foi
@@ -59,6 +61,8 @@ class SalesBoardAutomationRunCommand extends Command
             return self::FAILURE;
         }
 
+        $this->ensureMemoryLimit();
+
         try {
             $run = $automation->run(
                 trigger: $this->trigger(),
@@ -80,9 +84,34 @@ class SalesBoardAutomationRunCommand extends Command
 
         /**
          * Bloqueio não é falha do comando: quem precisa de ação é o cadastro,
-         * não o scheduler.
+         * não o scheduler. Falha técnica é.
          */
-        return self::SUCCESS;
+        return $run->status->isTechnicallyHealthy() ? self::SUCCESS : self::FAILURE;
+    }
+
+    /**
+     * Garante para esta execução o teto de memória configurado.
+     *
+     * O scheduler dispara este comando num processo PHP novo, com o
+     * `memory_limit` do `php.ini` da imagem -- 128 MB quando nada o define --, e
+     * sem as flags `-d` de quem o chamou. A geração de uma obra grande hidrata as
+     * parcelas da obra inteira, e o estouro de memória não é `Throwable`: o
+     * processo morria sem registrar nada. Aqui o limite só sobe; um ambiente que
+     * já dá mais memória, ou nenhum limite, fica como está.
+     */
+    private function ensureMemoryLimit(): void
+    {
+        $desired = SalesBoardAutomationConfig::runMemoryLimit();
+        $desiredBytes = SalesBoardAutomationConfig::memoryLimitBytes($desired);
+        $currentBytes = SalesBoardAutomationConfig::memoryLimitBytes((string) ini_get('memory_limit'));
+
+        if ($currentBytes === null) {
+            return;
+        }
+
+        if ($desiredBytes === null || $desiredBytes > $currentBytes) {
+            ini_set('memory_limit', $desired);
+        }
     }
 
     /**
@@ -170,6 +199,8 @@ class SalesBoardAutomationRunCommand extends Command
             'skipped' => 0,
             'alerts_sent' => 0,
             'alerts_deduped' => 0,
+            'alerts_failed' => 0,
+            'alerts_without_recipient' => 0,
             'duration_ms' => 0,
             'dry_run' => $dryRun,
             'automation_enabled' => false,
@@ -220,12 +251,13 @@ class SalesBoardAutomationRunCommand extends Command
         }
 
         $this->line(collect($run->toSummaryArray())
-            ->only(['discovered', 'attempted', 'generated', 'existing', 'blocked', 'failed', 'skipped', 'alerts_sent', 'alerts_deduped', 'duration_ms'])
+            ->only(['discovered', 'attempted', 'generated', 'existing', 'blocked', 'failed', 'skipped', 'alerts_sent', 'alerts_deduped', 'alerts_failed', 'alerts_without_recipient', 'duration_ms'])
             ->map(fn (mixed $value, string $key): string => $key.'='.($value ?? '—'))
             ->implode(', '));
 
         if (! $run->status->isTechnicallyHealthy()) {
-            $this->error('Execução concluída com falhas técnicas: '.$run->status->label());
+            $this->error('Execução concluída com falhas técnicas: '.$run->status->label()
+                .(filled($run->failure_message) ? ' -- '.$run->failure_message : ''));
         }
     }
 

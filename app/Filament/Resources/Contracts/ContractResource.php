@@ -10,7 +10,9 @@ use App\Filament\Resources\Contracts\RelationManagers\ContractInstallmentsRelati
 use App\Filament\Resources\Contracts\Schemas\ContractForm;
 use App\Filament\Resources\Contracts\Schemas\ContractInfolist;
 use App\Filament\Resources\Contracts\Tables\ContractsTable;
+use App\Filament\Support\AuthorizesThroughModelPolicy;
 use App\Models\Contract;
+use App\Policies\ContractPolicy;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -21,8 +23,24 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use UnitEnum;
 
+/**
+ * Autorizado pela {@see ContractPolicy}: as permissões
+ * `contracts.*` e as guardas do contrato já lido pelo Quadro de Vendas vivem lá.
+ */
 class ContractResource extends Resource
 {
+    use AuthorizesThroughModelPolicy;
+
+    /**
+     * A exclusão não é o distrato. A derivação ignora contratos excluídos, então
+     * excluir um contrato vendido o faz nunca ter existido em todas as
+     * competências; o distrato é um fato datado, que devolve a unidade ao
+     * estoque a partir da data dele.
+     */
+    public const DELETE_MODAL_DESCRIPTION = 'Use a exclusão apenas para um contrato registrado por engano. '
+        .'Para um distrato, edite o contrato, mude o status para Distratado e informe a Data do Distrato: '
+        .'a venda continua no histórico e a unidade volta ao estoque a partir dessa data.';
+
     protected static ?string $model = Contract::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;
@@ -91,49 +109,6 @@ class ContractResource extends Resource
             'Compradores' => $record->buyersLabel(),
             'Unidade' => $record->constructionUnit?->display_name ?? '—',
         ];
-    }
-
-    public static function canViewAny(): bool
-    {
-        return auth()->user()?->can('contracts.view') ?? false;
-    }
-
-    public static function canCreate(): bool
-    {
-        return auth()->user()?->can('contracts.create') ?? false;
-    }
-
-    public static function canView(Model $record): bool
-    {
-        return auth()->user()?->can('contracts.view') ?? false;
-    }
-
-    public static function canEdit(Model $record): bool
-    {
-        return (auth()->user()?->can('contracts.update') ?? false)
-            && ! ($record instanceof Contract && $record->trashed());
-    }
-
-    public static function canDelete(Model $record): bool
-    {
-        return (auth()->user()?->can('contracts.delete') ?? false)
-            && ! ($record instanceof Contract && $record->trashed());
-    }
-
-    public static function canRestore(Model $record): bool
-    {
-        return (auth()->user()?->can('contracts.restore') ?? false)
-            && ($record instanceof Contract)
-            && $record->trashed();
-    }
-
-    /**
-     * A contract is commercial history: erasing it for good would take the sale,
-     * the distrato and the trail of a unit with it.
-     */
-    public static function canForceDelete(Model $record): bool
-    {
-        return false;
     }
 
     /**

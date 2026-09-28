@@ -89,8 +89,16 @@ it('measures a full run end to end', function (int $count) {
         $queries++;
     });
 
+    /**
+     * Pico da execução acima do uso de partida, com o contador de pico zerado
+     * antes. A diferença de `memory_get_usage(true)` entre o fim e o começo
+     * dava sempre 0,0 MB: os blocos já tinham sido reservados pelas factories,
+     * e o que a execução aloca e solta no meio nunca aparecia.
+     */
+    gc_collect_cycles();
+    $memory = memory_get_usage();
+    memory_reset_peak_usage();
     $started = microtime(true);
-    $memory = memory_get_usage(true);
 
     $run = AutomationFixture::run();
 
@@ -99,7 +107,7 @@ it('measures a full run end to end', function (int $count) {
         'generated' => $run->generated_count,
         'total_queries' => $queries,
         'duration_ms' => round((microtime(true) - $started) * 1000, 1),
-        'memory_mb' => round((memory_get_usage(true) - $memory) / 1048576, 1),
+        'peak_memory_mb' => round((memory_get_peak_usage() - $memory) / 1048576, 1),
         'queries_per_target' => round($queries / max($count, 1), 1),
     ]);
 

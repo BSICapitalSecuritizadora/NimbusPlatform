@@ -6,6 +6,7 @@ namespace App\Services\Reports;
 
 use App\DTOs\ConstructionProgressData;
 use App\DTOs\Guarantees\GuaranteePositionData;
+use App\DTOs\SalesBoards\ConstructionSalesPosition;
 use App\DTOs\SalesBoards\EmissionSalesPosition;
 use App\Enums\GuaranteeType;
 use App\Enums\LegalInstrumentFieldKey;
@@ -27,6 +28,7 @@ use App\Services\ConstructionProgressProvider;
 use App\Services\Guarantees\EmissionGuaranteeCoverageEngine;
 use App\Services\LegalInstruments\InstrumentPositionResolver;
 use App\Services\SalesBoards\SalesBoardPositionReader;
+use App\Support\BusinessTime;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -71,9 +73,14 @@ class EmissionMonthlyReportService
      * Bloco de garantias do relatório (§48 do escopo).
      *
      * O relatório consome o resultado do módulo — não recalcula nada. A
-     * competência fechada tem prioridade sobre a apuração ao vivo: é o número
-     * que foi consolidado naquele mês, e reapurar poderia devolver outro depois
-     * de uma correção retroativa em recebíveis, estoque ou curva de PU.
+     * competência **fechada** tem prioridade sobre a apuração ao vivo: é o
+     * número que foi consolidado naquele mês, e reapurar poderia devolver outro
+     * depois de uma correção retroativa em recebíveis, estoque ou curva de PU.
+     *
+     * Snapshot aberto não é consolidado: é uma apuração intermediária, em geral
+     * gravada antes de o Quadro de Vendas do mês existir. Usá-lo congelaria no
+     * relatório um estoque que a própria seção de unidades já não mostra — por
+     * isso, sem fechamento, vale a apuração ao vivo, rotulada como tal.
      *
      * @return array<string, mixed>
      */
@@ -84,6 +91,7 @@ class EmissionMonthlyReportService
         /** @var GuaranteeSnapshot|null $snapshot */
         $snapshot = $emission->guaranteeSnapshots()
             ->whereDate('reference_month', $referenceMonth)
+            ->whereNotNull('closed_at')
             ->first();
 
         if ($snapshot !== null) {
@@ -94,6 +102,10 @@ class EmissionMonthlyReportService
 
         return [
             'consolidated' => false,
+            'closed_at' => null,
+            'sales_board_outdated' => false,
+            'partial_sales_board_position' => $position->hasSalesBoardGaps(),
+            'sales_board_gaps' => $position->salesBoardGapDescriptions(),
             'status' => $position->coverageStatus->label(),
             'outstanding_balance' => $this->guaranteeMoney($position->outstandingBalance),
             'gross_value' => $this->guaranteeMoney($position->totalGrossValue),
@@ -133,9 +145,14 @@ class EmissionMonthlyReportService
             ->whereDate('reference_month', $referenceMonth)
             ->get();
 
+        $salesBoardCoverage = $snapshot->salesBoardCoverage();
+
         return [
             'consolidated' => true,
-            'closed_at' => $snapshot->closed_at?->format('d/m/Y H:i'),
+            'closed_at' => $snapshot->closed_at === null ? null : BusinessTime::at($snapshot->closed_at)->format('d/m/Y H:i'),
+            'sales_board_outdated' => $snapshot->isSalesBoardOutdated(),
+            'partial_sales_board_position' => $salesBoardCoverage?->hasGaps() ?? false,
+            'sales_board_gaps' => $salesBoardCoverage?->gapDescriptions() ?? [],
             'status' => $snapshot->coverage_status?->label() ?? self::NOT_CONSOLIDATED,
             'outstanding_balance' => $this->guaranteeMoney($this->toFloat($snapshot->outstanding_balance)),
             'gross_value' => $this->guaranteeMoney($this->toFloat($snapshot->total_gross_value)),
@@ -270,7 +287,10 @@ class EmissionMonthlyReportService
             'expenses_history' => $this->buildExpensesHistory($emission, $monthEnd),
             'delinquency' => $this->buildDelinquency($receivable),
             'receivables' => $this->buildReceivablesSummary($receivable),
-            'units' => $this->buildUnits($salesPositions->get($monthStart->format('Y-m'))),
+            'units' => $this->buildUnits(
+                $salesPositions->get($monthStart->format('Y-m')),
+                $emission->automationCovers($monthStart),
+            ),
             'units_history' => $this->buildUnitsHistory($unitsHistoryCompetences, $salesPositions),
             'negotiations' => $negotiationsData,
             'negotiations_history' => $this->buildNegotiationsHistory($emission, $monthEnd),
@@ -654,7 +674,7 @@ class EmissionMonthlyReportService
      *
      * @return array<string, mixed>
      */
-    private function buildUnits(?EmissionSalesPosition $position): array
+    private function buildUnits(?EmissionSalesPosition $position, bool $automationCoversMonth): array
     {
         if ($position === null || ! $position->hasData()) {
             return ['has_data' => false, 'empty_message' => self::NO_DATA];
@@ -671,6 +691,60 @@ class EmissionMonthlyReportService
             ],
             'composition' => $this->unitsComposition($position),
             'coverage' => $position->coverage(),
+            'coverage_summary' => $this->unitsCoverageSummary($position, $automationCoversMonth),
+        ];
+    }
+
+    /**
+     * Cobertura da posição em texto, para o PDF.
+     *
+     * O painel soma os empreendimentos com a última posição conhecida de cada
+     * um. Sem esta legenda, uma soma parcial (empreendimento sem quadro) ou
+     * transportada (quadro de competência anterior) sai no relatório como se
+     * fosse a posição completa da competência. Na competência coberta pela
+     * automação, a posição incompleta é a que ainda aguarda publicação.
+     *
+     * @return array{
+     *     label: string,
+     *     complete: bool,
+     *     awaiting_publication: bool,
+     *     constructions: list<array{name: string, month: string, status: string}>,
+     *     carried_forward: list<array{name: string, month: string}>,
+     *     missing: list<string>
+     * }
+     */
+    private function unitsCoverageSummary(EmissionSalesPosition $position, bool $automationCoversMonth): array
+    {
+        $complete = $position->isFullyCovered() && ! $position->hasCarryForward();
+        $name = fn (ConstructionSalesPosition $construction): string => filled($construction->constructionName)
+            ? (string) $construction->constructionName
+            : 'Empreendimento #'.$construction->constructionId;
+
+        return [
+            'label' => sprintf(
+                '%d de %d %s com posição',
+                $position->constructionsCovered,
+                $position->constructionsExpected,
+                $position->constructionsExpected === 1 ? 'empreendimento' : 'empreendimentos',
+            ),
+            'complete' => $complete,
+            'awaiting_publication' => $automationCoversMonth && ! $complete,
+            'constructions' => array_map(
+                fn (ConstructionSalesPosition $construction): array => [
+                    'name' => $name($construction),
+                    'month' => $construction->referenceMonthUsedLabel() ?? '—',
+                    'status' => $construction->status->label(),
+                ],
+                $position->positions,
+            ),
+            'carried_forward' => array_map(
+                fn (ConstructionSalesPosition $construction): array => [
+                    'name' => $name($construction),
+                    'month' => (string) $construction->referenceMonthUsedLabel(),
+                ],
+                $position->carriedForwardPositions(),
+            ),
+            'missing' => array_map($name, $position->missingPositions()),
         ];
     }
 

@@ -4,10 +4,12 @@ namespace App\Filament\Resources\Constructions\Schemas;
 
 use App\Actions\Expenses\LookupExpenseServiceProviderCnpj;
 use App\Concerns\MoneyFormatter;
+use App\Exceptions\SalesBoardSourceException;
 use App\Filament\Resources\ExpenseServiceProviders\Schemas\ExpenseServiceProviderForm;
 use App\Models\Construction;
 use App\Models\ExpenseServiceProvider;
 use App\Models\ExpenseServiceProviderType;
+use App\Services\SalesBoards\SalesBoardSourceGuard;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
@@ -64,6 +66,27 @@ class ConstructionForm
     }
 
     /**
+     * Por que a obra em edição não pode trocar de Emissão, ou `null`.
+     *
+     * Quadros, ciclos, alvo de automação e homologação ficam gravados com a
+     * Emissão da obra ({@see SalesBoardSourceGuard::constructionEmissionAnchors()}).
+     * O campo fica travado e o motivo aparece como dica; o model recusa a troca
+     * vinda de qualquer outro caminho.
+     */
+    protected static function emissionLockReason(mixed $record): ?string
+    {
+        if (! ($record instanceof Construction) || (! $record->exists)) {
+            return null;
+        }
+
+        $anchors = app(SalesBoardSourceGuard::class)->constructionEmissionAnchors($record);
+
+        return $anchors === []
+            ? null
+            : SalesBoardSourceException::constructionEmissionLocked($anchors)->getMessage();
+    }
+
+    /**
      * @param  bool  $withEmission  Renders the emission selector. Must be disabled when the
      *                              owning emission is already implied by the surrounding schema.
      */
@@ -80,6 +103,8 @@ class ConstructionForm
                         ->searchable()
                         ->preload()
                         ->required()
+                        ->disabled(fn (mixed $record): bool => self::emissionLockReason($record) !== null)
+                        ->helperText(fn (mixed $record): ?string => self::emissionLockReason($record))
                         ->columnSpan(['sm' => 2, 'lg' => 1])
                         ->validationMessages([
                             'required' => 'Selecione a emissão.',

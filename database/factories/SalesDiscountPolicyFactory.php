@@ -16,9 +16,9 @@ class SalesDiscountPolicyFactory extends Factory
 
     /**
      * Sem fim por padrão: é a forma das linhas registradas antes do fim
-     * explícito, e é a que os cenários do quadro de vendas usam para ter uma
-     * política valendo em qualquer data depois do início. Registros com período
-     * fechado usam {@see self::effectiveUntil()} ou {@see self::during()}.
+     * explícito. Registros com período fechado -- o único formato que a tela
+     * grava, e portanto o de produção -- usam {@see self::closedPeriod()},
+     * {@see self::effectiveUntil()} ou {@see self::during()}.
      *
      * @return array<string, mixed>
      */
@@ -47,6 +47,20 @@ class SalesDiscountPolicyFactory extends Factory
     public function effectiveUntil(?string $date): static
     {
         return $this->state(fn (): array => ['effective_until' => $date]);
+    }
+
+    /**
+     * Período fechado, como toda política registrada pela tela, com um fim
+     * distante o bastante para cobrir qualquer data dos cenários.
+     *
+     * É o que os fixtures do ciclo, do rollout e da automação usam para ter uma
+     * política valendo em qualquer data depois do início sem cair no formato
+     * legado: assim a suíte percorre o mesmo caminho do resolvedor e do
+     * fingerprint -- com o fim -- que a produção percorre.
+     */
+    public function closedPeriod(string $until = '2099-12-31'): static
+    {
+        return $this->effectiveUntil($until);
     }
 
     public function during(string $from, string $until): static

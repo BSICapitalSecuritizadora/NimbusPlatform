@@ -15,6 +15,7 @@ use App\Models\SalesBoardBuilderReviewSection;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleBaseline;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -62,10 +63,16 @@ class SalesBoardBuilderReviewSubmissionService
 
         return DB::transaction(function () use ($review, $reviewer, $overallComment): SalesBoardBuilderReview {
             /**
-             * Ciclo e revisão travados na mesma ordem em que a abertura os toca:
-             * o ciclo primeiro. Dois envios simultâneos serializam aqui, e o
-             * segundo encontra a revisão já enviada em vez de produzir uma
-             * segunda transição.
+             * Ciclo e revisão travados na mesma ordem em que a abertura e a
+             * edição os tocam: o ciclo primeiro. Dois envios simultâneos
+             * serializam aqui, e o segundo encontra a revisão já enviada em vez
+             * de produzir uma segunda transição. Uma edição concorrente também:
+             * ela espera o envio e encontra a revisão congelada, ou termina
+             * antes e o envio confere o que ela gravou.
+             *
+             * As seções vêm travadas junto. O ciclo já serializa quem segue a
+             * ordem; o lock delas é o que impede uma escrita fora dessa ordem
+             * de mudar uma resposta entre a conferência e o envio.
              */
             $cycle = SalesBoardCycle::query()
                 ->whereKey($review->sales_board_cycle_id)
@@ -75,7 +82,7 @@ class SalesBoardBuilderReviewSubmissionService
             $review = SalesBoardBuilderReview::query()
                 ->whereKey($review->getKey())
                 ->lockForUpdate()
-                ->with('sections')
+                ->with(['sections' => fn (HasMany $query): HasMany => $query->lockForUpdate()])
                 ->firstOrFail();
 
             if ($review->status === SalesBoardBuilderReviewStatus::Submitted) {

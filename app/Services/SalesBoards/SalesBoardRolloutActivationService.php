@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\SalesBoards;
 
+use App\Enums\SalesBoardAutomationClosureReason;
 use App\Enums\SalesBoardRolloutEventType;
 use App\Enums\SalesBoardSource;
 use App\Exceptions\SalesBoardRolloutException;
@@ -11,6 +12,7 @@ use App\Models\Emission;
 use App\Models\SalesBoardRolloutEvent;
 use App\Models\SalesBoardRolloutHomologation;
 use App\Models\User;
+use App\Support\SalesBoards\SalesBoardApprovalAuthority;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -53,6 +55,8 @@ class SalesBoardRolloutActivationService
         if ($actor === null) {
             throw SalesBoardRolloutException::actorRequired();
         }
+
+        SalesBoardApprovalAuthority::assertMayActivate($actor, $homologation);
 
         $reason = $this->normalizeReason($reason);
 
@@ -127,12 +131,21 @@ class SalesBoardRolloutActivationService
      * Interrompe novas tentativas automáticas. Nada é apagado, nada é
      * despublicado, nenhum ciclo em andamento é cancelado -- o trabalho humano
      * que estiver a meio caminho continua exatamente onde estava.
+     *
+     * Os alvos da automação ainda abertos (pendentes, bloqueados, com falha) são
+     * encerrados na mesma transação, com o motivo e o autor do retorno: a
+     * competência deixou de ser da automação, e um alvo aberto sem ninguém para
+     * tentá-lo continuaria contando como pendente e disparando lembrete para
+     * sempre. O encerramento não toca em ciclo nenhum, e uma nova ativação que
+     * cubra a mesma competência reabre o alvo.
      */
     public function returnToLegacy(Emission $emission, ?User $actor, string $reason): Emission
     {
         if ($actor === null) {
             throw SalesBoardRolloutException::actorRequired();
         }
+
+        SalesBoardApprovalAuthority::authorize($actor);
 
         $reason = $this->normalizeReason($reason);
 
@@ -159,6 +172,13 @@ class SalesBoardRolloutActivationService
                 'sales_board_auto_open_builder_review' => false,
                 'sales_board_active_homologation_id' => null,
             ])->save();
+
+            app(SalesBoardAutomationTargetClosureService::class)->closeForEmission(
+                $locked,
+                SalesBoardAutomationClosureReason::ReturnedToLegacy,
+                'Emissão devolvida ao modo legado: '.$reason,
+                $actor,
+            );
 
             $this->recordEvent(
                 emission: $locked,

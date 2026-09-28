@@ -10,6 +10,7 @@ use App\Models\SalesDiscountPolicy;
 use App\Services\SalesBoards\SalesBoardDerivationService;
 use App\Services\SalesBoards\SalesBoardFingerprintService;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -28,7 +29,7 @@ uses(RefreshDatabase::class);
  */
 function cycleBatchDataset(int $constructions, int $unitsEach): array
 {
-    $emission = Emission::factory()->create(['status' => 'active']);
+    $emission = Emission::factory()->withAutomatedSalesBoard()->create(['status' => 'active']);
     $now = now();
 
     $created = collect();
@@ -212,12 +213,14 @@ it('observes the material source of the whole emission in a constant number of l
 /**
  * O custo marginal de congelar mais um empreendimento.
  *
- * A apuração da emissão inteira é constante -- seis carregamentos para derivar,
- * seis para observar a fonte, uma consulta para os ciclos existentes. O que
- * cresce com a carteira é a **escrita**: cada empreendimento tem o próprio ciclo,
- * na própria transação, porque a Fase C não admite uma emissão em que um
- * empreendimento incompleto derrube a versão dos outros. Esse custo é por ciclo
- * gerado e não tem relação com o número de unidades, contratos ou parcelas.
+ * O congelamento de uma emissão inteira apura **um empreendimento por vez**:
+ * seis carregamentos para derivar e seis para observar a fonte de cada um, e
+ * depois a escrita do ciclo na sua própria transação. A derivação em lote da
+ * emissão inteira, que deixava a apuração constante, somava na memória as
+ * parcelas de todos os empreendimentos e derrubava o processo antes do primeiro
+ * ciclo; o preço de não fazer isso são estas consultas por empreendimento.
+ * Continua sendo um custo fixo por ciclo, sem relação com o número de unidades,
+ * contratos ou parcelas -- o teste seguinte prova essa metade.
  */
 it('freezes a whole emission at a bounded marginal cost per development', function () {
     [$smallEmission] = cycleBatchDataset(5, 25);
@@ -238,13 +241,40 @@ it('freezes a whole emission at a bounded marginal cost per development', functi
 
     expect(SalesBoardCycle::query()->count())->toBe(20)
         /**
-         * Um custo fixo por ciclo -- transação, inserção do cabeçalho, das
-         * linhas, dos movimentos, ponteiro da versão e o comparativo com o
-         * quadro publicado -- e nenhuma consulta de apuração entre elas. O teste
-         * seguinte prova a outra metade: esse custo não muda com o tamanho do
-         * empreendimento.
+         * Doze leituras de apuração e a escrita -- transação, cabeçalho,
+         * linhas, movimentos, ponteiro da versão e o comparativo com o quadro
+         * publicado.
          */
-        ->and($marginalPerConstruction)->toBeLessThanOrEqual(10.0);
+        ->and($marginalPerConstruction)->toBeLessThanOrEqual(25.0);
+});
+
+/**
+ * A prova de que a apuração do lote não junta a emissão inteira na memória:
+ * cada carga de unidades -- a da derivação e a da observação da fonte -- pede um
+ * empreendimento só.
+ */
+it('reads the source of one development at a time when freezing a whole emission', function () {
+    [$emission, $constructions] = cycleBatchDataset(3, 5);
+
+    $unitLoads = [];
+
+    DB::listen(function (QueryExecuted $query) use (&$unitLoads): void {
+        if (str_contains($query->sql, 'from "construction_units" where "construction_id" in')) {
+            $unitLoads[] = $query->bindings;
+        }
+    });
+
+    Artisan::call('sales-boards:generate-cycle', [
+        '--emission' => $emission->id,
+        '--reference-month' => '07/2026',
+        '--json' => true,
+    ]);
+
+    expect(SalesBoardCycle::query()->count())->toBe(3)
+        ->and($unitLoads)->toHaveCount(6)
+        ->and(collect($unitLoads)->every(fn (array $bindings): bool => count($bindings) === 1))->toBeTrue()
+        ->and(collect($unitLoads)->flatten()->unique()->sort()->values()->all())
+        ->toBe($constructions->pluck('id')->sort()->values()->all());
 });
 
 it('does not pay more to freeze a development just because it has more units', function () {

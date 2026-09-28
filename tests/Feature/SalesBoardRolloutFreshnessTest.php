@@ -26,6 +26,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\SalesBoards\DerivationFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\RolloutFixture;
 
 uses(RefreshDatabase::class);
@@ -100,7 +101,14 @@ function changeAfterApproval(string $change, array $scenario): void
         'contract sale value' => $scenario['contract']->update(['sale_value' => '470000.00']),
         'installment payment' => $scenario['installment']->update(['payment_date' => '2026-07-20', 'paid_value' => '480000.00']),
         'unit value' => $scenario['unitValue']->update(['value' => '550000.00']),
-        'discount policy' => $scenario['policy']->update(['maximum_discount_percent' => '1.00']),
+        // A política é append-only: mudar o limite é registrar outra, que
+        // substitui a vigente antes da venda do cenário.
+        'discount policy' => SalesDiscountPolicy::factory()
+            ->forConstruction($scenario['policy']->construction)
+            ->effectiveFrom('2026-07-01')
+            ->closedPeriod()
+            ->allowing('1.00')
+            ->create(),
         'exchange' => ConstructionUnitExchange::factory()->create([
             'construction_unit_id' => $scenario['stockUnitA']->id,
             'exchange_value' => '700000.00',
@@ -110,9 +118,12 @@ function changeAfterApproval(string $change, array $scenario): void
 
         // Escopo: o conjunto de empreendimentos da Emissão.
         'construction added' => RolloutFixture::construction($scenario['emission'], 'Z'),
-        'construction removed' => $scenario['constructions'][2]->update([
-            'emission_id' => Emission::factory()->create(['status' => 'active'])->id,
-        ]),
+        // A obra homologada não troca mais de Emissão pelo model (guarda das
+        // fontes do Quadro); a saída do escopo é montada por baixo dos eventos,
+        // como a de uma base anterior à guarda, e a checagem continua valendo.
+        'construction removed' => DB::table('constructions')
+            ->where('id', $scenario['constructions'][2]->id)
+            ->update(['emission_id' => Emission::factory()->create(['status' => 'active'])->id]),
 
         // Não material: o vencimento não participa de decisão nenhuma do Quadro.
         'installment due date' => $scenario['installment']->update(['due_date' => '2026-09-30']),
@@ -120,7 +131,8 @@ function changeAfterApproval(string $change, array $scenario): void
         'records touched' => [
             $scenario['contract']->touch(),
             $scenario['unitValue']->touch(),
-            $scenario['policy']->touch(),
+            // O model recusa até o `touch()`; o carimbo muda por fora dele.
+            SalesDiscountPolicy::query()->whereKey($scenario['policy']->id)->update(['updated_at' => now()]),
             $scenario['legacyBoard']->fresh()->touch(),
         ],
         'construction renamed' => $scenario['constructions'][1]->update(['development_name' => 'Residencial Renomeado']),
@@ -154,18 +166,19 @@ function homologateAndApprove(Emission $emission): SalesBoardRolloutHomologation
 
 function approveAttempt(SalesBoardRolloutHomologation $homologation): SalesBoardRolloutHomologation
 {
-    $actor = User::factory()->create();
+    $operator = User::factory()->create();
+    $approver = GovernanceFixture::approver();
     $service = app(SalesBoardRolloutHomologationService::class);
 
     foreach ($homologation->fresh()->constructions as $row) {
         if ($row->requiresAcknowledgement()) {
-            $service->acceptDifference($row, 'Diferença entendida com a operação antes do rollout.', $actor);
+            $service->acceptDifference($row, 'Diferença entendida com a operação antes do rollout.', $operator);
         }
     }
 
-    RolloutFixture::reviewImpacts($homologation->fresh(), $actor);
+    RolloutFixture::reviewImpacts($homologation->fresh(), $approver);
 
-    return RolloutFixture::approve($homologation, $actor);
+    return RolloutFixture::approve($homologation, $approver);
 }
 
 /**
@@ -408,7 +421,7 @@ it('keeps governance out of the assessment hash', function () {
         }
     }
 
-    RolloutFixture::reviewImpacts($homologation, $actor);
+    RolloutFixture::reviewImpacts($homologation, GovernanceFixture::approver());
 
     // Aceites e atestações mudaram; os fatos não.
     expect(rolloutAssessment()->assessmentHash($homologation->fresh()))->toBe($hash)

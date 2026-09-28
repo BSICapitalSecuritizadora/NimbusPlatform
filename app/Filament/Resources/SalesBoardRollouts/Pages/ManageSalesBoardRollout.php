@@ -4,6 +4,7 @@ namespace App\Filament\Resources\SalesBoardRollouts\Pages;
 
 use App\Enums\SalesBoardRolloutHomologationStatus;
 use App\Enums\SalesBoardRolloutRecipientRole;
+use App\Exceptions\SalesBoardMakerCheckerException;
 use App\Exceptions\SalesBoardRolloutException;
 use App\Filament\Resources\SalesBoardRollouts\SalesBoardRolloutResource;
 use App\Models\Emission;
@@ -16,6 +17,7 @@ use App\Services\SalesBoards\SalesBoardRolloutActivationService;
 use App\Services\SalesBoards\SalesBoardRolloutHomologationService;
 use App\Services\SalesBoards\SalesBoardRolloutRecipientDirectory;
 use App\Support\Money\IntegerMoney;
+use App\Support\SalesBoards\SalesBoardApprovalAuthority;
 use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
@@ -264,8 +266,56 @@ class ManageSalesBoardRollout extends Page
             $homologation === null => null,
             $homologation->isEditable() => 'A homologação precisa estar aprovada. A validade dela é reavaliada no momento da ativação.',
             $this->outdatedHomologationId === (int) $homologation->getKey() => 'Esta homologação não representa mais o estado atual das fontes. Abra uma nova homologação antes de ativar.',
-            default => null,
+            default => $this->makerCheckerConflict($homologation, activating: true),
         };
+    }
+
+    /**
+     * Por que "Aprovar" está à vista mas indisponível para quem abriu a
+     * homologação. A tela repete o motivo em texto ao lado do botão, porque o
+     * tooltip não existe em tela de toque.
+     */
+    public function approvalConflict(): ?string
+    {
+        return $this->makerCheckerConflict($this->latestHomologationState());
+    }
+
+    /**
+     * O mesmo para "Ativar automação", só quando é o maker/checker -- e não a
+     * falta de aprovação ou a homologação desatualizada, que a tela já explica
+     * -- o que desabilita o botão.
+     */
+    public function activationConflict(): ?string
+    {
+        $homologation = $this->latestHomologationState();
+
+        if ($homologation === null
+            || ! $homologation->isApproved()
+            || $this->outdatedHomologationId === (int) $homologation->getKey()) {
+            return null;
+        }
+
+        return $this->makerCheckerConflict($homologation, activating: true);
+    }
+
+    /**
+     * Por que quem está na tela não pode aprovar ou ativar esta homologação --
+     * quem a abriu não conclui nenhum dos dois atos --, ou `null`, se pode. O
+     * serviço confere de novo ao aprovar e ao ativar.
+     */
+    protected function makerCheckerConflict(?SalesBoardRolloutHomologation $homologation, bool $activating = false): ?string
+    {
+        $user = auth()->user();
+
+        if (! $user instanceof User || $homologation === null) {
+            return null;
+        }
+
+        $conflict = $activating
+            ? SalesBoardApprovalAuthority::activationConflict($user, $homologation)
+            : SalesBoardApprovalAuthority::homologationApprovalConflict($user, $homologation);
+
+        return $conflict?->getMessage();
     }
 
     /**
@@ -290,6 +340,15 @@ class ManageSalesBoardRollout extends Page
     public function canManage(): bool
     {
         return SalesBoardRolloutResource::canManageRollout();
+    }
+
+    /**
+     * Atestar impactos, aprovar, ativar e retornar ao legado são da Gestão, e
+     * não de quem abre e prepara a homologação.
+     */
+    public function canApproveRollout(): bool
+    {
+        return SalesBoardRolloutResource::canApproveRollout();
     }
 
     public function openHomologationAction(): Action
@@ -393,7 +452,7 @@ class ManageSalesBoardRollout extends Page
             ->requiresConfirmation()
             ->modalHeading('Confirmar a revisão do impacto sobre as Garantias')
             ->modalDescription('O Nimbus não simula o resultado das Garantias: o que está registrado é que a Gestão revisou os deltas apresentados.')
-            ->visible(fn (): bool => $this->canManage() && ($this->currentHomologation()?->isEditable() ?? false))
+            ->visible(fn (): bool => $this->canApproveRollout() && ($this->currentHomologation()?->isEditable() ?? false))
             ->action(function (): void {
                 $this->run(function (): void {
                     app(SalesBoardRolloutHomologationService::class)
@@ -413,7 +472,7 @@ class ManageSalesBoardRollout extends Page
             ->requiresConfirmation()
             ->modalHeading('Confirmar a revisão do impacto sobre o Relatório Mensal')
             ->modalDescription('O Nimbus não gera um relatório de prévia: o que está registrado é que a Gestão revisou os deltas apresentados.')
-            ->visible(fn (): bool => $this->canManage() && ($this->currentHomologation()?->isEditable() ?? false))
+            ->visible(fn (): bool => $this->canApproveRollout() && ($this->currentHomologation()?->isEditable() ?? false))
             ->action(function (): void {
                 $this->run(function (): void {
                     app(SalesBoardRolloutHomologationService::class)
@@ -489,9 +548,16 @@ class ManageSalesBoardRollout extends Page
             ->modalHeading('Aprovar a homologação')
             ->modalDescription('Aprovar não ativa a automação: é o registro de que os fatos foram revisados. A ativação é um passo à parte.')
             ->modalSubmitActionLabel('Aprovar')
-            ->visible(fn (): bool => $this->canManage()
+            ->visible(fn (): bool => $this->canApproveRollout()
                 && ($this->currentHomologation()?->isEditable() ?? false)
                 && ($this->gate()['ready'] ?? false))
+            /**
+             * Quem abriu a homologação continua vendo o botão, desabilitado e
+             * dizendo a quem pedir: escondê-lo faria o portão verde parecer não
+             * ter saída.
+             */
+            ->disabled(fn (): bool => $this->approvalConflict() !== null)
+            ->tooltip(fn (): ?string => $this->approvalConflict())
             ->schema([
                 Textarea::make('reason')
                     ->label('Registro da aprovação')
@@ -558,7 +624,7 @@ class ManageSalesBoardRollout extends Page
              * caminho. Desabilitada, a ação nem monta -- e o serviço reconfere
              * tudo de qualquer forma.
              */
-            ->visible(fn (): bool => $this->canManage()
+            ->visible(fn (): bool => $this->canApproveRollout()
                 && ! $this->emission()->usesAutomatedSalesBoard()
                 && (($homologation = $this->latestHomologationState()) !== null)
                 && ($homologation->isEditable() || $homologation->isApproved())
@@ -583,6 +649,10 @@ class ManageSalesBoardRollout extends Page
                         auth()->user(),
                         (string) $data['reason'],
                     );
+                } catch (SalesBoardMakerCheckerException $exception) {
+                    $this->refusalNotification($exception)->send();
+
+                    return;
                 } catch (SalesBoardRolloutException $exception) {
                     if ($this->requiresNewHomologation($exception)) {
                         $this->outdatedHomologationId = $homologation?->getKey();
@@ -619,7 +689,7 @@ class ManageSalesBoardRollout extends Page
                     .'Reativar depois exigirá uma nova homologação.'
             )
             ->modalSubmitActionLabel('Retornar ao legado')
-            ->visible(fn (): bool => $this->canManage() && $this->emission()->usesAutomatedSalesBoard())
+            ->visible(fn (): bool => $this->canApproveRollout() && $this->emission()->usesAutomatedSalesBoard())
             ->schema([
                 Textarea::make('reason')
                     ->label('Motivo do retorno')
@@ -683,7 +753,7 @@ class ManageSalesBoardRollout extends Page
     {
         try {
             $callback();
-        } catch (SalesBoardRolloutException $exception) {
+        } catch (SalesBoardRolloutException|SalesBoardMakerCheckerException $exception) {
             $this->refusalNotification($exception)->send();
         }
     }
@@ -698,7 +768,7 @@ class ManageSalesBoardRollout extends Page
      * fábrica estática -- comparar com ela é comparar com a própria recusa, sem
      * reescrever a regra que a produziu.
      */
-    protected function refusalNotification(SalesBoardRolloutException $exception, bool $activating = false): Notification
+    protected function refusalNotification(SalesBoardRolloutException|SalesBoardMakerCheckerException $exception, bool $activating = false): Notification
     {
         [$title, $guidance] = match (true) {
             $activating && ($exception->getMessage() === SalesBoardRolloutException::homologationStale()->getMessage()) => [

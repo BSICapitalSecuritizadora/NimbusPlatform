@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Tests\Support\SalesBoards;
 
 use App\Enums\SalesBoardAutomationRunTrigger;
+use App\Enums\SalesBoardSource;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\Emission;
 use App\Models\SalesBoardAutomationRun;
 use App\Models\SalesDiscountPolicy;
-use App\Services\SalesBoards\ConfiguredSalesBoardAutomationEligibilityProvider;
 use App\Services\SalesBoards\DatabaseSalesBoardAutomationEligibilityProvider;
 use App\Services\SalesBoards\SalesBoardAutomationEligibilityProvider;
 use App\Services\SalesBoards\SalesBoardAutomationService;
@@ -20,11 +20,12 @@ use Illuminate\Support\Facades\Config;
 /**
  * Monta empreendimentos habilitados para a automação.
  *
- * Habilita **por configuração**, e por isso amarra explicitamente o provider de
- * configuração no container. Depois da Fase G o binding normal da aplicação é o
- * de banco -- rollout por Emissão --, e estes cenários continuam sendo o que
- * sempre foram: testes do **motor** da automação, dados alvos elegíveis. Quem
- * responde de onde a elegibilidade vem é a suíte da Fase G.
+ * Habilita **por declaração do teste**, e por isso amarra explicitamente o
+ * {@see ConfiguredSalesBoardAutomationEligibilityProvider} no container. O
+ * binding da aplicação é o de banco -- rollout por Emissão --, e estes cenários
+ * continuam sendo o que sempre foram: testes do **motor** da automação, dados
+ * alvos elegíveis. Quem responde de onde a elegibilidade vem é a suíte do
+ * rollout.
  *
  * Nenhum id real entra em arquivo versionado: cada teste declara quem quer ver
  * automatizado.
@@ -70,6 +71,46 @@ final class AutomationFixture
             ],
             array_values($constructions),
         ));
+
+        self::coverEmissionsFrom($constructions, $startReferenceMonth);
+    }
+
+    /**
+     * Faz a Emissão de cada empreendimento cobrir a competência inicial.
+     *
+     * A geração só congela competência coberta pela automação da Emissão, e o
+     * provider de configuração não olha a Emissão. Sem isto o motor descobriria
+     * o alvo e a geração o recusaria. Uma Emissão que já cubra desde antes fica
+     * como está: adiantar a competência inicial dela recusaria ciclos que o
+     * cenário já gerou.
+     *
+     * @param  array<int, Construction|int>  $constructions
+     */
+    private static function coverEmissionsFrom(array $constructions, string $startReferenceMonth): void
+    {
+        $start = CarbonImmutable::parse($startReferenceMonth)->startOfMonth();
+
+        $constructionIds = array_map(
+            fn (Construction|int $construction): int => $construction instanceof Construction
+                ? (int) $construction->getKey()
+                : $construction,
+            array_values($constructions),
+        );
+
+        $emissions = Emission::query()
+            ->whereIn('id', Construction::query()->whereKey($constructionIds)->select('emission_id'))
+            ->get();
+
+        foreach ($emissions as $emission) {
+            if ($emission->automationCovers($start)) {
+                continue;
+            }
+
+            $emission->forceFill([
+                'sales_board_source' => SalesBoardSource::Automated,
+                'sales_board_automation_start_reference_month' => $start->toDateString(),
+            ])->save();
+        }
     }
 
     public static function disable(): void
@@ -94,11 +135,11 @@ final class AutomationFixture
     public static function readyConstruction(string $unitPrefix = '1'): Construction
     {
         $construction = Construction::factory()->create([
-            'emission_id' => Emission::factory()->create(['status' => 'active'])->id,
+            'emission_id' => Emission::factory()->withAutomatedSalesBoard(self::DEFAULT_MONTH)->create(['status' => 'active'])->id,
         ]);
 
         SalesDiscountPolicy::factory()->forConstruction($construction)
-            ->effectiveFrom('2020-01-01')->allowing('10.00')->create();
+            ->effectiveFrom('2020-01-01')->closedPeriod()->allowing('10.00')->create();
 
         DerivationFixture::unit($construction, $unitPrefix.'01');
         DerivationFixture::unit($construction, $unitPrefix.'02');
@@ -113,11 +154,11 @@ final class AutomationFixture
     public static function blockedConstruction(string $unitPrefix = '2'): Construction
     {
         $construction = Construction::factory()->create([
-            'emission_id' => Emission::factory()->create(['status' => 'active'])->id,
+            'emission_id' => Emission::factory()->withAutomatedSalesBoard(self::DEFAULT_MONTH)->create(['status' => 'active'])->id,
         ]);
 
         SalesDiscountPolicy::factory()->forConstruction($construction)
-            ->effectiveFrom('2020-01-01')->allowing('10.00')->create();
+            ->effectiveFrom('2020-01-01')->closedPeriod()->allowing('10.00')->create();
 
         DerivationFixture::unit($construction, $unitPrefix.'01');
 

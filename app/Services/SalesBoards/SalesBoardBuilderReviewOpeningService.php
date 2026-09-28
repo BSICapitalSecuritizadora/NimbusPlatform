@@ -35,10 +35,20 @@ class SalesBoardBuilderReviewOpeningService
     public function __construct(
         private readonly SalesBoardStaleDetectionService $staleDetectionService,
         private readonly SalesBoardBuilderReviewApplicability $applicability,
+        private readonly SalesBoardReviewSupersessionReconciler $reconciler,
     ) {}
 
     public function open(SalesBoardCycle $cycle, ?User $actor = null): SalesBoardBuilderReview
     {
+        /**
+         * Antes de decidir qualquer coisa, conclui a substituição que uma versão
+         * material nova deixou pendente. Sem isso, um rascunho desatualizado
+         * seria devolvido como "o rascunho em andamento", e um ciclo que ficou
+         * em análise da Gestão com a validação desatualizada nunca voltaria à
+         * construtora.
+         */
+        $this->reconciler->reconcile($cycle);
+
         $cycle = $cycle->fresh();
 
         $existing = $this->applicability->activeDraft($cycle);

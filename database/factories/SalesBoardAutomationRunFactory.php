@@ -25,4 +25,16 @@ class SalesBoardAutomationRunFactory extends Factory
             'finished_at' => now(),
         ];
     }
+
+    /**
+     * Uma execução que ainda não gravou o próprio fim -- viva, ou morta no meio.
+     */
+    public function running(mixed $startedAt = null): static
+    {
+        return $this->state(fn (): array => [
+            'status' => SalesBoardAutomationRunStatus::Running,
+            'started_at' => $startedAt ?? now(),
+            'finished_at' => null,
+        ]);
+    }
 }

@@ -21,6 +21,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\SalesBoards\BuilderReviewFixture;
+use Tests\Support\SalesBoards\CycleFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 uses(RefreshDatabase::class);
@@ -171,10 +172,8 @@ it('reports the legacy conflict instead of failing', function () {
     $scenario = ManagementReviewFixture::submittedCycle();
     $cycle = $scenario['cycle']->fresh();
 
-    $manual = SalesBoard::factory()->create([
-        'emission_id' => $cycle->emission_id,
-        'construction_id' => $cycle->construction_id,
-        'reference_month' => $cycle->reference_month->toDateString(),
+    // Digitado enquanto a Emissão ainda era legada.
+    $manual = ManagementReviewFixture::manualBoardBeforeAutomation($cycle, [
         'stock_units' => 9,
     ]);
 

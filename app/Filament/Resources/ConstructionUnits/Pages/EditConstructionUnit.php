@@ -25,7 +25,8 @@ class EditConstructionUnit extends EditRecord
             ViewAction::make()->label('Visualizar'),
             DeleteAction::make()
                 ->label('Excluir')
-                ->modalHeading('Excluir unidade'),
+                ->modalHeading('Excluir unidade')
+                ->authorizationTooltip(),
         ];
     }
 

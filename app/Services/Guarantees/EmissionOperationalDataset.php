@@ -2,6 +2,7 @@
 
 namespace App\Services\Guarantees;
 
+use App\DTOs\SalesBoards\EmissionSalesPosition;
 use App\Models\Emission;
 use App\Models\Fund;
 use App\Models\FundBalanceHistory;
@@ -28,6 +29,9 @@ class EmissionOperationalDataset
 
     /** @var array<string, Collection<int, SalesBoard>> */
     private array $salesBoardCache = [];
+
+    /** @var array<string, EmissionSalesPosition> */
+    private array $salesPositionCache = [];
 
     private readonly SalesBoardPositionReader $salesBoardPositionReader;
 
@@ -85,12 +89,7 @@ class EmissionOperationalDataset
             return $this->salesBoardCache[$cacheKey];
         }
 
-        $salesBoards = $this->salesBoardPositionReader->fromLoadedSalesBoards(
-            emissionId: (int) $this->emission->getKey(),
-            salesBoards: $this->emission->salesBoards,
-            constructions: $this->emission->constructions,
-            positionDate: CarbonImmutable::parse($referenceMonth),
-        )->salesBoards();
+        $salesBoards = $this->salesPositionForMonth($referenceMonth)->salesBoards();
 
         if ($constructionId !== null) {
             $salesBoards = $salesBoards
@@ -99,6 +98,23 @@ class EmissionOperationalDataset
         }
 
         return $this->salesBoardCache[$cacheKey] = $salesBoards;
+    }
+
+    /**
+     * Posição completa da emissão na competência, com a cobertura: qual quadro
+     * respondeu por cada empreendimento, qual foi transportado e qual falta.
+     *
+     * É a mesma leitura de {@see self::salesBoardsForMonth()}, sem descartar o
+     * que o leitor sabe sobre a origem de cada posição.
+     */
+    public function salesPositionForMonth(string $referenceMonth): EmissionSalesPosition
+    {
+        return $this->salesPositionCache[$referenceMonth] ??= $this->salesBoardPositionReader->fromLoadedSalesBoards(
+            emissionId: (int) $this->emission->getKey(),
+            salesBoards: $this->emission->salesBoards,
+            constructions: $this->emission->constructions,
+            positionDate: CarbonImmutable::parse($referenceMonth),
+        );
     }
 
     /**

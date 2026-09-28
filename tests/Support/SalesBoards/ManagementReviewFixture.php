@@ -8,11 +8,13 @@ use App\DTOs\SalesBoards\SalesBoardApprovalResult;
 use App\Enums\SalesBoardMovementType;
 use App\Enums\SalesBoardNonconformityDecision;
 use App\Enums\SalesBoardNonconformityOrigin;
+use App\Enums\SalesBoardSource;
 use App\Enums\SalesPriceConformityStatus;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\Contract;
 use App\Models\Emission;
+use App\Models\SalesBoard;
 use App\Models\SalesBoardBuilderReview;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleBaseline;
@@ -90,11 +92,16 @@ final class ManagementReviewFixture
      */
     public static function submittedCycleOn(Emission $emission, string $unitPrefix = '2'): array
     {
+        if (! $emission->usesAutomatedSalesBoard()) {
+            CycleFixture::automate($emission);
+        }
+
         $construction = Construction::factory()->create(['emission_id' => $emission->getKey()]);
 
         SalesDiscountPolicy::factory()
             ->forConstruction($construction)
             ->effectiveFrom('2020-01-01')
+            ->closedPeriod()
             ->allowing('10.00')
             ->create();
 
@@ -223,11 +230,36 @@ final class ManagementReviewFixture
         ]);
     }
 
+    /**
+     * Um quadro manual da competência do ciclo, registrado enquanto a Emissão
+     * ainda era legada.
+     *
+     * Numa competência automatizada o guard de escrita recusa o registro
+     * manual; um quadro assim só existe se foi gravado antes de a automação
+     * cobrir a competência -- que é exatamente o conflito que a publicação
+     * precisa detectar em vez de sobrescrever.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public static function manualBoardBeforeAutomation(SalesBoardCycle $cycle, array $attributes = []): SalesBoard
+    {
+        return CycleFixture::whileLegacy((int) $cycle->emission_id, fn (): SalesBoard => SalesBoard::factory()->create([
+            'emission_id' => $cycle->emission_id,
+            'construction_id' => $cycle->construction_id,
+            'reference_month' => $cycle->reference_month->toDateString(),
+            ...$attributes,
+        ]));
+    }
+
     public static function open(SalesBoardCycle $cycle, ?User $actor = null): SalesBoardManagementReview
     {
         return app(SalesBoardManagementReviewOpeningService::class)->open($cycle->fresh(), $actor);
     }
 
+    /**
+     * Sem ator informado, decide alguém da Gestão: decidir exige a permissão de
+     * aprovação.
+     */
     public static function decide(
         SalesBoardManagementNonconformity $nonconformity,
         SalesBoardNonconformityDecision $decision,
@@ -235,7 +267,7 @@ final class ManagementReviewFixture
         ?User $actor = null,
     ): SalesBoardManagementNonconformity {
         return app(SalesBoardManagementDecisionService::class)
-            ->decide($nonconformity, $decision, $reason, $actor);
+            ->decide($nonconformity, $decision, $reason, $actor ?? GovernanceFixture::approver());
     }
 
     /**
@@ -246,6 +278,8 @@ final class ManagementReviewFixture
      */
     public static function decideAll(SalesBoardManagementReview $review, ?User $actor = null): void
     {
+        $actor ??= GovernanceFixture::approver();
+
         foreach ($review->fresh()->nonconformities as $item) {
             self::decide(
                 $item,
@@ -259,13 +293,17 @@ final class ManagementReviewFixture
         }
     }
 
+    /**
+     * Sem ator informado, aprova alguém da Gestão que não é quem enviou a
+     * validação -- a segregação que o serviço impõe.
+     */
     public static function approve(
         SalesBoardManagementReview $review,
         ?User $actor = null,
         ?string $sourceChangeReason = null,
         bool $declaration = true,
     ): SalesBoardApprovalResult {
-        $actor ??= User::factory()->create();
+        $actor ??= GovernanceFixture::approver();
 
         return app(SalesBoardManagementApprovalService::class)
             ->approve($review->fresh(), $actor, $declaration, $sourceChangeReason);
@@ -279,7 +317,7 @@ final class ManagementReviewFixture
         ?User $actor = null,
         string $reason = 'Precisamos da confirmação do contrato da unidade 102.',
     ): array {
-        $actor ??= User::factory()->create();
+        $actor ??= GovernanceFixture::approver();
 
         return app(SalesBoardManagementReturnService::class)
             ->returnToBuilder($review->fresh(), $actor, $reason);

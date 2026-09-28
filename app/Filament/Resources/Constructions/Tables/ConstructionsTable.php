@@ -170,7 +170,13 @@ class ConstructionsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    /**
+                     * Cada obra passa pela mesma policy da exclusão individual:
+                     * a que já tem história -- quadros, ciclos, contratos --
+                     * fica de fora, e a notificação diz por quê.
+                     */
+                    DeleteBulkAction::make()
+                        ->authorizeIndividualRecords(),
                 ]),
             ]);
     }

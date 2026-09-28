@@ -38,6 +38,8 @@ class SalesBoardAutomationRun extends Model
         'skipped_count',
         'alerts_sent',
         'alerts_deduped',
+        'alerts_failed',
+        'alerts_without_recipient',
         'instance_key',
         'failure_message',
     ];
@@ -67,6 +69,8 @@ class SalesBoardAutomationRun extends Model
             'skipped_count' => 'integer',
             'alerts_sent' => 'integer',
             'alerts_deduped' => 'integer',
+            'alerts_failed' => 'integer',
+            'alerts_without_recipient' => 'integer',
         ];
     }
 
@@ -96,6 +100,11 @@ class SalesBoardAutomationRun extends Model
      * dado de comprador, nada que transforme uma linha de observabilidade em
      * dado pessoal espalhado por arquivo de log.
      *
+     * `alerts_sent` conta avisos **enfileirados**: a entrega é do worker da
+     * fila, depois da execução. Uma entrega que falha lá não volta para esta
+     * linha -- aparece nos jobs falhos, e o aviso volta a ser devido na execução
+     * seguinte.
+     *
      * @return array<string, mixed>
      */
     public function toSummaryArray(): array
@@ -116,6 +125,8 @@ class SalesBoardAutomationRun extends Model
             'skipped' => $this->skipped_count,
             'alerts_sent' => $this->alerts_sent,
             'alerts_deduped' => $this->alerts_deduped,
+            'alerts_failed' => (int) $this->alerts_failed,
+            'alerts_without_recipient' => (int) $this->alerts_without_recipient,
             'duration_ms' => $this->durationMs(),
         ];
     }

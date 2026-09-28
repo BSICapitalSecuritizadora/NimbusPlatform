@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\SalesBoardManagementReviewStatus;
 use App\Enums\SalesBoardNonconformityDecision;
 use App\Enums\SalesBoardNonconformityOrigin;
 use Database\Factories\SalesBoardManagementNonconformityFactory;
@@ -78,20 +79,48 @@ class SalesBoardManagementNonconformity extends Model
             }
         });
 
+        static::creating(function (self $item): void {
+            self::assertReviewIsDraft($item);
+        });
+
         /**
          * Identidade e âncora são imutáveis; a decisão não. Enquanto a análise é
-         * rascunho a Gestão pode mudar de ideia, e o congelamento acontece na
-         * própria revisão -- que recusa qualquer gravação depois de encerrada.
+         * rascunho a Gestão pode mudar de ideia. Depois do encerramento --
+         * aprovação, devolução ou substituição -- a decisão também congela.
          */
         static::updating(function (self $item): void {
             if (array_diff(array_keys($item->getDirty()), self::DECISION_FIELDS) !== []) {
                 throw new LogicException('A sales board nonconformity identity is immutable.');
             }
+
+            self::assertReviewIsDraft($item);
         });
 
         static::deleting(function (): never {
             throw new LogicException('Sales board nonconformities cannot be deleted.');
         });
+    }
+
+    /**
+     * A pendência só é gravada enquanto a análise dela é rascunho.
+     *
+     * A análise é relida do banco, e não aceita como veio na relação carregada:
+     * uma relação carregada antes da aprovação diria "rascunho" para sempre, e
+     * uma decisão iniciada naquele instante atravessaria o portão já fechado.
+     * A leitura é compartilhada para enxergar a versão commitada mais recente e
+     * esperar quem estiver encerrando a análise naquele momento.
+     */
+    private static function assertReviewIsDraft(self $item): void
+    {
+        $status = SalesBoardManagementReview::query()
+            ->whereKey($item->sales_board_management_review_id)
+            ->sharedLock()
+            ->toBase()
+            ->value('status');
+
+        if (SalesBoardManagementReviewStatus::tryFrom((string) $status) !== SalesBoardManagementReviewStatus::Draft) {
+            throw new LogicException('A sales board nonconformity is frozen once its management review is finished.');
+        }
     }
 
     protected function casts(): array
@@ -103,9 +132,18 @@ class SalesBoardManagementNonconformity extends Model
         ];
     }
 
+    /**
+     * Grava em `sales_board`, a categoria protegida do módulo.
+     *
+     * "Desfazer decisão" limpa motivo, autor e data da própria linha: enquanto
+     * a análise é rascunho, a linha guarda só a decisão vigente. A decisão
+     * desfeita sobrevive apenas no `properties.old` desta trilha, que por isso
+     * não pode cair no balde descartado em um ano.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('sales_board')
             ->logOnly(['decision', 'decision_reason', 'decided_at', 'decided_by_user_id'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();

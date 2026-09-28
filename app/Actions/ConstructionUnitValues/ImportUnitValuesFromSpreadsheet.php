@@ -38,14 +38,24 @@ class ImportUnitValuesFromSpreadsheet
         $writableRows = $analysis->writableRows();
         $userId = auth()->id();
 
-        DB::transaction(function () use ($writableRows, $batchReason, $userId): void {
+        /**
+         * A vigência é gravada no mesmo formato que o cast `date` do model grava
+         * ("2026-03-01 00:00:00"), e não como o "2026-03-01" puro da análise. No
+         * MySQL a coluna é DATE e tanto faz; no SQLite da suíte a coluna é texto,
+         * e a linha importada ordenava antes da lançada à mão na mesma vigência,
+         * qualquer que fosse o id -- o desempate "mesma vigência, vence o maior
+         * id" deixava de valer justamente nos testes.
+         */
+        $model = new ConstructionUnitValue;
+
+        DB::transaction(function () use ($writableRows, $batchReason, $userId, $model): void {
             $now = now();
 
             $writableRows
                 ->map(fn (array $row): array => [
                     'construction_unit_id' => $row['construction_unit_id'],
                     'value' => IntegerMoney::decimalString((int) $row['value_cents']),
-                    'effective_from' => $row['effective_from_date'],
+                    'effective_from' => $model->fromDateTime($row['effective_from_date']),
                     'source' => UnitValueSource::SpreadsheetImport->value,
                     'reason' => $row['reason'] ?? $batchReason,
                     'created_by_id' => $userId,

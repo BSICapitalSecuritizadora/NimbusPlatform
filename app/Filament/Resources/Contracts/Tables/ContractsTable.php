@@ -230,11 +230,16 @@ class ContractsTable
                         ->icon('heroicon-o-pencil-square')
                         ->visible(fn (Contract $record): bool => ContractResource::canEdit($record)),
 
+                    /**
+                     * Exclusão e restauração são autorizadas pela policy, pela
+                     * autorização padrão da página. Um `visible()` com
+                     * `canDelete()` ou `canRestore()` repetiria a consulta das
+                     * guardas a cada linha.
+                     */
                     DeleteAction::make()
                         ->label('Excluir')
                         ->modalHeading('Excluir contrato')
-                        ->modalDescription('O contrato deixa de aparecer na listagem e libera a unidade, mas é preservado para manter o histórico comercial.')
-                        ->visible(fn (Contract $record): bool => ContractResource::canDelete($record)),
+                        ->modalDescription(ContractResource::DELETE_MODAL_DESCRIPTION),
 
                     RestoreAction::make()
                         ->label('Restaurar')
@@ -265,15 +270,21 @@ class ContractsTable
                                 ->send();
 
                             $action->halt();
-                        })
-                        ->visible(fn (Contract $record): bool => ContractResource::canRestore($record)),
+                        }),
                 ])
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->tooltip('Ações do contrato'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    /**
+                     * Cada contrato passa pela mesma policy da exclusão
+                     * individual: o contrato já congelado num ciclo fica de
+                     * fora, e a notificação diz por quê.
+                     */
+                    DeleteBulkAction::make()
+                        ->modalDescription(ContractResource::DELETE_MODAL_DESCRIPTION)
+                        ->authorizeIndividualRecords(),
                 ]),
             ])
             ->emptyStateHeading(fn ($livewire): string => self::hasActiveFiltersOrSearch($livewire)

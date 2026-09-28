@@ -134,10 +134,29 @@ class SalesBoardManagementReview extends Model
         ];
     }
 
+    /**
+     * Grava em `sales_board`, a categoria protegida do módulo. Aprovação e
+     * devolução ficam com autor e motivo, e a aprovação sobre fonte alterada com
+     * a justificativa: é isso que a auditoria pergunta, e não só a data.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['status', 'attempt', 'approved_at', 'returned_at', 'superseded_at', 'superseded_reason', 'source_changed'])
+            ->useLogName('sales_board')
+            ->logOnly([
+                'status',
+                'attempt',
+                'approved_at',
+                'approved_by_user_id',
+                'approval_declaration_version',
+                'returned_at',
+                'returned_by_user_id',
+                'return_reason',
+                'source_changed',
+                'source_change_reason',
+                'superseded_at',
+                'superseded_reason',
+            ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
     }

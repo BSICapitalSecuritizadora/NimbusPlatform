@@ -172,12 +172,17 @@ class ConstructionUnitValuesRelationManager extends RelationManager
                     ->dehydrateStateUsing(fn (mixed $state): ?string => self::normalizeValue($state))
                     ->mutateStateForValidationUsing(fn (mixed $state): ?string => self::normalizeValue($state))
                     ->rule('numeric')
-                    ->minValue(0)
+                    /**
+                     * Zero não é preço de tabela: usado como marcador de "sem
+                     * preço", fazia toda venda da unidade sair conforme e o
+                     * estoque sair a R$ 0,00 sem nenhum achado.
+                     */
+                    ->minValue(0.01)
                     ->placeholder('1.000.000,00')
                     ->extraInputAttributes(['class' => 'text-right font-mono tabular-nums'])
                     ->validationMessages([
                         'required' => 'Informe o novo valor.',
-                        'min' => 'O valor não pode ser negativo.',
+                        'min' => 'O valor precisa ser maior que zero.',
                     ]),
 
                 DatePicker::make('effective_from')

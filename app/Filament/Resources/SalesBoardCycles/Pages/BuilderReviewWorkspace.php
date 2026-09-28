@@ -149,7 +149,12 @@ class BuilderReviewWorkspace extends Page
                     'icon' => 'heroicon-o-arrow-uturn-left',
                 ],
             },
-            SalesBoardBuilderReviewStatus::Superseded => [
+            SalesBoardBuilderReviewStatus::Superseded => ($cycle->status === SalesBoardCycleStatus::Cancelled) ? [
+                'headline' => 'A competência foi cancelada pela Gestão.',
+                'detail' => 'Esta rodada foi encerrada sem publicação. As declarações continuam registradas como foram feitas.',
+                'color' => 'gray',
+                'icon' => 'heroicon-o-no-symbol',
+            ] : [
                 'headline' => 'Esta rodada foi substituída por uma nova versão da posição.',
                 'detail' => 'As declarações continuam registradas. Na tela da competência, use “Abrir validação da construtora” para validar a versão vigente.',
                 'color' => 'gray',

@@ -16,6 +16,8 @@ use App\Models\Contract;
 use App\Models\ContractInstallment;
 use App\Models\Emission;
 use App\Models\ImportRun;
+use App\Models\SalesBoard;
+use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -335,7 +337,7 @@ it('validates the dates and the amounts of every row', function () {
     installmentImportScenario();
 
     expect(analyzeInstallmentSpreadsheet([installmentRow(['due_date' => '31/02/2026'])])->collect()->first()['message'])
-        ->toBe('Data de vencimento inválida. Utilize o formato dd/mm/aaaa.');
+        ->toBe('Data de vencimento inválida. Utilize o formato dd/mm/aaaa, com o ano completo (a partir de 1990).');
 
     expect(analyzeInstallmentSpreadsheet([installmentRow(['expected_value' => '0'])])->collect()->first()['message'])
         ->toBe('Valor previsto inválido: informe um valor maior que zero.');
@@ -344,10 +346,10 @@ it('validates the dates and the amounts of every row', function () {
         ->toBe('Valor previsto inválido: informe um valor maior que zero.');
 
     expect(analyzeInstallmentSpreadsheet([installmentRow(['payment_date' => '10/13/2026', 'paid_value' => '10000.00'])])->collect()->first()['message'])
-        ->toBe('Data do pagamento inválida. Utilize o formato dd/mm/aaaa.');
+        ->toBe('Data do pagamento inválida. Utilize o formato dd/mm/aaaa, com o ano completo (a partir de 1990).');
 
     expect(analyzeInstallmentSpreadsheet([installmentRow(['cancellation_date' => 'ontem'])])->collect()->first()['message'])
-        ->toBe('Data de cancelamento inválida. Utilize o formato dd/mm/aaaa.');
+        ->toBe('Data de cancelamento inválida. Utilize o formato dd/mm/aaaa, com o ano completo (a partir de 1990).');
 });
 
 it('refuses a payment date without a paid value, and the other way round', function () {
@@ -973,6 +975,11 @@ describe('reconciliação mensal', function () {
      * The source writes an unpaid installment as an empty cell or a zero, so a
      * reverted payment is indistinguishable from one that never happened.
      * Clearing on that basis would let one incomplete export wipe real receipts.
+     *
+     * Not silent either: the row used to read "sem alteração", and a receipt
+     * reverted at the source (a cheque returned) kept the contract settled with
+     * nothing on the conference saying so. It is now an informative divergence
+     * -- shown, counted, never written.
      */
     it('never clears a recorded payment because the sheet came empty', function () {
         [, , $contract] = installmentImportScenario();
@@ -987,9 +994,15 @@ describe('reconciliação mensal', function () {
 
         foreach ([['payment_date' => '', 'paid_value' => ''], ['payment_date' => '', 'paid_value' => '0']] as $emptyPayment) {
             $analysis = analyzeInstallmentSpreadsheet([installmentRow($emptyPayment)]);
+            $row = $analysis->collect()->first();
 
-            expect($analysis->unchangedCount())->toBe(1)
-                ->and($analysis->writeCount())->toBe(0);
+            expect($row['outcome'])->toBe(ReconciliationOutcome::InformativeDivergence)
+                ->and($row['message'])->toBe('Recebimento: 10/01/2026 · R$ 10.000,00 → não consta na planilha (mantido; para estornar, edite a parcela)')
+                ->and($row['comparison']->attributes())->toBe([])
+                ->and($analysis->informativeDivergenceCount())->toBe(1)
+                ->and($analysis->unchangedCount())->toBe(0)
+                ->and($analysis->writeCount())->toBe(0)
+                ->and($analysis->canImport())->toBeTrue();
         }
 
         app(ImportContractInstallmentsFromSpreadsheet::class)->handle(
@@ -1105,4 +1118,208 @@ it('records each confirmed reconciliation for later reference', function () {
         ->and($second->madeChanges())->toBeFalse()
         ->and($second->checksum)->toBe($run->checksum)
         ->and(ContractInstallment::query()->count())->toBe(2);
+});
+
+describe('leitura estrita da carga inicial', function () {
+    /**
+     * A numeric cell used to be turned into text before being read: 1553.919
+     * (1523.45 x 1.02) became "1553.919", read as R$ 1.553.919,00, and the
+     * installment paid with 1.553,92 was never settled again.
+     */
+    it('reads numeric amount cells for the number they hold', function () {
+        installmentImportScenario();
+
+        $analysis = analyzeInstallmentSpreadsheet([
+            installmentRow(['expected_value' => 1523.45 * 1.02, 'payment_date' => '10/01/2026', 'paid_value' => 1553.92]),
+            installmentRow(['number' => '002', 'expected_value' => '1,553.92']),
+            installmentRow(['number' => '003', 'expected_value' => '1.553,92']),
+        ]);
+
+        expect($analysis->canImport())->toBeTrue()
+            ->and($analysis->rowsToCreate()->pluck('expected_value')->all())->toBe([1553.92, 1553.92, 1553.92])
+            ->and($analysis->rowsToCreate()->first()['paid_value'])->toBe(1553.92);
+
+        app(ImportContractInstallmentsFromSpreadsheet::class)->handle($analysis);
+
+        $installment = ContractInstallment::query()->where('number', '001')->sole();
+
+        expect($installment->expected_value)->toBe('1553.92')
+            ->and($installment->paid_value)->toBe('1553.92');
+    });
+
+    it('refuses a two digit year on every date instead of booking it in the year 26', function (string $column, string $message) {
+        installmentImportScenario();
+
+        $row = match ($column) {
+            'due_date' => installmentRow(['due_date' => '10/01/26']),
+            'payment_date' => installmentRow(['payment_date' => '05/03/26', 'paid_value' => '10000.00']),
+            'cancellation_date' => installmentRow(['cancellation_date' => '05/03/26']),
+        };
+
+        expect(analyzeInstallmentSpreadsheet([$row])->collect()->first()['message'])
+            ->toBe($message.' Utilize o formato dd/mm/aaaa, com o ano completo (a partir de 1990).');
+    })->with([
+        'due date' => ['due_date', 'Data de vencimento inválida.'],
+        'payment date' => ['payment_date', 'Data do pagamento inválida.'],
+        'cancellation date' => ['cancellation_date', 'Data de cancelamento inválida.'],
+    ]);
+
+    it('refuses a payment dated after today in the business calendar', function () {
+        installmentImportScenario();
+
+        // 22:30 in São Paulo on 2026-09-25 is already the 26th in UTC.
+        $this->travelTo(CarbonImmutable::parse('2026-09-25 22:30:00', 'America/Sao_Paulo'));
+
+        $future = analyzeInstallmentSpreadsheet([installmentRow(['payment_date' => '26/09/2026', 'paid_value' => '10000.00'])]);
+        $today = analyzeInstallmentSpreadsheet([installmentRow(['payment_date' => '25/09/2026', 'paid_value' => '10000.00'])]);
+
+        expect($future->collect()->first()['message'])
+            ->toBe('A data do pagamento não pode ser futura: um recebimento só é registrado depois de acontecer.')
+            ->and($today->canImport())->toBeTrue();
+    });
+
+    it('shows the interpreted payment date and paid value on the conference', function () {
+        $this->actingAs(makeAdminUser());
+
+        installmentImportScenario();
+
+        $path = installmentSpreadsheet([installmentRow(['payment_date' => '10/01/2026', 'paid_value' => 1523.45 * 1.02])]);
+        $storedPath = 'imports/contract-installments/'.basename($path);
+        Storage::disk('local')->put($storedPath, file_get_contents($path));
+
+        $component = Livewire::test(ListContractInstallments::class)->instance();
+        $preview = (fn (): string => $this->renderInstallmentPreview($storedPath, null)->toHtml())->call($component);
+
+        expect($preview)
+            ->toContain('<th style="text-align:left;padding:.25rem .5rem;">Pagamento</th>')
+            ->toContain('<th style="text-align:right;padding:.25rem .5rem;">Pago</th>')
+            ->toContain('10/01/2026')
+            ->toContain('R$ 1.553,92')
+            ->not->toContain('1.553.919');
+    });
+});
+
+describe('estorno na fonte', function () {
+    it('shows a recorded receipt missing from the file as an informative divergence on the conference', function () {
+        $this->actingAs(makeAdminUser());
+
+        [, , $contract] = installmentImportScenario();
+
+        ContractInstallment::factory()->forContract($contract)->create([
+            'number' => '001',
+            'due_date' => '2026-01-10',
+            'expected_value' => 10000,
+            'payment_date' => '2026-03-05',
+            'paid_value' => 10000,
+        ]);
+
+        $path = installmentSpreadsheet([installmentRow()]);
+        $storedPath = 'imports/contract-installments/'.basename($path);
+        Storage::disk('local')->put($storedPath, file_get_contents($path));
+
+        $component = Livewire::test(ListContractInstallments::class)->instance();
+        $preview = (fn (): string => $this->renderInstallmentPreview($storedPath, null)->toHtml())->call($component);
+
+        expect($preview)
+            ->toContain('Divergências informativas: <b>1</b>')
+            ->toContain('Nada a gravar, mas a planilha diverge do registrado em 1 linha(s).')
+            ->toContain('<b>Divergência informativa</b>')
+            ->toContain('Recebimento: 05/03/2026 · R$ 10.000,00 → não consta na planilha');
+
+        $result = app(ImportContractInstallmentsFromSpreadsheet::class)->handle(
+            app(AnalyzeContractInstallmentSpreadsheet::class)->handle(Storage::disk('local')->path($storedPath)),
+        );
+
+        expect($result['updated'])->toBe(0)
+            ->and($result['unchanged'])->toBe(1)
+            ->and(ContractInstallment::query()->sole()->payment_date->toDateString())->toBe('2026-03-05');
+    });
+
+    it('still applies the real changes of a row that also misses its receipt', function () {
+        [, , $contract] = installmentImportScenario();
+
+        ContractInstallment::factory()->forContract($contract)->create([
+            'number' => '001',
+            'due_date' => '2026-01-10',
+            'expected_value' => 10000,
+            'payment_date' => '2026-03-05',
+            'paid_value' => 10000,
+        ]);
+
+        $analysis = analyzeInstallmentSpreadsheet([installmentRow(['due_date' => '15/01/2026'])]);
+        $row = $analysis->collect()->first();
+
+        expect($row['outcome'])->toBe(ReconciliationOutcome::CriticalUpdate)
+            ->and($row['message'])->toContain('Recebimento: 05/03/2026')
+            ->and($row['comparison']->attributes())->toBe(['due_date' => '2026-01-15']);
+
+        app(ImportContractInstallmentsFromSpreadsheet::class)->handle($analysis);
+
+        $installment = ContractInstallment::query()->sole();
+
+        expect($installment->due_date->toDateString())->toBe('2026-01-15')
+            ->and($installment->payment_date->toDateString())->toBe('2026-03-05');
+    });
+});
+
+describe('competência já registrada no Quadro de Vendas', function () {
+    it('flags receipts that reach a registered competence, from the day of the receipt', function () {
+        [$emission, $construction, $contract] = installmentImportScenario();
+        $contract->forceFill(['sale_date' => '2025-06-10'])->save();
+
+        foreach (['2026-02-01', '2026-03-01', '2026-04-01'] as $month) {
+            SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create(['reference_month' => $month]);
+        }
+
+        ContractInstallment::factory()->forContract($contract)->create([
+            'number' => '001',
+            'due_date' => '2026-01-10',
+            'expected_value' => 10000,
+        ]);
+        ContractInstallment::factory()->forContract($contract)->create([
+            'number' => '003',
+            'due_date' => '2026-12-10',
+            'expected_value' => 10000,
+        ]);
+
+        $analysis = analyzeInstallmentSpreadsheet([
+            // A receipt on an installment already on the schedule.
+            installmentRow(['payment_date' => '05/03/2026', 'paid_value' => '10000.00']),
+            // A new obligation reaches back to the sale.
+            installmentRow(['number' => '002', 'due_date' => '10/02/2026']),
+            // A new expected value on an unpaid installment settles nothing.
+            installmentRow(['number' => '003', 'due_date' => '10/12/2026', 'expected_value' => '12000.00']),
+        ]);
+
+        $byNumber = $analysis->collect()->keyBy('number');
+
+        expect($analysis->canImport())->toBeTrue()
+            ->and($byNumber['001']['registered_competences'])->toBe(['2026-03', '2026-04'])
+            ->and($byNumber['002']['registered_competences'])->toBe(['2026-02', '2026-03', '2026-04'])
+            ->and($byNumber['003']['registered_competences'])->toBe([])
+            ->and($analysis->registeredCompetenceCount())->toBe(2);
+    });
+
+    it('warns on the conference screen without blocking the import', function () {
+        $this->actingAs(makeAdminUser());
+
+        [$emission, $construction] = installmentImportScenario();
+        SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create(['reference_month' => '2026-03-01']);
+
+        $path = installmentSpreadsheet([installmentRow(['payment_date' => '05/03/2026', 'paid_value' => '10000.00'])]);
+        $storedPath = 'imports/contract-installments/'.basename($path);
+        Storage::disk('local')->put($storedPath, file_get_contents($path));
+
+        $component = Livewire::test(ListContractInstallments::class);
+        $preview = (fn (): string => $this->renderInstallmentPreview($storedPath, null)->toHtml())->call($component->instance());
+
+        expect($preview)
+            ->toContain('Alteram competência já registrada no Quadro de Vendas: <b>1</b>')
+            ->toContain('Altera fato da competência 03/2026, já registrada no Quadro de Vendas.');
+
+        $component->callAction(TestAction::make('importContractInstallments'), ['file' => ['upload' => $storedPath]])
+            ->assertHasNoActionErrors();
+
+        expect(ContractInstallment::query()->sole()->payment_date->toDateString())->toBe('2026-03-05');
+    });
 });

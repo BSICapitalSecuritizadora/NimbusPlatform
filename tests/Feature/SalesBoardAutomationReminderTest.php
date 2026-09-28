@@ -9,11 +9,11 @@ use App\Models\SalesBoardPublication;
 use App\Models\User;
 use App\Notifications\SalesBoardAutomationNotification;
 use App\Services\SalesBoards\SalesBoardAutomationAlertDispatcher;
-use App\Services\SalesBoards\SalesBoardAutomationRecipientResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\Support\SalesBoards\AutomationFixture;
 use Tests\Support\SalesBoards\BuilderReviewFixture;
+use Tests\Support\SalesBoards\FixedSalesBoardAutomationRecipientResolver;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 uses(RefreshDatabase::class);
@@ -24,41 +24,12 @@ beforeEach(function () {
 });
 
 /**
- * Um resolvedor de teste: o de produção devolve vazio de propósito, porque o
- * projeto ainda não define responsável pelo Quadro de Vendas.
+ * Um resolvedor de teste: o de produção lê os responsáveis do rollout, e estes
+ * cenários exercitam o motor de avisos, não a configuração de destinatários.
  */
 function resolveRecipientsTo(User ...$users): void
 {
-    app()->instance(SalesBoardAutomationRecipientResolver::class, new class(array_values($users)) implements SalesBoardAutomationRecipientResolver
-    {
-        /** @param list<User> $users */
-        public function __construct(private readonly array $users) {}
-
-        public function forGenerationBlocked($target): array
-        {
-            return $this->users;
-        }
-
-        public function forGenerationFailed($target): array
-        {
-            return $this->users;
-        }
-
-        public function forBuilderHandoff($cycle): array
-        {
-            return $this->users;
-        }
-
-        public function forBuilderReminder($review): array
-        {
-            return $this->users;
-        }
-
-        public function forManagementReminder($cycle): array
-        {
-            return $this->users;
-        }
-    });
+    FixedSalesBoardAutomationRecipientResolver::bind(...$users);
 }
 
 it('sends nothing while no threshold is configured', function () {
@@ -91,7 +62,10 @@ it('sends a blocked reminder once the configured threshold is crossed', function
 
     $run = AutomationFixture::run();
 
-    $alert = SalesBoardAutomationAlert::query()->sole();
+    // Um aviso, uma linha por canal: o e-mail e o sino falham cada um sozinho.
+    expect(SalesBoardAutomationAlert::query()->orderBy('channel')->pluck('channel')->all())->toBe(['database', 'mail']);
+
+    $alert = SalesBoardAutomationAlert::query()->where('channel', 'mail')->sole();
 
     expect($alert->alert_type)->toBe(SalesBoardAutomationAlertType::GenerationBlocked)
         ->and($alert->recipient_user_id)->toBe($recipient->id)
@@ -116,13 +90,15 @@ it('never repeats the same alert within the same window', function () {
     $second = AutomationFixture::run();
     $third = AutomationFixture::run();
 
-    // O scheduler roda de hora em hora; o alerta sai uma vez.
-    expect(SalesBoardAutomationAlert::query()->count())->toBe(1)
+    // O scheduler roda de hora em hora; o alerta sai uma vez, por canal.
+    expect(SalesBoardAutomationAlert::query()->where('channel', 'mail')->count())->toBe(1)
+        ->and(SalesBoardAutomationAlert::query()->where('channel', 'database')->count())->toBe(1)
         ->and($second->alerts_sent)->toBe(0)
         ->and($second->alerts_deduped)->toBe(1)
         ->and($third->alerts_deduped)->toBe(1);
 
-    Notification::assertSentTimes(SalesBoardAutomationNotification::class, 1);
+    // Uma instância por canal: e-mail e sino.
+    Notification::assertSentTimes(SalesBoardAutomationNotification::class, 2);
 });
 
 it('does not fail the run when nobody can be resolved', function () {
@@ -159,7 +135,7 @@ it('reminds about a builder review that stayed open', function () {
 
     AutomationFixture::run('2026-08-13');
 
-    $alert = SalesBoardAutomationAlert::query()->sole();
+    $alert = SalesBoardAutomationAlert::query()->where('channel', 'mail')->sole();
 
     expect($alert->alert_type)->toBe(SalesBoardAutomationAlertType::BuilderReminder)
         ->and($alert->sales_board_builder_review_id)->toBe($review->id)
@@ -169,7 +145,7 @@ it('reminds about a builder review that stayed open', function () {
         ->toBe(['pendente']);
 });
 
-it('escalates instead of reminding once the longer threshold is crossed', function () {
+it('escalates once the longer threshold is crossed, and keeps reminding the operational owner', function () {
     $scenario = BuilderReviewFixture::generatedCycle();
     $review = BuilderReviewFixture::open($scenario['cycle']);
 
@@ -183,8 +159,28 @@ it('escalates instead of reminding once the longer threshold is crossed', functi
 
     AutomationFixture::run('2026-08-13');
 
-    expect(SalesBoardAutomationAlert::query()->sole()->alert_type)
-        ->toBe(SalesBoardAutomationAlertType::BuilderEscalation);
+    // A escalação vai para a Gestão (outro destinatário, ver o resolvedor de
+    // produção); o lembrete continua indo para quem conduz a construtora.
+    expect(SalesBoardAutomationAlert::query()->where('channel', 'mail')->orderBy('id')->pluck('alert_type')->all())
+        ->toBe([SalesBoardAutomationAlertType::BuilderReminder, SalesBoardAutomationAlertType::BuilderEscalation]);
+});
+
+it('only reminds before the escalation threshold is crossed', function () {
+    $scenario = BuilderReviewFixture::generatedCycle();
+    BuilderReviewFixture::open($scenario['cycle']);
+
+    AutomationFixture::enable([$scenario['construction']], '2026-07-01');
+    resolveRecipientsTo(User::factory()->create());
+
+    config()->set('sales_board.automation.reminders.builder_review_after_days', 3);
+    config()->set('sales_board.automation.reminders.builder_review_escalation_after_days', 7);
+
+    $this->travel(4)->days();
+
+    AutomationFixture::run('2026-08-13');
+
+    expect(SalesBoardAutomationAlert::query()->where('channel', 'mail')->sole()->alert_type)
+        ->toBe(SalesBoardAutomationAlertType::BuilderReminder);
 });
 
 it('reminds about a competence waiting on management without deciding anything', function () {
@@ -197,7 +193,7 @@ it('reminds about a competence waiting on management without deciding anything',
 
     AutomationFixture::run('2026-08-13');
 
-    expect(SalesBoardAutomationAlert::query()->sole()->alert_type)
+    expect(SalesBoardAutomationAlert::query()->where('channel', 'mail')->sole()->alert_type)
         ->toBe(SalesBoardAutomationAlertType::ManagementReminder)
         ->and($scenario['cycle']->fresh()->status->value)->toBe('analise_gestao')
         ->and(SalesBoardManagementReview::query()->count())->toBe(0)
@@ -213,7 +209,7 @@ it('announces a cycle that is apurado and still not handed over', function () {
 
     AutomationFixture::run();
 
-    expect(SalesBoardAutomationAlert::query()->sole()->alert_type)
+    expect(SalesBoardAutomationAlert::query()->where('channel', 'mail')->sole()->alert_type)
         ->toBe(SalesBoardAutomationAlertType::ReadyForBuilder)
         ->and(SalesBoardBuilderReview::query()->count())->toBe(0);
 });

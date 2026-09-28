@@ -6,6 +6,7 @@ use App\Filament\Resources\SalesBoardRollouts\Pages\ListSalesBoardRollouts;
 use App\Filament\Resources\SalesBoardRollouts\Pages\ManageSalesBoardRollout;
 use App\Filament\Resources\SalesBoardRollouts\Tables\SalesBoardRolloutsTable;
 use App\Models\Emission;
+use App\Support\SalesBoards\SalesBoardApprovalAuthority;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
@@ -28,7 +29,9 @@ use UnitEnum;
  * aprovar, ativar e retornar são ações de domínio, cada uma com pré-condições
  * próprias.
  *
- * As permissões são as do Quadro de Vendas, sem inventar nenhuma.
+ * As permissões são as do Quadro de Vendas. Conduzir a homologação é de quem
+ * opera (`sales-boards.update`); atestar os impactos, aprovar, ativar e retornar
+ * ao legado são da Gestão (`sales-boards.approve`).
  */
 class SalesBoardRolloutResource extends Resource
 {
@@ -73,12 +76,24 @@ class SalesBoardRolloutResource extends Resource
     }
 
     /**
-     * Conduzir o rollout é escrita, e usa a mesma permissão de quem registra
-     * posição no Quadro de Vendas.
+     * Conduzir a homologação -- abrir, reavaliar, analisar diferenças, definir
+     * responsáveis, rejeitar -- é escrita, e usa a mesma permissão de quem
+     * registra posição no Quadro de Vendas.
      */
     public static function canManageRollout(): bool
     {
         return auth()->user()?->can('sales-boards.update') ?? false;
+    }
+
+    /**
+     * A decisão sobre o rollout: atestar os impactos sobre Garantias e
+     * Relatório, aprovar a homologação, ativar a automação e retornar ao legado.
+     * É a mesma autoridade que aprova e publica o Quadro de Vendas, e não a de
+     * quem abre e prepara a homologação.
+     */
+    public static function canApproveRollout(): bool
+    {
+        return SalesBoardApprovalAuthority::holds(auth()->user());
     }
 
     public static function canCreate(): bool

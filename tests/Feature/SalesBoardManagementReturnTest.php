@@ -13,9 +13,9 @@ use App\Models\SalesBoard;
 use App\Models\SalesBoardBuilderDivergence;
 use App\Models\SalesBoardBuilderReview;
 use App\Models\SalesBoardManagementReview;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\SalesBoards\BuilderReviewFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 uses(RefreshDatabase::class);
@@ -23,7 +23,7 @@ uses(RefreshDatabase::class);
 it('returns the competence to the builder and opens a clean next round', function () {
     $scenario = ManagementReviewFixture::submittedCycle();
     $review = ManagementReviewFixture::open($scenario['cycle']);
-    $manager = User::factory()->create();
+    $manager = GovernanceFixture::approver();
 
     $outcome = ManagementReviewFixture::returnToBuilder(
         $review,

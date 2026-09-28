@@ -83,6 +83,13 @@
     font-size: 0.875rem;
 }
 
+/* Lacunas de decisão que a tela precisa mostrar: lembretes desligados, Emissão liquidada ainda automatizada. */
+.bsi-sales-board-rollout-manage-page .bsi-rollout-notice {
+    padding-left: 0.625rem;
+    border-left: 2px solid var(--rollout-gold);
+    color: var(--rollout-text);
+}
+
 .bsi-sales-board-rollout-manage-page .fi-breadcrumbs-item-label {
     color: var(--rollout-muted);
     font-size: 0.75rem;

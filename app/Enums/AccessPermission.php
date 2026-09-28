@@ -118,6 +118,7 @@ enum AccessPermission: string
     case SalesBoardsCreate = 'sales-boards.create';
     case SalesBoardsUpdate = 'sales-boards.update';
     case SalesBoardsDelete = 'sales-boards.delete';
+    case SalesBoardsApprove = 'sales-boards.approve';
     case ReceivablesView = 'receivables.view';
     case ReceivablesCreate = 'receivables.create';
     case ReceivablesUpdate = 'receivables.update';
@@ -372,6 +373,7 @@ enum AccessPermission: string
             self::SalesBoardsCreate => 'Quadro de vendas: criar',
             self::SalesBoardsUpdate => 'Quadro de vendas: editar',
             self::SalesBoardsDelete => 'Quadro de vendas: excluir',
+            self::SalesBoardsApprove => 'Quadro de vendas: decidir, aprovar e ativar (Gestão)',
             self::ReceivablesView => 'Recebíveis: visualizar',
             self::ReceivablesCreate => 'Recebíveis: criar',
             self::ReceivablesUpdate => 'Recebíveis: editar',
@@ -585,6 +587,7 @@ enum AccessPermission: string
                 self::SalesBoardsCreate,
                 self::SalesBoardsUpdate,
                 self::SalesBoardsDelete,
+                self::SalesBoardsApprove,
                 self::ReceivablesView,
                 self::ReceivablesCreate,
                 self::ReceivablesUpdate,

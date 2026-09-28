@@ -64,10 +64,15 @@ class ContractInstallment extends Model
      * Every fillable attribute is a financial fact worth a trail: vencimento,
      * valor previsto, data e valor do pagamento, cancelamento. No personal data
      * passes through here -- the buyer lives on the contract.
+     *
+     * The trail goes to `contract_installments`, a protected log: a payment
+     * recorded, edited or deleted moves a unit between financed and paid on the
+     * Sales Board, and under `default` who did it would be gone in one year.
      */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('contract_installments')
             ->logFillable()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();

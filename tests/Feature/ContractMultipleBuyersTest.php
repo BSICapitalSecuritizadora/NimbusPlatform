@@ -1,8 +1,10 @@
 <?php
 
 use App\Actions\Contracts\AnalyzeContractSpreadsheet;
+use App\Actions\Contracts\ContractBuyerGrouping;
 use App\Actions\Contracts\ContractSpreadsheetColumns;
 use App\Actions\Contracts\ImportContractsFromSpreadsheet;
+use App\Enums\ChangeSeverity;
 use App\Enums\ContractStatus;
 use App\Enums\ReconciliationOutcome;
 use App\Filament\Resources\ContractInstallments\Pages\ListContractInstallments;
@@ -339,6 +341,34 @@ it('lifts a routine field change to critical when a buyer arrives with it', func
 
     expect((float) $contract->sale_value)->toBe(850000.00)
         ->and($contract->buyerIds())->toHaveCount(2);
+});
+
+/**
+ * O veredito que junta campos e compradores precisa conhecer toda severidade
+ * do enum: um caso novo sem braço no match vira UnhandledMatchError na
+ * conferência, não um veredito.
+ */
+it('has a verdict for every buyer severity, the informative one included', function (ChangeSeverity $severity) {
+    $worstOutcome = new ReflectionMethod(ContractBuyerGrouping::class, 'worstOutcome');
+    $grouping = new ContractBuyerGrouping;
+
+    foreach (ReconciliationOutcome::cases() as $outcome) {
+        expect($worstOutcome->invoke($grouping, $outcome, $severity))->toBeInstanceOf(ReconciliationOutcome::class);
+    }
+})->with(fn (): array => array_map(fn (ChangeSeverity $severity): array => [$severity], ChangeSeverity::cases()));
+
+it('lets an informative buyer difference name only a row that had nothing else to say', function () {
+    $worstOutcome = new ReflectionMethod(ContractBuyerGrouping::class, 'worstOutcome');
+    $grouping = new ContractBuyerGrouping;
+
+    expect($worstOutcome->invoke($grouping, ReconciliationOutcome::Unchanged, ChangeSeverity::Informative))
+        ->toBe(ReconciliationOutcome::InformativeDivergence)
+        ->and($worstOutcome->invoke($grouping, ReconciliationOutcome::Update, ChangeSeverity::Informative))
+        ->toBe(ReconciliationOutcome::Update)
+        ->and($worstOutcome->invoke($grouping, ReconciliationOutcome::CriticalUpdate, ChangeSeverity::Informative))
+        ->toBe(ReconciliationOutcome::CriticalUpdate)
+        ->and($worstOutcome->invoke($grouping, ReconciliationOutcome::Conflict, ChangeSeverity::Informative))
+        ->toBe(ReconciliationOutcome::Conflict);
 });
 
 it('writes nothing at all when a buyer removal blocks the file', function () {

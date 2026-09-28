@@ -12,6 +12,7 @@ use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleBaseline;
 use App\Models\SalesBoardManagementReview;
 use App\Models\User;
+use App\Support\SalesBoards\SalesBoardApprovalAuthority;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -51,6 +52,8 @@ class SalesBoardManagementReturnService
         if ($actor === null) {
             throw SalesBoardManagementReviewException::actorRequired();
         }
+
+        SalesBoardApprovalAuthority::authorize($actor);
 
         $reason = $this->normalizeReason($reason);
 

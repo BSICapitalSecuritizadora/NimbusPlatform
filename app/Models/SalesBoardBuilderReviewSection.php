@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\SalesBoardBuilderReviewSection as SectionEnum;
 use App\Enums\SalesBoardBuilderReviewSectionStatus;
+use App\Enums\SalesBoardBuilderReviewStatus;
 use Database\Factories\SalesBoardBuilderReviewSectionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -35,14 +36,28 @@ class SalesBoardBuilderReviewSection extends Model
      * A seção herda a mutabilidade da revisão a que pertence. Consultar o pai é
      * uma leitura a mais por gravação -- e são sete linhas por revisão, não
      * setecentas.
+     *
+     * O pai é relido do banco, e não aceito como veio na relação carregada: uma
+     * relação carregada antes do envio diria "rascunho" para sempre. A leitura é
+     * compartilhada para enxergar a versão commitada mais recente e esperar quem
+     * estiver enviando a revisão naquele momento.
      */
     protected static function booted(): void
     {
-        static::updating(function (self $section): void {
-            if (! $section->review?->isEditable()) {
+        $assertDraft = function (self $section): void {
+            $status = SalesBoardBuilderReview::query()
+                ->whereKey($section->sales_board_builder_review_id)
+                ->sharedLock()
+                ->toBase()
+                ->value('status');
+
+            if (SalesBoardBuilderReviewStatus::tryFrom((string) $status) !== SalesBoardBuilderReviewStatus::Draft) {
                 throw new LogicException('A submitted builder review section is immutable.');
             }
-        });
+        };
+
+        static::creating($assertDraft);
+        static::updating($assertDraft);
 
         static::deleting(function (self $section): void {
             throw new LogicException('Builder review sections cannot be deleted.');

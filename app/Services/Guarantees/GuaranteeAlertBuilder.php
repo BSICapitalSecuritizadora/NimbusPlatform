@@ -3,6 +3,7 @@
 namespace App\Services\Guarantees;
 
 use App\DTOs\Guarantees\EmissionGuaranteePositionData;
+use App\DTOs\Guarantees\GuaranteeSalesBoardCoverage;
 use App\Enums\GuaranteeCoverageStatus;
 use App\Enums\GuaranteeDetectionStatus;
 use App\Enums\GuaranteeLegalStatus;
@@ -10,7 +11,9 @@ use App\Enums\GuaranteeValueSource;
 use App\Models\Emission;
 use App\Models\ExtractedGuarantee;
 use App\Models\Guarantee;
+use App\Models\GuaranteeSnapshot;
 use App\Models\GuaranteeValuation;
+use App\Support\BusinessTime;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -38,7 +41,9 @@ class GuaranteeAlertBuilder
     {
         $alerts = collect();
 
+        $this->addOutdatedCompetenceAlerts($alerts, $emission);
         $this->addCoverageAlerts($alerts, $position);
+        $this->addSalesBoardCoverageAlert($alerts, $position);
         $this->addPositionAlerts($alerts, $position);
         $this->addGuaranteeAlerts($alerts, $emission, $position);
         $this->addDetectionAlerts($alerts, $emission);
@@ -76,6 +81,115 @@ class GuaranteeAlertBuilder
                 'guarantee_id' => null,
             ]);
         }
+    }
+
+    /**
+     * Competências gravadas antes de um Quadro de Vendas que passou a responder
+     * por elas. O número do snapshot — fechado ou não — já não é o que o motor
+     * apuraria, e é isso que o relatório e o histórico mostram.
+     *
+     * @param  Collection<int, array<string, mixed>>  $alerts
+     */
+    private function addOutdatedCompetenceAlerts(Collection $alerts, Emission $emission): void
+    {
+        if (! Emission::hasGuaranteeSnapshotsTable()) {
+            return;
+        }
+
+        $outdated = $emission->guaranteeSnapshots()
+            ->whereNotNull('sales_board_outdated_at')
+            ->orderBy('reference_month')
+            ->get();
+
+        foreach ($outdated as $snapshot) {
+            /** @var GuaranteeSnapshot $snapshot */
+            $alerts->push([
+                'severity' => self::SEVERITY_WARNING,
+                'title' => 'Competência desatualizada pelo Quadro de Vendas',
+                'description' => sprintf(
+                    'A competência %s foi apurada antes de um Quadro de Vendas registrado em %s. %s',
+                    $snapshot->formatted_reference_month,
+                    BusinessTime::at($snapshot->sales_board_outdated_at)->format('d/m/Y H:i'),
+                    $snapshot->isClosed()
+                        ? 'Reabra e atualize a competência para refletir a posição publicada.'
+                        : 'Atualize a competência para refletir a posição publicada.',
+                ),
+                'guarantee_id' => null,
+            ]);
+        }
+    }
+
+    /**
+     * Garantias de estoque apuradas sem o quadro da própria competência em
+     * algum empreendimento. O valor é a melhor posição conhecida, não a do mês.
+     *
+     * Na competência corrente, a posição transportada é o esperado: o quadro do
+     * mês só é publicado depois de o mês acabar. Avisar isso como pendência
+     * deixaria o alerta aceso o tempo todo em toda emissão com estoque — e um
+     * aviso que nunca apaga ensina a ignorar os reais. Ali ela vira nota
+     * informativa, com o mês usado por empreendimento à vista. O empreendimento
+     * que nunca teve quadro continua pendência em qualquer competência, e nas
+     * competências passadas — as que se atualizam e fecham — a posição
+     * transportada também.
+     *
+     * @param  Collection<int, array<string, mixed>>  $alerts
+     */
+    private function addSalesBoardCoverageAlert(Collection $alerts, EmissionGuaranteePositionData $position): void
+    {
+        $coverage = $position->salesBoardCoverage;
+
+        if (! $coverage?->hasGaps()) {
+            return;
+        }
+
+        $pendingGaps = $coverage->gaps();
+
+        if ($position->referenceMonth >= GuaranteeSnapshot::currentBusinessMonth()) {
+            $pendingGaps = $coverage->unpositionedGaps();
+            $carriedForward = $coverage->carriedForwardGaps();
+
+            if ($carriedForward !== []) {
+                $alerts->push([
+                    'severity' => self::SEVERITY_INFO,
+                    'title' => 'Quadro de Vendas do mês ainda não publicado',
+                    'description' => sprintf(
+                        'O quadro de %s só é publicado depois do fim do mês; até lá, vale a última posição conhecida de cada empreendimento: %s.',
+                        $position->referenceMonthLabel(),
+                        implode('; ', array_map(
+                            fn (array $entry): string => GuaranteeSalesBoardCoverage::describeMonthUsed($entry),
+                            $carriedForward,
+                        )),
+                    ),
+                    'guarantee_id' => null,
+                ]);
+            }
+        }
+
+        if ($pendingGaps === []) {
+            return;
+        }
+
+        $alerts->push([
+            'severity' => self::SEVERITY_WARNING,
+            'title' => 'Posição parcial do Quadro de Vendas',
+            'description' => sprintf(
+                'Em %s: %s.',
+                $position->referenceMonthLabel(),
+                $this->describeSalesBoardGaps($pendingGaps),
+            ),
+            'guarantee_id' => null,
+        ]);
+    }
+
+    /**
+     * @param  list<array{construction_id: int, construction_name: string|null, status: string, reference_month_used: string|null}>  $gaps
+     */
+    private function describeSalesBoardGaps(array $gaps): string
+    {
+        return implode('; ', array_map(
+            fn (array $entry): string => GuaranteeSalesBoardCoverage::describeEntry($entry),
+            $gaps,
+        ));
     }
 
     /**

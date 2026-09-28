@@ -6,8 +6,10 @@ namespace App\Services\SalesBoards;
 
 use App\Enums\SalesBoardAutomationAlertType;
 use App\Enums\SalesBoardRolloutRecipientRole;
+use App\Enums\SalesBoardSource;
 use App\Models\Construction;
 use App\Models\Emission;
+use App\Models\SalesBoardAutomationRun;
 use App\Models\SalesBoardAutomationTarget;
 use App\Models\SalesBoardBuilderReview;
 use App\Models\SalesBoardCycle;
@@ -16,11 +18,9 @@ use App\Models\User;
 /**
  * Os destinatários reais da automação, vindos da configuração de rollout.
  *
- * Substitui o resolvedor diferido da Fase F. Aquele devolvia lista vazia porque
- * não existia fonte confiável -- `Emission` e `Construction` não têm
- * responsável, e o de `Operation` responde pelo fluxo de medição. A Fase G criou
- * a fonte que faltava, e ela é explícita: alguém escolhe, por Emissão e por
- * papel.
+ * `Emission` e `Construction` não têm responsável, e o de `Operation` responde
+ * pelo fluxo de medição. A fonte é explícita: alguém escolhe, por Emissão e por
+ * papel, na tela de rollout.
  *
  * Continua proibido o atalho: nada de "todos os administradores" nem "todos com
  * `sales-boards.update`". Lista vazia permanece um resultado legítimo -- o motor
@@ -64,12 +64,46 @@ class DatabaseSalesBoardAutomationRecipientResolver implements SalesBoardAutomat
         );
     }
 
+    public function forBuilderEscalation(SalesBoardBuilderReview $review): array
+    {
+        return $this->forEmissionId(
+            $review->cycle?->emission_id,
+            SalesBoardRolloutRecipientRole::forAlert(SalesBoardAutomationAlertType::BuilderEscalation),
+        );
+    }
+
     public function forManagementReminder(SalesBoardCycle $cycle): array
     {
         return $this->forEmissionId(
             $cycle->emission_id,
             SalesBoardRolloutRecipientRole::forAlert(SalesBoardAutomationAlertType::ManagementReminder),
         );
+    }
+
+    public function forScopeSuspended(Emission $emission): array
+    {
+        return $this->directory->activeFor(
+            $emission,
+            SalesBoardRolloutRecipientRole::forAlert(SalesBoardAutomationAlertType::ScopeSuspended),
+        );
+    }
+
+    /**
+     * Os responsáveis operacionais de todas as Emissões automatizadas, cada
+     * pessoa uma vez só.
+     */
+    public function forRunInterrupted(SalesBoardAutomationRun $run): array
+    {
+        $role = SalesBoardRolloutRecipientRole::forAlert(SalesBoardAutomationAlertType::RunInterrupted);
+
+        return Emission::query()
+            ->where('sales_board_source', SalesBoardSource::Automated)
+            ->orderBy('id')
+            ->get()
+            ->flatMap(fn (Emission $emission): array => $this->directory->activeFor($emission, $role))
+            ->unique(fn (User $user): int => (int) $user->getKey())
+            ->values()
+            ->all();
     }
 
     /**

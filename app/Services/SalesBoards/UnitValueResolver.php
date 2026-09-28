@@ -218,10 +218,10 @@ class UnitValueResolver
      * Última linha vigente de cada unidade, numa consulta só.
      *
      * A ordenação decide o vencedor em memória em vez de pedir ao banco uma
-     * window function: `effective_from` crescente e `id` crescente fazem a
-     * última linha escrita para cada unidade sobrescrever as anteriores no
-     * índice, que é exatamente a regra de desempate -- e roda igual em SQLite e
-     * MySQL.
+     * window function: vigência crescente e `id` crescente fazem a última linha
+     * escrita para cada unidade sobrescrever as anteriores no índice, que é
+     * exatamente a regra de desempate. A vigência comparada é a data civil, e
+     * não o texto gravado -- ver {@see self::chronological()}.
      *
      * @param  list<int>  $unitIds
      * @return array<int, ConstructionUnitValue>
@@ -234,15 +234,16 @@ class UnitValueResolver
 
         $latest = [];
 
-        ConstructionUnitValue::query()
-            ->whereIn('construction_unit_id', $unitIds)
-            ->where('effective_from', '<=', InclusiveDateBound::upperBound($date))
-            ->orderBy('effective_from')
-            ->orderBy('id')
-            ->get()
-            ->each(function (ConstructionUnitValue $value) use (&$latest): void {
-                $latest[(int) $value->construction_unit_id] = $value;
-            });
+        $this->chronological(
+            ConstructionUnitValue::query()
+                ->whereIn('construction_unit_id', $unitIds)
+                ->where('effective_from', '<=', InclusiveDateBound::upperBound($date))
+                ->orderBy('effective_from')
+                ->orderBy('id')
+                ->get()
+        )->each(function (ConstructionUnitValue $value) use (&$latest): void {
+            $latest[(int) $value->construction_unit_id] = $value;
+        });
 
         return $latest;
     }
@@ -263,17 +264,43 @@ class UnitValueResolver
 
         $history = [];
 
-        ConstructionUnitValue::query()
-            ->whereIn('construction_unit_id', $unitIds)
-            ->where('effective_from', '<=', InclusiveDateBound::upperBound($latestDate))
-            ->orderBy('effective_from')
-            ->orderBy('id')
-            ->get()
-            ->each(function (ConstructionUnitValue $value) use (&$history): void {
-                $history[(int) $value->construction_unit_id][] = $value;
-            });
+        $this->chronological(
+            ConstructionUnitValue::query()
+                ->whereIn('construction_unit_id', $unitIds)
+                ->where('effective_from', '<=', InclusiveDateBound::upperBound($latestDate))
+                ->orderBy('effective_from')
+                ->orderBy('id')
+                ->get()
+        )->each(function (ConstructionUnitValue $value) use (&$history): void {
+            $history[(int) $value->construction_unit_id][] = $value;
+        });
 
         return $history;
+    }
+
+    /**
+     * Vigência (data civil) crescente e, na mesma vigência, `id` crescente.
+     *
+     * A ordenação do banco sozinha não basta. No SQLite a coluna `date` é texto,
+     * e a mesma vigência pode estar gravada como "2026-03-01" (insert em lote
+     * antigo) ou "2026-03-01 00:00:00" (cast do Eloquent): ordenada como texto,
+     * a forma curta vinha sempre antes, e a correção importada perdia para o
+     * lançamento manual mais antigo da mesma data. Reordenar pela data civil faz
+     * a regra "mesma vigência, vence o maior id" valer igual nos dois bancos,
+     * seja qual for o texto gravado.
+     *
+     * @param  Collection<int, ConstructionUnitValue>  $values
+     * @return Collection<int, ConstructionUnitValue>
+     */
+    private function chronological(Collection $values): Collection
+    {
+        return $values
+            ->sortBy(fn (ConstructionUnitValue $value): string => sprintf(
+                '%s|%020d',
+                $this->normalizeDate($value->effective_from)->toDateString(),
+                (int) $value->getKey(),
+            ))
+            ->values();
     }
 
     /**

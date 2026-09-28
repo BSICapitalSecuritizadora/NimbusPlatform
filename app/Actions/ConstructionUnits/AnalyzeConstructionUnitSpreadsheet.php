@@ -5,8 +5,9 @@ namespace App\Actions\ConstructionUnits;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\Emission;
+use App\Services\SalesBoards\RegisteredCompetenceIndex;
+use App\Support\Dates\SpreadsheetDate;
 use App\Support\Money\IntegerMoney;
-use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Support\Str;
 use Spatie\SimpleExcel\SimpleExcelReader;
@@ -69,7 +70,26 @@ class AnalyzeConstructionUnitSpreadsheet
                 }
             });
 
-        return new ConstructionUnitSpreadsheetAnalysis($analyzedRows);
+        return new ConstructionUnitSpreadsheetAnalysis($this->flagRegisteredCompetences($analyzedRows));
+    }
+
+    /**
+     * Marca as unidades novas de empreendimento que já tem posição registrada no
+     * Quadro de Vendas. A derivação conta toda unidade do empreendimento, então
+     * a unidade nova entra no estoque de todas as competências registradas
+     * quando forem recalculadas -- e a posição registrada não acompanha sozinha.
+     * O aviso não bloqueia.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    private function flagRegisteredCompetences(array $rows): array
+    {
+        $index = RegisteredCompetenceIndex::forConstructions(array_column($rows, 'construction_id'));
+
+        return array_map(fn (array $row): array => $row['status'] === self::STATUS_VALID
+            ? [...$row, 'registered_competences' => $index->allOf($row['construction_id'])]
+            : $row, $rows);
     }
 
     /**
@@ -85,6 +105,7 @@ class AnalyzeConstructionUnitSpreadsheet
         $block = $this->cell($row, $resolvedHeaders, ConstructionUnitSpreadsheetColumns::BLOCK);
         $unit = $this->cell($row, $resolvedHeaders, ConstructionUnitSpreadsheetColumns::UNIT);
         $baseValue = $this->cell($row, $resolvedHeaders, ConstructionUnitSpreadsheetColumns::BASE_VALUE);
+        $rawBaseValue = $this->rawCell($row, $resolvedHeaders, ConstructionUnitSpreadsheetColumns::BASE_VALUE);
         $baseValueReferenceDate = $this->cell($row, $resolvedHeaders, ConstructionUnitSpreadsheetColumns::BASE_VALUE_REFERENCE_DATE);
 
         $base = [
@@ -96,6 +117,7 @@ class AnalyzeConstructionUnitSpreadsheet
             'construction_id' => null,
             'base_value' => null,
             'base_value_reference_date' => null,
+            'registered_competences' => [],
         ];
 
         if (blank($emissionName) && blank($constructionName) && blank($block) && blank($unit)
@@ -115,19 +137,15 @@ class AnalyzeConstructionUnitSpreadsheet
             return [...$base, 'status' => self::STATUS_ERROR, 'message' => 'Emissão não encontrada.'];
         }
 
-        $construction = $this->findConstruction($constructionName);
+        $construction = $this->findConstruction($constructionName, $emission);
 
-        if ($construction === null) {
-            return [...$base, 'status' => self::STATUS_ERROR, 'message' => 'Empreendimento não encontrado.'];
-        }
-
-        if ($construction->emission_id !== $emission->id) {
-            return [...$base, 'status' => self::STATUS_ERROR, 'message' => 'O empreendimento informado não pertence à emissão selecionada.'];
+        if (is_string($construction)) {
+            return [...$base, 'status' => self::STATUS_ERROR, 'message' => $construction];
         }
 
         $base['construction_id'] = $construction->id;
 
-        $baseValueResult = $this->resolveBaseValue($baseValue, $baseValueReferenceDate);
+        $baseValueResult = $this->resolveBaseValue($baseValue, $rawBaseValue, $baseValueReferenceDate);
 
         if (is_string($baseValueResult)) {
             return [...$base, 'status' => self::STATUS_ERROR, 'message' => $baseValueResult];
@@ -168,7 +186,7 @@ class AnalyzeConstructionUnitSpreadsheet
      *
      * @return array{base_value: int|null, base_value_reference_date: string|null}|string
      */
-    private function resolveBaseValue(?string $baseValue, ?string $referenceDate): array|string
+    private function resolveBaseValue(?string $baseValue, mixed $rawBaseValue, ?string $referenceDate): array|string
     {
         if (blank($baseValue) && blank($referenceDate)) {
             return ['base_value' => null, 'base_value_reference_date' => null];
@@ -182,7 +200,7 @@ class AnalyzeConstructionUnitSpreadsheet
             return 'O valor base foi informado sem a data de referência. Informe os dois campos ou nenhum.';
         }
 
-        $cents = IntegerMoney::cents($baseValue);
+        $cents = $this->parseAmount($rawBaseValue);
 
         if ($cents === null) {
             return 'Valor base inválido.';
@@ -192,37 +210,46 @@ class AnalyzeConstructionUnitSpreadsheet
             return 'O valor base não pode ser negativo.';
         }
 
+        /**
+         * Zero não é valor informado: usado como marcador de "sem preço", fazia
+         * toda venda da unidade sair conforme e o estoque sair a R$ 0,00 sem
+         * nenhum achado. Sem valor, deixe os dois campos em branco.
+         */
+        if ($cents === 0) {
+            return 'O valor base precisa ser maior que zero. Sem valor conhecido, deixe o valor base e a data de referência em branco.';
+        }
+
         $date = $this->parseDate($referenceDate);
 
         if ($date === null) {
-            return 'Data de referência do valor base inválida.';
+            return 'Data de referência do valor base inválida. '.SpreadsheetDate::FORMAT_HINT;
         }
 
         return ['base_value' => $cents, 'base_value_reference_date' => $date];
     }
 
     /**
-     * Brazilian day-first dates are matched before anything else: `Carbon::parse`
-     * reads "03/09/2026" as the 9th of March, which would silently place a
-     * value nearly six months away from where the operator put it.
+     * Leitura estrita, a mesma dos importadores de contratos e parcelas: ano com
+     * quatro dígitos, hora opcional e nenhum `Carbon::parse()` de reserva, que
+     * lia "03/09/26" como 9 de março e deslocava o valor base em seis meses.
      */
     private function parseDate(string $value): ?string
     {
-        $value = trim($value);
+        return SpreadsheetDate::parse($value);
+    }
 
-        if (preg_match('#^(\d{1,2})/(\d{1,2})/(\d{4})$#', $value, $matches) === 1) {
-            [, $day, $month, $year] = $matches;
-
-            return checkdate((int) $month, (int) $day, (int) $year)
-                ? sprintf('%04d-%02d-%02d', $year, $month, $day)
-                : null;
-        }
-
-        try {
-            return CarbonImmutable::parse($value)->toDateString();
-        } catch (\Throwable) {
+    /**
+     * Centavos do valor. A célula numérica é lida pelo número que carrega:
+     * convertida antes em texto, `153.919` virava "153.919" e o parser de
+     * texto, com razão, lê ponto seguido de três dígitos como milhar.
+     */
+    private function parseAmount(mixed $value): ?int
+    {
+        if (! is_int($value) && ! is_float($value) && ! is_string($value)) {
             return null;
         }
+
+        return IntegerMoney::cents($value);
     }
 
     /**
@@ -236,6 +263,19 @@ class AnalyzeConstructionUnitSpreadsheet
             blank($block) ? ConstructionUnitSpreadsheetColumns::BLOCK : null,
             blank($unit) ? ConstructionUnitSpreadsheetColumns::UNIT : null,
         ]));
+    }
+
+    /**
+     * A célula como o leitor a entregou, sem virar texto.
+     *
+     * @param  array<string, mixed>  $row
+     * @param  array<string, string>  $resolvedHeaders
+     */
+    private function rawCell(array $row, array $resolvedHeaders, string $column): mixed
+    {
+        $header = $resolvedHeaders[$column] ?? null;
+
+        return $header === null ? null : ($row[$header] ?? null);
     }
 
     /**
@@ -281,8 +321,28 @@ class AnalyzeConstructionUnitSpreadsheet
         return Emission::query()->whereRaw('LOWER(TRIM(name)) = ?', [Str::lower(trim($name))])->first();
     }
 
-    private function findConstruction(string $name): ?Construction
+    /**
+     * O empreendimento do nome dentro da emissão da linha, ou o motivo da recusa.
+     *
+     * Procurar primeiro pelo nome em todas as emissões e só depois conferir a
+     * emissão recusava a linha certa sempre que outro empreendimento homônimo,
+     * de outra série, aparecesse antes na consulta. Dois homônimos na mesma
+     * emissão são recusados: escolher um deles seria cadastrar a unidade num
+     * empreendimento que ninguém apontou.
+     */
+    private function findConstruction(string $name, Emission $emission): Construction|string
     {
-        return Construction::query()->whereRaw('LOWER(TRIM(development_name)) = ?', [Str::lower(trim($name))])->first();
+        $candidates = Construction::query()
+            ->whereRaw('LOWER(TRIM(development_name)) = ?', [Str::lower(trim($name))])
+            ->get();
+
+        $inEmission = $candidates->where('emission_id', $emission->getKey());
+
+        return match (true) {
+            $inEmission->count() === 1 => $inEmission->first(),
+            $inEmission->count() > 1 => 'Há mais de um empreendimento com este nome nesta emissão. Diferencie os nomes antes de importar.',
+            $candidates->isNotEmpty() => 'O empreendimento informado não pertence à emissão selecionada.',
+            default => 'Empreendimento não encontrado.',
+        };
     }
 }

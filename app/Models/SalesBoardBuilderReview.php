@@ -117,10 +117,26 @@ class SalesBoardBuilderReview extends Model
         ];
     }
 
+    /**
+     * Grava em `sales_board`, a categoria protegida do módulo. O envio fica
+     * registrado com quem enviou e com a versão da declaração, e não só com a
+     * data.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['status', 'attempt', 'submitted_at', 'superseded_at', 'superseded_reason'])
+            ->useLogName('sales_board')
+            ->logOnly([
+                'status',
+                'attempt',
+                'submitted_at',
+                'submitted_by_user_id',
+                'reviewer_type',
+                'reviewer_name',
+                'declaration_version',
+                'superseded_at',
+                'superseded_reason',
+            ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
     }

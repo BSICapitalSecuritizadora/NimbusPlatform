@@ -13,6 +13,7 @@ use App\Filament\Resources\SalesBoardCycles\RelationManagers\SalesBoardCycleMove
 use App\Filament\Resources\SalesBoardCycles\Schemas\SalesBoardCycleInfolist;
 use App\Filament\Resources\SalesBoardCycles\Tables\SalesBoardCyclesTable;
 use App\Models\SalesBoardCycle;
+use App\Support\SalesBoards\SalesBoardApprovalAuthority;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -36,9 +37,10 @@ use UnitEnum;
  * cria versão nova e exige motivo. Deixar um formulário de campos crus aqui
  * permitiria escrever à mão uma posição que ninguém apurou.
  *
- * As permissões são as do Quadro de Vendas, sem inventar nenhuma: quem enxerga a
- * posição enxerga o ciclo, e quem pode registrar posição pode congelar e
- * recalcular.
+ * As permissões são as do Quadro de Vendas: quem enxerga a posição enxerga o
+ * ciclo, e quem pode registrar posição pode congelar, recalcular e conduzir a
+ * validação da construtora. Decidir, devolver, aprovar e publicar são da Gestão
+ * e exigem `sales-boards.approve` ({@see SalesBoardApprovalAuthority}).
  */
 class SalesBoardCycleResource extends Resource
 {
@@ -122,6 +124,16 @@ class SalesBoardCycleResource extends Resource
     public static function canRecalculate(): bool
     {
         return auth()->user()?->can('sales-boards.update') ?? false;
+    }
+
+    /**
+     * A autoridade da Gestão: decidir não conformidades, devolver à construtora,
+     * aprovar e publicar. Separada de `canRecalculate()` para que quem opera a
+     * competência não conclua sozinho o que ele mesmo preparou.
+     */
+    public static function canApprove(): bool
+    {
+        return SalesBoardApprovalAuthority::holds(auth()->user());
     }
 
     public static function canCreate(): bool

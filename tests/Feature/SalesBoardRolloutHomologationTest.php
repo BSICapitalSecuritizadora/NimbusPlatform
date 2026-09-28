@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\SalesBoards\SalesBoardRolloutHomologationService;
 use App\Services\SalesBoards\SalesBoardRolloutRecipientDirectory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\RolloutFixture;
 
 uses(RefreshDatabase::class);
@@ -190,7 +191,7 @@ it('blocks approval until both impact reviews are recorded', function () {
 
     $homologation = RolloutFixture::open($scenario['emission']);
     RolloutFixture::recipients($scenario['emission']);
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::approver();
     $service = app(SalesBoardRolloutHomologationService::class);
 
     expect(fn () => RolloutFixture::approve($homologation))

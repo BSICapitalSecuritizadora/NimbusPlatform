@@ -155,6 +155,111 @@ final class SalesDiscountPolicyTimeline
         return $found;
     }
 
+    public function isEmpty(): bool
+    {
+        return $this->orderedPolicies === [];
+    }
+
+    /**
+     * Primeiro dia, a partir de `$day`, em que nenhuma política responde.
+     *
+     * Segue a cadeia de substituições: a vigente, a que a substitui, a que
+     * começa logo depois do fim dela... até achar um dia descoberto. Nulo quando
+     * a cobertura não tem fim -- só acontece com linha anterior ao fim explícito
+     * e sem sucessora.
+     *
+     * É o dia a partir do qual uma venda bloqueia a competência por falta de
+     * política, e é o que a tela avisa antes que aconteça.
+     */
+    public function firstUncoveredDayFrom(CarbonInterface $day): ?CarbonImmutable
+    {
+        $cursor = self::day($day);
+        $index = $this->lastIndexStartingUpTo($cursor);
+
+        if ($index === null) {
+            return $cursor;
+        }
+
+        while (true) {
+            $policy = $this->orderedPolicies[$index];
+            $end = $policy->effective_until === null ? null : self::day($policy->effective_until);
+
+            if (($end !== null) && $end->lessThan($cursor)) {
+                return $cursor;
+            }
+
+            $next = $this->orderedPolicies[$index + 1] ?? null;
+
+            if (! $next instanceof SalesDiscountPolicy) {
+                return $end?->addDay();
+            }
+
+            $nextStart = self::day($next->effective_from);
+
+            if (($end !== null) && $nextStart->greaterThan($end->addDay())) {
+                return $end->addDay();
+            }
+
+            $cursor = $nextStart;
+            $index = (int) $this->lastIndexStartingUpTo($nextStart);
+        }
+    }
+
+    /**
+     * Desde quando `$day` está descoberto: o dia seguinte ao fim da última
+     * política que respondeu antes dele. Nulo quando nenhuma política começou
+     * até `$day` -- aí não houve cobertura para terminar.
+     *
+     * Supõe `$day` descoberto; para um dia coberto a resposta não tem sentido.
+     */
+    public function uncoveredSince(CarbonInterface $day): ?CarbonImmutable
+    {
+        $index = $this->lastIndexStartingUpTo(self::day($day));
+
+        if ($index === null) {
+            return null;
+        }
+
+        $end = $this->orderedPolicies[$index]->effective_until;
+
+        return $end === null ? null : self::day($end)->addDay();
+    }
+
+    /**
+     * A primeira política que começa depois de `$day`.
+     */
+    public function firstStartingAfter(CarbonInterface $day): ?SalesDiscountPolicy
+    {
+        $after = self::day($day);
+
+        foreach ($this->orderedPolicies as $policy) {
+            if (self::day($policy->effective_from)->greaterThan($after)) {
+                return $policy;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Posição, na ordem, da política que o resolvedor devolveria para `$day`:
+     * a última com início até ele. Nulo quando nenhuma começou até ali.
+     */
+    private function lastIndexStartingUpTo(CarbonImmutable $day): ?int
+    {
+        $found = null;
+
+        foreach ($this->orderedPolicies as $index => $policy) {
+            if (self::day($policy->effective_from)->greaterThan($day)) {
+                break;
+            }
+
+            $found = $index;
+        }
+
+        return $found;
+    }
+
     private function successorOf(SalesDiscountPolicy $policy): ?SalesDiscountPolicy
     {
         $index = $this->positionById[(int) $policy->getKey()] ?? null;

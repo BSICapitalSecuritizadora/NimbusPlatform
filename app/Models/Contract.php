@@ -89,9 +89,17 @@ class Contract extends Model
         });
     }
 
+    /**
+     * A contract is a source of the Sales Board: deleting, restoring or editing
+     * one changes the numbers of every following competence. The retention
+     * policy splits the buckets by `log_name`, and `contracts` is kept for
+     * seven years; under `default` the authorship of those changes would be
+     * gone in one.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('contracts')
             ->logFillable()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
@@ -334,7 +342,9 @@ class Contract extends Model
      * The activity is written by hand rather than by `LogsActivity`, which only
      * watches columns: the buyers are rows of another table, so nothing would be
      * logged otherwise. It carries ids and never documents -- a name can be
-     * resolved for display, a CPF in an audit trail cannot be taken back.
+     * resolved for display, a CPF in an audit trail cannot be taken back. It
+     * goes to the same `contracts` log as the column trail, so both halves of
+     * the contract's history share one retention.
      *
      * Silent when the set holds, including when the file lists the same buyers
      * in a different order: a set has no order, so there is nothing to record.
@@ -357,7 +367,7 @@ class Contract extends Model
         $this->clients()->sync($after);
         $this->unsetRelation('clients');
 
-        activity()
+        activity('contracts')
             ->performedOn($this)
             ->event('updated')
             ->withProperties([
