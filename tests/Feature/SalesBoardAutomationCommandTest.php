@@ -244,22 +244,33 @@ it('exits with failure when the orchestration itself fails', function () {
 
 it('raises its own memory limit, because the scheduler does not pass php flags to it', function () {
     $previous = ini_get('memory_limit');
-    ini_set('memory_limit', '256M');
+
+    /**
+     * Os limites partem do que o processo já usa, e não de valores fixos: na
+     * suíte serial do CI o processo passa de 500 MB antes de chegar aqui, e o
+     * PHP recusa um `memory_limit` abaixo do uso atual.
+     */
+    $usedMegabytes = (int) ceil(memory_get_usage(true) / 1048576);
+    $lower = ($usedMegabytes + 128).'M';
+    $desired = ($usedMegabytes + 384).'M';
+    $higher = ($usedMegabytes + 2048).'M';
+
+    ini_set('memory_limit', $lower);
 
     try {
         $construction = AutomationFixture::readyConstruction();
         AutomationFixture::enable([$construction]);
-        config()->set('sales_board.automation.memory_limit', '640M');
+        config()->set('sales_board.automation.memory_limit', $desired);
 
         $this->artisan('sales-boards:automation-run', ['--as-of' => '2026-09-13'])->assertSuccessful();
 
-        expect(ini_get('memory_limit'))->toBe('640M');
+        expect(ini_get('memory_limit'))->toBe($desired);
 
         // Só sobe: um limite maior (ou ilimitado) já configurado fica como está.
-        ini_set('memory_limit', '2G');
+        ini_set('memory_limit', $higher);
         $this->artisan('sales-boards:automation-run', ['--as-of' => '2026-09-13'])->assertSuccessful();
 
-        expect(ini_get('memory_limit'))->toBe('2G');
+        expect(ini_get('memory_limit'))->toBe($higher);
     } finally {
         ini_set('memory_limit', $previous);
     }
