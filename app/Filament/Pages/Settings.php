@@ -2,26 +2,15 @@
 
 namespace App\Filament\Pages;
 
-use App\Actions\Emissions\IntegralizationHistorySpreadsheetTemplate;
-use App\Actions\Emissions\PaymentSpreadsheetTemplate;
-use App\Actions\Emissions\PuHistorySpreadsheetTemplate;
-use Filament\Notifications\Notification;
+use App\Filament\Resources\Roles\RoleResource;
+use App\Filament\Resources\Users\UserResource;
 use Filament\Pages\Page;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
-use Livewire\Features\SupportFileUploads\WithFileUploads;
 use UnitEnum;
 
 class Settings extends Page
 {
-    use WithFileUploads;
-
-    public mixed $paymentTemplateFile = null;
-
-    public mixed $puHistoryTemplateFile = null;
-
-    public mixed $integralizationHistoryTemplateFile = null;
-
     protected string $view = 'filament.pages.settings';
 
     protected static string|UnitEnum|null $navigationGroup = 'Administração';
@@ -30,321 +19,58 @@ class Settings extends Page
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
 
-    protected static ?string $navigationLabel = "Configura\u{00E7}\u{00F5}es";
+    protected static ?string $navigationLabel = 'Configurações';
 
-    protected static ?string $title = "Configura\u{00E7}\u{00F5}es";
+    protected static ?string $title = 'Configurações';
 
-    protected ?string $subheading = 'Gerencie os templates de planilhas utilizados nos fluxos operacionais das emissões.';
+    protected ?string $subheading = 'Gerencie acessos, permissões e parâmetros administrativos do sistema.';
 
-    protected Width|string|null $maxContentWidth = Width::Full;
+    protected Width|string|null $maxContentWidth = Width::SevenExtraLarge;
 
     protected array $extraBodyAttributes = [
-        'class' => 'bsi-cockpit-page bsi-settings-page',
+        'class' => 'bsi-cockpit-page bsi-settings-hub-page',
     ];
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->can('settings.view') ?? false;
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return UserResource::canViewAny()
+            || RoleResource::canViewAny()
+            || SpreadsheetTemplates::canAccess();
     }
 
-    public function savePaymentTemplate(PaymentSpreadsheetTemplate $paymentSpreadsheetTemplate): void
+    public function canAccessUsers(): bool
     {
-        abort_unless(static::canAccess(), 403);
-
-        $validated = $this->validate([
-            'paymentTemplateFile' => [
-                'required',
-                'file',
-                'mimes:xlsx',
-            ],
-        ], [
-            'paymentTemplateFile.required' => 'Selecione uma planilha para atualizar o template.',
-            'paymentTemplateFile.file' => 'Envie um arquivo válido.',
-            'paymentTemplateFile.mimes' => 'Envie uma planilha Excel válida no formato .xlsx.',
-        ]);
-
-        $paymentSpreadsheetTemplate->store($validated['paymentTemplateFile']);
-
-        $this->paymentTemplateFile = null;
-
-        Notification::make()
-            ->title('Template atualizado com sucesso.')
-            ->body('O novo arquivo já está disponível para download no fluxo de pagamentos.')
-            ->success()
-            ->send();
+        return UserResource::canViewAny();
     }
 
-    public function restoreDefaultPaymentTemplate(PaymentSpreadsheetTemplate $paymentSpreadsheetTemplate): void
+    public function canAccessRoles(): bool
     {
-        abort_unless(static::canAccess(), 403);
-
-        $paymentSpreadsheetTemplate->restoreDefault();
-
-        Notification::make()
-            ->title('Template padrão restaurado.')
-            ->body('O fluxo de pagamentos voltou a usar o arquivo padrão do sistema.')
-            ->success()
-            ->send();
+        return RoleResource::canViewAny();
     }
 
-    public function savePuHistoryTemplate(PuHistorySpreadsheetTemplate $puHistorySpreadsheetTemplate): void
+    public function canAccessSpreadsheetTemplates(): bool
     {
-        abort_unless(static::canAccess(), 403);
-
-        $validated = $this->validate([
-            'puHistoryTemplateFile' => [
-                'required',
-                'file',
-                'mimes:xlsx',
-            ],
-        ], [
-            'puHistoryTemplateFile.required' => 'Selecione uma planilha para atualizar o template.',
-            'puHistoryTemplateFile.file' => 'Envie um arquivo válido.',
-            'puHistoryTemplateFile.mimes' => 'Envie uma planilha Excel válida no formato .xlsx.',
-        ]);
-
-        $puHistorySpreadsheetTemplate->store($validated['puHistoryTemplateFile']);
-
-        $this->puHistoryTemplateFile = null;
-
-        Notification::make()
-            ->title('Template atualizado com sucesso.')
-            ->body('O novo arquivo já está disponível para download no histórico de PU.')
-            ->success()
-            ->send();
+        return SpreadsheetTemplates::canAccess();
     }
 
-    public function restoreDefaultPuHistoryTemplate(PuHistorySpreadsheetTemplate $puHistorySpreadsheetTemplate): void
+    public function getUsersUrl(): string
     {
-        abort_unless(static::canAccess(), 403);
-
-        $puHistorySpreadsheetTemplate->restoreDefault();
-
-        Notification::make()
-            ->title('Template padrão restaurado.')
-            ->body('O histórico de PU voltou a usar o arquivo padrão do sistema.')
-            ->success()
-            ->send();
+        return UserResource::getUrl(panel: 'admin');
     }
 
-    public function saveIntegralizationHistoryTemplate(IntegralizationHistorySpreadsheetTemplate $integralizationHistorySpreadsheetTemplate): void
+    public function getRolesUrl(): string
     {
-        abort_unless(static::canAccess(), 403);
-
-        $validated = $this->validate([
-            'integralizationHistoryTemplateFile' => [
-                'required',
-                'file',
-                'mimes:xlsx',
-            ],
-        ], [
-            'integralizationHistoryTemplateFile.required' => 'Selecione uma planilha para atualizar o template.',
-            'integralizationHistoryTemplateFile.file' => 'Envie um arquivo válido.',
-            'integralizationHistoryTemplateFile.mimes' => 'Envie uma planilha Excel válida no formato .xlsx.',
-        ]);
-
-        $integralizationHistorySpreadsheetTemplate->store($validated['integralizationHistoryTemplateFile']);
-
-        $this->integralizationHistoryTemplateFile = null;
-
-        Notification::make()
-            ->title('Template atualizado com sucesso.')
-            ->body('O novo arquivo já está disponível para download no histórico de integralizações.')
-            ->success()
-            ->send();
+        return RoleResource::getUrl(panel: 'admin');
     }
 
-    public function restoreDefaultIntegralizationHistoryTemplate(IntegralizationHistorySpreadsheetTemplate $integralizationHistorySpreadsheetTemplate): void
+    public function getSpreadsheetTemplatesUrl(): string
     {
-        abort_unless(static::canAccess(), 403);
-
-        $integralizationHistorySpreadsheetTemplate->restoreDefault();
-
-        Notification::make()
-            ->title('Template padrão restaurado.')
-            ->body('O histórico de integralizações voltou a usar o arquivo padrão do sistema.')
-            ->success()
-            ->send();
-    }
-
-    public function getPaymentTemplateDownloadUrl(): string
-    {
-        return route('admin.payments.template.download');
-    }
-
-    public function getPuHistoryTemplateDownloadUrl(): string
-    {
-        return route('admin.pu-histories.template.download');
-    }
-
-    public function getIntegralizationHistoryTemplateDownloadUrl(): string
-    {
-        return route('admin.integralization-histories.template.download');
-    }
-
-    public function hasPaymentTemplate(): bool
-    {
-        return $this->paymentSpreadsheetTemplate()->exists();
-    }
-
-    public function hasPuHistoryTemplate(): bool
-    {
-        return $this->puHistorySpreadsheetTemplate()->exists();
-    }
-
-    public function hasIntegralizationHistoryTemplate(): bool
-    {
-        return $this->integralizationHistorySpreadsheetTemplate()->exists();
-    }
-
-    public function hasCustomPaymentTemplate(): bool
-    {
-        return $this->paymentSpreadsheetTemplate()->hasCustomTemplate();
-    }
-
-    public function hasCustomPuHistoryTemplate(): bool
-    {
-        return $this->puHistorySpreadsheetTemplate()->hasCustomTemplate();
-    }
-
-    public function hasCustomIntegralizationHistoryTemplate(): bool
-    {
-        return $this->integralizationHistorySpreadsheetTemplate()->hasCustomTemplate();
-    }
-
-    public function getPaymentTemplateStatusLabel(): string
-    {
-        return $this->hasCustomPaymentTemplate() ? 'Personalizado' : 'Padrão do sistema';
-    }
-
-    public function getPuHistoryTemplateStatusLabel(): string
-    {
-        return $this->hasCustomPuHistoryTemplate() ? 'Personalizado' : 'Padrão do sistema';
-    }
-
-    public function getIntegralizationHistoryTemplateStatusLabel(): string
-    {
-        return $this->hasCustomIntegralizationHistoryTemplate() ? 'Personalizado' : 'Padrão do sistema';
-    }
-
-    public function getPaymentTemplateStatusClasses(): string
-    {
-        return $this->hasCustomPaymentTemplate()
-            ? 'border border-amber-400/30 bg-amber-500/15 text-amber-100'
-            : 'border border-emerald-400/30 bg-emerald-500/15 text-emerald-100';
-    }
-
-    public function getPuHistoryTemplateStatusClasses(): string
-    {
-        return $this->hasCustomPuHistoryTemplate()
-            ? 'border border-amber-400/30 bg-amber-500/15 text-amber-100'
-            : 'border border-emerald-400/30 bg-emerald-500/15 text-emerald-100';
-    }
-
-    public function getIntegralizationHistoryTemplateStatusClasses(): string
-    {
-        return $this->hasCustomIntegralizationHistoryTemplate()
-            ? 'border border-amber-400/30 bg-amber-500/15 text-amber-100'
-            : 'border border-emerald-400/30 bg-emerald-500/15 text-emerald-100';
-    }
-
-    public function getPaymentTemplateDescription(): string
-    {
-        return $this->hasCustomPaymentTemplate()
-            ? 'O arquivo atual foi enviado manualmente nesta área de configurações.'
-            : 'O fluxo de pagamentos está usando o template padrão versionado no sistema.';
-    }
-
-    public function getPuHistoryTemplateDescription(): string
-    {
-        return $this->hasCustomPuHistoryTemplate()
-            ? 'O arquivo atual foi enviado manualmente nesta área de configurações.'
-            : 'O histórico de PU está usando o template padrão versionado no sistema.';
-    }
-
-    public function getIntegralizationHistoryTemplateDescription(): string
-    {
-        return $this->hasCustomIntegralizationHistoryTemplate()
-            ? 'O arquivo atual foi enviado manualmente nesta área de configurações.'
-            : 'O histórico de integralizações está usando o template padrão versionado no sistema.';
-    }
-
-    /**
-     * @return array<int, array{
-     *     key: string,
-     *     property: string,
-     *     input_id: string,
-     *     title: string,
-     *     context: string,
-     *     status_label: string,
-     *     status_classes: string,
-     *     description: string,
-     *     download_url: ?string,
-     *     save_method: string,
-     *     restore_method: string,
-     *     restore_confirmation: string
-     * }>
-     */
-    public function templateSections(): array
-    {
-        return [
-            [
-                'key' => 'payment',
-                'property' => 'paymentTemplateFile',
-                'input_id' => 'payment-template-file',
-                'title' => 'Fluxo de pagamentos',
-                'context' => 'Planilha de importação de pagamentos da emissão',
-                'status_label' => $this->getPaymentTemplateStatusLabel(),
-                'status_classes' => $this->getPaymentTemplateStatusClasses(),
-                'description' => $this->getPaymentTemplateDescription(),
-                'download_url' => $this->hasPaymentTemplate() ? $this->getPaymentTemplateDownloadUrl() : null,
-                'save_method' => 'savePaymentTemplate',
-                'restore_method' => 'restoreDefaultPaymentTemplate',
-                'restore_confirmation' => 'Restaurar o template padrão do fluxo de pagamentos? O arquivo personalizado atual deixará de ser usado.',
-            ],
-            [
-                'key' => 'pu-history',
-                'property' => 'puHistoryTemplateFile',
-                'input_id' => 'pu-history-template-file',
-                'title' => 'Histórico de PU',
-                'context' => 'Planilha de importação do histórico de PU da emissão',
-                'status_label' => $this->getPuHistoryTemplateStatusLabel(),
-                'status_classes' => $this->getPuHistoryTemplateStatusClasses(),
-                'description' => $this->getPuHistoryTemplateDescription(),
-                'download_url' => $this->hasPuHistoryTemplate() ? $this->getPuHistoryTemplateDownloadUrl() : null,
-                'save_method' => 'savePuHistoryTemplate',
-                'restore_method' => 'restoreDefaultPuHistoryTemplate',
-                'restore_confirmation' => 'Restaurar o template padrão do histórico de PU? O arquivo personalizado atual deixará de ser usado.',
-            ],
-            [
-                'key' => 'integralization-history',
-                'property' => 'integralizationHistoryTemplateFile',
-                'input_id' => 'integralization-history-template-file',
-                'title' => 'Histórico de integralizações',
-                'context' => 'Planilha de importação do histórico de integralizações da emissão',
-                'status_label' => $this->getIntegralizationHistoryTemplateStatusLabel(),
-                'status_classes' => $this->getIntegralizationHistoryTemplateStatusClasses(),
-                'description' => $this->getIntegralizationHistoryTemplateDescription(),
-                'download_url' => $this->hasIntegralizationHistoryTemplate() ? $this->getIntegralizationHistoryTemplateDownloadUrl() : null,
-                'save_method' => 'saveIntegralizationHistoryTemplate',
-                'restore_method' => 'restoreDefaultIntegralizationHistoryTemplate',
-                'restore_confirmation' => 'Restaurar o template padrão do histórico de integralizações? O arquivo personalizado atual deixará de ser usado.',
-            ],
-        ];
-    }
-
-    protected function paymentSpreadsheetTemplate(): PaymentSpreadsheetTemplate
-    {
-        return app(PaymentSpreadsheetTemplate::class);
-    }
-
-    protected function puHistorySpreadsheetTemplate(): PuHistorySpreadsheetTemplate
-    {
-        return app(PuHistorySpreadsheetTemplate::class);
-    }
-
-    protected function integralizationHistorySpreadsheetTemplate(): IntegralizationHistorySpreadsheetTemplate
-    {
-        return app(IntegralizationHistorySpreadsheetTemplate::class);
+        return SpreadsheetTemplates::getUrl(panel: 'admin');
     }
 }

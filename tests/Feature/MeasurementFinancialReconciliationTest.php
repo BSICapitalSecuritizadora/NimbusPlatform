@@ -446,7 +446,7 @@ it('names the development from the snapshot construction identity', function () 
         ->and($line->constructionId)->toBe((int) $scenario['constructions'][0]->getKey());
 });
 
-it('still registers a divergent payment and still allows the payment stage approval', function () {
+it('registers a justified divergent payment and allows the payment stage approval', function () {
     $scenario = reconciliationApprovedScenario([['fund' => '8000000.00', 'percent' => 2.5]]);
     $workflow = app(MeasurementWorkflow::class);
     $measurement = $scenario['measurement'];
@@ -458,6 +458,7 @@ it('still registers a divergent payment and still allows the payment stage appro
         'plan_set_id' => $planSet->getKey(),
         'pay_date' => '2026-08-31',
         'amount' => 150000.00,
+        'financial_justification' => 'Retenção contratual para conferência do Finalizador.',
     ]);
 
     $line = reconciliationService()->forMeasurement($measurement->fresh())->line($planSet->getKey());
@@ -511,6 +512,7 @@ it('shows the financial reconciliation section on the measurement view', functio
         'plan_set_id' => $scenario['planSets'][0]->getKey(),
         'pay_date' => '2026-08-31',
         'amount' => 150000.00,
+        'financial_justification' => 'Retenção contratual para conferência do Finalizador.',
     ]);
 
     Livewire::test(ViewMeasurement::class, ['record' => $scenario['measurement']->getRouteKey()])
@@ -614,6 +616,7 @@ it('takes the already registered amount into account in the modal reference', fu
         'plan_set_id' => $scenario['planSets'][0]->getKey(),
         'pay_date' => '2026-08-31',
         'amount' => 50000.00,
+        'financial_justification' => 'Primeira parcela do pagamento.',
     ]);
 
     $component = Livewire::test(ViewMeasurement::class, ['record' => $scenario['measurement']->fresh()->getRouteKey()])
@@ -630,7 +633,7 @@ it('takes the already registered amount into account in the modal reference', fu
     expect(reconciliationModalContent($component, 'reconciliation_divergence'))->toContain('Conciliado');
 });
 
-it('does not add reconciliation as a sixth gate for finalization', function () {
+it('allows finalization of a justified divergence with explicit acceptance', function () {
     $scenario = reconciliationApprovedScenario([['fund' => '8000000.00', 'percent' => 2.5]]);
     $workflow = app(MeasurementWorkflow::class);
     $measurement = $scenario['measurement'];
@@ -639,13 +642,14 @@ it('does not add reconciliation as a sixth gate for finalization', function () {
         'plan_set_id' => $scenario['planSets'][0]->getKey(),
         'pay_date' => '2026-08-31',
         'amount' => 150000.00,
+        'financial_justification' => 'Retenção contratual para conferência do Finalizador.',
     ]);
     $workflow->approve($measurement->fresh(), $scenario['actor']);
 
     $workflow->attachReceipt($payment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
     MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['actor']);
 
-    $workflow->finalize($measurement->fresh(), $scenario['actor']);
+    $workflow->finalize($measurement->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
 
     $line = reconciliationService()->forMeasurement($measurement->fresh())->line($scenario['planSets'][0]->getKey());
 

@@ -41,6 +41,8 @@ class MeasurementPayment extends Model
         'receipt_uploaded_by',
         'receipt_uploaded_at',
         'created_by',
+        'financial_rule_id',
+        'financial_assessment',
     ];
 
     protected static function booted(): void
@@ -65,6 +67,7 @@ class MeasurementPayment extends Model
         return [
             'pay_date' => 'date',
             'amount' => 'decimal:2',
+            'financial_assessment' => 'array',
             'receipt_size' => 'integer',
             'receipt_uploaded_at' => 'datetime',
         ];

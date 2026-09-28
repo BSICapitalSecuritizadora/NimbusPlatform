@@ -154,6 +154,7 @@ it('executes the formal five-stage workflow without treating payment registratio
         'plan_set_id' => $scenario['planSet']->id,
         'pay_date' => '2026-08-20',
         'amount' => 150000.50,
+        'financial_justification' => 'Pagamento parcial previsto para esta medição.',
         'method' => 'PIX',
     ]);
 
@@ -177,7 +178,7 @@ it('executes the formal five-stage workflow without treating payment registratio
 
     MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
 
-    $workflow->finalize($measurement->fresh(), $scenario['finalizer']);
+    $workflow->finalize($measurement->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
 
     expect($measurement->fresh()->status)->toBe('finalized')
         ->and($measurement->fresh()->reviewForStage(5)?->status)->toBe('approved')
@@ -255,6 +256,7 @@ it('allows finalization to return to an earlier stage only with persisted eviden
     $payment = $workflow->registerPayment($scenario['measurement']->fresh(), $scenario['payment'], [
         'pay_date' => now(),
         'amount' => 1000,
+        'financial_justification' => 'Pagamento parcial previsto para esta medição.',
     ]);
     $workflow->approve($scenario['measurement']->fresh(), $scenario['payment']);
 
@@ -280,8 +282,8 @@ it('keeps batch and per-development payments, records authors and rejects invali
     $workflow = app(MeasurementWorkflow::class);
 
     $payments = $workflow->registerPayments($scenario['measurement']->fresh(), $scenario['payment'], [
-        ['plan_set_id' => $scenario['planSet']->id, 'amount' => 100, 'pay_date' => '2026-08-20'],
-        ['plan_set_id' => $scenario['planSet']->id, 'amount' => 200, 'pay_date' => '2026-08-21'],
+        ['plan_set_id' => $scenario['planSet']->id, 'amount' => 100, 'pay_date' => '2026-08-20', 'financial_justification' => 'Primeira parcela.'],
+        ['plan_set_id' => $scenario['planSet']->id, 'amount' => 200, 'pay_date' => '2026-08-21', 'financial_justification' => 'Segunda parcela.'],
         ['plan_set_id' => $scenario['planSet']->id, 'amount' => null, 'pay_date' => '2026-08-21'],
     ]);
 

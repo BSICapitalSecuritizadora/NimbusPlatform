@@ -3,9 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Domain\PuCalculator\Enums\PuIndexer;
-use App\Domain\PuCalculator\Services\PuCurveVersionService;
+use App\Jobs\ExtendPuDailyCurveJob;
 use App\Jobs\GeneratePuDailyCurveJob;
 use App\Models\Emission;
+use App\Models\EmissionPuCurveVersion;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,42 +15,47 @@ use Illuminate\Support\LazyCollection;
 class GenerateRealizedPuCurvesCommand extends Command
 {
     protected $signature = 'pu:curves:generate-realized
-        {--emission= : Gera apenas para a emissao informada (ID)}';
+        {--emission= : Processa apenas a emissao informada (ID)}';
 
-    protected $description = 'Reprocessa a parte realizada das curvas de PU de CDI, incorporando o indice publicado mais recente. Curvas homologadas sao preservadas (puladas).';
+    protected $description = 'Estende a curva de PU de CDI vigente com o indice publicado mais recente, anexando so os dias novos. Sem curva vigente, gera a curva inteira.';
 
-    public function handle(PuCurveVersionService $versionService): int
+    public function handle(): int
     {
-        $dispatched = 0;
-        $skippedHomologated = 0;
+        $extensions = 0;
+        $generations = 0;
         $skippedComplete = 0;
 
         $this->eligibleEmissions()->each(function (Emission $emission) use (
-            $versionService,
-            &$dispatched,
-            &$skippedHomologated,
+            &$extensions,
+            &$generations,
             &$skippedComplete,
         ): void {
-            if ($versionService->hasHomologatedVersion($emission)) {
-                $skippedHomologated++;
+            $version = $emission->currentPuCurveVersion();
+
+            if (! $version instanceof EmissionPuCurveVersion) {
+                GeneratePuDailyCurveJob::dispatch($emission->id, null, false);
+                $generations++;
 
                 return;
             }
 
-            if (! $this->hasRealizedTailToExtend($emission)) {
+            if (! $this->hasRealizedTailToExtend($emission, $version)) {
                 $skippedComplete++;
 
                 return;
             }
 
-            GeneratePuDailyCurveJob::dispatch($emission->id, null, false);
-            $dispatched++;
+            // A extensão só anexa dias novos e nunca troca a versão vigente, então
+            // curvas homologadas e promovidas também avançam: o trecho revisado
+            // permanece intacto e o recálculo prova, a cada dia, que ele não mudou.
+            ExtendPuDailyCurveJob::dispatch($emission->id);
+            $extensions++;
         });
 
         $this->info(sprintf(
-            'Curvas de PU realizadas: %d reprocessamento(s) enfileirado(s), %d homologada(s) preservada(s), %d ja completa(s).',
-            $dispatched,
-            $skippedHomologated,
+            'Curvas de PU realizadas: %d extensao(oes) enfileirada(s), %d geracao(oes) completa(s) enfileirada(s), %d ja completa(s).',
+            $extensions,
+            $generations,
             $skippedComplete,
         ));
 
@@ -70,11 +76,11 @@ class GenerateRealizedPuCurvesCommand extends Command
     }
 
     /**
-     * Só há o que reprocessar quando a curva ainda não alcançou a data final: nesse caso o CDI recém
-     * publicado estende a parte realizada. Curvas que já cobrem todo o período não são reprocessadas
-     * (evita versionamento desnecessário a cada dia).
+     * Só há o que estender quando a curva vigente ainda não alcançou a data final:
+     * nesse caso o CDI recém-publicado acrescenta dias realizados. Curvas que já
+     * cobrem todo o período não recebem nada.
      */
-    private function hasRealizedTailToExtend(Emission $emission): bool
+    private function hasRealizedTailToExtend(Emission $emission, EmissionPuCurveVersion $version): bool
     {
         $curveEnd = $emission->puParameter?->curve_end_date;
 
@@ -82,7 +88,7 @@ class GenerateRealizedPuCurvesCommand extends Command
             return false;
         }
 
-        $lastCurveDate = $emission->operationalPuDailyCurves()->max('curve_date');
+        $lastCurveDate = $version->dailyCurves()->max('curve_date');
 
         if ($lastCurveDate === null) {
             return true;

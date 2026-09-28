@@ -9,7 +9,7 @@ use App\Domain\PuCalculator\Services\DecimalRounder;
 use App\Domain\PuCalculator\ValueObjects\Decimal;
 use App\Enums\AccessPermission;
 use App\Enums\IntegralizationSource;
-use App\Filament\Pages\Settings as SettingsPage;
+use App\Filament\Pages\SpreadsheetTemplates as SpreadsheetTemplatesPage;
 use App\Filament\Resources\ExpenseServiceProviders\Schemas\ExpenseServiceProviderForm;
 use App\Models\ExpenseServiceProvider;
 use App\Models\ExpenseServiceProviderType;
@@ -188,7 +188,7 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                     ->icon('heroicon-o-cog-6-tooth')
                     ->color('gray')
                     ->tooltip('Configurar mapeamento de colunas do template')
-                    ->url(fn (): string => SettingsPage::getUrl(panel: 'admin'))
+                    ->url(fn (): string => SpreadsheetTemplatesPage::getUrl(panel: 'admin'))
                     ->visible(fn (): bool => auth()->user()?->can('settings.view') ?? false),
                 $this->makeCreateIntegralizationAction('create')
                     ->outlined(),

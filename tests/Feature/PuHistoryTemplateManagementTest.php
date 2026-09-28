@@ -1,7 +1,7 @@
 <?php
 
 use App\Actions\Emissions\PuHistorySpreadsheetTemplate;
-use App\Filament\Pages\Settings;
+use App\Filament\Pages\SpreadsheetTemplates;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuHistoriesRelationManager;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Models\Emission;
@@ -52,12 +52,12 @@ it('renders the settings page and allows replacing the pu history template', fun
     $user = makeAdminUser();
 
     $this->actingAs($user)
-        ->get(Settings::getUrl(panel: 'admin'))
+        ->get(SpreadsheetTemplates::getUrl(panel: 'admin'))
         ->assertSuccessful()
         ->assertSee('Histórico de PU')
         ->assertSee('Salvar template');
 
-    Livewire::test(Settings::class)
+    Livewire::test(SpreadsheetTemplates::class)
         ->set('puHistoryTemplateFile', UploadedFile::fake()->create(
             'template-pu-personalizado.xlsx',
             32,
@@ -76,7 +76,7 @@ it('restores the default pu history template after a custom upload', function ()
 
     $this->actingAs($user);
 
-    Livewire::test(Settings::class)
+    Livewire::test(SpreadsheetTemplates::class)
         ->set('puHistoryTemplateFile', UploadedFile::fake()->create(
             'template-pu-personalizado.xlsx',
             32,

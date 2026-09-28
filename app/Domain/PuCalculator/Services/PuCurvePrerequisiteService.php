@@ -23,6 +23,7 @@ class PuCurvePrerequisiteService
         private readonly IndexRateService $indexRateService,
         private readonly BusinessCalendarCoverageService $calendarCoverage,
         private readonly PuIndexRateRequirementResolver $indexRateRequirementResolver,
+        private readonly PuContractualEventScheduleService $contractualEvents,
     ) {}
 
     public function handle(Emission $emission): PuCurvePrerequisiteCheckResult
@@ -135,6 +136,18 @@ class PuCurvePrerequisiteService
                 $indexer,
             );
 
+            $indexRateCalendarCode = $this->distinctIndexRateCalendarCode($parameter);
+
+            if ($indexRateCalendarCode !== null) {
+                $this->validateCalendarCoverage(
+                    $issues,
+                    $financialRequirementStartDate,
+                    $endDate,
+                    $indexRateCalendarCode,
+                    $indexer,
+                );
+            }
+
             if ($parameter->hasFirstCouponPreIntegralizationPremium()) {
                 $this->validateFirstCouponIntegralizationAndEvent($issues, $emission, $startDate, $endDate);
             }
@@ -159,7 +172,74 @@ class PuCurvePrerequisiteService
             );
         }
 
+        $this->validateContractualEventSchedule($issues, $emission);
+
         return new PuCurvePrerequisiteCheckResult($issues);
+    }
+
+    /**
+     * Numa emissão com cronograma contratual confirmado, a curva não pode passar
+     * por uma data de pagamento sem o evento: sem ele a engine não paga os juros
+     * e o PU segue acumulando, errado e sem aviso. Um evento que diverge do
+     * contrato só avisa -- pode ser decisão consciente, como pagar no dia útil
+     * da B3 --, e emissões sem cronograma contratual seguem como antes.
+     *
+     * @param  list<PuCurvePrerequisiteIssue>  $issues
+     */
+    private function validateContractualEventSchedule(array &$issues, Emission $emission): void
+    {
+        $plan = $this->contractualEvents->plan($emission);
+
+        if (! $plan['available']) {
+            return;
+        }
+
+        if ($plan['missing_events'] !== []) {
+            $first = $plan['missing_events'][0];
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'pu_events_contractual_schedule',
+                sprintf(
+                    'Faltam %d evento(s) do cronograma contratual; o primeiro é %s com data efetiva em %s. Use "Gerar eventos do cronograma contratual" na aba Eventos de PU.%s',
+                    count($plan['missing_events']),
+                    $first['event_type'] === PuEventType::Amortization->value ? 'a amortização' : 'o pagamento de juros',
+                    CarbonImmutable::parse((string) $first['effective_date'])->format('d/m/Y'),
+                    $plan['missing_in_calculated_period'] !== []
+                        ? ' Os que caem no período já calculado precisam ser cadastrados manualmente e a curva, reprocessada.'
+                        : '',
+                ),
+            );
+        }
+
+        $divergentCount = collect($plan['conflicting_events'])
+            ->where('reason', 'event_semantics_mismatch')
+            ->count();
+
+        if ($divergentCount > 0) {
+            $issues[] = PuCurvePrerequisiteIssue::warning(
+                'pu_events_contractual_divergence',
+                sprintf(
+                    '%d evento(s) cadastrado(s) divergem do cronograma contratual (data efetiva, tipo ou sequência). A curva usará os eventos cadastrados.',
+                    $divergentCount,
+                ),
+            );
+        }
+    }
+
+    /**
+     * Calendário de divulgação do CDI, quando ele difere do calendário da curva.
+     * A defasagem é contada nele, então ele também precisa cobrir o período.
+     */
+    private function distinctIndexRateCalendarCode(EmissionPuParameter $parameter): ?string
+    {
+        $code = trim((string) $parameter->index_rate_calendar_code);
+
+        if ($parameter->indexer_enum !== PuIndexer::Cdi
+            || $code === ''
+            || BusinessCalendarRegistry::normalize($code) === BusinessCalendarRegistry::normalize((string) $parameter->calendar_code)) {
+            return null;
+        }
+
+        return $code;
     }
 
     /** @param  list<PuCurvePrerequisiteIssue>  $issues */
@@ -359,11 +439,27 @@ class PuCurvePrerequisiteService
         string $calendarCode,
         PuIndexer $indexer,
     ): void {
-        $missingDates = $this->calendarCoverage->missingDates($calendarCode, $startDate, $endDate);
+        $missingDates = $this->calendarCoverage->uncoveredDates($calendarCode, $startDate, $endDate);
 
         if ($missingDates !== [] && $this->calendarCoverage->ensureCoverage($calendarCode, $startDate, $endDate)) {
             $this->businessDayCalendar->flushCache();
-            $missingDates = $this->calendarCoverage->missingDates($calendarCode, $startDate, $endDate);
+            $missingDates = $this->calendarCoverage->uncoveredDates($calendarCode, $startDate, $endDate);
+        }
+
+        if ($missingDates !== [] && $this->calendarCoverage->coversByOfficialYear($calendarCode)) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'business_calendar_dates',
+                sprintf(
+                    'O calendario %s nao tem cobertura oficial completa para o(s) ano(s) %s do periodo da curva. Materialize e confirme esses anos a partir da fonte oficial; este calendario nao aceita preenchimento generico de segunda a sexta.',
+                    $calendarCode,
+                    collect($missingDates)
+                        ->map(fn (string $date): int => CarbonImmutable::parse($date)->year)
+                        ->unique()
+                        ->implode(', '),
+                ),
+            );
+
+            return;
         }
 
         if ($missingDates !== []) {

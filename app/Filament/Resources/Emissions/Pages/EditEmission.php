@@ -4,7 +4,10 @@ namespace App\Filament\Resources\Emissions\Pages;
 
 use App\Actions\Emissions\HomologatePuCurve;
 use App\Actions\Emissions\InvalidatePuCurve;
+use App\Domain\PuCalculator\DTOs\PuBaselineReadinessReport;
 use App\Domain\PuCalculator\Enums\IpcaProjectionPolicy;
+use App\Domain\PuCalculator\Enums\PuBaselineEvidenceStatus;
+use App\Domain\PuCalculator\Enums\PuBaselineEvidenceType;
 use App\Domain\PuCalculator\Enums\PuBaselineReadinessStatus;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
@@ -68,6 +71,15 @@ class EditEmission extends EditRecord
     public bool $isGeneratingPuCurve = false;
 
     public bool $isValidatingPuCurve = false;
+
+    /**
+     * Avaliação do gate memorizada por requisição: o modal de configuração a
+     * consulta para opções, defaults e textos de ajuda, e cada avaliação percorre
+     * a janela de snapshots dia a dia.
+     */
+    private ?PuBaselineReadinessReport $puBaselineReport = null;
+
+    private bool $puBaselineReportResolved = false;
 
     public function mount(int|string $record): void
     {
@@ -715,6 +727,7 @@ class EditEmission extends EditRecord
         return [
             DatePicker::make('curve_start_date')
                 ->label('Inicio da curva')
+                ->helperText(fn (): ?string => $this->curveStartDateEvidenceHint())
                 ->required(),
             DatePicker::make('curve_end_date')
                 ->label('Fim da curva')
@@ -789,7 +802,9 @@ class EditEmission extends EditRecord
                 ->required(),
             TextInput::make('calendar_evidence_document')
                 ->label('Documento que fundamenta o calendário')
-                ->helperText('Opcional. Informe somente quando houver evidência contratual ou normativa aplicável.'),
+                ->helperText(fn (Get $get): string => $this->contractualEvidenceFor('calendar_code', $get('calendar_code'))['document'] !== null
+                    ? 'Preenchido com a cláusula confirmada em Instrumentos Jurídicos. Altere só se a fonte for outra.'
+                    : 'Opcional. Informe somente quando houver evidência contratual ou normativa aplicável.'),
             TextInput::make('calendar_evidence_clause')
                 ->label('Cláusula / item da regra'),
             TextInput::make('calendar_evidence_page')
@@ -824,6 +839,14 @@ class EditEmission extends EditRecord
                 ->default(-1)
                 ->required(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value && $get('index_rate_lookup_mode') === PuIndexRateLookupMode::BusinessDayLagExact->value)
                 ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value && $get('index_rate_lookup_mode') === PuIndexRateLookupMode::BusinessDayLagExact->value),
+            Select::make('index_rate_calendar_code')
+                ->label('Calendário de divulgação do CDI')
+                ->options(fn (): array => app(BusinessCalendarCatalogService::class)
+                    ->optionsForNewConfiguration($this->getRecord()->puParameter?->index_rate_calendar_code))
+                ->placeholder('Mesmo calendário da curva')
+                ->helperText('Calendário em que os dias úteis da defasagem são contados. Use quando o calendário da curva considera útil um dia sem divulgação do CDI (ex.: Corpus Christi no calendário de feriados nacionais). A remuneração continua no calendário da curva.')
+                ->searchable()
+                ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value && $get('index_rate_lookup_mode') === PuIndexRateLookupMode::BusinessDayLagExact->value),
             Toggle::make('first_coupon_pre_integralization_premium_enabled')
                 ->label('Aplicar prêmio pré-integralização no primeiro cupom')
                 ->helperText('Remuneração opt-in de Dias Úteis anteriores à integralização, aplicada uma única vez no primeiro pagamento de juros. Não altera VNU nem principal.')
@@ -850,6 +873,12 @@ class EditEmission extends EditRecord
                     && (bool) $get('first_coupon_pre_integralization_premium_enabled')),
             TextInput::make('first_coupon_premium_evidence_document')
                 ->label('Documento do prêmio pré-integralização')
+                ->helperText(fn (Get $get): ?string => $this->contractualEvidenceFor(
+                    'first_coupon_pre_integralization_premium_enabled',
+                    (bool) $get('first_coupon_pre_integralization_premium_enabled'),
+                )['document'] !== null
+                    ? 'Preenchido com a cláusula confirmada em Instrumentos Jurídicos. Altere só se a fonte for outra.'
+                    : null)
                 ->visible(fn (Get $get): bool => (bool) $get('first_coupon_pre_integralization_premium_enabled')),
             TextInput::make('first_coupon_premium_evidence_clause')
                 ->label('Cláusula / item do prêmio')
@@ -890,15 +919,9 @@ class EditEmission extends EditRecord
     {
         $catalog = app(BusinessCalendarCatalogService::class);
         $options = $catalog->optionsForNewConfiguration($this->getRecord()->puParameter?->calendar_code);
-        $readiness = app(PuBaselineReadinessService::class);
+        $report = $this->puBaselineReport();
 
-        if (! $readiness->supports($this->getRecord())) {
-            return $options;
-        }
-
-        $report = $readiness->evaluate($this->getRecord());
-
-        if ($report->status === PuBaselineReadinessStatus::Blocked) {
+        if ($report === null || $report->status === PuBaselineReadinessStatus::Blocked) {
             return $options;
         }
 
@@ -925,10 +948,7 @@ class EditEmission extends EditRecord
     private function getPuCalculationDefaults(): array
     {
         $parameter = $this->getRecord()->puParameter;
-        $readiness = app(PuBaselineReadinessService::class);
-        $baselineReport = $parameter === null && $readiness->supports($this->getRecord())
-            ? $readiness->evaluate($this->getRecord())
-            : null;
+        $baselineReport = $parameter === null ? $this->puBaselineReport() : null;
         $candidate = $baselineReport?->candidateConfiguration ?? [];
         $candidateCurveStartDate = ($candidate['curve_start_date'] ?? null) === 'PENDING'
             ? null
@@ -941,7 +961,7 @@ class EditEmission extends EditRecord
                 ? ($candidate['calendar_code'] ?? null)
                 : null;
 
-        return [
+        $defaults = [
             'curve_start_date' => $parameter?->curve_start_date?->toDateString() ?? $defaultCurveStartDate,
             'curve_end_date' => $parameter?->curve_end_date?->toDateString() ?? ($candidate['curve_end_date'] ?? null) ?? $this->getRecord()->maturity_date?->toDateString(),
             'initial_unit_value' => $parameter?->getRawOriginal('initial_unit_value') ?? ($candidate['initial_unit_value'] ?? null) ?? $this->getRecord()->getRawOriginal('issued_price') ?? '1000.0000000000000000',
@@ -962,6 +982,7 @@ class EditEmission extends EditRecord
             'calendar_evidence_confirmed' => false,
             'index_rate_lookup_mode' => $parameter?->index_rate_lookup_mode ?? ($candidate['index_rate_lookup_mode'] ?? PuIndexRateLookupMode::PreviousAvailableBusinessDay->value),
             'index_rate_lag_business_days' => $parameter?->index_rate_lag_business_days ?? ($candidate['index_rate_lag_business_days'] ?? -1),
+            'index_rate_calendar_code' => $parameter?->index_rate_calendar_code,
             'first_coupon_pre_integralization_premium_enabled' => $parameter?->first_coupon_pre_integralization_premium_enabled ?? ($candidate['first_coupon_pre_integralization_premium_enabled'] ?? false),
             'first_coupon_pre_integralization_business_days' => $parameter?->first_coupon_pre_integralization_business_days ?? ($candidate['first_coupon_pre_integralization_business_days'] ?? null),
             'first_coupon_pre_integralization_apply_index_factor' => $parameter?->first_coupon_pre_integralization_apply_index_factor ?? ($candidate['first_coupon_pre_integralization_apply_index_factor'] ?? true),
@@ -974,6 +995,117 @@ class EditEmission extends EditRecord
             'first_coupon_premium_evidence_confirmed' => false,
             'legacy_projection_enabled' => $parameter?->legacy_projection_enabled ?? ($candidate['legacy_projection_enabled'] ?? true),
         ];
+
+        $calendarEvidence = $this->contractualEvidenceFor('calendar_code', $defaults['calendar_code']);
+        $premiumEvidence = $this->contractualEvidenceFor(
+            'first_coupon_pre_integralization_premium_enabled',
+            (bool) $defaults['first_coupon_pre_integralization_premium_enabled'],
+        );
+
+        return [
+            ...$defaults,
+            'calendar_evidence_document' => $calendarEvidence['document'],
+            'calendar_evidence_clause' => $calendarEvidence['clause'],
+            'calendar_evidence_page' => $calendarEvidence['page'],
+            'calendar_evidence_excerpt' => $calendarEvidence['excerpt'],
+            'first_coupon_premium_evidence_document' => $premiumEvidence['document'],
+            'first_coupon_premium_evidence_clause' => $premiumEvidence['clause'],
+            'first_coupon_premium_evidence_page' => $premiumEvidence['page'],
+            'first_coupon_premium_evidence_excerpt' => $premiumEvidence['excerpt'],
+        ];
+    }
+
+    /**
+     * Avaliação do gate de baseline, ou nulo quando a emissão não tem contexto
+     * contratual para ele.
+     */
+    private function puBaselineReport(): ?PuBaselineReadinessReport
+    {
+        if (! $this->puBaselineReportResolved) {
+            $readiness = app(PuBaselineReadinessService::class);
+            $this->puBaselineReport = $readiness->supports($this->getRecord())
+                ? $readiness->evaluate($this->getRecord())
+                : null;
+            $this->puBaselineReportResolved = true;
+        }
+
+        return $this->puBaselineReport;
+    }
+
+    /**
+     * Linha do candidato cujo valor o contrato comprovou.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function provenContractualField(string $field): ?array
+    {
+        return collect($this->puBaselineReport()?->candidateFields ?? [])
+            ->first(fn (array $row): bool => $row['field'] === $field && $row['status'] === 'proven');
+    }
+
+    /**
+     * Documento, cláusula, página e excerto do campo confirmado em Instrumentos
+     * Jurídicos -- só quando o valor exibido no formulário é o que o contrato
+     * comprovou. Preencher a evidência de outro valor atribuiria ao contrato uma
+     * escolha que ele não faz.
+     *
+     * @return array{document: ?string, clause: ?string, page: ?string, excerpt: ?string}
+     */
+    private function contractualEvidenceFor(string $field, mixed $shownValue): array
+    {
+        $row = $this->provenContractualField($field);
+        $provenValue = $row['value'] ?? null;
+        $matches = $row !== null && (is_bool($provenValue)
+            ? $provenValue === (bool) $shownValue
+            : $shownValue !== null && (string) $provenValue === (string) $shownValue);
+
+        if (! $matches) {
+            return ['document' => null, 'clause' => null, 'page' => null, 'excerpt' => null];
+        }
+
+        return [
+            'document' => $row['document'] ?? null,
+            'clause' => $row['clause'] ?? null,
+            'page' => isset($row['page']) ? (string) $row['page'] : null,
+            'excerpt' => $row['excerpt'] ?? null,
+        ];
+    }
+
+    /**
+     * De onde vem o início da curva numa emissão sob o gate: a evidência
+     * aprovada, as pendentes de revisão ou a falta delas.
+     */
+    private function curveStartDateEvidenceHint(): ?string
+    {
+        if ($this->puBaselineReport() === null) {
+            return null;
+        }
+
+        $proven = $this->provenContractualField('curve_start_date');
+
+        if ($proven !== null) {
+            return sprintf(
+                'Comprovado por %s%s%s.',
+                $proven['document'],
+                filled($proven['reference'] ?? null) ? ' ('.$proven['reference'].')' : '',
+                filled($proven['reviewer'] ?? null) ? ', aprovado por '.$proven['reviewer'] : '',
+            );
+        }
+
+        $pending = $this->getRecord()->puBaselineEvidences()
+            ->where('evidence_type', PuBaselineEvidenceType::FirstIntegralizationDate->value)
+            ->where('status', PuBaselineEvidenceStatus::PendingReview->value)
+            ->count();
+
+        if ($pending === 0) {
+            return 'Associe o documento de liquidação na aba "Evidências do baseline de PU". A data é preenchida aqui depois da aprovação.';
+        }
+
+        return sprintf(
+            '%s da data de integralização %s revisão na aba "Evidências do baseline de PU". A data é preenchida aqui depois da aprovação.',
+            $pending === 1 ? '1 evidência' : $pending.' evidências',
+            $pending === 1 ? 'aguarda' : 'aguardam',
+        );
     }
 
     /**

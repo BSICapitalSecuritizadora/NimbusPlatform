@@ -127,7 +127,7 @@ final class PuSimulationParameterFactory
         $missing = $this->missingFields($values);
 
         return [
-            'parameter' => $missing === [] ? $this->inMemoryParameter($values) : null,
+            'parameter' => $missing === [] ? $this->inMemoryParameter($values, $persisted['index_rate_calendar_code'] ?? null) : null,
             'values' => $values,
             'origins' => $origins,
             'missing' => $missing,
@@ -203,6 +203,7 @@ final class PuSimulationParameterFactory
             'first_coupon_pre_integralization_business_days' => $parameter->first_coupon_pre_integralization_business_days,
             'first_coupon_pre_integralization_apply_index_factor' => $parameter->first_coupon_pre_integralization_apply_index_factor,
             'first_coupon_pre_integralization_apply_spread_factor' => $parameter->first_coupon_pre_integralization_apply_spread_factor,
+            'index_rate_calendar_code' => $parameter->index_rate_calendar_code,
         ];
     }
 
@@ -289,9 +290,12 @@ final class PuSimulationParameterFactory
      * `emission_id`. A engine só lê atributos, então isto é suficiente -- e
      * remove qualquer caminho em que um save acidental atingisse a emissão real.
      *
+     * O calendário de divulgação do índice vem da configuração gravada: sem
+     * hipótese na tela, a simulação conta a defasagem onde a geração contaria.
+     *
      * @param  array<string, mixed>  $values
      */
-    private function inMemoryParameter(array $values): EmissionPuParameter
+    private function inMemoryParameter(array $values, ?string $indexRateCalendarCode = null): EmissionPuParameter
     {
         $parameter = new EmissionPuParameter;
         $parameter->exists = false;
@@ -322,6 +326,7 @@ final class PuSimulationParameterFactory
             'first_coupon_pre_integralization_apply_spread_factor' => $this->isTruthy(
                 $values['first_coupon_pre_integralization_apply_spread_factor'],
             ),
+            'index_rate_calendar_code' => $indexRateCalendarCode,
         ]);
 
         return $parameter;

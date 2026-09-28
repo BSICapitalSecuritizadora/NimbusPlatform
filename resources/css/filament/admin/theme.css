@@ -8,6 +8,7 @@
 @import './operational-exceptions.css';
 @import './plan-set-modal.css';
 @import './receivable-view.css';
+@import './pu-curve-history.css';
 @import './general-documents-list.css';
 
 @source '../../../../app/Filament/**/*';
@@ -3442,7 +3443,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 
 /* ═════════════════════════════════════════════════════════════════════
    FILTROS PESQUISÁVEIS — PAINEL ANCORADO NO TRIGGER
-   ("Emissão", "Empreendimento", "Empresa de medição", "Operação", "Bloco", "Tipo", "Série", "Obrigação", "Tipo de fundo", "Aplicação" e "Categoria")
+   ("Emissão", "Empreendimento", "Empresa de medição", "Operação", "Bloco", "Tipo", "Série", "Obrigação", "Tipo de fundo", "Aplicação", "Categoria", "Criado por", "Enviado por", "Identificador do Log" e "Usuário")
    ═════════════════════════════════════════════════════════════════════
    Causa raiz: o select pesquisável do Filament v5 cria o painel dentro do próprio
    `.fi-select-input-ctn` e define `width` inline = `offsetWidth` do trigger. Dentro

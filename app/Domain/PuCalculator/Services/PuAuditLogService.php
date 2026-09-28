@@ -577,6 +577,76 @@ class PuAuditLogService
             ->log('pu_numeric_events_prepared');
     }
 
+    /**
+     * @param  list<int>  $insertedEventIds
+     * @param  list<array<string, mixed>>  $missingInCalculatedPeriod
+     * @param  list<array<string, mixed>>  $conflicts
+     */
+    public function logContractualScheduleGenerated(
+        Emission $emission,
+        User $actor,
+        array $insertedEventIds,
+        array $missingInCalculatedPeriod,
+        array $conflicts,
+        ?string $lastCalculatedDate,
+    ): void {
+        activity(self::LOG_NAME)
+            ->performedOn($emission)
+            ->causedBy($actor)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'action' => 'contractual_schedule_generated',
+                'inserted_event_ids' => $insertedEventIds,
+                'missing_in_calculated_period' => $missingInCalculatedPeriod,
+                'conflicts' => $conflicts,
+                'last_calculated_date' => $lastCalculatedDate,
+            ])
+            ->event('event_changed')
+            ->log('pu_event_changed');
+    }
+
+    public function logCurveExtended(
+        Emission $emission,
+        EmissionPuCurveVersion $version,
+        int $appendedRows,
+        string $fromDate,
+        string $toDate,
+    ): void {
+        activity(self::LOG_NAME)
+            ->performedOn($emission)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'curve_version_id' => $version->id,
+                'calculation_version' => $version->calculation_version,
+                'appended_rows' => $appendedRows,
+                'from_date' => $fromDate,
+                'to_date' => $toDate,
+                'extended_rows_count' => $version->extended_rows_count,
+            ])
+            ->event('curve_extended')
+            ->log('pu_curve_extended');
+    }
+
+    public function logCurveExtensionDiverged(
+        EmissionPuCurveVersion $version,
+        ?string $firstDivergentDate,
+        string $reason,
+        bool $governed,
+    ): void {
+        activity(self::LOG_NAME)
+            ->performedOn($version->emission)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'curve_version_id' => $version->id,
+                'calculation_version' => $version->calculation_version,
+                'first_divergent_date' => $firstDivergentDate,
+                'reason' => $reason,
+                'governed' => $governed,
+            ])
+            ->event('curve_extension_diverged')
+            ->log('pu_curve_extension_diverged');
+    }
+
     public function logHomologationReportDownloaded(Emission $emission, ?string $calculationVersion, ?int $requestedByUserId): void
     {
         $logger = activity(self::LOG_NAME)
@@ -705,6 +775,9 @@ class PuAuditLogService
             'first_coupon_pre_integralization_apply_index_factor' => $parameter->first_coupon_pre_integralization_apply_index_factor,
             'first_coupon_pre_integralization_apply_spread_factor' => $parameter->first_coupon_pre_integralization_apply_spread_factor,
             'legacy_projection_enabled' => $parameter->legacy_projection_enabled,
+            ...(filled($parameter->index_rate_calendar_code)
+                ? ['index_rate_calendar_code' => $parameter->index_rate_calendar_code]
+                : []),
         ];
     }
 

@@ -95,6 +95,14 @@ class PuDailyCurvesRelationManager extends RelationManager
                     ->tooltip('Dias úteis totais no período de juros (base 252)')
                     ->alignCenter()
                     ->sortable(),
+                TextColumn::make('extended_at')
+                    ->label('Anexado em')
+                    ->tooltip('Dia acrescentado pela extensão diária depois da geração da versão. Numa curva homologada ou promovida, fica fora do trecho revisado.')
+                    ->dateTime('d/m/Y H:i')
+                    ->placeholder('—')
+                    ->alignCenter()
+                    ->toggleable()
+                    ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('calculation_version')

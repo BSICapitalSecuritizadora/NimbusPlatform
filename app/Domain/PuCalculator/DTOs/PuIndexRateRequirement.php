@@ -17,6 +17,7 @@ final readonly class PuIndexRateRequirement
         public bool $isBusinessDay,
         public ?CarbonImmutable $lookupDate,
         public ?IndexRateData $rate,
+        public ?string $rateCalendarCode = null,
     ) {}
 
     public function isRequiredForCalculation(): bool
@@ -46,7 +47,7 @@ final readonly class PuIndexRateRequirement
             PuIndexRateLookupMode::BusinessDayLagExact => sprintf(
                 'lag de %d dia(s) útil(eis) no calendário %s, com contagem exclusiva da data da curva',
                 $this->businessDayLag,
-                $this->calendarCode,
+                $this->rateCalendarCode ?? $this->calendarCode,
             ),
         };
     }

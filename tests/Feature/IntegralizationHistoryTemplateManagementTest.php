@@ -1,7 +1,7 @@
 <?php
 
 use App\Actions\Emissions\IntegralizationHistorySpreadsheetTemplate;
-use App\Filament\Pages\Settings;
+use App\Filament\Pages\SpreadsheetTemplates;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\IntegralizationHistoriesRelationManager;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Models\Emission;
@@ -53,12 +53,12 @@ it('renders the settings page and allows replacing the integralization history t
     $user = makeAdminUser();
 
     $this->actingAs($user)
-        ->get(Settings::getUrl(panel: 'admin'))
+        ->get(SpreadsheetTemplates::getUrl(panel: 'admin'))
         ->assertSuccessful()
         ->assertSee('Histórico de integralizações')
         ->assertSee('Salvar template');
 
-    Livewire::test(Settings::class)
+    Livewire::test(SpreadsheetTemplates::class)
         ->set('integralizationHistoryTemplateFile', UploadedFile::fake()->create(
             'template-integralizacoes-personalizado.xlsx',
             32,
@@ -77,7 +77,7 @@ it('restores the default integralization history template after a custom upload'
 
     $this->actingAs($user);
 
-    Livewire::test(Settings::class)
+    Livewire::test(SpreadsheetTemplates::class)
         ->set('integralizationHistoryTemplateFile', UploadedFile::fake()->create(
             'template-integralizacoes-personalizado.xlsx',
             32,

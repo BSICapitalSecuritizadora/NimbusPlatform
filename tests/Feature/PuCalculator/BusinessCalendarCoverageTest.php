@@ -1,12 +1,15 @@
 <?php
 
 use App\Domain\PuCalculator\Services\BusinessCalendarCoverageService;
+use App\Domain\PuCalculator\Services\NationalLegalHolidayMaterializationService;
 use App\Domain\PuCalculator\Services\PuCurvePrerequisiteService;
 use App\Domain\PuCalculator\Services\PuIndexCoverageService;
+use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Models\BusinessCalendarDate;
 use App\Models\BusinessHoliday;
 use App\Models\Emission;
 use App\Models\IndexRate;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -152,6 +155,37 @@ it('still blocks generation for a calendar that cannot be auto completed', funct
 
     expect($blockingKeys)->toContain('business_calendar_dates')
         ->and(BusinessCalendarDate::query()->count())->toBe(0);
+});
+
+it('treats a calendar covered by official year as covered even though only its exceptions have rows', function () {
+    app(NationalLegalHolidayMaterializationService::class)->materialize(2026, 2026, User::factory()->create()->id);
+    $emission = makeCdiEmissionForCoverage('2026-05-04', '2026-05-29', BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS);
+    seedCdiRatesForCoverage('2026-05-04', '2026-05-29');
+    $from = CarbonImmutable::parse('2026-05-04');
+    $to = CarbonImmutable::parse('2026-05-29');
+
+    $result = app(PuCurvePrerequisiteService::class)->handle($emission->fresh());
+
+    expect(coverageService()->missingDates(BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS, $from, $to))->not->toBe([])
+        ->and(coverageService()->uncoveredDates(BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS, $from, $to))->toBe([])
+        ->and(array_map(fn ($issue): string => $issue->key, $result->blockingIssues()))->not->toContain('business_calendar_dates');
+});
+
+it('blocks the curve on a year the official exception calendar never covered', function () {
+    app(NationalLegalHolidayMaterializationService::class)->materialize(2026, 2026, User::factory()->create()->id);
+    $emission = makeCdiEmissionForCoverage('2026-12-21', '2027-01-08', BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS);
+    seedCdiRatesForCoverage('2026-12-21', '2027-01-08');
+
+    $result = app(PuCurvePrerequisiteService::class)->handle($emission->fresh());
+    $calendarIssue = collect($result->blockingIssues())->firstWhere('key', 'business_calendar_dates');
+
+    expect(coverageService()->uncoveredDates(
+        BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS,
+        CarbonImmutable::parse('2026-12-21'),
+        CarbonImmutable::parse('2027-01-08'),
+    ))->toContain('2027-01-04')->not->toContain('2026-12-21')
+        ->and($calendarIssue?->message)->toContain('ano(s) 2027')
+        ->and($calendarIssue?->message)->not->toContain('pu:business-calendar:seed');
 });
 
 it('treats an auto completable calendar as covered in the index coverage report', function () {

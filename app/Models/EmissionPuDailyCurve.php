@@ -37,6 +37,7 @@ class EmissionPuDailyCurve extends Model
         'curve_version_id',
         'curve_date',
         'calculation_version',
+        'extended_at',
         'is_business_day',
         'unit_base_value',
         'unit_corrected_value',
@@ -72,6 +73,7 @@ class EmissionPuDailyCurve extends Model
         return [
             'curve_date' => 'date',
             'calculation_version' => 'string',
+            'extended_at' => 'datetime',
             'is_business_day' => 'boolean',
             'unit_base_value' => 'decimal:16',
             'unit_corrected_value' => 'decimal:16',

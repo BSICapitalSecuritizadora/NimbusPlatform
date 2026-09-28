@@ -1,6 +1,8 @@
 <?php
 
+use App\Enums\WorkflowAuthorizationSource;
 use App\Filament\Pages\Dashboard;
+use App\Filament\Resources\Activities\Pages\ManageActivities;
 use App\Filament\Resources\Constructions\Pages\ListConstructions;
 use App\Filament\Resources\ConstructionUnits\Pages\ListConstructionUnits;
 use App\Filament\Resources\ContractInstallments\Pages\ListContractInstallments;
@@ -13,6 +15,7 @@ use App\Filament\Resources\Expenses\Pages\ListExpenses;
 use App\Filament\Resources\ExpenseServiceProviders\Pages\ListExpenseServiceProviders;
 use App\Filament\Resources\FundNames\Pages\ListFundNames;
 use App\Filament\Resources\Funds\Pages\ListFunds;
+use App\Filament\Resources\ImportRuns\Pages\ListImportRuns;
 use App\Filament\Resources\Measurements\Pages\ListMeasurements;
 use App\Filament\Resources\Negotiations\Pages\ListNegotiations;
 use App\Filament\Resources\Nimbus\Announcements\Pages\ListAnnouncements;
@@ -36,6 +39,7 @@ use App\Models\Fund;
 use App\Models\FundApplication;
 use App\Models\FundName;
 use App\Models\FundType;
+use App\Models\ImportRun;
 use App\Models\Measurement;
 use App\Models\Negotiation;
 use App\Models\Nimbus\Announcement;
@@ -48,6 +52,7 @@ use App\Models\Obligation;
 use App\Models\ObligationEvidence;
 use App\Models\ObligationSeries;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -58,6 +63,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
@@ -1838,6 +1844,359 @@ it('preserves the deferred Criado por filter of the announcements board alone an
         ->searchTable('')
         ->call('resetTableFiltersForm')
         ->assertCountTableRecords(13);
+});
+
+it('wires every Identificador do Log SelectFilter in the panel to the shared dropdown', function () {
+    $chains = selectFilterChainsLabeled('Identificador do Log');
+
+    $unwired = collect($chains)
+        ->reject(fn (array $chain): bool => str_contains($chain['chain'], '->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField())'))
+        ->pluck('path')
+        ->all();
+
+    // Hoje o único filtro com esse rótulo é o da listagem de auditoria; as demais
+    // ocorrências de "Identificador do Log" são campo de formulário e infolist, sem popup.
+    // A contagem é o contrato: um filtro novo com esse rótulo só passa aqui depois de aderir.
+    expect($chains)->toHaveCount(1)
+        ->and(collect($chains)->pluck('path')->all())->toBe([
+            'app/Filament/Resources/Activities/ActivityResource.php',
+        ])
+        ->and($unwired)->toBe([]);
+});
+
+it('anchors the Identificador do Log filter without changing options or search', function () {
+    actingAsFilterDropdownAdmin();
+
+    $user = auth()->user();
+
+    // Sem atividades: lista vazia (cenário sem opções compacto)
+    Activity::query()->delete();
+
+    $emptyComponent = Livewire::test(ManageActivities::class)->assertTableFilterExists('log_name');
+    $emptyField = collect($emptyComponent->instance()->getTableFiltersForm()->getFlatComponents(withHidden: true))
+        ->first(fn ($field): bool => $field instanceof Select && str_ends_with($field->getStatePath(), '.log_name.value'));
+
+    expect($emptyField->getOptions())->toBe([]);
+
+    // Com uma única opção
+    activity('geral')->causedBy($user)->log('created');
+
+    $singleComponent = Livewire::test(ManageActivities::class);
+    $singleField = collect($singleComponent->instance()->getTableFiltersForm()->getFlatComponents(withHidden: true))
+        ->first(fn ($field): bool => $field instanceof Select && str_ends_with($field->getStatePath(), '.log_name.value'));
+
+    expect($singleField->getOptions())->toBe(['geral' => 'Geral']);
+
+    // Com múltiplas opções (curtas e longas)
+    activity('atualizacao_valores_unidades')->causedBy($user)->log('updated');
+    activity('calendario_de_negocios')->causedBy($user)->log('updated');
+    activity('guarantee_suggestions')->causedBy($user)->log('created');
+    activity('importacao_clientes')->causedBy($user)->log('created');
+    activity('importacao_contratos')->causedBy($user)->log('created');
+
+    $component = Livewire::test(ManageActivities::class)->assertTableFilterExists('log_name');
+
+    $field = collect($component->instance()->getTableFiltersForm()->getFlatComponents(withHidden: true))
+        ->first(fn ($field): bool => $field instanceof Select && str_ends_with($field->getStatePath(), '.log_name.value'));
+
+    expect($field->getExtraAttributes())->toMatchArray(['class' => AnchoredFilterDropdown::DROPDOWN_CLASS])
+        ->and($field->getLabel())->toBe('Identificador do Log')
+        ->and($field->isSearchable())->toBeTrue()
+        ->and($field->isPreloaded())->toBeTrue()
+        ->and($field->isMultiple())->toBeFalse()
+        ->and($field->getPlaceholder())->toBe('Todos')
+        ->and($field->getSearchPrompt())->toBe('Comece a digitar para pesquisar...')
+        ->and($field->getOptions())->toMatchArray([
+            'atualizacao_valores_unidades' => 'Atualizacao Valores Unidades',
+            'calendario_de_negocios' => 'Calendario De Negocios',
+            'geral' => 'Geral',
+            'guarantee_suggestions' => 'Guarantee Suggestions',
+            'importacao_clientes' => 'Importacao Clientes',
+            'importacao_contratos' => 'Importacao Contratos',
+        ]);
+});
+
+it('preserves the deferred Identificador do Log filter alone and combined with Origem da Autorização', function () {
+    actingAsFilterDropdownAdmin();
+
+    $user = auth()->user();
+
+    Activity::query()->delete();
+
+    $generalActivities = collect(range(1, 26))->map(fn (int $i) => activity('geral')
+        ->causedBy($user)
+        ->withProperties(['admin_override' => true])
+        ->log("Ação geral {$i}"));
+
+    $guaranteeActivity = activity('guarantee_suggestions')
+        ->causedBy($user)
+        ->withProperties(['admin_override' => false, 'delegated' => true])
+        ->log('Ação garantia delegada');
+
+    $directActivity = activity('guarantee_suggestions')
+        ->causedBy($user)
+        ->withProperties(['admin_override' => false, 'delegated' => false])
+        ->log('Ação garantia direta');
+
+    // Identificador do Log isolado: nada muda até "Aplicar filtros"; depois, recorte correto.
+    $component = Livewire::test(ManageActivities::class)
+        ->assertCountTableRecords(28)
+        ->set('tableDeferredFilters.log_name.value', 'guarantee_suggestions')
+        ->assertCountTableRecords(28)
+        ->call('applyTableFilters')
+        ->assertCountTableRecords(2)
+        ->assertCanSeeTableRecords([$guaranteeActivity, $directActivity])
+        ->assertCanNotSeeTableRecords([$generalActivities->first()]);
+
+    // Combinado com Origem da Autorização
+    $component
+        ->set('tableDeferredFilters.authorization_source.value', WorkflowAuthorizationSource::Delegated->value)
+        ->call('applyTableFilters')
+        ->assertCountTableRecords(1)
+        ->assertCanSeeTableRecords([$guaranteeActivity])
+        ->assertCanNotSeeTableRecords([$directActivity]);
+
+    // Trocar Origem mantendo Identificador
+    $component
+        ->set('tableDeferredFilters.authorization_source.value', WorkflowAuthorizationSource::Direct->value)
+        ->call('applyTableFilters')
+        ->assertCountTableRecords(1)
+        ->assertCanSeeTableRecords([$directActivity])
+        ->assertCanNotSeeTableRecords([$guaranteeActivity]);
+
+    // Trocar Identificador mantendo Origem: 26 registros gerais paginados (default 25 por página)
+    $component
+        ->set('tableDeferredFilters.log_name.value', 'geral')
+        ->set('tableDeferredFilters.authorization_source.value', WorkflowAuthorizationSource::AdminOverride->value)
+        ->call('applyTableFilters')
+        ->assertCountTableRecords(26)
+        ->call('gotoPage', 2);
+
+    expect($component->instance()->getTableRecords()->currentPage())->toBe(2)
+        ->and($component->instance()->getTableRecords()->count())->toBe(1);
+
+    // Voltar para página 1
+    $component->call('gotoPage', 1);
+
+    // Busca combinada com o filtro
+    $component
+        ->searchTable('Ação geral 1')
+        ->call('applyTableFilters');
+
+    expect($component->instance()->getTableRecords()->total())->toBeGreaterThan(0);
+
+    // Limpar filtros devolve a listagem completa preservando a busca
+    $component
+        ->call('resetTableFiltersForm')
+        ->assertSet('tableSearch', 'Ação geral 1')
+        ->searchTable('')
+        ->assertCountTableRecords(28);
+});
+
+it('leaves the Identificador do Log form field out of the shared dropdown', function () {
+    $source = file_get_contents(base_path('app/Filament/Resources/Activities/ActivityResource.php'));
+
+    $formPart = str($source)->after('public static function form')->before('public static function infolist')->toString();
+    expect($formPart)
+        ->toContain("->label('Identificador do Log')")
+        ->not->toContain('AnchoredFilterDropdown');
+});
+
+it('wires every Usuário SelectFilter in the panel to the shared dropdown', function () {
+    $chains = selectFilterChainsLabeled('Usuário');
+
+    $unwired = collect($chains)
+        ->reject(fn (array $chain): bool => str_contains($chain['chain'], '->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField())'))
+        ->pluck('path')
+        ->all();
+
+    // Hoje os únicos filtros com esse rótulo são os da auditoria e do histórico de conciliações;
+    // as demais ocorrências de "Usuário" são colunas de tabela, sem popup. A contagem é
+    // o contrato: um filtro novo com esse rótulo só passa aqui depois de aderir.
+    expect($chains)->toHaveCount(2)
+        ->and(collect($chains)->pluck('path')->sort()->values()->all())->toBe([
+            'app/Filament/Resources/Activities/ActivityResource.php',
+            'app/Filament/Resources/ImportRuns/Tables/ImportRunsTable.php',
+        ])
+        ->and($unwired)->toBe([]);
+});
+
+it('anchors the Usuário filter of the activity log without changing options or search', function () {
+    actingAsFilterDropdownAdmin();
+
+    $admin = auth()->user();
+    $anderson = User::factory()->create(['name' => 'Anderson Cavalcante']);
+    $roberto = User::factory()->create(['name' => 'Roberto Sérgio Henrique Gonçalves']);
+    $thales = User::factory()->create(['name' => 'Thales Elias Juan Freitas']);
+
+    $component = Livewire::test(ManageActivities::class)->assertTableFilterExists('causer_id');
+
+    $field = collect($component->instance()->getTableFiltersForm()->getFlatComponents(withHidden: true))
+        ->first(fn ($field): bool => $field instanceof Select && str_ends_with($field->getStatePath(), '.causer_id.value'));
+
+    expect($field->getExtraAttributes())->toMatchArray(['class' => AnchoredFilterDropdown::DROPDOWN_CLASS])
+        ->and($field->getLabel())->toBe('Usuário')
+        ->and($field->isSearchable())->toBeTrue()
+        ->and($field->isPreloaded())->toBeTrue()
+        ->and($field->isMultiple())->toBeFalse()
+        ->and($field->getPlaceholder())->toBe('Todos')
+        ->and($field->getSearchPrompt())->toBe('Comece a digitar para pesquisar...')
+        ->and($field->getOptions())->toMatchArray([
+            $admin->id => $admin->name,
+            $anderson->id => 'Anderson Cavalcante',
+            $roberto->id => 'Roberto Sérgio Henrique Gonçalves',
+            $thales->id => 'Thales Elias Juan Freitas',
+        ]);
+});
+
+it('anchors the Usuário filter of the import runs table without changing options or search', function () {
+    actingAsFilterDropdownAdmin();
+
+    $admin = auth()->user();
+    $roberto = User::factory()->create(['name' => 'Roberto Sérgio Henrique Gonçalves']);
+
+    $component = Livewire::test(ListImportRuns::class)->assertTableFilterExists('user_id');
+
+    $field = collect($component->instance()->getTableFiltersForm()->getFlatComponents(withHidden: true))
+        ->first(fn ($field): bool => $field instanceof Select && str_ends_with($field->getStatePath(), '.user_id.value'));
+
+    expect($field->getExtraAttributes())->toMatchArray(['class' => AnchoredFilterDropdown::DROPDOWN_CLASS])
+        ->and($field->getLabel())->toBe('Usuário')
+        ->and($field->getRelationshipName())->toBe('user')
+        ->and($field->getRelationshipTitleAttribute())->toBe('name')
+        ->and($field->isSearchable())->toBeTrue()
+        ->and($field->isPreloaded())->toBeTrue()
+        ->and($field->isMultiple())->toBeFalse()
+        ->and($field->getPlaceholder())->toBe('Todos')
+        ->and($field->getSearchPrompt())->toBe('Comece a digitar para pesquisar...')
+        ->and($field->getSearchResults('Roberto Sérgio'))->toBe([$roberto->id => 'Roberto Sérgio Henrique Gonçalves'])
+        ->and($field->getSearchResults('inexistente'))->toBe([]);
+});
+
+it('preserves the deferred Usuário filter of the activity log alone and combined with Data Inicial', function () {
+    actingAsFilterDropdownAdmin();
+
+    $admin = auth()->user();
+    $anderson = User::factory()->create(['name' => 'Anderson Cavalcante']);
+    $roberto = User::factory()->create(['name' => 'Roberto Sérgio Henrique Gonçalves']);
+
+    Activity::query()->delete();
+
+    $andersonOld = activity('geral')
+        ->causedBy($anderson)
+        ->createdAt(now()->subDays(10))
+        ->log('Ação antiga Anderson');
+
+    $andersonRecent = activity('geral')
+        ->causedBy($anderson)
+        ->createdAt(now()->subDays(2))
+        ->log('Ação recente Anderson');
+
+    $robertoRecent = activity('geral')
+        ->causedBy($roberto)
+        ->createdAt(now()->subDays(1))
+        ->log('Ação recente Roberto');
+
+    // Usuário isolado
+    $component = Livewire::test(ManageActivities::class)
+        ->assertCountTableRecords(3)
+        ->set('tableDeferredFilters.causer_id.value', $anderson->id)
+        ->assertCountTableRecords(3)
+        ->call('applyTableFilters')
+        ->assertCountTableRecords(2)
+        ->assertCanSeeTableRecords([$andersonOld, $andersonRecent])
+        ->assertCanNotSeeTableRecords([$robertoRecent]);
+
+    // Data Inicial isolada
+    $component
+        ->set('tableDeferredFilters.causer_id.value', null)
+        ->set('tableDeferredFilters.created_at.created_from', now()->subDays(5)->toDateString())
+        ->call('applyTableFilters')
+        ->assertCountTableRecords(2)
+        ->assertCanSeeTableRecords([$andersonRecent, $robertoRecent])
+        ->assertCanNotSeeTableRecords([$andersonOld]);
+
+    // Usuário + Data Inicial combinados
+    $component
+        ->set('tableDeferredFilters.causer_id.value', $anderson->id)
+        ->call('applyTableFilters')
+        ->assertCountTableRecords(1)
+        ->assertCanSeeTableRecords([$andersonRecent])
+        ->assertCanNotSeeTableRecords([$andersonOld, $robertoRecent]);
+
+    // Trocar Usuário mantendo a Data Inicial
+    $component
+        ->set('tableDeferredFilters.causer_id.value', $roberto->id)
+        ->call('applyTableFilters')
+        ->assertCountTableRecords(1)
+        ->assertCanSeeTableRecords([$robertoRecent])
+        ->assertCanNotSeeTableRecords([$andersonOld, $andersonRecent]);
+
+    // Data Final combinada
+    $component
+        ->set('tableDeferredFilters.causer_id.value', $anderson->id)
+        ->set('tableDeferredFilters.created_at.created_until', now()->toDateString())
+        ->call('applyTableFilters')
+        ->assertCountTableRecords(1)
+        ->assertCanSeeTableRecords([$andersonRecent]);
+
+    // Limpar filtros restaura toda a listagem
+    $component
+        ->call('resetTableFiltersForm')
+        ->assertCountTableRecords(3);
+});
+
+it('preserves the deferred Usuário filter of the import runs table alone and combined with Período', function () {
+    actingAsFilterDropdownAdmin();
+
+    $anderson = User::factory()->create(['name' => 'Anderson Cavalcante']);
+    $roberto = User::factory()->create(['name' => 'Roberto Sérgio Henrique Gonçalves']);
+
+    $importRun = fn (User $user, CarbonInterface $date, string $file): ImportRun => ImportRun::factory()
+        ->for($user)
+        ->create([
+            'file_name' => $file,
+            'created_at' => $date,
+        ]);
+
+    $runAndersonOld = $importRun($anderson, now()->subDays(10), 'anderson_old.xlsx');
+    $runAndersonRecent = $importRun($anderson, now()->subDays(2), 'anderson_recent.xlsx');
+    $runRobertoRecent = $importRun($roberto, now()->subDays(1), 'roberto_recent.xlsx');
+
+    // Usuário isolado
+    $component = Livewire::test(ListImportRuns::class)
+        ->assertCountTableRecords(3)
+        ->filterTable('user_id', $anderson->id)
+        ->assertCountTableRecords(2)
+        ->assertCanSeeTableRecords([$runAndersonOld, $runAndersonRecent])
+        ->assertCanNotSeeTableRecords([$runRobertoRecent]);
+
+    // Usuário + Período combinado
+    $component
+        ->filterTable('created_at', ['from' => now()->subDays(5)->toDateString()])
+        ->assertCountTableRecords(1)
+        ->assertCanSeeTableRecords([$runAndersonRecent])
+        ->assertCanNotSeeTableRecords([$runAndersonOld, $runRobertoRecent]);
+
+    // Limpar filtro de usuário mantendo período
+    $component
+        ->filterTable('user_id', null)
+        ->assertCountTableRecords(2)
+        ->assertCanSeeTableRecords([$runAndersonRecent, $runRobertoRecent]);
+
+    // Limpar todos os filtros
+    $component
+        ->resetTableFilters()
+        ->assertCountTableRecords(3);
+});
+
+it('leaves the Usuário table columns and non-filter occurrences out of the shared dropdown', function () {
+    $portalDocs = file_get_contents(base_path('app/Filament/Resources/Nimbus/PortalDocuments/Tables/PortalDocumentsTable.php'));
+    $portalUsers = file_get_contents(base_path('app/Filament/Resources/Nimbus/PortalUsers/Tables/PortalUsersTable.php'));
+
+    // As colunas de exibição são TextColumn, não SelectFilter
+    expect($portalDocs)->toContain("TextColumn::make('portalUser.full_name')\n                    ->label('Usuário')")
+        ->and($portalUsers)->toContain("TextColumn::make('full_name')\n                    ->label('Usuário')");
 });
 
 it('leaves the Obrigação field of the evidence upload modal out of the shared dropdown', function () {

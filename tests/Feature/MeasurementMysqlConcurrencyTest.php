@@ -23,8 +23,14 @@ use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 beforeEach(function () {
     if (DB::getDriverName() !== 'mysql') {
-        $this->markTestSkipped('Requer MySQL para validar lockForUpdate() com processos concorrentes reais.');
+        $this->markTestSkipped('Requer MySQL para validar locks concorrentes. Execute: ./vendor/bin/sail composer test:measurements:mysql');
     }
+
+    $this->assertStringStartsWith(
+        'nimbus_parity_check',
+        DB::connection()->getDatabaseName(),
+        'Estes testes recriam o banco. Use o banco temporário de composer test:measurements:mysql.',
+    );
 
     Artisan::call('migrate:fresh', ['--no-interaction' => true]);
     app(PermissionRegistrar::class)->forgetCachedPermissions();

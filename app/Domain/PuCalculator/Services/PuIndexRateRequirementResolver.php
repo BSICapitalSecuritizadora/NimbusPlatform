@@ -81,6 +81,7 @@ final class PuIndexRateRequirementResolver
             isBusinessDay: $isBusinessDay,
             lookupDate: $lookupDate,
             rate: $rate,
+            rateCalendarCode: $rateCalendarCode,
         );
     }
 
@@ -171,17 +172,25 @@ final class PuIndexRateRequirementResolver
     }
 
     /**
-     * Calendário efetivo de observação do índice: o informado, quando houver, e
-     * o contratual em qualquer outro caso. Um código vazio é tratado como
-     * ausência de override -- nunca como calendário inválido.
+     * Calendário efetivo de observação do índice: a hipótese informada, quando
+     * houver; senão o calendário de divulgação gravado na configuração; senão o
+     * contratual. Um código vazio é tratado como ausência -- nunca como
+     * calendário inválido --, então configurações sem calendário de divulgação
+     * seguem byte a byte como antes.
      */
     private function rateCalendarCode(
         EmissionPuParameter $parameter,
         ?string $indexRateCalendarCode,
     ): string {
-        $override = $indexRateCalendarCode !== null ? trim($indexRateCalendarCode) : '';
+        foreach ([$indexRateCalendarCode, $parameter->index_rate_calendar_code] as $candidate) {
+            $code = $candidate !== null ? trim((string) $candidate) : '';
 
-        return $override !== '' ? $override : (string) $parameter->calendar_code;
+            if ($code !== '') {
+                return $code;
+            }
+        }
+
+        return (string) $parameter->calendar_code;
     }
 
     /**

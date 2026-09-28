@@ -141,6 +141,7 @@ function advanceP01ToDocumentedFinalization(array $scenario): void
     $payment = $workflow->registerPayment($scenario['measurement']->fresh(), $scenario['actor'], [
         'pay_date' => '2026-08-25',
         'amount' => 1000,
+        'financial_justification' => 'Pagamento parcial previsto para esta medição.',
         'plan_set_id' => $scenario['planSets']->first()->id,
     ]);
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
@@ -257,7 +258,7 @@ it('finalizes with complete three-plan coverage and records the effective actor'
     $scenario = createP01Scenario(3);
     advanceP01ToDocumentedFinalization($scenario);
 
-    app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['actor']);
+    app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
 
     expect($scenario['measurement']->fresh()->status)->toBe('finalized')
         ->and($scenario['measurement']->fresh()->engineering_snapshot['plan_sets'])->toHaveCount(3)

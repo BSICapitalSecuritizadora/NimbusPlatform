@@ -152,7 +152,15 @@ final class PuNumericHomologationFingerprintService
     /** @return array<string, mixed> */
     public function parameterSnapshot(EmissionPuParameter $parameter): array
     {
+        // O calendário de divulgação só entra quando existe: sem ele a defasagem
+        // segue o calendário da curva, e os fingerprints já gravados continuam
+        // reproduzíveis.
+        $indexRateCalendar = filled($parameter->index_rate_calendar_code)
+            ? ['index_rate_calendar_code' => $parameter->index_rate_calendar_code]
+            : [];
+
         return $this->canonicalize([
+            ...$indexRateCalendar,
             'curve_start_date' => $parameter->curve_start_date?->toDateString(),
             'curve_end_date' => $parameter->curve_end_date?->toDateString(),
             'initial_unit_value' => (string) $parameter->initial_unit_value,

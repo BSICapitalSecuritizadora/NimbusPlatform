@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\Services;
 
+use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Models\BusinessCalendar;
 use App\Models\BusinessCalendarDate;
 use App\Models\BusinessCalendarYear;
@@ -84,6 +85,46 @@ class BusinessCalendarCoverageService
         }
 
         return $missing;
+    }
+
+    /**
+     * Datas do periodo cuja decisao de dia util ainda nao esta coberta.
+     *
+     * Num calendario de excecoes oficiais (`weekday_with_official_exceptions`) so as excecoes tem
+     * linha: a cobertura e do ANO, confirmada pela execucao oficial, e a engine decide os demais dias
+     * pela regra-base de segunda a sexta. Ali, uma data sem linha so esta descoberta quando o seu ano
+     * nao esta completo. Nos demais calendarios, descoberta continua sendo a data sem linha persistida.
+     *
+     * @return list<string>
+     */
+    public function uncoveredDates(string $calendarCode, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $missing = $this->missingDates($calendarCode, $from, $to);
+
+        if ($missing === [] || ! $this->coversByOfficialYear($calendarCode)) {
+            return $missing;
+        }
+
+        $completeYears = collect($this->annualCoverage($calendarCode, $from, $to))
+            ->filter(fn (array $coverage): bool => $coverage['coverage_status'] === 'complete')
+            ->keys()
+            ->all();
+
+        return array_values(array_filter(
+            $missing,
+            fn (string $date): bool => ! in_array(CarbonImmutable::parse($date)->year, $completeYears, true),
+        ));
+    }
+
+    /**
+     * O calendario guarda so as excecoes oficiais e tem a cobertura decidida por ano?
+     */
+    public function coversByOfficialYear(string $calendarCode): bool
+    {
+        return BusinessCalendar::query()
+            ->where('code', BusinessCalendarRegistry::normalize($calendarCode))
+            ->first()
+            ?->coverageBasis() === BusinessCalendar::COVERAGE_BASIS_WEEKDAY_WITH_OFFICIAL_EXCEPTIONS;
     }
 
     /**
