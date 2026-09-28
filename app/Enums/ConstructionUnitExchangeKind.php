@@ -2,14 +2,15 @@
 
 namespace App\Enums;
 
+use App\Services\SalesBoards\ConstructionUnitExchangeService;
+
 /**
  * Como uma permuta entrou no sistema.
  *
  * `Baseline` é a posição declarada enquanto a emissão está em elaboração --
- * o ponto de partida contra o qual tudo depois é comparado. `Extraordinary`
- * existe para a permuta que acontece com a operação já em curso, e o workflow
- * dela (contrato, evidência, não conformidade, Gestão) é das fases seguintes:
- * nesta fase nenhuma tela cria uma.
+ * o ponto de partida contra o qual tudo depois é comparado. `Extraordinary` é
+ * a permuta registrada com a operação já em curso, pela Gestão, com motivo e
+ * autor ({@see ConstructionUnitExchangeService}).
  */
 enum ConstructionUnitExchangeKind: string
 {

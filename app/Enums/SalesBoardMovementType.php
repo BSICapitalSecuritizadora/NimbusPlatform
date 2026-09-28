@@ -9,9 +9,9 @@ namespace App\Enums;
  * em nenhum balde no fechamento, mas produziu dois movimentos -- e um snapshot
  * que guardasse só a posição final apagaria o mês inteiro dessa unidade.
  *
- * Não há caso para permuta extraordinária: ela ainda não existe como movimento
- * no motor, e declarar aqui um tipo que nenhum caminho de código produz seria
- * schema morto.
+ * Não há caso para permuta extraordinária: ela muda a classificação da unidade
+ * pela vigência da permuta, e não produz movimento no motor -- declarar aqui um
+ * tipo que nenhum caminho de código produz seria schema morto.
  */
 enum SalesBoardMovementType: string
 {
