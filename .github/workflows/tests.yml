@@ -32,7 +32,9 @@ jobs:
         with:
           php-version: ${{ matrix.php-version }}
           tools: composer:v2
-          coverage: xdebug
+          # Sem driver de cobertura: a suíte não roda com --coverage, e o Xdebug
+          # carregado só adicionava custo a cada teste.
+          coverage: none
 
       - name: Setup Node
         uses: actions/setup-node@v5
