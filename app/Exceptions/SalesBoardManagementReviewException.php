@@ -222,7 +222,7 @@ class SalesBoardManagementReviewException extends RuntimeException implements Sh
         return new self(sprintf(
             'A Emissão %s não cobre %s pela automação do Quadro de Vendas: ela voltou ao registro manual '
                 .'ou a competência é anterior ao início da automação. Esta competência não pode ser publicada '
-                .'pelo ciclo; use "Cancelar competência" para encerrá-la.',
+                .'pelo ciclo; use "Cancelar competência", na tela da competência, para encerrá-la.',
             $emissionName,
             $referenceMonth,
         ));

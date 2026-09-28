@@ -9,7 +9,9 @@ use App\Enums\SalesBoardAutomationTargetStatus;
 use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\SalesBoardAutomationTarget;
+use App\Models\SalesBoardCycle;
 use App\Models\User;
+use App\Support\Dates\InclusiveDateBound;
 use App\Support\SalesBoards\SalesBoardAutomationPerimeter;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -75,6 +77,35 @@ class SalesBoardAutomationTargetClosureService
         }
 
         return $closed;
+    }
+
+    /**
+     * Encerra o alvo da competência que a Gestão cancelou.
+     *
+     * Ao contrário dos outros encerramentos, alcança também o alvo satisfeito:
+     * o normal é o ciclo já existir, e é justamente ele que está sendo
+     * cancelado. Chamado de dentro da transação do cancelamento.
+     */
+    public function closeForCancelledCycle(SalesBoardCycle $cycle, string $message, User $actor): int
+    {
+        $month = CarbonImmutable::parse($cycle->reference_month->toDateString())->startOfMonth();
+
+        return SalesBoardAutomationTarget::query()
+            ->where('construction_id', $cycle->construction_id)
+            ->whereBetween('reference_month', [$month->toDateString(), InclusiveDateBound::upperBound($month)])
+            ->where(function (Builder $query): void {
+                $query->where('status', '!=', SalesBoardAutomationTargetStatus::Closed->value)
+                    ->orWhereNull('closure_reason')
+                    ->orWhere('closure_reason', '!=', SalesBoardAutomationClosureReason::CompetenceCancelled->value);
+            })
+            ->update([
+                'status' => SalesBoardAutomationTargetStatus::Closed->value,
+                'next_attempt_at' => null,
+                'closed_at' => CarbonImmutable::now(),
+                'closure_reason' => SalesBoardAutomationClosureReason::CompetenceCancelled->value,
+                'closure_message' => mb_substr($message, 0, 2000),
+                'closed_by_user_id' => $actor->getKey(),
+            ]);
     }
 
     /**

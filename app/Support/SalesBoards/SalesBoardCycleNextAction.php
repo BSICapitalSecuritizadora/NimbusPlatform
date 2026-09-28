@@ -57,6 +57,15 @@ final readonly class SalesBoardCycleNextAction
 
         $action = self::forStatus($cycle->status);
 
+        if (($cycle->status === SalesBoardCycleStatus::Cancelled) && filled($cycle->cancellation_reason)) {
+            return new self(
+                $action->headline,
+                sprintf('%s Motivo: %s', $action->detail, $cycle->cancellation_reason),
+                $action->color,
+                $action->icon,
+            );
+        }
+
         if (self::isInProgress($cycle->status) && ($impact === SalesBoardStaleImpact::SourceOnly)) {
             return new self($action->headline, $action->detail.' '.self::staleGuidance($impact), $action->color, $action->icon);
         }
@@ -112,8 +121,8 @@ final readonly class SalesBoardCycleNextAction
                 'heroicon-o-check-badge',
             ),
             SalesBoardCycleStatus::Cancelled => new self(
-                'Ciclo cancelado.',
-                'Nenhuma ação está disponível para esta competência.',
+                'Competência cancelada.',
+                'Encerrada sem publicação: nenhuma ação está disponível para esta competência.',
                 'gray',
                 'heroicon-o-no-symbol',
             ),

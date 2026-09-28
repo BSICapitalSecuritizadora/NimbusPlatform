@@ -4,6 +4,7 @@ namespace App\Filament\Resources\SalesBoardCycles\Pages;
 
 use App\DTOs\SalesBoards\SalesBoardManagementReviewWorkspace as WorkspaceData;
 use App\Enums\SalesBoardApprovalOutcome;
+use App\Enums\SalesBoardCycleStatus;
 use App\Enums\SalesBoardManagementReviewStatus;
 use App\Enums\SalesBoardNonconformityDecision;
 use App\Enums\SalesBoardStaleImpact;
@@ -103,6 +104,18 @@ class ManagementReviewWorkspace extends Page
      */
     public function nextAction(WorkspaceData $workspace): array
     {
+        /** @var SalesBoardCycle $cycle */
+        $cycle = $this->getRecord();
+
+        if ($cycle->status === SalesBoardCycleStatus::Cancelled) {
+            return [
+                'headline' => 'A competência foi cancelada pela Gestão.',
+                'detail' => 'Encerrada sem publicação. As decisões registradas continuam consultáveis.',
+                'color' => 'gray',
+                'icon' => 'heroicon-o-no-symbol',
+            ];
+        }
+
         if (! $workspace->isApplicable || ($workspace->status === SalesBoardManagementReviewStatus::Superseded)) {
             return [
                 'headline' => 'Esta análise se refere a uma versão que não é mais a vigente.',

@@ -91,7 +91,9 @@ class SalesBoardAutomationDiscoveryService
      * ciclo hoje esteja em validação, análise ou aprovado. Alvos encerrados
      * voltam, reabertos: se a competência está de novo no perímetro (uma nova
      * ativação que a cobre), ela voltou a ser responsabilidade da automação, e a
-     * unique impediria qualquer outra linha de assumir o lugar.
+     * unique impediria qualquer outra linha de assumir o lugar. A exceção é a
+     * competência cancelada pela Gestão: ela não saiu do perímetro, foi
+     * encerrada, e reabri-la desfaria a decisão.
      *
      * @param  list<SalesBoardAutomationTargetCandidate>  $candidates
      * @return list<SalesBoardAutomationTarget>
@@ -104,7 +106,8 @@ class SalesBoardAutomationDiscoveryService
         foreach ($candidates as $candidate) {
             $target = $existing->get($candidate->key()) ?? $this->materializeOne($candidate);
 
-            if ($target->status === SalesBoardAutomationTargetStatus::Closed) {
+            if (($target->status === SalesBoardAutomationTargetStatus::Closed)
+                && ($target->closure_reason?->isReopenable() ?? true)) {
                 $target = $this->reopen($target);
             }
 
@@ -132,9 +135,21 @@ class SalesBoardAutomationDiscoveryService
 
         return array_values(array_filter(
             $candidates,
-            fn (SalesBoardAutomationTargetCandidate $candidate): bool => $existing->get($candidate->key())?->status
-                !== SalesBoardAutomationTargetStatus::Satisfied,
+            fn (SalesBoardAutomationTargetCandidate $candidate): bool => ! $this->isSettled($existing->get($candidate->key())),
         ));
+    }
+
+    /**
+     * O alvo já terminou para a automação: satisfeito, ou encerrado por uma
+     * competência cancelada -- que a descoberta não reabre.
+     */
+    private function isSettled(?SalesBoardAutomationTarget $target): bool
+    {
+        return match ($target?->status) {
+            SalesBoardAutomationTargetStatus::Satisfied => true,
+            SalesBoardAutomationTargetStatus::Closed => ! ($target->closure_reason?->isReopenable() ?? true),
+            default => false,
+        };
     }
 
     /**

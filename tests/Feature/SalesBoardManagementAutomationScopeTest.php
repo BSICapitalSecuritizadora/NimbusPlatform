@@ -9,7 +9,6 @@ use App\Filament\Resources\SalesBoardCycles\Pages\ManagementReviewWorkspace;
 use App\Models\Emission;
 use App\Models\SalesBoard;
 use App\Models\SalesBoardPublication;
-use App\Models\User;
 use App\Services\SalesBoards\SalesBoardManagementApprovalService;
 use App\Services\SalesBoards\SalesBoardRolloutActivationService;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -57,7 +56,7 @@ it('refuses to publish once the emission returned to legacy', function () {
         ->and(automationScopeCheck($gate)['detail'])->toContain('Cancelar competência');
 
     expect(fn () => ManagementReviewFixture::approve($review))
-        ->toThrow(SalesBoardManagementReviewException::class, 'use "Cancelar competência" para encerrá-la');
+        ->toThrow(SalesBoardManagementReviewException::class, 'use "Cancelar competência", na tela da competência, para encerrá-la');
 
     expect(SalesBoard::query()->count())->toBe(0)
         ->and(SalesBoardPublication::query()->count())->toBe(0)

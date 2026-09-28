@@ -226,7 +226,7 @@ class SalesBoardManagementApprovalService
                 'detail' => ($automated || ($cycle === null))
                     ? null
                     : sprintf(
-                        'A Emissão não cobre %s pela automação. Use "Cancelar competência" para encerrá-la.',
+                        'A Emissão não cobre %s pela automação. Use "Cancelar competência", na tela da competência, para encerrá-la.',
                         $cycle->reference_month->format('m/Y'),
                     ),
             ],

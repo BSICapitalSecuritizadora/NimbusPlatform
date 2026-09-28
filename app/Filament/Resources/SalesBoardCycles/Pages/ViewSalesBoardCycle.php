@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\SalesBoardCycles\Pages;
 
 use App\Enums\SalesBoardCycleStatus;
+use App\Filament\Resources\SalesBoardCycles\Actions\CancelSalesBoardCycleAction;
 use App\Filament\Resources\SalesBoardCycles\Actions\CheckSalesBoardCycleStaleAction;
 use App\Filament\Resources\SalesBoardCycles\Actions\OpenBuilderReviewAction;
 use App\Filament\Resources\SalesBoardCycles\Actions\OpenManagementReviewAction;
@@ -56,6 +57,7 @@ class ViewSalesBoardCycle extends ViewRecord
             $this->viewManagementReviewAction(),
             CheckSalesBoardCycleStaleAction::make()->outlined(),
             RecalculateSalesBoardCycleAction::make()->color('gray')->link(),
+            CancelSalesBoardCycleAction::make(),
         ];
     }
 
