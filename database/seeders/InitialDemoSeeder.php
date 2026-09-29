@@ -5,7 +5,9 @@ namespace Database\Seeders;
 use App\Models\Document;
 use App\Models\Emission;
 use App\Models\Investor;
+use App\Models\Payment;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -142,10 +144,10 @@ class InitialDemoSeeder extends Seeder
         $investor->documents()->syncWithoutDetaching([$document->id]);
         $document->emissions()->syncWithoutDetaching([$emission->id]);
 
-        $currentDate = \Carbon\Carbon::parse($emission->issue_date)->addMonth();
+        $currentDate = Carbon::parse($emission->issue_date)->addMonth();
         $limitDate = now()->addMonths(12);
         while ($currentDate->lte($limitDate)) {
-            \App\Models\Payment::create([
+            Payment::create([
                 'emission_id' => $emission->id,
                 'payment_date' => $currentDate->copy()->endOfMonth()->format('Y-m-d'),
                 'premium_value' => rand(2, 8),

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Domain\PuCalculator\Enums\IndexProjectionSeriesStatus;
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use Database\Factories\IndexProjectionSeriesFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class IndexProjectionSeries extends Model
 {
-    /** @use HasFactory<\Database\Factories\IndexProjectionSeriesFactory> */
+    /** @use HasFactory<IndexProjectionSeriesFactory> */
     use HasFactory;
 
     protected $table = 'index_projection_series';

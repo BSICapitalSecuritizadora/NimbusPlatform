@@ -2,6 +2,7 @@
 
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\DTOs\PuSimulationInput;
+use App\Domain\PuCalculator\DTOs\PuSimulationResult;
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Enums\PuSimulationState;
@@ -99,7 +100,7 @@ function monetaryPrecisionWindowEnd(): CarbonImmutable
     return CarbonImmutable::parse('2026-08-31')->startOfDay();
 }
 
-function monetaryPrecisionSimulate(): App\Domain\PuCalculator\DTOs\PuSimulationResult
+function monetaryPrecisionSimulate(): PuSimulationResult
 {
     $emission = PuSimulationFixture::contractualEmission();
     PuSimulationFixture::seedRequiredRates(

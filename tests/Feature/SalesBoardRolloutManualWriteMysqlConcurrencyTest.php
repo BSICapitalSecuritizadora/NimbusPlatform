@@ -11,9 +11,9 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Concurrency;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\CommittedRowsSweeper;
 use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\RolloutFixture;
-use Tests\Support\CommittedRowsSweeper;
 
 /**
  * Ativação da automação × registro manual da competência inicial, em conexões

@@ -34,11 +34,11 @@ final readonly class PuSimulationInput
      *                                            continuam na baseline, e o prêmio pré-integralização também.
      *                                            Nulo — todo o caminho de produção — preserva o comportamento atual.
      * @param  PuCalculationProfile|null  $calculationProfile  PERFIL DE CÁLCULO da simulação.
-     *                                            Nulo é `Contractual`, e é assim em toda chamada que
-     *                                            não escolher explicitamente outro. `LegacyCompatibility`
-     *                                            é exclusivo desta camada: existe para reconciliar com o
-     *                                            sistema anterior e não pode ser persistido, promovido
-     *                                            nem homologado.
+     *                                                         Nulo é `Contractual`, e é assim em toda chamada que
+     *                                                         não escolher explicitamente outro. `LegacyCompatibility`
+     *                                                         é exclusivo desta camada: existe para reconciliar com o
+     *                                                         sistema anterior e não pode ser persistido, promovido
+     *                                                         nem homologado.
      */
     public function __construct(
         public ?CarbonImmutable $firstIntegralizationDate = null,

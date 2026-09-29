@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Carbon\CarbonInterface;
+use Database\Factories\FundFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +13,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class Fund extends Model
 {
-    /** @use HasFactory<\Database\Factories\FundFactory> */
+    /** @use HasFactory<FundFactory> */
     use HasFactory, LogsActivity;
 
     protected $fillable = [

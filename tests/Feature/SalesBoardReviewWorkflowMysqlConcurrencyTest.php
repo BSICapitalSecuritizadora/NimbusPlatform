@@ -22,10 +22,10 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Concurrency;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\CommittedRowsSweeper;
 use Tests\Support\SalesBoards\BuilderReviewFixture;
 use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
-use Tests\Support\CommittedRowsSweeper;
 
 /**
  * Decidir contra aprovar, e editar contra enviar, em conexões reais.

@@ -32,7 +32,7 @@ final readonly class PuSimulationResult
      * @param  list<PuDailyCurveRowData>  $rows
      * @param  array<string, mixed>  $premium
      * @param  array<string, array<string, string|null>>  $profileComparison  linha a linha, contratual x legado.
-     *                                                    Vazio no perfil contratual, que é a própria referência.
+     *                                                                        Vazio no perfil contratual, que é a própria referência.
      */
     public function __construct(
         public PuSimulationState $state,

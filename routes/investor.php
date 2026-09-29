@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Investor\Auth\InvestorAuthController;
+use App\Http\Controllers\Portal\DocumentDownloadController;
+use App\Http\Middleware\EnsureInvestorIsActive;
 use App\Livewire\Investor\DocumentList;
 use App\Livewire\Investor\InvestorDashboard;
 use App\Livewire\Investor\InvestorEmissions;
@@ -21,13 +23,13 @@ Route::prefix('investidor')->name('investor.')->group(function () {
         ->name('logout');
 
     // Portal (protegido)
-    Route::middleware(['auth:investor', \App\Http\Middleware\EnsureInvestorIsActive::class])->group(function () {
+    Route::middleware(['auth:investor', EnsureInvestorIsActive::class])->group(function () {
         Route::get('/', InvestorDashboard::class)->name('dashboard');
 
         Route::get('/emissoes', InvestorEmissions::class)->name('emissions');
         Route::get('/documentos', DocumentList::class)->name('documents');
 
-        Route::get('/documentos/{document}/download', \App\Http\Controllers\Portal\DocumentDownloadController::class)
+        Route::get('/documentos/{document}/download', DocumentDownloadController::class)
             ->name('documents.download')
             ->middleware('throttle:60,1');
     });

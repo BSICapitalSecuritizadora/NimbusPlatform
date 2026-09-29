@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\DTOs;
 
+use App\Domain\PuCalculator\Exceptions\BcbSgsException;
 use Carbon\CarbonImmutable;
 
 /**
  * Falha ao consultar um BLOCO (intervalo) específico da série SGS.
  *
  * A janela total é dividida em blocos contíguos consultados em sequência. Uma falha em um bloco é
- * registrada aqui (sem derrubar os demais) — só vira {@see \App\Domain\PuCalculator\Exceptions\BcbSgsException}
+ * registrada aqui (sem derrubar os demais) — só vira {@see BcbSgsException}
  * quando TODOS os blocos falham.
  */
 final readonly class BcbSgsBlockFailure

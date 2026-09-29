@@ -3,10 +3,11 @@
 namespace Database\Factories;
 
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Models\IndexRate;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\IndexRate>
+ * @extends Factory<IndexRate>
  */
 class IndexRateFactory extends Factory
 {

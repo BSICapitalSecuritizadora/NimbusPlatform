@@ -11,6 +11,7 @@ use App\Domain\PuCalculator\Services\PuPrecisionPolicy;
 use App\Domain\PuCalculator\Services\PuSimulationService;
 use App\Filament\Resources\Emissions\Pages\PuCalculatorSimulator;
 use App\Models\EmissionPuParameter;
+use App\Support\PuCalculator\PuDecimalPresenter;
 use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -570,7 +571,7 @@ it('keeps the CDI date exactly five business days behind the curve date', functi
 
 it('keeps the first coupon paying the whole interest and leaving the principal', function () {
     $result = cdiProductSimulate();
-    $presenter = app(App\Support\PuCalculator\PuDecimalPresenter::class);
+    $presenter = app(PuDecimalPresenter::class);
 
     $firstCoupon = null;
 

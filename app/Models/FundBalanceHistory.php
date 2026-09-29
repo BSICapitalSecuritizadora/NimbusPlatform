@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\FundBalanceHistoryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class FundBalanceHistory extends Model
 {
-    /** @use HasFactory<\Database\Factories\FundBalanceHistoryFactory> */
+    /** @use HasFactory<FundBalanceHistoryFactory> */
     use HasFactory, LogsActivity;
 
     protected $fillable = [

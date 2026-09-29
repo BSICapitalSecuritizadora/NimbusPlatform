@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use Database\Factories\ProposalStatusHistoryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProposalStatusHistory extends Model
 {
-    /** @use HasFactory<\Database\Factories\ProposalStatusHistoryFactory> */
+    /** @use HasFactory<ProposalStatusHistoryFactory> */
     use HasFactory;
 
     protected $fillable = [

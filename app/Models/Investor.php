@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\InvestorFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -10,7 +11,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class Investor extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\InvestorFactory> */
+    /** @use HasFactory<InvestorFactory> */
     use HasFactory, LogsActivity;
 
     protected $fillable = [

@@ -5,10 +5,11 @@ namespace Database\Factories;
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Models\Emission;
+use App\Models\EmissionPuEvent;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\EmissionPuEvent>
+ * @extends Factory<EmissionPuEvent>
  */
 class EmissionPuEventFactory extends Factory
 {

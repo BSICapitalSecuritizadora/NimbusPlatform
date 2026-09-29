@@ -6,11 +6,12 @@ use App\Enums\ProposalStatus;
 use App\Models\Proposal;
 use App\Models\ProposalCompany;
 use App\Models\ProposalContact;
+use App\Models\ProposalStatusHistory;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\ProposalStatusHistory>
+ * @extends Factory<ProposalStatusHistory>
  */
 class ProposalStatusHistoryFactory extends Factory
 {

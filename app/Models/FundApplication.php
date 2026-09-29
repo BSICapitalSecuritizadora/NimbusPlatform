@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use Database\Factories\FundApplicationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FundApplication extends Model
 {
-    /** @use HasFactory<\Database\Factories\FundApplicationFactory> */
+    /** @use HasFactory<FundApplicationFactory> */
     use HasFactory;
 
     protected $fillable = [

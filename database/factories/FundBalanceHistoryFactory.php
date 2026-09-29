@@ -3,10 +3,11 @@
 namespace Database\Factories;
 
 use App\Models\Fund;
+use App\Models\FundBalanceHistory;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\FundBalanceHistory>
+ * @extends Factory<FundBalanceHistory>
  */
 class FundBalanceHistoryFactory extends Factory
 {

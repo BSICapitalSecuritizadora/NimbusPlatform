@@ -1,11 +1,11 @@
 <?php
 
 use App\Domain\PuCalculator\DTOs\PuSimulationInput;
+use App\Domain\PuCalculator\DTOs\PuSimulationResult;
 use App\Domain\PuCalculator\Enums\PuCalculationProfile;
+use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuSimulationState;
 use App\Domain\PuCalculator\Factories\PuCalculatorFactory;
-use App\Domain\PuCalculator\Enums\PuIndexer;
-use App\Domain\PuCalculator\Services\CdiFactorCompositionService;
 use App\Domain\PuCalculator\Services\DecimalRounder;
 use App\Domain\PuCalculator\Services\PuPrecisionPolicy;
 use App\Domain\PuCalculator\Services\PuSimulationService;
@@ -36,7 +36,6 @@ beforeEach(function () {
  * É a evidência que autoriza o perfil `LegacyCompatibility` a existir: sem ela
  * o perfil seria palpite.
  */
-
 it('derives the contractual interest factor from the observed DI and spread', function () {
     $observed = PuLegacyReferenceFixture::august31FactorBreakdown();
     $rounder = app(DecimalRounder::class);
@@ -137,7 +136,7 @@ function legacyWindowEnd(): CarbonImmutable
     return CarbonImmutable::parse('2026-08-31')->startOfDay();
 }
 
-function legacySimulate(PuCalculationProfile $profile): App\Domain\PuCalculator\DTOs\PuSimulationResult
+function legacySimulate(PuCalculationProfile $profile): PuSimulationResult
 {
     $emission = PuSimulationFixture::contractualEmission();
     PuSimulationFixture::seedRequiredRates(

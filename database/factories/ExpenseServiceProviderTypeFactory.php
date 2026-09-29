@@ -6,7 +6,7 @@ use App\Models\ExpenseServiceProviderType;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\ExpenseServiceProviderType>
+ * @extends Factory<ExpenseServiceProviderType>
  */
 class ExpenseServiceProviderTypeFactory extends Factory
 {

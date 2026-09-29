@@ -4,10 +4,11 @@ namespace Database\Factories;
 
 use App\Domain\PuCalculator\Enums\IndexProjectionSeriesStatus;
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Models\IndexProjectionSeries;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\IndexProjectionSeries>
+ * @extends Factory<IndexProjectionSeries>
  */
 class IndexProjectionSeriesFactory extends Factory
 {

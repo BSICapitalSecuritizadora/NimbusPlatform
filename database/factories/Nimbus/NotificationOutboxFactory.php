@@ -6,7 +6,7 @@ use App\Models\Nimbus\NotificationOutbox;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Nimbus\NotificationOutbox>
+ * @extends Factory<NotificationOutbox>
  */
 class NotificationOutboxFactory extends Factory
 {

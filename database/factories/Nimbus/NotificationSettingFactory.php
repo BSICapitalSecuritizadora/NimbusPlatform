@@ -6,7 +6,7 @@ use App\Models\Nimbus\NotificationSetting;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Nimbus\NotificationSetting>
+ * @extends Factory<NotificationSetting>
  */
 class NotificationSettingFactory extends Factory
 {

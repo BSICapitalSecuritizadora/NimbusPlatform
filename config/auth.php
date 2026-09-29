@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Investor;
+use App\Models\Nimbus\PortalUser;
 use App\Models\User;
 
 return [
@@ -85,7 +86,7 @@ return [
 
         'nimbus_users' => [
             'driver' => 'eloquent',
-            'model' => App\Models\Nimbus\PortalUser::class,
+            'model' => PortalUser::class,
         ],
 
         // 'users' => [

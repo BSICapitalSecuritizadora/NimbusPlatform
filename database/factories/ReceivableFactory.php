@@ -3,10 +3,11 @@
 namespace Database\Factories;
 
 use App\Models\Emission;
+use App\Models\Receivable;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<\App\Models\Receivable>
+ * @extends Factory<Receivable>
  */
 class ReceivableFactory extends Factory
 {

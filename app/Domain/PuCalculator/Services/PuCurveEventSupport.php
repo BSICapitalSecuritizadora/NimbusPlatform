@@ -10,6 +10,7 @@ use App\Models\EmissionPuEvent;
 use App\Models\IntegralizationHistory;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Collection;
 
 /**
  * Helpers puros (eventos, quantidade vigente, amortização, reset) compartilhados pelas
@@ -24,7 +25,7 @@ class PuCurveEventSupport
 
     /**
      * @param  EloquentCollection<int, EmissionPuEvent>  $events
-     * @return array<string, \Illuminate\Support\Collection<int, EmissionPuEvent>>
+     * @return array<string, Collection<int, EmissionPuEvent>>
      */
     public function groupEventsByDate(EloquentCollection $events): array
     {

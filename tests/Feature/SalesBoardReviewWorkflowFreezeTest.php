@@ -14,7 +14,6 @@ use App\Models\SalesBoardCycleMovement;
 use App\Models\SalesBoardManagementNonconformity;
 use App\Models\SalesBoardManagementReview;
 use App\Models\SalesBoardPublication;
-use App\Models\User;
 use App\Services\SalesBoards\SalesBoardManagementApprovalService;
 use App\Services\SalesBoards\SalesBoardManagementDecisionService;
 use Illuminate\Database\Events\QueryExecuted;

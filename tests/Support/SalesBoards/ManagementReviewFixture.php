@@ -8,7 +8,6 @@ use App\DTOs\SalesBoards\SalesBoardApprovalResult;
 use App\Enums\SalesBoardMovementType;
 use App\Enums\SalesBoardNonconformityDecision;
 use App\Enums\SalesBoardNonconformityOrigin;
-use App\Enums\SalesBoardSource;
 use App\Enums\SalesPriceConformityStatus;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;

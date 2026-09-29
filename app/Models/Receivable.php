@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Concerns\MoneyFormatter;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Database\Factories\ReceivableFactory;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,7 +15,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class Receivable extends Model
 {
-    /** @use HasFactory<\Database\Factories\ReceivableFactory> */
+    /** @use HasFactory<ReceivableFactory> */
     use HasFactory, LogsActivity;
 
     protected const MONEY_ATTRIBUTES = [

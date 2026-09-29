@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\ExpenseServiceProviderFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +14,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class ExpenseServiceProvider extends Model
 {
-    /** @use HasFactory<\Database\Factories\ExpenseServiceProviderFactory> */
+    /** @use HasFactory<ExpenseServiceProviderFactory> */
     use HasFactory, LogsActivity;
 
     protected $fillable = [

@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use Database\Factories\IndexRateFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class IndexRate extends Model
 {
-    /** @use HasFactory<\Database\Factories\IndexRateFactory> */
+    /** @use HasFactory<IndexRateFactory> */
     use HasFactory;
 
     protected $fillable = [

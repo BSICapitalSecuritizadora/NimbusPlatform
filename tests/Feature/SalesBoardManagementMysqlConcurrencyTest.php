@@ -19,9 +19,9 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Concurrency;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\CommittedRowsSweeper;
 use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
-use Tests\Support\CommittedRowsSweeper;
 
 /**
  * As corridas da análise e da publicação, em conexões reais.

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class NotificationSetting extends Model
 {
-    /** @use HasFactory<\Database\Factories\Nimbus\NotificationSettingFactory> */
+    /** @use HasFactory<NotificationSettingFactory> */
     use HasFactory;
 
     protected $table = 'nimbus_notification_settings';

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class NotificationOutbox extends Model
 {
-    /** @use HasFactory<\Database\Factories\Nimbus\NotificationOutboxFactory> */
+    /** @use HasFactory<NotificationOutboxFactory> */
     use HasFactory;
 
     protected $table = 'nimbus_notification_outboxes';
