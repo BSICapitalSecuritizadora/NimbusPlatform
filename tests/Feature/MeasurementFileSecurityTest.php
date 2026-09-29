@@ -343,7 +343,7 @@ test('example', function () {
 
 it('blocks unsafe engineering uploads without orphan files or changing the previous asset', function (string $result, bool $replacement) {
     $scenario = createFileSecurityScenario();
-    $previous = $scenario['asset']->getRawOriginal();
+    $previous = $scenario['asset']->fresh()->getRawOriginal();
     $path = 'nimbus_docs/measurements/assets/rejected.pdf';
     Storage::disk('local')->put($path, '%PDF-1.7 unsafe upload');
     $this->mock(ClamAvFileScanner::class, function ($mock) use ($result): void {

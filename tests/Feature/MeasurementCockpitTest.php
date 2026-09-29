@@ -898,7 +898,7 @@ it('highlights populated stages and preserves every cockpit label and action', f
         $component->assertSee($label, false);
     }
 
-    foreach (['Exige atuação imediata', 'Prazo se aproximando', 'SLA interrompido pelo workflow', 'Atuação temporária efetiva', 'Pagamentos sem comprovante', 'Medições na etapa formal', 'Finalização ainda necessária', 'SLA em fail-closed'] as $description) {
+    foreach (['Exige atuação imediata', 'Prazo se aproximando', 'SLA interrompido pelo workflow', 'Atuação temporária efetiva', 'Pagamentos sem comprovante', 'Envio, substituição ou conferência', 'Finalização ainda necessária', 'SLA em fail-closed'] as $description) {
         $component->assertSee($description, false);
     }
 });

@@ -498,7 +498,7 @@ it('persists clean engineering uploads and rolls back rejected uploads through t
         'assets' => [$assetKey => [
             'plan_set_id' => $plan->id,
             'plan_line_id' => $line->id,
-            'storage_path' => UploadedFile::fake()->createWithContent('medicao.pdf', '%PDF-1.7 engenharia'),
+            'storage_path' => [UploadedFile::fake()->createWithContent('medicao.pdf', '%PDF-1.7 engenharia')],
         ]],
     ])->call('create');
 
@@ -513,7 +513,7 @@ it('persists clean engineering uploads and rolls back rejected uploads through t
         return;
     }
 
-    $component->assertHasErrors();
+    $component->assertHasErrors(['asset']);
     expect($operation->measurements()->count())->toBe(0)
         ->and(Storage::disk($disk)->allFiles('nimbus_docs/measurements/assets'))->toBeEmpty();
 })->with(['local', 'private'])->with([ClamAvFileScanner::RESULT_CLEAN, ClamAvFileScanner::RESULT_INFECTED, ClamAvFileScanner::RESULT_UNAVAILABLE]);
