@@ -179,9 +179,23 @@ class ContractInstallmentSpreadsheetAnalysis
             ->reject(fn (array $row): bool => $row['outcome'] === ReconciliationOutcome::Empty)
             ->when($only, fn (Collection $rows): Collection => $rows->where('outcome', $only))
             ->sortBy([
-                fn (array $row): int => self::previewWeight($row['outcome']),
-                fn (array $row): int => $row['line'],
+                fn (array $a, array $b): int => self::previewWeight($a['outcome']) <=> self::previewWeight($b['outcome']),
+                fn (array $a, array $b): int => $a['line'] <=> $b['line'],
             ])
+            ->values();
+    }
+
+    /**
+     * Rows that stop the import, in the order of the file -- the order in which
+     * whoever fixes the spreadsheet walks through it.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function blockingRows(): Collection
+    {
+        return $this->collect()
+            ->filter(fn (array $row): bool => $row['outcome']->blocksImport())
+            ->sortBy('line')
             ->values();
     }
 

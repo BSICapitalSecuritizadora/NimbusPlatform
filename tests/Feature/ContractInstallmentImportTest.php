@@ -1323,3 +1323,84 @@ describe('competência já registrada no Quadro de Vendas', function () {
         expect(ContractInstallment::query()->sole()->payment_date->toDateString())->toBe('2026-03-05');
     });
 });
+
+describe('linhas a corrigir na conferência', function () {
+    it('puts the rows that block the import first, each group in the order of the file', function () {
+        installmentImportScenario();
+
+        $analysis = analyzeInstallmentSpreadsheet([
+            installmentRow(['contract' => 'CVC-999', 'number' => '001']),
+            installmentRow(['number' => '002']),
+            installmentRow(['number' => '003']),
+            installmentRow(['number' => '002']),
+        ]);
+
+        $lines = $analysis->collect()->pluck('line')->all();
+
+        expect($analysis->previewRows()->pluck('line')->all())->toBe([$lines[0], $lines[3], $lines[1], $lines[2]])
+            ->and($analysis->blockingRows()->pluck('line')->all())->toBe([$lines[0], $lines[3]]);
+    });
+
+    it('lists every row to fix above the conference, as the file wrote it', function () {
+        $this->actingAs(makeAdminUser());
+
+        installmentImportScenario();
+
+        $path = installmentSpreadsheet([
+            installmentRow(['number' => '001']),
+            installmentRow(['contract' => 'CVC-999', 'number' => '002']),
+        ]);
+        $storedPath = 'imports/contract-installments/'.basename($path);
+        Storage::disk('local')->put($storedPath, file_get_contents($path));
+
+        $component = Livewire::test(ListContractInstallments::class)
+            ->mountAction(TestAction::make('importContractInstallments'))
+            ->fillForm(['file' => ['upload' => $storedPath]])
+            ->assertSchemaComponentVisible('installmentProblems');
+
+        $page = $component->instance();
+        $problems = $page->getSchema($page->getMountedActionSchemaName())->getComponent('installmentProblems');
+        $preview = (fn (): string => $this->renderInstallmentPreview($storedPath, null)->toHtml())->call($page);
+
+        expect($problems->getHeading())->toBe('Linhas a corrigir na planilha: 1')
+            ->and($problems->toEmbeddedHtml())
+            ->toContain('Corrija estas linhas no arquivo e envie-o novamente na etapa Arquivo.')
+            ->toContain('<td style="padding:.25rem .5rem;">CVC-999</td>')
+            ->toContain('Contrato não encontrado.')
+            ->and($preview)
+            ->toContain('CVC-00123')
+            ->not->toContain('CVC-999');
+    });
+
+    it('shows no rows to fix when nothing blocks the import', function () {
+        $this->actingAs(makeAdminUser());
+
+        installmentImportScenario();
+
+        $path = installmentSpreadsheet([installmentRow()]);
+        $storedPath = 'imports/contract-installments/'.basename($path);
+        Storage::disk('local')->put($storedPath, file_get_contents($path));
+
+        Livewire::test(ListContractInstallments::class)
+            ->mountAction(TestAction::make('importContractInstallments'))
+            ->fillForm(['file' => ['upload' => $storedPath]])
+            ->assertSchemaComponentHidden('installmentProblems');
+    });
+
+    it('caps the rows to fix rendered on screen', function () {
+        $this->actingAs(makeAdminUser());
+
+        installmentImportScenario();
+
+        $analysis = analyzeInstallmentSpreadsheet(collect(range(1, 201))
+            ->map(fn (int $index): array => installmentRow(['contract' => 'CVC-999', 'number' => (string) $index]))
+            ->all());
+
+        $component = Livewire::test(ListContractInstallments::class)->instance();
+        $problems = (fn (): string => $this->renderInstallmentProblems($analysis))->call($component);
+
+        expect($analysis->blockingCount())->toBe(201)
+            ->and(substr_count($problems, '<tr>'))->toBe(201)
+            ->and($problems)->toContain('Exibindo as primeiras 200 de 201 linhas a corrigir, na ordem da planilha.');
+    });
+});

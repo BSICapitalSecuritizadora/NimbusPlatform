@@ -14,6 +14,8 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Callout;
+use Filament\Schemas\Components\Html;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Support\Enums\Width;
@@ -42,6 +44,12 @@ trait ImportsContractInstallments
      * Maximum number of rows rendered on the preview table.
      */
     private const INSTALLMENT_PREVIEW_LIMIT = 50;
+
+    /**
+     * Maximum number of rows rendered on the list of rows to fix. Past it, the
+     * file usually carries one systematic mistake repeated line after line.
+     */
+    private const INSTALLMENT_PROBLEM_LIMIT = 200;
 
     /**
      * Memoized analysis, so moving through the wizard does not re-read the file
@@ -106,6 +114,21 @@ trait ImportsContractInstallments
                 Step::make('Conferência')
                     ->description('Novos, alterados e sem alteração')
                     ->schema([
+                        /**
+                         * One bad row blocks the whole file, so the rows to fix
+                         * are listed apart, before anything else.
+                         */
+                        Callout::make(fn (Get $get): string => 'Linhas a corrigir na planilha: '.$this->installmentAnalysisFor($get('file'), $contractId)?->blockingCount())
+                            ->key('installmentProblems')
+                            ->danger()
+                            ->description('Corrija estas linhas no arquivo e envie-o novamente na etapa Arquivo.')
+                            ->footer([
+                                Html::make(fn (Get $get): Htmlable => new HtmlString(
+                                    $this->renderInstallmentProblems($this->installmentAnalysisFor($get('file'), $contractId)),
+                                )),
+                            ])
+                            ->visible(fn (Get $get): bool => ($this->installmentAnalysisFor($get('file'), $contractId)?->blockingCount() ?? 0) > 0),
+
                         Placeholder::make('preview')
                             ->hiddenLabel()
                             ->content(fn (Get $get): Htmlable => $this->renderInstallmentPreview($get('file'), $contractId)),
@@ -204,7 +227,7 @@ trait ImportsContractInstallments
 
     private function renderInstallmentPreview(mixed $file, ?int $contractId): Htmlable
     {
-        $analysis = $this->analyzeInstallments($this->resolveInstallmentPath($file), $contractId);
+        $analysis = $this->installmentAnalysisFor($file, $contractId);
 
         if ($analysis === null) {
             return new HtmlString('<p class="fi-color-danger">Não foi possível ler a planilha enviada.</p>');
@@ -265,14 +288,56 @@ trait ImportsContractInstallments
     }
 
     /**
-     * Rows that need attention come first and are shown in full; the ones that
-     * did not move are counted, and only a sample is rendered. A monthly file is
-     * mostly unchanged rows, and putting ten thousand of them on screen would
-     * cost more than it tells anyone.
+     * Every row that stops the import, with the emission, development, contract
+     * and parcela exactly as the file wrote them: that is what has to be found
+     * in the spreadsheet, not what the platform would have matched them to.
+     */
+    private function renderInstallmentProblems(?ContractInstallmentSpreadsheetAnalysis $analysis): string
+    {
+        $rows = $analysis?->blockingRows() ?? collect();
+
+        $renderedRows = $rows->take(self::INSTALLMENT_PROBLEM_LIMIT)->map(fn (array $row): string => '<tr>'
+            .'<td style="padding:.25rem .5rem;">'.$row['line'].'</td>'
+            .'<td style="padding:.25rem .5rem;">'.e((string) ($row['emission'] ?? '—')).'</td>'
+            .'<td style="padding:.25rem .5rem;">'.e((string) ($row['construction'] ?? '—')).'</td>'
+            .'<td style="padding:.25rem .5rem;">'.e((string) ($row['contract_code'] ?? '—')).'</td>'
+            .'<td style="padding:.25rem .5rem;">'.e((string) ($row['number'] ?? '—')).'</td>'
+            .'<td style="padding:.25rem .5rem;min-width:16rem;">'.e(filled($row['message'] ?? null) ? (string) $row['message'] : $row['outcome']->label()).'</td>'
+            .'</tr>')->implode('');
+
+        $note = $rows->count() > self::INSTALLMENT_PROBLEM_LIMIT
+            ? '<p>Exibindo as primeiras '.self::INSTALLMENT_PROBLEM_LIMIT.' de '.$rows->count().' linhas a corrigir, na ordem da planilha.</p>'
+            : '';
+
+        return '<div style="overflow-x:auto;"><table style="width:100%;font-size:.875rem;">'
+            .'<thead><tr>'
+            .'<th style="text-align:left;padding:.25rem .5rem;">Linha</th>'
+            .'<th style="text-align:left;padding:.25rem .5rem;">Emissão</th>'
+            .'<th style="text-align:left;padding:.25rem .5rem;">Empreendimento</th>'
+            .'<th style="text-align:left;padding:.25rem .5rem;">Contrato</th>'
+            .'<th style="text-align:left;padding:.25rem .5rem;">Parcela</th>'
+            .'<th style="text-align:left;padding:.25rem .5rem;">Problema</th>'
+            .'</tr></thead><tbody>'.$renderedRows.'</tbody></table></div>'
+            .$note;
+    }
+
+    /**
+     * The rows that block the import are listed apart, above; this table holds
+     * the rest, the ones that need attention first. The ones that did not move
+     * are counted, and only a sample is rendered. A monthly file is mostly
+     * unchanged rows, and putting ten thousand of them on screen would cost more
+     * than it tells anyone.
      */
     private function renderInstallmentTable(ContractInstallmentSpreadsheetAnalysis $analysis): string
     {
-        $rows = $analysis->previewRows();
+        $rows = $analysis->previewRows()
+            ->reject(fn (array $row): bool => $row['outcome']->blocksImport())
+            ->values();
+
+        if ($rows->isEmpty()) {
+            return '';
+        }
+
         $unchanged = $analysis->unchangedCount();
 
         $renderedRows = $rows->take(self::INSTALLMENT_PREVIEW_LIMIT)->map(function (array $row): string {
@@ -315,7 +380,7 @@ trait ImportsContractInstallments
         $notes = [];
 
         if ($rows->count() > self::INSTALLMENT_PREVIEW_LIMIT) {
-            $notes[] = 'Exibindo as primeiras '.self::INSTALLMENT_PREVIEW_LIMIT.' de '.$rows->count().' linhas, em ordem de prioridade: conflitos, alterações críticas, atualizações, novas e por último as sem alteração.';
+            $notes[] = 'Exibindo as primeiras '.self::INSTALLMENT_PREVIEW_LIMIT.' de '.$rows->count().' linhas, em ordem de prioridade: alterações críticas, atualizações, novas e por último as sem alteração.';
         }
 
         if ($unchanged > 0) {
@@ -340,6 +405,11 @@ trait ImportsContractInstallments
     private function formatInstallmentMoney(mixed $value): string
     {
         return blank($value) ? '—' : 'R$ '.MoneyFormatter::formatCurrencyForDisplay($value);
+    }
+
+    private function installmentAnalysisFor(mixed $file, ?int $contractId): ?ContractInstallmentSpreadsheetAnalysis
+    {
+        return $this->analyzeInstallments($this->resolveInstallmentPath($file), $contractId);
     }
 
     private function analyzeInstallments(?string $path, ?int $contractId): ?ContractInstallmentSpreadsheetAnalysis
