@@ -85,7 +85,7 @@ it('registers an extraordinary exchange with author, reason and audit trail', fu
     $trail = Activity::query()->where('subject_type', ConstructionUnitExchange::class)->where('subject_id', $exchange->id)->sole();
 
     expect($trail->log_name)->toBe('construction_unit_exchanges')
-        ->and($trail->properties['attributes']['kind'])->toBe('extraordinary');
+        ->and($trail->attribute_changes['attributes']['kind'])->toBe('extraordinary');
 });
 
 it('feeds the derivation: the unit is exchanged while the exchange is in force and not after it ends', function () {

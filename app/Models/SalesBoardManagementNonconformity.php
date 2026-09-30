@@ -10,8 +10,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use LogicException;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * Uma pendência que a Gestão precisa decidir.
@@ -137,8 +137,8 @@ class SalesBoardManagementNonconformity extends Model
      *
      * "Desfazer decisão" limpa motivo, autor e data da própria linha: enquanto
      * a análise é rascunho, a linha guarda só a decisão vigente. A decisão
-     * desfeita sobrevive apenas no `properties.old` desta trilha, que por isso
-     * não pode cair no balde descartado em um ano.
+     * desfeita sobrevive apenas no `attribute_changes.old` desta trilha, que
+     * por isso não pode cair no balde descartado em um ano.
      */
     public function getActivitylogOptions(): LogOptions
     {
@@ -146,7 +146,7 @@ class SalesBoardManagementNonconformity extends Model
             ->useLogName('sales_board')
             ->logOnly(['decision', 'decision_reason', 'decided_at', 'decided_by_user_id'])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontLogEmptyChanges();
     }
 
     public function review(): BelongsTo

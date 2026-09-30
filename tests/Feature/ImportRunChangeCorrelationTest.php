@@ -19,6 +19,7 @@ use App\Models\ImportRun;
 use App\Models\User;
 use App\Support\ActivityLog\ActivityChange;
 use App\Support\ActivityLog\ActivityPresenter;
+use App\Support\ActivityLog\LogBatch;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -26,7 +27,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
-use Spatie\Activitylog\LogBatch;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
 use Spatie\SimpleExcel\SimpleExcelWriter;
@@ -256,7 +256,7 @@ it('keeps the execution activity inside the batch but out of the record listing'
 
     expect($execution)->toHaveCount(1)
         ->and($execution->first()->log_name)->toBe('importacao-parcelas')
-        ->and($execution->first()->getExtraProperty('importacao_id'))->toBe($run->getKey())
+        ->and($execution->first()->getProperty('importacao_id'))->toBe($run->getKey())
         ->and($run->activities()->count())->toBe(2);
 });
 
@@ -287,7 +287,7 @@ it('excludes an edit made by hand after the import', function () {
 
     $correlated = $run->activities()->where('subject_type', ContractInstallment::class)->sole();
 
-    expect($correlated->properties->get('attributes')['paid_value'])->toBe('2500.00');
+    expect($correlated->attribute_changes->get('attributes')['paid_value'])->toBe('2500.00');
 });
 
 it('gives two imports of the same record two separate histories', function () {
@@ -317,9 +317,9 @@ it('gives two imports of the same record two separate histories', function () {
     $first = $runs->first()->activities()->where('subject_type', ContractInstallment::class)->sole();
     $second = $runs->last()->activities()->where('subject_type', ContractInstallment::class)->sole();
 
-    expect($first->properties->get('attributes')['paid_value'])->toBe('2000.00')
-        ->and($second->properties->get('old')['paid_value'])->toBe('2000.00')
-        ->and($second->properties->get('attributes')['paid_value'])->toBe('2500.00');
+    expect($first->attribute_changes->get('attributes')['paid_value'])->toBe('2000.00')
+        ->and($second->attribute_changes->get('old')['paid_value'])->toBe('2000.00')
+        ->and($second->attribute_changes->get('attributes')['paid_value'])->toBe('2500.00');
 });
 
 it('keeps each run reading only the activities of its own batch', function () {

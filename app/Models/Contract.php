@@ -20,8 +20,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * The commercial relationship between a client and a construction unit.
@@ -102,7 +102,7 @@ class Contract extends Model
             ->useLogName('contracts')
             ->logFillable()
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontLogEmptyChanges();
     }
 
     /**
@@ -370,7 +370,7 @@ class Contract extends Model
         activity('contracts')
             ->performedOn($this)
             ->event('updated')
-            ->withProperties([
+            ->withChanges([
                 'old' => ['client_ids' => $before],
                 'attributes' => ['client_ids' => $after],
             ])

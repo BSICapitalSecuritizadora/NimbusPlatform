@@ -10,7 +10,7 @@ use Filament\Tables\Table;
 
 class ActivitiesRelationManager extends RelationManager
 {
-    protected static string $relationship = 'activities';
+    protected static string $relationship = 'activitiesAsSubject';
 
     protected static ?string $title = 'Histórico da Operação (Linha do Tempo)';
 
@@ -33,7 +33,7 @@ class ActivitiesRelationManager extends RelationManager
             ->filters([
                 SelectFilter::make('event')
                     ->label('Tipo de evento')
-                    ->options(fn (): array => $this->getOwnerRecord()->activities()
+                    ->options(fn (): array => $this->getOwnerRecord()->activitiesAsSubject()
                         ->whereNotNull('event')
                         ->distinct()
                         ->orderBy('event')

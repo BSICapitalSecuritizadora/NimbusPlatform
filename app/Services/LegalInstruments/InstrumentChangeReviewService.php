@@ -267,7 +267,7 @@ class InstrumentChangeReviewService
             ->causedBy($actor)
             ->performedOn($instrument->emission)
             ->event('legal_instrument_change')
-            ->withProperties([
+            ->withChanges([
                 'attributes' => array_filter([
                     'Instrumento' => $instrument->display_name,
                     'Evento' => $event->event_type->label(),

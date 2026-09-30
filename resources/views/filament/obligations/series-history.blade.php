@@ -21,7 +21,7 @@
 
             @if ($activity->properties->isNotEmpty())
                 <dl class="mt-2.5 grid gap-2 text-xs sm:grid-cols-2 border-t border-[#1d4554]/30 pt-2">
-                    @foreach ($activity->properties->except(['old', 'attributes']) as $key => $value)
+                    @foreach ($activity->properties as $key => $value)
                         <div class="rounded bg-[#0c232e] p-2 border border-[#1d4554]/40">
                             <dt class="font-bold text-[10px] uppercase text-slate-400">{{ str($key)->headline() }}</dt>
                             <dd class="mt-0.5 text-slate-200 font-mono">

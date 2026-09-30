@@ -151,7 +151,7 @@
                 </div>
                 <button type="button" class="text-xs text-slate-400 hover:text-white flex items-center gap-1 font-medium transition-colors">
                     <span x-text="open ? 'Recolher' : 'Expandir'"></span>
-                    <x-heroicon-m-chevron-down class="h-4 w-4 transition-transform duration-200" :class="{ 'rotate-180': open }" />
+                    <x-heroicon-m-chevron-down class="h-4 w-4 transition-transform duration-200" ::class="{ 'rotate-180': open }" />
                 </button>
             </div>
 

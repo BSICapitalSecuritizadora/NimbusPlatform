@@ -38,7 +38,8 @@ use Spatie\Activitylog\Models\Activity;
  * without needing a rule of its own.
  *
  * Nothing is recalculated against today's records: every value comes from
- * `properties.old` and `properties.attributes` as they were written.
+ * `attribute_changes.old` and `attribute_changes.attributes` as they were
+ * written.
  */
 class ImportRunChangesRelationManager extends RelationManager
 {

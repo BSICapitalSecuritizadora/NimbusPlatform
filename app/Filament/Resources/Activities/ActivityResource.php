@@ -78,6 +78,10 @@ class ActivityResource extends Resource
                     ->label('Ação Executada'),
                 TextInput::make('subject_type')
                     ->label('Entidade Modificada'),
+                Textarea::make('attribute_changes')
+                    ->label('Valores Alterados')
+                    ->formatStateUsing(fn ($state) => json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))
+                    ->columnSpanFull(),
                 Textarea::make('properties')
                     ->label('Dados da Alteração')
                     ->formatStateUsing(fn ($state) => json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))
@@ -118,6 +122,11 @@ class ActivityResource extends Resource
                     ->color(fn (Activity $record): string => self::authorizationSource($record)?->auditColor() ?? 'gray')
                     ->helperText(fn (Activity $record): ?string => self::authorizationDetail($record))
                     ->visible(fn (Activity $record): bool => self::authorizationSource($record) instanceof WorkflowAuthorizationSource),
+                TextEntry::make('attribute_changes')
+                    ->label('Valores Alterados (JSON)')
+                    ->formatStateUsing(fn ($state) => json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))
+                    ->fontFamily(FontFamily::Mono)
+                    ->columnSpanFull(),
                 TextEntry::make('properties')
                     ->label('Dados da Alteração (JSON)')
                     ->formatStateUsing(fn ($state) => json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))

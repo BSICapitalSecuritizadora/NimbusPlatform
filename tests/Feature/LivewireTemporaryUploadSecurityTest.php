@@ -2,8 +2,8 @@
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
+use Livewire\Facades\GenerateSignedUploadUrlFacade as GenerateSignedUploadUrl;
 use Livewire\Features\SupportFileUploads\FileUploadConfiguration;
 use Livewire\Features\SupportFileUploads\FileUploadController;
 
@@ -32,7 +32,7 @@ it('returns not found for signed preview URLs containing SVG content', function 
             '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
         );
 
-        $previewUrl = URL::temporarySignedRoute(
+        $previewUrl = GenerateSignedUploadUrl::signedRoute(
             'livewire.preview-file',
             now()->addMinutes(5),
             ['filename' => $filename],
@@ -51,7 +51,7 @@ it('continues serving an allowed signed image preview', function () {
         file_get_contents($png->getRealPath()),
     );
 
-    $previewUrl = URL::temporarySignedRoute(
+    $previewUrl = GenerateSignedUploadUrl::signedRoute(
         'livewire.preview-file',
         now()->addMinutes(5),
         ['filename' => $filename],

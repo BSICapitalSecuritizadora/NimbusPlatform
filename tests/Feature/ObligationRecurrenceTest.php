@@ -468,7 +468,7 @@ it('closes a series without deleting or finalizing its existing occurrences', fu
         ->and($series->occurrences()->count())->toBe(3)
         ->and($series->occurrences()->where('status', 'a_vencer')->count())->toBe(3)
         ->and($generationResult['created'])->toBe(0)
-        ->and($series->activities()->where('event', 'series_closed')->where('causer_id', $actor->id)->exists())->toBeTrue();
+        ->and($series->activitiesAsSubject()->where('event', 'series_closed')->where('causer_id', $actor->id)->exists())->toBeTrue();
 });
 
 it('versions a rule from a competence and preserves touched or historical occurrences', function () {

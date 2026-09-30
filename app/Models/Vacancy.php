@@ -14,8 +14,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class Vacancy extends Model
 {
@@ -103,7 +103,7 @@ class Vacancy extends Model
         return LogOptions::defaults()
             ->logOnly(['title', 'status', 'department', 'type', 'work_model', 'location', 'positions', 'hiring_manager_id', 'published_at', 'expires_at', 'closed_at', 'salary_min', 'salary_max', 'salary_visible'])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontLogEmptyChanges();
     }
 
     /**

@@ -496,15 +496,16 @@ it('records a buyer change made by hand, without a batch and without documents',
         ->latest('id')
         ->sole();
 
-    $properties = $activity->properties;
+    $changes = $activity->attribute_changes;
+    $recorded = json_encode([$changes->toArray(), $activity->properties->toArray()]);
 
     expect($activity->batch_uuid)->toBeNull()
-        ->and($properties->get('old')['client_ids'])->toBe([$joao->id])
-        ->and(collect($properties->get('attributes')['client_ids'])->sort()->values()->all())
+        ->and($changes->get('old')['client_ids'])->toBe([$joao->id])
+        ->and(collect($changes->get('attributes')['client_ids'])->sort()->values()->all())
         ->toBe(collect([$joao->id, $maria->id])->sort()->values()->all())
         // Nenhum documento pessoal entra no log.
-        ->and(json_encode($properties->toArray()))->not->toContain($joao->document)
-        ->and(json_encode($properties->toArray()))->not->toContain($maria->document);
+        ->and($recorded)->not->toContain($joao->document)
+        ->and($recorded)->not->toContain($maria->document);
 });
 
 it('does not record anything when the buyer set only changes order', function () {
@@ -695,7 +696,7 @@ it('runs every read path with the single-buyer column physically absent', functi
 
     $activity = Activity::query()->where('subject_type', Contract::class)->where('event', 'updated')->sole();
 
-    expect($activity->properties->get('attributes')['client_ids'])->toBe([$joao->id]);
+    expect($activity->attribute_changes->get('attributes')['client_ids'])->toBe([$joao->id]);
 
     // Ocupação e timeline seguem decididas pelo contrato, não pelos compradores.
     expect(Contract::occupyingContract($unit305->id)?->getKey())->toBe($shared->getKey())

@@ -257,7 +257,7 @@ it('explains damaged support at finalization and allows correction after returni
     expect($scenario['measurement']->fresh()->status)->toBe('finalized')
         ->and($payment->fresh()->financial_assessment['support']['name'])->toBe('contrato-corrigido.pdf')
         ->and(Activity::query()->where('log_name', 'measurement_payments')->where('subject_id', $payment->id)
-            ->where('event', 'created')->firstOrFail()->properties['attributes']['financial_assessment'])->toEqual($originalAssessment);
+            ->where('event', 'created')->firstOrFail()->attribute_changes['attributes']['financial_assessment'])->toEqual($originalAssessment);
 });
 
 it('blocks infected or unscannable support before registering a payment', function (string $verdict) {

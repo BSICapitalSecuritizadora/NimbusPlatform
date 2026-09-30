@@ -658,9 +658,9 @@ describe('reconciliação mensal', function () {
             ->where('event', 'updated')
             ->sole();
 
-        expect($activity->properties['old']['status'])->toBe('ativo')
-            ->and($activity->properties['attributes']['status'])->toBe('distratado')
-            ->and($activity->properties['attributes']['cancellation_date'])->toStartWith('2026-07-15');
+        expect($activity->attribute_changes['old']['status'])->toBe('ativo')
+            ->and($activity->attribute_changes['attributes']['status'])->toBe('distratado')
+            ->and($activity->attribute_changes['attributes']['cancellation_date'])->toStartWith('2026-07-15');
     });
 
     it('leaves a contract absent from the file completely alone', function () {
@@ -1098,9 +1098,9 @@ describe('distrato e revenda no mesmo lote', function () {
             ->where('event', 'updated')
             ->sole();
 
-        expect($activity->properties['old']['status'])->toBe('ativo')
-            ->and($activity->properties['attributes']['status'])->toBe('distratado')
-            ->and($activity->properties['attributes']['cancellation_date'])->toStartWith('2026-08-15');
+        expect($activity->attribute_changes['old']['status'])->toBe('ativo')
+            ->and($activity->attribute_changes['attributes']['status'])->toBe('distratado')
+            ->and($activity->attribute_changes['attributes']['cancellation_date'])->toStartWith('2026-08-15');
     });
 
     it('rolls the whole resale back when creating the new contract fails', function () {

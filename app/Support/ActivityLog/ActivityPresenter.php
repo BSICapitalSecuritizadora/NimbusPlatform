@@ -24,10 +24,10 @@ use Spatie\Activitylog\Models\Activity;
 /**
  * Camada de apresentação do audit log (spatie/laravel-activitylog).
  *
- * Converte eventos técnicos (event, properties.attributes, properties.old) em
- * uma representação operacional humanizada para a linha do tempo, sem alterar
- * os dados registrados. O payload bruto permanece integralmente disponível na
- * área de detalhes técnicos de cada item.
+ * Converte eventos técnicos (event, attribute_changes.attributes,
+ * attribute_changes.old) em uma representação operacional humanizada para a
+ * linha do tempo, sem alterar os dados registrados. O payload bruto permanece
+ * integralmente disponível na área de detalhes técnicos de cada item.
  */
 final class ActivityPresenter
 {
@@ -428,9 +428,9 @@ final class ActivityPresenter
     private static function extractChanges(Activity $activity): array
     {
         $subject = class_basename((string) $activity->subject_type);
-        $properties = $activity->properties ?? collect();
-        $attributes = $properties->get('attributes', []);
-        $old = $properties->get('old', []);
+        $trackedChanges = $activity->attribute_changes ?? collect();
+        $attributes = $trackedChanges->get('attributes', []);
+        $old = $trackedChanges->get('old', []);
 
         if (! is_array($attributes)) {
             return [];
@@ -725,10 +725,10 @@ final class ActivityPresenter
             $details[] = ['label' => 'Batch UUID', 'value' => (string) $activity->batch_uuid];
         }
 
-        $properties = $activity->properties ?? collect();
+        $trackedChanges = $activity->attribute_changes ?? collect();
 
         foreach (['attributes' => 'Novo valor', 'old' => 'Valor anterior'] as $group => $groupLabel) {
-            $values = $properties->get($group, []);
+            $values = $trackedChanges->get($group, []);
 
             if (! is_array($values)) {
                 continue;
@@ -768,6 +768,7 @@ final class ActivityPresenter
             'causer_id' => $activity->causer_id,
             'event' => $activity->event,
             'batch_uuid' => $activity->batch_uuid,
+            'attribute_changes' => $activity->attribute_changes?->toArray() ?? [],
             'properties' => $activity->properties?->toArray() ?? [],
             'created_at' => $activity->created_at?->toIso8601String(),
         ];

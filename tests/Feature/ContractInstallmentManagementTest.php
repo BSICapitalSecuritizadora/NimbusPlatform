@@ -694,13 +694,13 @@ it('edits an installment and records the change in the activity log', function (
         ->first();
 
     expect($activity)->not->toBeNull()
-        ->and($activity->properties['old']['due_date'])->toStartWith('2026-01-10')
-        ->and($activity->properties['attributes']['due_date'])->toStartWith('2026-02-10')
-        ->and((float) $activity->properties['old']['expected_value'])->toBe(10000.00)
-        ->and((float) $activity->properties['attributes']['expected_value'])->toBe(12500.50)
-        ->and($activity->properties['attributes'])->toHaveKeys(['payment_date', 'paid_value'])
+        ->and($activity->attribute_changes['old']['due_date'])->toStartWith('2026-01-10')
+        ->and($activity->attribute_changes['attributes']['due_date'])->toStartWith('2026-02-10')
+        ->and((float) $activity->attribute_changes['old']['expected_value'])->toBe(10000.00)
+        ->and((float) $activity->attribute_changes['attributes']['expected_value'])->toBe(12500.50)
+        ->and($activity->attribute_changes['attributes'])->toHaveKeys(['payment_date', 'paid_value'])
         // The buyer lives on the contract; no personal data reaches the log.
-        ->and($activity->properties['attributes'])->not->toHaveKeys(['client_id', 'document']);
+        ->and($activity->attribute_changes['attributes'])->not->toHaveKeys(['client_id', 'document']);
 });
 
 it('records the cancellation of an installment in the activity log', function () {
@@ -715,7 +715,7 @@ it('records the cancellation of an installment in the activity log', function ()
         ->latest('id')
         ->sole();
 
-    expect($activity->properties['attributes']['cancellation_date'])->toStartWith('2026-05-01');
+    expect($activity->attribute_changes['attributes']['cancellation_date'])->toStartWith('2026-05-01');
 });
 
 it('soft deletes an installment instead of erasing the financial history', function () {

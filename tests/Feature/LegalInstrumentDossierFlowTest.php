@@ -126,9 +126,9 @@ it('runs the full dossier flow from the original document to the amended positio
         ->where('subject_type', Emission::class)
         ->sole();
 
-    expect($timelineEntry->properties['attributes']['De'])->toBe('120%')
-        ->and($timelineEntry->properties['attributes']['Para'])->toBe('130%')
-        ->and($timelineEntry->properties['attributes']['Documento'])->toBe('3º Aditamento');
+    expect($timelineEntry->attribute_changes['attributes']['De'])->toBe('120%')
+        ->and($timelineEntry->attribute_changes['attributes']['Para'])->toBe('130%')
+        ->and($timelineEntry->attribute_changes['attributes']['Documento'])->toBe('3º Aditamento');
 });
 
 it('feeds the monthly report with the position as it stood in that month', function (): void {

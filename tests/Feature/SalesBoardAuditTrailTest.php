@@ -29,7 +29,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\Models\Activity;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Permission\Models\Role;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 use Tests\Support\SalesBoards\RolloutFixture;
@@ -151,10 +151,10 @@ it('leaves no trail of a published competence in the disposable bucket, and keep
         ->and($moduleTrail()->pluck('log_name')->unique()->values()->all())->toBe(['sales_board']);
 
     $approval = salesBoardAuditTrailOf($review)
-        ->first(fn (Activity $activity): bool => data_get($activity->properties, 'attributes.status') === SalesBoardManagementReviewStatus::Approved->value);
+        ->first(fn (Activity $activity): bool => data_get($activity->attribute_changes, 'attributes.status') === SalesBoardManagementReviewStatus::Approved->value);
 
     expect($approval)->not->toBeNull()
-        ->and(data_get($approval->properties, 'attributes.approved_by_user_id'))->toBe($manager->id)
+        ->and(data_get($approval->attribute_changes, 'attributes.approved_by_user_id'))->toBe($manager->id)
         ->and($approval->causer_id)->toBe($manager->id);
 
     $recorded = $moduleTrail()->count();
@@ -190,10 +190,10 @@ it('keeps an undone management decision, with its author and reason, past a year
     expect($undo)->not->toBeNull()
         ->and($undo->log_name)->toBe('sales_board')
         ->and($undo->causer_id)->toBe($manager->id)
-        ->and(data_get($undo->properties, 'old.decision'))->toBe(SalesBoardNonconformityDecision::AcceptedException->value)
-        ->and(data_get($undo->properties, 'old.decision_reason'))->toBe('Exceção aceita pela diretoria comercial em reunião.')
-        ->and(data_get($undo->properties, 'old.decided_by_user_id'))->toBe($manager->id)
-        ->and(data_get($undo->properties, 'attributes.decision'))->toBe(SalesBoardNonconformityDecision::Pending->value);
+        ->and(data_get($undo->attribute_changes, 'old.decision'))->toBe(SalesBoardNonconformityDecision::AcceptedException->value)
+        ->and(data_get($undo->attribute_changes, 'old.decision_reason'))->toBe('Exceção aceita pela diretoria comercial em reunião.')
+        ->and(data_get($undo->attribute_changes, 'old.decided_by_user_id'))->toBe($manager->id)
+        ->and(data_get($undo->attribute_changes, 'attributes.decision'))->toBe(SalesBoardNonconformityDecision::Pending->value);
 });
 
 it('keeps who returned a management review to the builder, and why', function () {
@@ -207,12 +207,12 @@ it('keeps who returned a management review to the builder, and why', function ()
     salesBoardAuditPurgeDisposableWindow();
 
     $returned = salesBoardAuditTrailOf($review)
-        ->first(fn (Activity $activity): bool => data_get($activity->properties, 'attributes.status') === SalesBoardManagementReviewStatus::Returned->value);
+        ->first(fn (Activity $activity): bool => data_get($activity->attribute_changes, 'attributes.status') === SalesBoardManagementReviewStatus::Returned->value);
 
     expect($returned)->not->toBeNull()
         ->and($returned->log_name)->toBe('sales_board')
-        ->and(data_get($returned->properties, 'attributes.returned_by_user_id'))->toBe($manager->id)
-        ->and(data_get($returned->properties, 'attributes.return_reason'))->toBe('Precisamos da confirmação do contrato da unidade 102.');
+        ->and(data_get($returned->attribute_changes, 'attributes.returned_by_user_id'))->toBe($manager->id)
+        ->and(data_get($returned->attribute_changes, 'attributes.return_reason'))->toBe('Precisamos da confirmação do contrato da unidade 102.');
 });
 
 it('keeps who deleted a legacy board, and the versions the cascade took along, past a year', function () {
@@ -242,15 +242,15 @@ it('keeps who deleted a legacy board, and the versions the cascade took along, p
         ->where('subject_type', SalesBoardHistory::class)
         ->where('event', 'created')
         ->get()
-        ->filter(fn (Activity $activity): bool => (int) data_get($activity->properties, 'attributes.sales_board_id') === $boardId);
+        ->filter(fn (Activity $activity): bool => (int) data_get($activity->attribute_changes, 'attributes.sales_board_id') === $boardId);
 
     expect($deletion->log_name)->toBe('sales_board')
         ->and($deletion->causer_id)->toBe($operator->id)
-        ->and((float) data_get($deletion->properties, 'old.stock_value'))->toBe(1000000.0)
+        ->and((float) data_get($deletion->attribute_changes, 'old.stock_value'))->toBe(1000000.0)
         ->and($versions)->toHaveCount(1)
         ->and($versions->first()->log_name)->toBe('sales_board')
-        ->and((int) data_get($versions->first()->properties, 'attributes.stock_units'))->toBe(2)
-        ->and((float) data_get($versions->first()->properties, 'attributes.stock_value'))->toBe(1000000.0);
+        ->and((int) data_get($versions->first()->attribute_changes, 'attributes.stock_units'))->toBe(2)
+        ->and((float) data_get($versions->first()->attribute_changes, 'attributes.stock_value'))->toBe(1000000.0);
 });
 
 // ── Rollout ───────────────────────────────────────────────────────────────────
@@ -272,15 +272,15 @@ it('keeps who attested the impacts and who rejected a rollout homologation, and 
     salesBoardAuditPurgeDisposableWindow();
 
     $trail = salesBoardAuditTrailOf($homologation);
-    $attestation = $trail->first(fn (Activity $activity): bool => data_get($activity->properties, 'attributes.guarantees_reviewed_by_user_id') !== null);
-    $rejection = $trail->first(fn (Activity $activity): bool => data_get($activity->properties, 'attributes.rejection_reason') !== null);
+    $attestation = $trail->first(fn (Activity $activity): bool => data_get($activity->attribute_changes, 'attributes.guarantees_reviewed_by_user_id') !== null);
+    $rejection = $trail->first(fn (Activity $activity): bool => data_get($activity->attribute_changes, 'attributes.rejection_reason') !== null);
 
     expect($trail->pluck('log_name')->unique()->values()->all())->toBe(['sales_board'])
         ->and($attestation)->not->toBeNull()
-        ->and(data_get($attestation->properties, 'attributes.guarantees_reviewed_by_user_id'))->toBe($operator->id)
+        ->and(data_get($attestation->attribute_changes, 'attributes.guarantees_reviewed_by_user_id'))->toBe($operator->id)
         ->and($rejection)->not->toBeNull()
-        ->and(data_get($rejection->properties, 'attributes.rejected_by_user_id'))->toBe($operator->id)
-        ->and(data_get($rejection->properties, 'attributes.rejection_reason'))->toBe('A competência de comparação precisa ser revista com a Gestão.');
+        ->and(data_get($rejection->attribute_changes, 'attributes.rejected_by_user_id'))->toBe($operator->id)
+        ->and(data_get($rejection->attribute_changes, 'attributes.rejection_reason'))->toBe('A competência de comparação precisa ser revista com a Gestão.');
 });
 
 it('keeps an accepted difference that a reassessment discarded', function () {
@@ -316,10 +316,10 @@ it('keeps an accepted difference that a reassessment discarded', function () {
     expect($trail)->toHaveCount(2)
         ->and($trail->pluck('event')->unique()->values()->all())->toBe(['updated'])
         ->and($discarded->log_name)->toBe('sales_board')
-        ->and(data_get($discarded->properties, 'old.accepted_difference'))->toBeTrue()
-        ->and(data_get($discarded->properties, 'old.difference_reason'))->toBe('O quadro legado contava um bloco que foi desmembrado.')
-        ->and(data_get($discarded->properties, 'old.accepted_by_user_id'))->toBe($operator->id)
-        ->and(data_get($discarded->properties, 'attributes.accepted_difference'))->toBeFalse();
+        ->and(data_get($discarded->attribute_changes, 'old.accepted_difference'))->toBeTrue()
+        ->and(data_get($discarded->attribute_changes, 'old.difference_reason'))->toBe('O quadro legado contava um bloco que foi desmembrado.')
+        ->and(data_get($discarded->attribute_changes, 'old.accepted_by_user_id'))->toBe($operator->id)
+        ->and(data_get($discarded->attribute_changes, 'attributes.accepted_difference'))->toBeFalse();
 });
 
 it('keeps an accepted difference whose construction left the Emission', function () {
@@ -352,11 +352,11 @@ it('keeps an accepted difference whose construction left the Emission', function
     expect($removal->event)->toBe('deleted')
         ->and($removal->log_name)->toBe('sales_board')
         ->and($removal->causer_id)->toBe($operator->id)
-        ->and(data_get($removal->properties, 'old.sales_board_rollout_homologation_id'))->toBe($homologation->id)
-        ->and(data_get($removal->properties, 'old.construction_id'))->toBe($scenario['constructions'][0]->id)
-        ->and(data_get($removal->properties, 'old.accepted_difference'))->toBeTrue()
-        ->and(data_get($removal->properties, 'old.difference_reason'))->toBe('O quadro legado contava um bloco que foi desmembrado.')
-        ->and(data_get($removal->properties, 'old.accepted_by_user_id'))->toBe($operator->id);
+        ->and(data_get($removal->attribute_changes, 'old.sales_board_rollout_homologation_id'))->toBe($homologation->id)
+        ->and(data_get($removal->attribute_changes, 'old.construction_id'))->toBe($scenario['constructions'][0]->id)
+        ->and(data_get($removal->attribute_changes, 'old.accepted_difference'))->toBeTrue()
+        ->and(data_get($removal->attribute_changes, 'old.difference_reason'))->toBe('O quadro legado contava um bloco que foi desmembrado.')
+        ->and(data_get($removal->attribute_changes, 'old.accepted_by_user_id'))->toBe($operator->id);
 });
 
 it('records who added and who removed a rollout recipient', function () {
@@ -377,8 +377,8 @@ it('records who added and who removed a rollout recipient', function () {
     expect($trail->pluck('event')->all())->toBe(['created', 'deleted'])
         ->and($trail->pluck('log_name')->unique()->values()->all())->toBe(['sales_board'])
         ->and($trail->pluck('causer_id')->unique()->values()->all())->toBe([$operator->id])
-        ->and(data_get($trail->last()->properties, 'old.user_id'))->toBe($recipientUser->id)
-        ->and(data_get($trail->last()->properties, 'old.role'))->toBe(SalesBoardRolloutRecipientRole::Management->value);
+        ->and(data_get($trail->last()->attribute_changes, 'old.user_id'))->toBe($recipientUser->id)
+        ->and(data_get($trail->last()->attribute_changes, 'old.role'))->toBe(SalesBoardRolloutRecipientRole::Management->value);
 });
 
 // ── Fontes ────────────────────────────────────────────────────────────────────
@@ -402,7 +402,7 @@ it('keeps who deleted and restored a contract, and who changed its buyers, past 
 
     expect($contractTrail->pluck('log_name')->unique()->values()->all())->toBe(['contracts'])
         ->and($contractTrail->pluck('event')->all())->toContain('deleted', 'restored')
-        ->and($contractTrail->first(fn (Activity $activity): bool => data_get($activity->properties, 'attributes.client_ids') !== null))->not->toBeNull()
+        ->and($contractTrail->first(fn (Activity $activity): bool => data_get($activity->attribute_changes, 'attributes.client_ids') !== null))->not->toBeNull()
         ->and($contractTrail->firstWhere('event', 'deleted')->causer_id)->toBe($operator->id)
         ->and($installmentTrail->pluck('log_name')->unique()->values()->all())->toBe(['contract_installments'])
         ->and($installmentTrail->pluck('event')->all())->toContain('deleted');

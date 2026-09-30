@@ -465,7 +465,7 @@ class ObligationSeriesRelationManager extends RelationManager
             ->modalSubmitAction(false)
             ->modalCancelActionLabel('Fechar')
             ->modalContent(fn (ObligationSeries $record) => view('filament.obligations.series-history', [
-                'activities' => $record->activities()->with('causer')->latest()->limit(100)->get(),
+                'activities' => $record->activitiesAsSubject()->with('causer')->latest()->limit(100)->get(),
             ]));
     }
 

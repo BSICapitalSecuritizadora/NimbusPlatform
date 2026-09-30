@@ -13,8 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\Contracts\Activity;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * Buyer of construction units.
@@ -58,10 +58,10 @@ class Client extends Model
             ->logFillable()
             ->logExcept(['document'])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontLogEmptyChanges();
     }
 
-    public function tapActivity(Activity $activity): void
+    public function beforeActivityLogged(Activity $activity, string $event): void
     {
         $properties = $activity->properties ?? collect();
 

@@ -48,7 +48,7 @@ class MeasurementTimeline
      */
     private function pushTransitions(Measurement $measurement, Collection $events): void
     {
-        $activities = $measurement->activities()
+        $activities = $measurement->activitiesAsSubject()
             ->with('causer')
             ->orderBy('created_at')
             ->get();
@@ -85,8 +85,8 @@ class MeasurementTimeline
             ];
         }
 
-        $attributes = $activity->properties['attributes'] ?? [];
-        $old = $activity->properties['old'] ?? [];
+        $attributes = $activity->attribute_changes['attributes'] ?? [];
+        $old = $activity->attribute_changes['old'] ?? [];
 
         $statusChanged = array_key_exists('status', $attributes);
         $stageChanged = array_key_exists('current_stage', $attributes);

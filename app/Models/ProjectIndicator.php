@@ -5,8 +5,8 @@ namespace App\Models;
 use App\Enums\ProjectIndicatorDefinition;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class ProjectIndicator extends Model
 {
@@ -50,7 +50,7 @@ class ProjectIndicator extends Model
             ->useLogName('project-indicators')
             ->logFillable()
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontLogEmptyChanges();
     }
 
     public function project(): BelongsTo

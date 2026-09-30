@@ -33,7 +33,7 @@ function makeProposalForTimeline(array $attributes = []): Proposal
 
 function timelineItemFor(Proposal $proposal, string $event): ActivityTimelineItem
 {
-    $activity = $proposal->activities()->where('event', $event)->latest('id')->firstOrFail();
+    $activity = $proposal->activitiesAsSubject()->where('event', $event)->latest('id')->firstOrFail();
 
     return ActivityPresenter::present($activity);
 }
@@ -73,7 +73,7 @@ it('does not present unchanged values as changes', function () {
         'subject_id' => $proposal->getKey(),
         'event' => 'updated',
         'description' => 'updated',
-        'properties' => [
+        'attribute_changes' => [
             'attributes' => ['status' => 'em_analise'],
             'old' => ['status' => 'em_analise'],
         ],
@@ -163,7 +163,7 @@ it('humanizes emission lifecycle events and includes formatted json payload', fu
         'bsi_code' => 'BSI-2026-001',
     ]);
 
-    $item = ActivityPresenter::present($emission->activities()->latest('id')->firstOrFail());
+    $item = ActivityPresenter::present($emission->activitiesAsSubject()->latest('id')->firstOrFail());
 
     expect($item->title)->toBe('Emissão criada')
         ->and($item->rawJson)->not->toBeNull()
@@ -183,7 +183,7 @@ it('identifies system actions and provides system badge representation', functio
         'description' => 'Rotina automática de verificação',
         'causer_id' => null,
         'causer_type' => null,
-        'properties' => [
+        'attribute_changes' => [
             'attributes' => ['status' => ProposalStatus::InReview->value],
             'old' => ['status' => ProposalStatus::AwaitingCompletion->value],
         ],

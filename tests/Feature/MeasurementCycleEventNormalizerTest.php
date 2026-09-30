@@ -92,7 +92,7 @@ function p3bNormalizerModelActivity(
         'causer_type' => $causer?->getMorphClass(),
         'causer_id' => $causer?->getKey(),
         'event' => 'updated',
-        'properties' => compact('old', 'attributes'),
+        'attribute_changes' => compact('old', 'attributes'),
         'created_at' => CarbonImmutable::parse($occurredAt),
         'updated_at' => CarbonImmutable::parse($occurredAt),
     ]);
@@ -325,7 +325,7 @@ it('normalizes only unambiguous model activity as a partial fallback and prefers
         'causer_type' => $scenario['actor']->getMorphClass(),
         'causer_id' => $scenario['actor']->getKey(),
         'event' => 'updated',
-        'properties' => [
+        'attribute_changes' => [
             'old' => ['current_stage' => 2, 'status' => 'in_review'],
             'attributes' => ['current_stage' => 3, 'status' => 'in_review'],
         ],

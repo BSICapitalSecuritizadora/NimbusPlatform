@@ -7,8 +7,8 @@ use App\Enums\IntegralizationSource;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Activitylog\Contracts\Activity;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class IntegralizationHistory extends Model
 {
@@ -63,10 +63,10 @@ class IntegralizationHistory extends Model
         return LogOptions::defaults()
             ->logFillable()
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontLogEmptyChanges();
     }
 
-    public function tapActivity(Activity $activity): void
+    public function beforeActivityLogged(Activity $activity, string $event): void
     {
         if ($this->recordedThrough === null) {
             return;

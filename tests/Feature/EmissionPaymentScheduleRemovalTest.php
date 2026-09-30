@@ -332,14 +332,14 @@ it('records the removal in the activity log with the user and the previous value
 
     expect($activity->causer?->is($admin))->toBeTrue()
         ->and($activity->created_at)->not->toBeNull()
-        ->and($activity->properties['old'])->toMatchArray([
+        ->and($activity->attribute_changes['old'])->toMatchArray([
             'emission_id' => $emission->id,
             'premium_value' => '10.50',
             'interest_value' => '59557.25',
             'amortization_value' => '1000.00',
             'extra_amortization_value' => '2.75',
         ])
-        ->and($activity->properties['old']['payment_date'])->toStartWith('2026-11-09');
+        ->and($activity->attribute_changes['old']['payment_date'])->toStartWith('2026-11-09');
 });
 
 it('keeps the date when its audit entry cannot be written', function () {

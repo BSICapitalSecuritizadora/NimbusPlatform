@@ -79,8 +79,8 @@ it('files the measurement attribute trail under the measurements log', function 
         ->first();
 
     expect($updated->log_name)->toBe('measurements')
-        ->and($updated->properties['attributes']['status'])->toBe('in_review')
-        ->and($updated->properties['attributes']['current_stage'])->toBe(2);
+        ->and($updated->attribute_changes['attributes']['status'])->toBe('in_review')
+        ->and($updated->attribute_changes['attributes']['current_stage'])->toBe(2);
 });
 
 it('keeps the workflow decision trail in its own category, alongside the attribute trail', function () {

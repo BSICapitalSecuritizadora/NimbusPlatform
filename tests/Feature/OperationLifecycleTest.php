@@ -645,7 +645,7 @@ it('records each transition once, under the operations log, with origin, target 
             ->where('subject_type', Operation::class)
             ->where('subject_id', $operation->getKey())
             ->where('description', 'updated')
-            ->whereJsonContains('properties->attributes->status', 'canceled')
+            ->whereJsonContains('attribute_changes->attributes->status', 'canceled')
             ->count())->toBe(0);
 });
 

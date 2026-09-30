@@ -18,8 +18,8 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser, HasAvatar
@@ -232,6 +232,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         return LogOptions::defaults()
             ->logOnly(['name', 'email', 'cargo', 'departamento', 'avatar_path', 'phone', 'bio', 'is_active', 'approved_at', 'azure_id', 'invited_by'])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontLogEmptyChanges();
     }
 }

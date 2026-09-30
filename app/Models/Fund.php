@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class Fund extends Model
 {
@@ -52,7 +52,7 @@ class Fund extends Model
         return LogOptions::defaults()
             ->logOnly(['emission_id', 'fund_type_id', 'fund_name_id', 'fund_application_id', 'trade_name', 'bank_id', 'agency', 'account', 'balance', 'minimum_balance'])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontLogEmptyChanges();
     }
 
     public function emission(): BelongsTo

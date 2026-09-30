@@ -11,6 +11,7 @@ use App\Filament\Resources\Contracts\ContractResource;
 use App\Filament\Resources\ImportRuns\ImportRunResource;
 use App\Models\ImportRun;
 use App\Services\SalesBoards\RegisteredCompetenceIndex;
+use App\Support\ActivityLog\LogBatch;
 use App\Support\Dates\SpreadsheetDate;
 use App\Support\Reconciliation\ValueComparator;
 use Filament\Actions\Action;
@@ -26,7 +27,6 @@ use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use Spatie\Activitylog\LogBatch;
 
 class ListContracts extends ListRecords
 {

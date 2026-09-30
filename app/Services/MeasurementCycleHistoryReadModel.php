@@ -194,6 +194,7 @@ class MeasurementCycleHistoryReadModel
                 'causer_type',
                 'causer_id',
                 'event',
+                'attribute_changes',
                 'properties',
                 'created_at',
             ]);

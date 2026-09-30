@@ -9,8 +9,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use LogicException;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * O que a homologação encontrou num empreendimento.
@@ -148,9 +148,9 @@ class SalesBoardRolloutHomologationConstruction extends Model
      *
      * A reavaliação zera o aceite quando a fonte muda, e a linha passa a dizer
      * apenas que ninguém aceitou. Quem tinha aceitado, e com qual motivo,
-     * sobrevive no `properties.old` desta trilha, em `sales_board`. Quando o
+     * sobrevive no `attribute_changes.old` desta trilha, em `sales_board`. Quando o
      * empreendimento sai da Emissão, a linha é apagada, e o mesmo aceite fica
-     * no `properties.old` do evento de exclusão, com a homologação e o
+     * no `attribute_changes.old` do evento de exclusão, com a homologação e o
      * empreendimento a que pertencia. Os dois identificadores nunca mudam,
      * então a atualização, que só registra o que mudou, continua mostrando
      * apenas o aceite. O retrato recalculado a cada reavaliação fica de fora:
@@ -169,7 +169,7 @@ class SalesBoardRolloutHomologationConstruction extends Model
                 'accepted_by_user_id',
             ])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontLogEmptyChanges();
     }
 
     public function homologation(): BelongsTo

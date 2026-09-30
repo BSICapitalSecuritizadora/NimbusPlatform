@@ -81,8 +81,8 @@ it('cancels a competence stuck outside the automation, superseding the open roun
         ->first();
 
     expect($trail->log_name)->toBe('sales_board')
-        ->and($trail->properties['attributes']['cancelled_by_user_id'])->toBe($approver->id)
-        ->and($trail->properties['attributes']['cancellation_reason'])->toBe(CANCELLATION_REASON);
+        ->and($trail->attribute_changes['attributes']['cancelled_by_user_id'])->toBe($approver->id)
+        ->and($trail->attribute_changes['attributes']['cancellation_reason'])->toBe(CANCELLATION_REASON);
 });
 
 it('keeps a returned round as it was and supersedes only the round still open', function () {

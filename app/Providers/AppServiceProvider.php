@@ -43,6 +43,7 @@ use App\Policies\SalesBoardPolicy;
 use App\Policies\VacancyPolicy;
 use App\Services\ConstructionProgressProvider;
 use App\Services\MeasurementPlanProgressProvider;
+use App\Support\ActivityLog\LogBatch;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
@@ -88,6 +89,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(IndexRateService::class);
         $this->app->alias(IndexRateService::class, IndexRateLookupService::class);
         $this->app->bind(IndexRateProvider::class, IndexRateService::class);
+
+        $this->app->scoped(LogBatch::class);
     }
 
     /**

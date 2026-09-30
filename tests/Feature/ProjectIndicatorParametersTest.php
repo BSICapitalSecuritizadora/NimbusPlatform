@@ -60,8 +60,8 @@ it('stores partial per-project parameters without replacing blanks with zero and
 
     expect($activity)->not->toBeNull()
         ->and($activity->causer_id)->toBe($admin->id)
-        ->and((float) $activity->properties['old']['financiamento_custo_obra_ideal'])->toBe(70.0)
-        ->and((float) $activity->properties['attributes']['financiamento_custo_obra_ideal'])->toBe(75.0)
+        ->and((float) $activity->attribute_changes['old']['financiamento_custo_obra_ideal'])->toBe(70.0)
+        ->and((float) $activity->attribute_changes['attributes']['financiamento_custo_obra_ideal'])->toBe(75.0)
         ->and($proposal->projects()->findOrFail($project->id)->indicators()->count())->toBe(1);
 });
 

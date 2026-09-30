@@ -8,6 +8,7 @@ use App\Models\Investor;
 use App\Models\User;
 use App\Models\Vacancy;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Filament\Actions\Testing\TestAction;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -39,8 +40,8 @@ it('logs when an expense is updated and captures before and after values', funct
         ->first();
 
     expect($log)->not->toBeNull()
-        ->and(array_key_exists('amount', $log->properties['attributes'] ?? []))->toBeTrue()
-        ->and(array_key_exists('amount', $log->properties['old'] ?? []))->toBeTrue();
+        ->and(array_key_exists('amount', $log->attribute_changes['attributes'] ?? []))->toBeTrue()
+        ->and(array_key_exists('amount', $log->attribute_changes['old'] ?? []))->toBeTrue();
 });
 
 it('logs when an expense is created', function () {
@@ -68,8 +69,8 @@ it('logs when a construction is updated and captures before and after values', f
         ->first();
 
     expect($log)->not->toBeNull()
-        ->and($log->properties['attributes']['city'] ?? null)->toBe('Belo Horizonte')
-        ->and($log->properties['old']['city'] ?? null)->toBe('São Paulo');
+        ->and($log->attribute_changes['attributes']['city'] ?? null)->toBe('Belo Horizonte')
+        ->and($log->attribute_changes['old']['city'] ?? null)->toBe('São Paulo');
 });
 
 // ── Sensitive data redaction ───────────────────────────────────────────────
@@ -87,8 +88,8 @@ it('does not log the investor password field', function () {
         ->first();
 
     if ($log !== null) {
-        expect(array_key_exists('password', $log->properties['attributes'] ?? []))->toBeFalse()
-            ->and(array_key_exists('password', $log->properties['old'] ?? []))->toBeFalse();
+        expect(array_key_exists('password', $log->attribute_changes['attributes'] ?? []))->toBeFalse()
+            ->and(array_key_exists('password', $log->attribute_changes['old'] ?? []))->toBeFalse();
     } else {
         expect(true)->toBeTrue();
     }
@@ -107,7 +108,7 @@ it('does not log the investor remember_token field', function () {
         ->first();
 
     if ($log !== null) {
-        expect(array_key_exists('remember_token', $log->properties['attributes'] ?? []))->toBeFalse();
+        expect(array_key_exists('remember_token', $log->attribute_changes['attributes'] ?? []))->toBeFalse();
     } else {
         expect(true)->toBeTrue();
     }
@@ -264,4 +265,24 @@ it('renders activity records with friendly labels in the livewire table', functi
         ->assertSee('Importação de Parcelas')
         ->assertSee('Criação de registro')
         ->assertSee('Anderson Cavalcante');
+});
+
+it('shows the values a change recorded in the audit record detail', function () {
+    $user = User::factory()->create(['approved_at' => now(), 'is_active' => true]);
+    $user->givePermissionTo('audit.activities.view');
+
+    $construction = Construction::factory()->create(['city' => 'São Paulo']);
+    $construction->update(['city' => 'Belo Horizonte']);
+
+    $activity = Activity::query()
+        ->where('subject_type', Construction::class)
+        ->where('event', 'updated')
+        ->sole();
+
+    Livewire::actingAs($user)
+        ->test(ManageActivities::class)
+        ->mountAction(TestAction::make('view')->table($activity))
+        ->assertMountedActionModalSee('Valores Alterados (JSON)')
+        ->assertMountedActionModalSee('Belo Horizonte')
+        ->assertMountedActionModalSee('São Paulo');
 });

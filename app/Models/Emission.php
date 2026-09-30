@@ -19,8 +19,8 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 #[ObservedBy(EmissionObserver::class)]
 class Emission extends Model
@@ -282,7 +282,7 @@ class Emission extends Model
             ->useLogName('emissions')
             ->logOnlyDirty()
             ->logFillable()
-            ->dontSubmitEmptyLogs();
+            ->dontLogEmptyChanges();
     }
 
     public function investors(): BelongsToMany

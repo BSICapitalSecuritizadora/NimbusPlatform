@@ -510,7 +510,7 @@ it('records who created the integralization and through which channel in the act
     expect($activities->pluck('event')->all())->toBe(['created', 'updated'])
         ->and($activities[0]->causer?->is($user))->toBeTrue()
         ->and($activities[0]->properties['source'])->toBe('manual')
-        ->and($activities[0]->properties['attributes'])->toMatchArray([
+        ->and($activities[0]->attribute_changes['attributes'])->toMatchArray([
             'emission_id' => $emission->id,
             'quantity' => '4000.0000',
             'unit_value' => '1000.98765432',
@@ -518,8 +518,8 @@ it('records who created the integralization and through which channel in the act
             'investor_fund' => 'Headinvest Asset Management',
         ])
         ->and($activities[1]->properties['source'])->toBe('spreadsheet')
-        ->and($activities[1]->properties['old']['quantity'])->toBe('4000.0000')
-        ->and($activities[1]->properties['attributes']['quantity'])->toBe('5000.0000');
+        ->and($activities[1]->attribute_changes['old']['quantity'])->toBe('4000.0000')
+        ->and($activities[1]->attribute_changes['attributes']['quantity'])->toBe('5000.0000');
 });
 
 it('keeps the modal open with a generic message when the recording fails unexpectedly', function () {

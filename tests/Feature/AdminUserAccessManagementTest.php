@@ -84,8 +84,8 @@ it('logs user status changes to the activity log when is_active is updated', fun
         ->first();
 
     expect($log)->not->toBeNull()
-        ->and(array_key_exists('is_active', $log->properties['attributes'] ?? []))->toBeTrue()
-        ->and(array_key_exists('is_active', $log->properties['old'] ?? []))->toBeTrue();
+        ->and(array_key_exists('is_active', $log->attribute_changes['attributes'] ?? []))->toBeTrue()
+        ->and(array_key_exists('is_active', $log->attribute_changes['old'] ?? []))->toBeTrue();
 });
 
 it('logs out an inactive user and redirects to admin login when accessing a protected route', function () {

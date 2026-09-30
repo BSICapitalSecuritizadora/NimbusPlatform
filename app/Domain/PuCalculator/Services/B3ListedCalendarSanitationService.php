@@ -10,6 +10,7 @@ use App\Models\BusinessCalendarDate;
 use App\Models\BusinessCalendarImportRun;
 use App\Models\BusinessCalendarYear;
 use App\Models\User;
+use App\Support\ActivityLog\LogBatch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -17,7 +18,6 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
-use Spatie\Activitylog\LogBatch;
 
 final class B3ListedCalendarSanitationService
 {

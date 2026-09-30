@@ -250,9 +250,9 @@ class MeasurementCycleEventNormalizer
         Activity $activity,
         ?Measurement $measurement,
     ): ?MeasurementCycleEvent {
-        $properties = new ActivityPropertyReader($activity->properties);
-        $attributes = $properties->nested('attributes');
-        $old = $properties->nested('old');
+        $trackedChanges = new ActivityPropertyReader($activity->attribute_changes);
+        $attributes = $trackedChanges->nested('attributes');
+        $old = $trackedChanges->nested('old');
         $eventType = null;
         $stageBefore = $old->nullableInt('current_stage');
         $stageAfter = $attributes->nullableInt('current_stage') ?? $stageBefore;
@@ -306,7 +306,7 @@ class MeasurementCycleEventNormalizer
             $missingReasons[] = 'legacy_model_activity_fallback';
         }
 
-        foreach ([...$properties->issues(), ...$attributes->issues(), ...$old->issues()] as $issue) {
+        foreach ([...$trackedChanges->issues(), ...$attributes->issues(), ...$old->issues()] as $issue) {
             $this->degrade($missingReasons, $completeness, $issue);
         }
 

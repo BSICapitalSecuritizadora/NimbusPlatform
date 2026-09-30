@@ -851,7 +851,7 @@ it('records contract changes in the activity log without personal data', functio
     $activity = Activity::query()->where('subject_type', Contract::class)->latest('id')->first();
 
     expect($activity)->not->toBeNull()
-        ->and($activity->properties['attributes']['status'])->toBe(ContractStatus::Cancelled->value)
+        ->and($activity->attribute_changes['attributes']['status'])->toBe(ContractStatus::Cancelled->value)
         ->and(json_encode($activity->properties))->not->toContain($client->document);
 });
 

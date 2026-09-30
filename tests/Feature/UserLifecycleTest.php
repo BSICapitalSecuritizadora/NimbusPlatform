@@ -240,7 +240,7 @@ it('audits the deactivation and the reactivation through the existing model log'
         ->where('event', 'updated')
         ->orderBy('id')
         ->get()
-        ->map(fn (Activity $activity): mixed => $activity->properties['attributes']['is_active'] ?? null)
+        ->map(fn (Activity $activity): mixed => $activity->attribute_changes['attributes']['is_active'] ?? null)
         ->filter(fn (mixed $value): bool => $value !== null)
         ->map(fn (mixed $value): bool => (bool) $value)
         ->values()

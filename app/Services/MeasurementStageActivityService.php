@@ -41,7 +41,7 @@ class MeasurementStageActivityService
         $events = collect();
 
         // 1. Collect all workflow stage decision activities from activity log
-        $activities = $measurement->activities()
+        $activities = $measurement->activitiesAsSubject()
             ->with('causer')
             ->whereIn('description', [
                 'measurement_stage_approved',

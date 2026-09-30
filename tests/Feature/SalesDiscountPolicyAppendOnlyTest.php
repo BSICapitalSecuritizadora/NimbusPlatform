@@ -87,7 +87,7 @@ it('records the registration in the protected sales board audit trail', function
     expect($activity->log_name)->toBe('sales_board')
         ->and($activity->event)->toBe('created')
         ->and($activity->causer_id)->toBe(auth()->id())
-        ->and($activity->properties['attributes'])->toMatchArray([
+        ->and($activity->attribute_changes['attributes'])->toMatchArray([
             'construction_id' => $construction->id,
             'maximum_discount_percent' => '4.50',
             'reason' => 'Revisão de margem',

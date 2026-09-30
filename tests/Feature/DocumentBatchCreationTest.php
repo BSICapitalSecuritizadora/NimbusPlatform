@@ -571,9 +571,9 @@ it('records the same activity log entries produced by the individual registratio
         ->where('description', 'created')
         ->sole();
 
-    expect($activity->properties['attributes']['title'] ?? null)->toBe($document->title)
-        ->and($activity->properties['attributes']['category'] ?? null)->toBe('relatorios_anuais')
-        ->and($activity->properties['attributes']['is_published'] ?? null)->toBeFalse();
+    expect($activity->attribute_changes['attributes']['title'] ?? null)->toBe($document->title)
+        ->and($activity->attribute_changes['attributes']['category'] ?? null)->toBe('relatorios_anuais')
+        ->and($activity->attribute_changes['attributes']['is_published'] ?? null)->toBeFalse();
 });
 
 it('makes batched documents visible to the legal instrument scanner like individual ones', function () {

@@ -907,9 +907,9 @@ describe('reconciliação mensal', function () {
             ->where('event', 'updated')
             ->sole();
 
-        expect($activity->properties['old']['payment_date'])->toBeNull()
-            ->and($activity->properties['attributes']['payment_date'])->toStartWith('2026-08-25')
-            ->and((float) $activity->properties['attributes']['paid_value'])->toBe(10000.00);
+        expect($activity->attribute_changes['old']['payment_date'])->toBeNull()
+            ->and($activity->attribute_changes['attributes']['payment_date'])->toStartWith('2026-08-25')
+            ->and((float) $activity->attribute_changes['attributes']['paid_value'])->toBe(10000.00);
     });
 
     it('flags a due date or an expected value moving as a critical update', function () {
