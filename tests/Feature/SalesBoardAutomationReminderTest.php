@@ -201,6 +201,12 @@ it('reminds about a competence waiting on management without deciding anything',
 });
 
 it('announces a cycle that is apurado and still not handed over', function () {
+    // Limiar zero compara o `updated_at` do ciclo gerado agora com o relógio
+    // lido no início da execução, ambos gravados em segundos. Sem congelar, o
+    // teste só passa se a geração couber no mesmo segundo -- num runner lento,
+    // o segundo vira e o aviso fica para a próxima execução.
+    $this->freezeSecond();
+
     $construction = AutomationFixture::readyConstruction();
     AutomationFixture::enable([$construction]);
     resolveRecipientsTo(User::factory()->create());
