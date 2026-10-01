@@ -139,24 +139,24 @@
 
     /* ─── Backward-Compatible Brand Aliases ─── */
     --color-brand-900: #040e13;
-    --color-brand-800: #06151c;
-    --color-brand-700: #091b23;
-    --color-brand-600: #284650;
-    --color-brand-500: #4b6871;
-    --color-brand-400: #758d95;
-    --color-brand-300: #9caeb5;
-    --color-brand-200: #bccbd0;
-    --color-brand-100: #dbe4e7;
-    --color-brand-50: #eef2f3;
+    --color-brand-800: var(--color-navy-950);
+    --color-brand-700: var(--color-navy-900);
+    --color-brand-600: var(--color-navy-600);
+    --color-brand-500: var(--color-navy-500);
+    --color-brand-400: var(--color-navy-400);
+    --color-brand-300: var(--color-navy-300);
+    --color-brand-200: var(--color-navy-200);
+    --color-brand-100: var(--color-navy-100);
+    --color-brand-50: var(--color-navy-50);
 
     /* ─── Backward-Compatible BSI Aliases (Filament theme) ─── */
-    --color-bsi-gold-500: #b7832f;
-    --color-bsi-gold-600: #96651f;
-    --color-bsi-navy-800: #12313b;
-    --color-bsi-navy-900: #091b23;
-    --color-bsi-navy-950: #06151c;
-    --color-bsi-paper: #fbfaf8;
-    --color-bsi-stone-50: #f8f7f4;
+    --color-bsi-gold-500: var(--color-gold-400);
+    --color-bsi-gold-600: var(--color-gold-600);
+    --color-bsi-navy-800: var(--color-navy-800);
+    --color-bsi-navy-900: var(--color-navy-900);
+    --color-bsi-navy-950: var(--color-navy-950);
+    --color-bsi-paper: var(--color-paper);
+    --color-bsi-stone-50: var(--color-ground-light);
     --color-bsi-stone-100: #efede9;
 }
 
