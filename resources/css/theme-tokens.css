@@ -1,0 +1,188 @@
+/**
+ * BSI Capital Theme Foundation & Design Tokens (Phase 1)
+ *
+ * Canonical source of truth for:
+ * 1. Primitive Brand Palettes (Petroleum/Navy, Gold, Neutrals)
+ * 2. Semantic Design Tokens (Surfaces, Typography, Borders, Accents)
+ * 3. Framework mappings for Tailwind CSS v4, Flux UI, and Filament
+ */
+
+:root {
+    /* ─── Semantic Surfaces (Light Mode) ─── */
+    --surface-canvas: #ece9e8;
+    --surface-ground: #f8f7f4;
+    --surface-card: #ffffff;
+    --surface-elevated: #ffffff;
+    --surface-highlight: #efede9;
+
+    /* ─── Semantic Typography (Light Mode) ─── */
+    --text-primary: #091b23;
+    --text-secondary: #4b6871;
+    --text-muted: #758d95;
+    --text-inverse: #ffffff;
+
+    /* ─── Semantic Borders (Light Mode) ─── */
+    --border-subtle: rgb(9 27 35 / 0.08);
+    --border-strong: rgb(9 27 35 / 0.16);
+
+    /* ─── Semantic Accents (Light Mode) ─── */
+    --accent: #8d6123;
+    --accent-hover: #7b541e;
+    --accent-subtle: rgb(160 110 40 / 0.10);
+    --accent-foreground: #ffffff;
+
+    /* ─── Primitive Tokens as CSS Custom Properties ─── */
+    --color-navy-950: #06151c;
+    --color-navy-900: #091b23;
+    --color-navy-850: #0d2530;
+    --color-navy-800: #12313b;
+    --color-navy-700: #1e4756;
+    --color-navy-600: #284650;
+    --color-navy-500: #4b6871;
+    --color-navy-400: #758d95;
+    --color-navy-300: #9caeb5;
+    --color-navy-200: #bccbd0;
+    --color-navy-100: #dbe4e7;
+    --color-navy-50: #eef2f3;
+
+    --color-gold-700: #7b541e;
+    --color-gold-600: #8d6123;
+    --color-gold-500: #a06e28;
+    --color-gold-400: #b7832f;
+    --color-gold-300: #d5aa67;
+    --color-gold-200: #d7c09c;
+    --color-gold-100: #e8dcc7;
+    --color-gold-50: #f4eee6;
+
+    --color-offwhite: #e6e4e4;
+    --color-brand-offwhite: #e6e4e4;
+    --color-paper: #fbfaf8;
+    --color-canvas-light: #ece9e8;
+    --color-ground-light: #f8f7f4;
+}
+
+.dark {
+    /* ─── Semantic Surfaces (Dark Mode) ─── */
+    --surface-canvas: #06151c;
+    --surface-ground: #0d2530;
+    --surface-card: #091b23;
+    --surface-elevated: #12313b;
+    --surface-highlight: #1e4756;
+
+    /* ─── Semantic Typography (Dark Mode) ─── */
+    --text-primary: #fbfaf8;
+    --text-secondary: #dbe4e7;
+    --text-muted: #9caeb5;
+    --text-inverse: #091b23;
+
+    /* ─── Semantic Borders (Dark Mode) ─── */
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
+
+    /* ─── Semantic Accents (Dark Mode) ─── */
+    --accent: #b7832f;
+    --accent-hover: #d5aa67;
+    --accent-subtle: rgb(183 131 47 / 0.15);
+    --accent-foreground: #06151c;
+}
+
+@theme {
+    /* ─── Canonical Petroleum / Navy Palette ─── */
+    --color-navy-950: #06151c;
+    --color-navy-900: #091b23;
+    --color-navy-850: #0d2530;
+    --color-navy-800: #12313b;
+    --color-navy-700: #1e4756;
+    --color-navy-600: #284650;
+    --color-navy-500: #4b6871;
+    --color-navy-400: #758d95;
+    --color-navy-300: #9caeb5;
+    --color-navy-200: #bccbd0;
+    --color-navy-100: #dbe4e7;
+    --color-navy-50: #eef2f3;
+
+    /* ─── Canonical Gold Palette ─── */
+    --color-gold-700: #7b541e;
+    --color-gold-600: #8d6123;
+    --color-gold-500: #a06e28;
+    --color-gold-400: #b7832f;
+    --color-gold-300: #d5aa67;
+    --color-gold-200: #d7c09c;
+    --color-gold-100: #e8dcc7;
+    --color-gold-50: #f4eee6;
+
+    /* ─── White & Off-White & Paper Primitives ─── */
+    --color-offwhite: #e6e4e4;
+    --color-brand-offwhite: #e6e4e4;
+    --color-paper: #fbfaf8;
+
+    /* ─── Semantic Surface Colors ─── */
+    --color-surface-canvas: var(--surface-canvas);
+    --color-surface-ground: var(--surface-ground);
+    --color-surface-card: var(--surface-card);
+    --color-surface-elevated: var(--surface-elevated);
+    --color-surface-highlight: var(--surface-highlight);
+
+    /* ─── Semantic Typography Colors ─── */
+    --color-text-primary: var(--text-primary);
+    --color-text-secondary: var(--text-secondary);
+    --color-text-muted: var(--text-muted);
+    --color-text-inverse: var(--text-inverse);
+
+    /* ─── Semantic Border Colors ─── */
+    --color-border-subtle: var(--border-subtle);
+    --color-border-strong: var(--border-strong);
+
+    /* ─── Semantic Accent Colors ─── */
+    --color-accent: var(--accent);
+    --color-accent-hover: var(--accent-hover);
+    --color-accent-subtle: var(--accent-subtle);
+    --color-accent-foreground: var(--accent-foreground);
+
+    /* ─── Backward-Compatible Brand Aliases (Legacy compatibility only; prefer semantic tokens or canonical primitives for new work) ─── */
+    --color-brand-900: #040e13;
+    --color-brand-800: var(--color-navy-950);
+    --color-brand-700: var(--color-navy-900);
+    --color-brand-600: var(--color-navy-600);
+    --color-brand-500: var(--color-navy-500);
+    --color-brand-400: var(--color-navy-400);
+    --color-brand-300: var(--color-navy-300);
+    --color-brand-200: var(--color-navy-200);
+    --color-brand-100: var(--color-navy-100);
+    --color-brand-50: var(--color-navy-50);
+
+    /* ─── Backward-Compatible BSI Aliases (Filament legacy compatibility only) ─── */
+    --color-bsi-gold-500: var(--color-gold-400);
+    --color-bsi-gold-600: var(--color-gold-600);
+    --color-bsi-navy-800: var(--color-navy-800);
+    --color-bsi-navy-900: var(--color-navy-900);
+    --color-bsi-navy-950: var(--color-navy-950);
+    --color-bsi-paper: var(--color-paper);
+    --color-bsi-stone-50: var(--color-ground-light);
+    --color-bsi-stone-100: #efede9;
+}
+
+/* ─── Semantic Utility Classes ─── */
+@utility text-primary {
+    color: var(--text-primary);
+}
+
+@utility text-secondary {
+    color: var(--text-secondary);
+}
+
+@utility text-muted {
+    color: var(--text-muted);
+}
+
+@utility text-inverse {
+    color: var(--text-inverse);
+}
+
+@utility border-subtle {
+    border-color: var(--border-subtle);
+}
+
+@utility border-strong {
+    border-color: var(--border-strong);
+}

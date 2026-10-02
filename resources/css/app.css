@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './theme-tokens.css';
 @import './portal-tokens.css';
 @import '../../vendor/livewire/flux/dist/flux.css';
 
@@ -11,21 +12,6 @@
 
 @theme {
     --font-sans: 'Inter', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-    --color-white: #e6e4e4;
-
-    --color-brand-50: #eef2f3;
-    --color-brand-100: #dbe4e7;
-    --color-brand-200: #bccbd0;
-    --color-brand-300: #9caeb5;
-    --color-brand-400: #758d95;
-    --color-brand-500: #4b6871;
-    --color-brand-600: #284650;
-    --color-brand-700: #091b23;
-    --color-brand-800: #06151c;
-    --color-brand-900: #040e13;
-    --color-gold-400: #b4864a;
-    --color-gold-500: #a06e28;
-    --color-gold-600: #7f581f;
 
     --color-zinc-50: #f7f5f4;
     --color-zinc-100: #eeeceb;
@@ -39,16 +25,16 @@
     --color-zinc-900: #201d1c;
     --color-zinc-950: #141212;
 
-    --color-accent: var(--color-brand-700);
-    --color-accent-content: var(--color-brand-700);
-    --color-accent-foreground: var(--color-white);
+    --color-accent: var(--accent);
+    --color-accent-content: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
 }
 
 @layer theme {
     .dark {
-        --color-accent: var(--color-brand-100);
-        --color-accent-content: var(--color-brand-100);
-        --color-accent-foreground: var(--color-brand-900);
+        --color-accent: var(--accent);
+        --color-accent-content: var(--accent);
+        --color-accent-foreground: var(--accent-foreground);
     }
 }
 

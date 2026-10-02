@@ -1,4 +1,5 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
+@import '../../theme-tokens.css';
 @import './sales-board-cycle.css';
 @import './sales-board-rollout.css';
 @import './measurement-cycle-report.css';
@@ -15,19 +16,7 @@
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
 
-@theme {
-    --color-bsi-gold-500: #b7832f;
-    --color-bsi-gold-600: #96651f;
-    --color-bsi-navy-800: #12313b;
-    --color-bsi-navy-900: #091b23;
-    --color-bsi-navy-950: #06151c;
-    --color-bsi-paper: #fbfaf8;
-    --color-bsi-stone-50: #f8f7f4;
-    --color-bsi-stone-100: #efede9;
-}
-
 :root {
-    --color-white: #e6e4e4;
     --gray-50: #f6f3f2;
     --gray-100: #ece8e7;
     --gray-200: #dbd5d3;
