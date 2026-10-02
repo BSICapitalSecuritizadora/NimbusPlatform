@@ -26,7 +26,7 @@
     --border-strong: rgb(9 27 35 / 0.16);
 
     /* ─── Semantic Accents (Light Mode) ─── */
-    --accent: #a06e28;
+    --accent: #8d6123;
     --accent-hover: #7b541e;
     --accent-subtle: rgb(160 110 40 / 0.10);
     --accent-foreground: #ffffff;
@@ -134,10 +134,12 @@
     --color-border-strong: var(--border-strong);
 
     /* ─── Semantic Accent Colors ─── */
+    --color-accent: var(--accent);
     --color-accent-hover: var(--accent-hover);
     --color-accent-subtle: var(--accent-subtle);
+    --color-accent-foreground: var(--accent-foreground);
 
-    /* ─── Backward-Compatible Brand Aliases ─── */
+    /* ─── Backward-Compatible Brand Aliases (Legacy compatibility only; prefer semantic tokens or canonical primitives for new work) ─── */
     --color-brand-900: #040e13;
     --color-brand-800: var(--color-navy-950);
     --color-brand-700: var(--color-navy-900);
@@ -149,7 +151,7 @@
     --color-brand-100: var(--color-navy-100);
     --color-brand-50: var(--color-navy-50);
 
-    /* ─── Backward-Compatible BSI Aliases (Filament theme) ─── */
+    /* ─── Backward-Compatible BSI Aliases (Filament legacy compatibility only) ─── */
     --color-bsi-gold-500: var(--color-gold-400);
     --color-bsi-gold-600: var(--color-gold-600);
     --color-bsi-navy-800: var(--color-navy-800);
