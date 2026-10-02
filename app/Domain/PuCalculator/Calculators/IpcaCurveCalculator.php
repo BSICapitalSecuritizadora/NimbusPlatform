@@ -11,6 +11,7 @@ use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuCalculationProfile;
 use App\Domain\PuCalculator\Enums\PuEventType;
+use App\Domain\PuCalculator\Exceptions\PuRateDomainException;
 use App\Domain\PuCalculator\Services\DecimalRounder;
 use App\Domain\PuCalculator\Services\IpcaIndexResolver;
 use App\Domain\PuCalculator\Services\PuCurveEventSupport;
@@ -116,6 +117,8 @@ class IpcaCurveCalculator implements PuIndexCalculatorInterface
             bcadd('1', bcdiv((string) $parameter->annual_rate, '100', self::RATIO_SCALE + 4), self::RATIO_SCALE + 4),
             self::RATIO_SCALE,
         );
+        // Cupom de -100% a.a. dava fator diário 0 e PU atualizado 0 sem nenhum sinal.
+        $this->dailyFactorCalculator->assertPositiveCompoundingBase((string) $parameter->annual_rate, $couponBase);
 
         $eventGroups = $this->eventSupport->groupEventsByDate($emission->puEvents);
         $quantityTimeline = $this->eventSupport->buildQuantityTimeline($emission->integralizationHistories);
@@ -365,6 +368,10 @@ class IpcaCurveCalculator implements PuIndexCalculatorInterface
      * Tanto o número-índice de referência (numerador) quanto o do mês anterior (denominador) passam pela
      * política de projeção: meses sem IPCA publicado só são aceitos como PROJETADOS quando a política
      * permite; caso contrário o resolver lança exceção clara (a curva nunca projeta silenciosamente).
+     *
+     * Número-índice zero ou negativo é recusado antes da divisão: o piso transformava uma razão
+     * negativa em correção 1 sem nenhum sinal, e NI anterior zero estourava `DivisionByZeroError`
+     * no meio da curva.
      */
     private function correctionRatio(
         IpcaIndexResolution $reference,
@@ -377,6 +384,15 @@ class IpcaCurveCalculator implements PuIndexCalculatorInterface
             $projectionPolicy,
             $currentDate,
         );
+
+        foreach ([$reference, $previous] as $indexNumber) {
+            if (bccomp($indexNumber->value, '0', strlen($indexNumber->value)) <= 0) {
+                throw PuRateDomainException::nonPositiveIndexNumber(
+                    $indexNumber->referenceDate->format('Y-m'),
+                    $indexNumber->value,
+                );
+            }
+        }
 
         $ratio = bcdiv($reference->value, $previous->value, self::RATIO_SCALE);
 

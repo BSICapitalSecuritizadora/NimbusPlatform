@@ -2,6 +2,7 @@
 
 use App\Domain\PuCalculator\Calculators\DailyFactorCalculator;
 use App\Domain\PuCalculator\Exceptions\PuNumericConvergenceException;
+use App\Domain\PuCalculator\Exceptions\PuRateDomainException;
 use App\Domain\PuCalculator\Services\DecimalRounder;
 
 /**
@@ -233,18 +234,21 @@ it('fails closed when the Newton step degenerates', function () {
     puRootCalculator()->powRatio('-2', 1, 3, DecimalRounder::CALCULATION_SCALE);
 })->throws(PuNumericConvergenceException::class, 'zerou a derivada');
 
-it('keeps the root of a zero base at zero', function () {
+it('keeps the root of a zero base at zero in the mathematical primitive', function () {
+    // A taxa de -100% a.a. que levaria a esta base é recusada antes, como domínio
+    // financeiro (seção abaixo); a primitiva continua matemática.
     $calculator = puRootCalculator();
 
-    expect($calculator->factorDiForDay('-100.00000000', true, 252, DecimalRounder::CALCULATION_SCALE))
+    expect($calculator->powRatio('0', 1, 252, DecimalRounder::CALCULATION_SCALE))
         ->toBe('0.000000000000000000000000')
         ->and($calculator->powRatio('0', 5, 252, DecimalRounder::CALCULATION_SCALE))
         ->toBe('0.000000000000000000000000');
 });
 
 it('refuses a negative base for a root of even degree', function () {
-    // -150% a.a. dá base -0,5: não há raiz real de grau 252. Antes saía -1,28e29.
-    puRootCalculator()->factorDiForDay('-150.00000000', true, 252, DecimalRounder::CALCULATION_SCALE);
+    // Base -0,5 (a de -150% a.a.): não há raiz real de grau 252. Antes saía -1,28e29.
+    // Pela taxa, a recusa agora é de domínio financeiro e acontece antes da primitiva.
+    puRootCalculator()->powRatio('-0.5', 1, 252, DecimalRounder::CALCULATION_SCALE);
 })->throws(InvalidArgumentException::class, 'has no real root of even degree [252]');
 
 it('keeps the real root of a negative base for an odd degree', function () {
@@ -264,3 +268,184 @@ it('keeps rejecting malformed decimals before any iteration', function () {
     expect(fn () => $calculator->factorDiForDay('abc', true, 252))->toThrow(InvalidArgumentException::class, 'Invalid decimal value [abc].')
         ->and(fn () => $calculator->powRatio('abc', 1, 252))->toThrow(ValueError::class);
 });
+
+/**
+ * Executa a chamada e devolve a exceção da engine, ou null quando ela devolveu valor.
+ */
+function puRootFailure(Closure $call): ?Throwable
+{
+    try {
+        $call();
+    } catch (PuNumericConvergenceException|PuRateDomainException $exception) {
+        return $exception;
+    }
+
+    return null;
+}
+
+// ---------------------------------------------------------------------------
+// Domínio financeiro: a base 1 + taxa/100 precisa ser positiva
+// ---------------------------------------------------------------------------
+
+/**
+ * Recusa de DOMÍNIO, antes de qualquer raiz: a entrada não tem sentido financeiro.
+ * Antes desta camada, -100% a.a. saía fator 0 e, em denominador ímpar, uma taxa
+ * abaixo de -100% saía fator NEGATIVO (-150% em base 31: -0,977888536335432720265294).
+ * Em denominador par a primitiva já recusava, mas como erro matemático, em inglês.
+ */
+it('rejects a rate that zeroes or inverts the compounding base before any root', function (string $entry, string $annualRate, int $denominator, string $base) {
+    $calculator = puRootCalculator();
+
+    $failure = puRootFailure(fn () => match ($entry) {
+        'di' => $calculator->factorDiForDay($annualRate, true, $denominator, DecimalRounder::CALCULATION_SCALE),
+        'spread' => $calculator->factorSpreadForBusinessDays($annualRate, 5, $denominator, DecimalRounder::CALCULATION_SCALE),
+    });
+
+    expect($failure)->toBeInstanceOf(PuRateDomainException::class)
+        ->and($failure->value)->toBe($annualRate)
+        ->and($failure->base)->toBe($base)
+        ->and($failure->getMessage())->toContain('acima de -100% a.a.');
+})->with([
+    'DI de -100% (base zero)' => ['di', '-100.00000000', 252, '0.0000000000000000'],
+    'spread de -100% (base zero)' => ['spread', '-100.00000000', 252, '0.0000000000000000'],
+    'DI uma casa abaixo de -100%' => ['di', '-100.00000001', 252, '-0.0000000001000000'],
+    'DI de -150% em base par' => ['di', '-150.00000000', 252, '-0.5000000000000000'],
+    'DI de -150% em base ímpar 365' => ['di', '-150.00000000', 365, '-0.5000000000000000'],
+    'spread de -150% em base ímpar 21' => ['spread', '-150.00000000', 21, '-0.5000000000000000'],
+    'spread de -150% em base ímpar 31' => ['spread', '-150.00000000', 31, '-0.5000000000000000'],
+    'DI de -101% em base ímpar 3' => ['di', '-101.00000000', 3, '-0.0100000000000000'],
+]);
+
+/**
+ * Taxa negativa com base positiva é financeiramente válida e continua calculada --
+ * inclusive colada em -100% --, pela mesma prova independente da grade.
+ */
+it('keeps calculating negative rates whose compounding base stays positive', function (string $annualRate) {
+    $calculator = puRootCalculator();
+    $failures = [];
+
+    foreach ([252, 360, 372] as $denominator) {
+        $dailyFactor = $calculator->factorDiForDay($annualRate, true, $denominator, DecimalRounder::CALCULATION_SCALE);
+        $accumulatedFactor = $calculator->factorSpreadForBusinessDays($annualRate, 21, $denominator, DecimalRounder::CALCULATION_SCALE);
+
+        $failures[] = puRootBracketFailure($dailyFactor, puRootBaseFromRate($annualRate), 1, $denominator, DecimalRounder::CALCULATION_SCALE);
+        $failures[] = puRootBracketFailure($accumulatedFactor, puRootBaseFromRate($annualRate), 21, $denominator, DecimalRounder::CALCULATION_SCALE);
+    }
+
+    expect(array_values(array_filter($failures)))->toBe([]);
+})->with(['-0.50', '-5.00', '-20.00', '-50.00', '-99.00', '-99.99', '-99.9999']);
+
+// ---------------------------------------------------------------------------
+// Piso numérico: base positiva ínfima falha fechada
+// ---------------------------------------------------------------------------
+
+/**
+ * Recusa NUMÉRICA: a entrada é financeiramente válida (base > 0), mas o Newton, com
+ * precisão absoluta finita, não certifica a raiz. -99,99999999% a.a. é a menor base
+ * positiva que uma taxa de 8 casas produz (10^-10), duas ordens de grandeza abaixo do
+ * piso medido nesses denominadores: o caso não depende do limiar exato.
+ */
+it('fails closed on the smallest positive base an 8-decimal rate can produce', function (int $denominator, int $scale) {
+    $calculator = puRootCalculator();
+
+    foreach ([
+        fn () => $calculator->factorDiForDay('-99.99999999', true, $denominator, $scale),
+        fn () => $calculator->factorSpreadForBusinessDays('-99.99999999', 1, $denominator, $scale),
+    ] as $call) {
+        $failure = puRootFailure($call);
+
+        expect($failure)->toBeInstanceOf(PuNumericConvergenceException::class)
+            ->and($failure->base)->toBe('0.0000000001000000')
+            ->and($failure->root)->toBe($denominator)
+            ->and($failure->getMessage())->toContain('não convergiu em 60 iterações');
+    }
+})->with([21, 252, 360, 365, 372])->with([DecimalRounder::FACTOR_SCALE, DecimalRounder::CALCULATION_SCALE]);
+
+/**
+ * O invariante, sem depender de onde o piso fica: descendo de 10^-1 a 10^-30, cada
+ * base ou sai com a raiz provada só com `bcpow`, ou lança
+ * `PuNumericConvergenceException`. Nunca um valor errado no meio do caminho. As
+ * pontas ancoram os dois desfechos: 10^-1 sempre é certificada, e 10^-30 só no
+ * denominador 2.
+ */
+it('never returns an uncertified root on the way down to the numerical floor', function (int $denominator) {
+    $calculator = puRootCalculator();
+    $wrongRoots = [];
+    $outcomes = [];
+
+    for ($exponent = 1; $exponent <= 30; $exponent++) {
+        $base = '0.'.str_repeat('0', $exponent - 1).'1';
+
+        foreach ([DecimalRounder::FACTOR_SCALE, DecimalRounder::CALCULATION_SCALE] as $scale) {
+            try {
+                $factor = $calculator->powRatio($base, 1, $denominator, $scale);
+                $wrongRoots[] = puRootBracketFailure($factor, $base, 1, $denominator, $scale);
+                $outcomes[$exponent][$scale] = 'certified';
+            } catch (PuNumericConvergenceException) {
+                $outcomes[$exponent][$scale] = 'refused';
+            }
+        }
+    }
+
+    $deepest = $denominator === 2 ? 'certified' : 'refused';
+
+    expect(array_values(array_filter($wrongRoots)))->toBe([])
+        ->and($outcomes[1])->toBe([DecimalRounder::FACTOR_SCALE => 'certified', DecimalRounder::CALCULATION_SCALE => 'certified'])
+        ->and($outcomes[30])->toBe([DecimalRounder::FACTOR_SCALE => $deepest, DecimalRounder::CALCULATION_SCALE => $deepest]);
+})->with([2, 21, 31, 252, 360, 372]);
+
+/**
+ * Sem teto de negócio: 9.999,99999999% a.a. é o maior valor das colunas de taxa dos
+ * parâmetros e fica muito acima do alcance do Newton. A recusa é NUMÉRICA -- a taxa
+ * não é recusada por ser alta -- e chega pelas entradas financeiras.
+ */
+it('fails closed through the financial entry points on the largest storable rate', function () {
+    $calculator = puRootCalculator();
+
+    foreach ([
+        fn () => $calculator->factorDiForDay('9999.99999999', true, 252, DecimalRounder::CALCULATION_SCALE),
+        fn () => $calculator->factorSpreadForBusinessDays('9999.99999999', 21, 252, DecimalRounder::CALCULATION_SCALE),
+    ] as $call) {
+        $failure = puRootFailure($call);
+
+        expect($failure)->toBeInstanceOf(PuNumericConvergenceException::class)
+            ->and($failure->base)->toBe('100.9999999999000000')
+            ->and($failure->getMessage())->toContain('não convergiu em 60 iterações');
+    }
+});
+
+// ---------------------------------------------------------------------------
+// Certificado final da raiz (ramo defensivo)
+// ---------------------------------------------------------------------------
+
+/**
+ * `assertBracketsExactRoot()` é privado e, com o Newton convergindo, nenhuma entrada
+ * medida o faz recusar pela API pública. Para provar que a salvaguarda recusa de
+ * fato, o teste a chama por reflexão com candidatos errados -- sem gancho de teste no
+ * código de produção. Escalas da engine na escala de cálculo: candidato em 32 casas,
+ * 36 de trabalho. A tolerância é de uma unidade da última casa, inclusive.
+ */
+it('certifies only a candidate within one unit of the exact root', function (string $base, int $root, string $candidate, bool $certified) {
+    $certificate = new ReflectionMethod(DailyFactorCalculator::class, 'assertBracketsExactRoot');
+
+    $failure = puRootFailure(fn () => $certificate->invoke(puRootCalculator(), $candidate, $base, $root, 32, 36));
+
+    if ($certified) {
+        expect($failure)->toBeNull();
+
+        return;
+    }
+
+    expect($failure)->toBeInstanceOf(PuNumericConvergenceException::class)
+        ->and($failure->getMessage())->toContain('a raiz exata não está a menos de')
+        ->toContain($candidate);
+})->with([
+    'raiz exata de 1,21' => ['1.21', 2, '1.10000000000000000000000000000000', true],
+    'uma unidade acima' => ['1.21', 2, '1.10000000000000000000000000000001', true],
+    'duas unidades acima' => ['1.21', 2, '1.10000000000000000000000000000002', false],
+    'duas unidades abaixo' => ['1.21', 2, '1.09999999999999999999999999999998', false],
+    // 26,50% a.a. em base 252; a raiz em 32 casas confere com o Python `decimal`.
+    'Fator DI de 26,50% a.a.' => ['1.2650000000000000', 252, '1.00093326109904419385804538897337', true],
+    // O que o Newton anterior devolvia para essa mesma taxa (P0-04).
+    'saída não convergida do P0-04' => ['1.2650000000000000', 252, '1.00126694253860198658665800000000', false],
+]);
