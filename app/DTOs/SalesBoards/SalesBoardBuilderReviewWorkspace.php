@@ -7,7 +7,9 @@ namespace App\DTOs\SalesBoards;
 use App\DTOs\BaseDTO;
 use App\Enums\SalesBoardBuilderReviewSection as SectionEnum;
 use App\Enums\SalesBoardBuilderReviewStatus;
+use App\Enums\SalesBoardIssueCode;
 use App\Models\SalesBoardBuilderDivergence;
+use App\Support\SalesBoards\SalesBoardIssuePresenter;
 use Carbon\CarbonImmutable;
 
 /**
@@ -34,6 +36,12 @@ readonly class SalesBoardBuilderReviewWorkspace extends BaseDTO
      * @param  array<string, SalesBoardBuilderWorkspaceSection>  $sections  indexado pelo valor da seção
      * @param  list<SalesBoardBuilderDivergence>  $divergences
      * @param  list<SalesBoardBuilderWorkspaceBucket>  $buckets
+     * @param  list<array<string, mixed>>|null  $warnings  os pontos para a construtora conferir, de
+     *                                                     {@see SalesBoardIssuePresenter::groupFrozen()}: só os avisos congelados
+     *                                                     sobre o dado dela ({@see SalesBoardIssueCode::isVisibleToBuilder()}),
+     *                                                     sem dica interna nem política comercial; `null` quando a versão não
+     *                                                     registrou avisos
+     * @param  array{reason: string, requested_by: string|null, requested_at: CarbonImmutable|null, published_version: string|null, published_at: CarbonImmutable|null, diff: string|null}|null  $rectification  o contexto da retificação aberta da competência
      */
     public function __construct(
         public int $reviewId,
@@ -51,7 +59,28 @@ readonly class SalesBoardBuilderReviewWorkspace extends BaseDTO
         public ?CarbonImmutable $submittedAt,
         public ?string $reviewerName,
         public ?string $overallComment,
+        public ?array $warnings = null,
+        public ?SalesBoardCompetenceBridge $bridge = null,
+        public ?array $rectification = null,
+        public int $lateMovementsCount = 0,
     ) {}
+
+    /**
+     * A competência está em retificação: a posição publicada continua valendo,
+     * e esta rodada valida a versão que vai substituí-la.
+     */
+    public function isRectification(): bool
+    {
+        return $this->rectification !== null;
+    }
+
+    /**
+     * Há pontos para a construtora conferir nesta posição.
+     */
+    public function hasWarnings(): bool
+    {
+        return ($this->warnings ?? []) !== [];
+    }
 
     public function section(SectionEnum $section): ?SalesBoardBuilderWorkspaceSection
     {

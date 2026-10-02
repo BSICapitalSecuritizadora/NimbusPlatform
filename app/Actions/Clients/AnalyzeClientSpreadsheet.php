@@ -3,9 +3,10 @@
 namespace App\Actions\Clients;
 
 use App\Enums\ClientPersonType;
+use App\Exceptions\UnreadableSpreadsheetException;
 use App\Models\Client;
 use App\Rules\ClientDocument;
-use Spatie\SimpleExcel\SimpleExcelReader;
+use App\Support\Imports\SpreadsheetRows;
 
 /**
  * Reads an import spreadsheet and classifies every row, without writing
@@ -36,7 +37,16 @@ class AnalyzeClientSpreadsheet
 
     public function handle(string $path): ClientSpreadsheetAnalysis
     {
-        $firstRow = SimpleExcelReader::create($path)->getRows()->first();
+        try {
+            return $this->analyze($path);
+        } catch (UnreadableSpreadsheetException $exception) {
+            return new ClientSpreadsheetAnalysis(fileErrors: [$exception->getMessage()]);
+        }
+    }
+
+    private function analyze(string $path): ClientSpreadsheetAnalysis
+    {
+        $firstRow = SpreadsheetRows::first($path);
 
         if ($firstRow === null) {
             return ClientSpreadsheetAnalysis::emptyFile();
@@ -53,15 +63,12 @@ class AnalyzeClientSpreadsheet
         $seenDocuments = [];
         $lineNumber = 1;
 
-        SimpleExcelReader::create($path)
-            ->getRows()
-            ->chunk(self::CHUNK_SIZE)
-            ->each(function ($chunk) use (&$analyzedRows, &$seenDocuments, &$lineNumber, $resolvedHeaders): void {
-                foreach ($chunk as $row) {
-                    $lineNumber++;
-                    $analyzedRows[] = $this->analyzeRow($row, $resolvedHeaders, $lineNumber, $seenDocuments);
-                }
-            });
+        foreach (SpreadsheetRows::chunks($path, self::CHUNK_SIZE) as $chunk) {
+            foreach ($chunk as $row) {
+                $lineNumber++;
+                $analyzedRows[] = $this->analyzeRow($row, $resolvedHeaders, $lineNumber, $seenDocuments);
+            }
+        }
 
         return new ClientSpreadsheetAnalysis($analyzedRows);
     }

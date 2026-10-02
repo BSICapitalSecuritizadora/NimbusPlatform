@@ -139,11 +139,14 @@ class GuaranteeValueResolver
      * sobre um único ativo.
      *
      * A origem de cada posição vai junto (`sales_board_coverage`): um
-     * empreendimento com posição transportada de mês anterior ou sem quadro
-     * algum deixa o valor `partial` — é a melhor posição conhecida, mas não é a
-     * da competência, e o fechamento exige confirmação explícita disso. O
-     * empreendimento cujo primeiro quadro é posterior à competência não é
-     * lacuna, como no leitor de posição.
+     * empreendimento com posição transportada de mês anterior, sem quadro até a
+     * competência ou sem quadro algum deixa o valor `partial` — é a melhor
+     * posição conhecida, mas não é a da competência, e o fechamento exige
+     * confirmação explícita disso. O empreendimento cujo primeiro quadro é
+     * posterior à competência entra aqui como lacuna, diferente do leitor de
+     * posição, que não o espera no painel de unidades: na competência ele já
+     * tinha unidades, e elas ficaram fora do estoque somado
+     * ({@see GuaranteeSalesBoardCoverage::gaps()}).
      */
     private function resolveFromSalesBoards(
         Guarantee $guarantee,

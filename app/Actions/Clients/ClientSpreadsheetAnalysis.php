@@ -108,6 +108,14 @@ class ClientSpreadsheetAnalysis
     }
 
     /**
+     * Preview rows, the blocking ones first -- errors, documents already
+     * registered or held by a deleted client, repetitions -- then the valid
+     * ones, each group in the order of the file.
+     *
+     * The comparators take both rows. Given one argument, a comparator in
+     * `sortBy([...])` is handed the pair anyway and answers for the first row
+     * alone, which is no order at all.
+     *
      * @return Collection<int, array<string, mixed>>
      */
     public function previewRows(): Collection
@@ -115,10 +123,18 @@ class ClientSpreadsheetAnalysis
         return $this->collect()
             ->reject(fn (array $row): bool => $row['status'] === AnalyzeClientSpreadsheet::STATUS_EMPTY)
             ->sortBy([
-                fn (array $row): int => $row['status'] === AnalyzeClientSpreadsheet::STATUS_VALID ? 1 : 0,
-                fn (array $row): int => $row['line'],
+                fn (array $a, array $b): int => self::previewWeight($a) <=> self::previewWeight($b),
+                fn (array $a, array $b): int => $a['line'] <=> $b['line'],
             ])
             ->values();
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private static function previewWeight(array $row): int
+    {
+        return $row['status'] === AnalyzeClientSpreadsheet::STATUS_VALID ? 3 : 0;
     }
 
     private function countByStatus(string $status): int

@@ -89,6 +89,18 @@ class ReceivableResource extends Resource
         return auth()->user()?->can('receivables.update') ?? false;
     }
 
+    /**
+     * Importar a planilha cria o resumo da competência ou reescreve o que já
+     * existe -- e esse resumo vai para o relatório mensal do investidor. Por
+     * isso exige criar **e** editar, a mesma regra da importação de contratos e
+     * de parcelas: quem só cria não reescreve, por planilha, o que a permissão
+     * de edição protege na tela, e quem só vê não grava nada.
+     */
+    public static function canImport(): bool
+    {
+        return static::canCreate() && (auth()->user()?->can('receivables.update') ?? false);
+    }
+
     public static function canView(Model $record): bool
     {
         return auth()->user()?->can('receivables.view') ?? false;

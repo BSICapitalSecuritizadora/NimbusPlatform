@@ -5,6 +5,8 @@ namespace App\Actions\Contracts;
 use App\Enums\ContractStatus;
 use App\Exceptions\ContractImportConcurrencyException;
 use App\Models\Contract;
+use App\Models\ImportRun;
+use App\Support\Imports\ImportRunDraft;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -43,17 +45,21 @@ use Throwable;
  *
  * The rows carry resolved ids -- never the spreadsheet text -- so nothing here
  * can invent a client, a unit or a development.
+ *
+ * With a draft, the {@see ImportRun} is opened inside the same transaction,
+ * before anything else, and stamps `import_run_id` on the contracts it creates;
+ * a rolled back import leaves no run behind.
  */
 class ImportContractsFromSpreadsheet
 {
     private const CHUNK_SIZE = 500;
 
     /**
-     * @return array{created: int, updated: int, unchanged: int, units: int, clients: int, constructions: int}
+     * @return array{created: int, updated: int, unchanged: int, units: int, clients: int, constructions: int, run: ImportRun|null}
      *
      * @throws ContractImportConcurrencyException when the units moved between the analysis and the confirmation
      */
-    public function handle(ContractSpreadsheetAnalysis $analysis): array
+    public function handle(ContractSpreadsheetAnalysis $analysis, ?ImportRunDraft $draft = null): array
     {
         if (! $analysis->canImport()) {
             throw new RuntimeException('A planilha possui inconsistências e não pode ser importada.');
@@ -63,13 +69,26 @@ class ImportContractsFromSpreadsheet
         $toUpdate = $analysis->rowsToUpdate();
 
         $updated = 0;
+        $run = null;
 
         try {
-            DB::transaction(function () use ($analysis, $toCreate, $toUpdate, &$updated): void {
+            DB::transaction(function () use ($analysis, $draft, $toCreate, $toUpdate, &$updated, &$run): void {
+                $run = $draft?->open();
+
                 $this->guardAgainstConcurrentChanges($analysis);
 
                 $updated = $this->update($toUpdate);
-                $this->create($toCreate);
+                $this->create($toCreate, $run?->getKey());
+
+                $run?->forceFill([
+                    'records_analyzed' => $analysis->totalLines(),
+                    'records_created' => $toCreate->count(),
+                    'records_updated' => $updated,
+                    'records_unchanged' => $analysis->unchangedCount(),
+                    'records_critical' => $analysis->criticalUpdateCount(),
+                    'records_warned' => $analysis->warningCount(),
+                    'records_absent' => $analysis->absentContractCount(),
+                ])->save();
             });
         } catch (QueryException $exception) {
             if (! $this->isOccupiedUnitViolation($exception)) {
@@ -88,6 +107,7 @@ class ImportContractsFromSpreadsheet
             'units' => $touched->pluck('construction_unit_id')->unique()->count(),
             'clients' => $touched->flatMap(fn (array $row): array => $row['client_ids'])->unique()->count(),
             'constructions' => $touched->pluck('construction_id')->unique()->count(),
+            'run' => $run,
         ];
     }
 
@@ -134,7 +154,7 @@ class ImportContractsFromSpreadsheet
     /**
      * @param  Collection<int, array<string, mixed>>  $rows
      */
-    private function create(Collection $rows): void
+    private function create(Collection $rows, mixed $runId): void
     {
         if ($rows->isEmpty()) {
             return;
@@ -152,6 +172,7 @@ class ImportContractsFromSpreadsheet
                 'sale_value' => $row['sale_value'],
                 'status' => $row['contract_status']->value,
                 'cancellation_date' => $row['cancellation_date'],
+                'import_run_id' => $runId,
                 'created_at' => $now,
                 'updated_at' => $now,
             ])

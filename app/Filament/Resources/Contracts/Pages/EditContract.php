@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Contracts\Pages;
 
 use App\Filament\Resources\Contracts\ContractResource;
 use App\Models\Contract;
+use App\Support\SalesBoards\SourceEntryCompetenceNotice;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
@@ -22,6 +23,13 @@ class EditContract extends EditRecord
     protected array $extraBodyAttributes = [
         'class' => 'bsi-cockpit-page',
     ];
+
+    /**
+     * O aviso de competência já registrada, apurado contra o contrato como
+     * estava antes de salvar. Não é estado do componente: vive só durante o
+     * salvamento.
+     */
+    private ?string $registeredCompetenceNotice = null;
 
     protected function getHeaderActions(): array
     {
@@ -62,6 +70,15 @@ class EditContract extends EditRecord
 
         unset($data['client_ids']);
 
+        /** @var Contract $record */
+        $this->registeredCompetenceNotice = SourceEntryCompetenceNotice::forContract(
+            $record->construction_id,
+            $data['sale_date'] ?? $record->sale_date,
+            $data['sale_value'] ?? $record->sale_value,
+            array_key_exists('cancellation_date', $data) ? $data['cancellation_date'] : $record->cancellation_date,
+            $record,
+        );
+
         return DB::transaction(function () use ($record, $data, $buyerIds): Model {
             $record->update($data);
 
@@ -75,5 +92,16 @@ class EditContract extends EditRecord
     protected function getSavedNotificationTitle(): ?string
     {
         return 'Contrato atualizado com sucesso.';
+    }
+
+    /**
+     * A alteração alcança competência já registrada no Quadro de Vendas: a
+     * notificação fica até ser fechada.
+     */
+    protected function afterSave(): void
+    {
+        SourceEntryCompetenceNotice::notify($this->registeredCompetenceNotice);
+
+        $this->registeredCompetenceNotice = null;
     }
 }

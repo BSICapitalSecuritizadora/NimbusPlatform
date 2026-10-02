@@ -6,6 +6,7 @@ use App\Concerns\MoneyFormatter;
 use App\Enums\ContractStatus;
 use App\Filament\Resources\Contracts\ContractResource;
 use App\Filament\Support\AnchoredFilterDropdown;
+use App\Filament\Support\ImportRunFilter;
 use App\Models\Client;
 use App\Models\Construction;
 use App\Models\Contract;
@@ -213,6 +214,8 @@ class ContractsTable
                             $data['sold_until'] ?? null,
                             fn (Builder $query, string $date): Builder => $query->whereDate('sale_date', '<=', $date),
                         )),
+
+                ImportRunFilter::make(),
 
                 TrashedFilter::make()
                     ->label('Contratos excluídos'),

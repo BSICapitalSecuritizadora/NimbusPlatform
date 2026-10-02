@@ -448,6 +448,11 @@ class GuaranteesRelationManager extends RelationManager
     /**
      * Digitação do valor da competência, oferecida apenas onde o Nimbus não
      * consegue apurar sozinho (§21 e §22).
+     *
+     * O padrão é o mês de negócio anterior, como em atualizar e fechar: quem
+     * fecha M-1 digita o valor de M-1. A competência passa pela mesma régua no
+     * próprio campo -- formato, mês ainda não iniciado e competência fechada --,
+     * e o servidor confere de novo ao gravar.
      */
     protected function makeInformValueAction(): Action
     {
@@ -459,21 +464,17 @@ class GuaranteesRelationManager extends RelationManager
             ->authorize(fn (): bool => $this->canUpdateValues())
             ->modalHeading('Informar valor da competência')
             ->fillForm(fn (): array => [
-                'reference_month' => GuaranteeSnapshot::formatReferenceMonthForDisplay(GuaranteeSnapshot::currentBusinessMonth()),
+                'reference_month' => GuaranteeSnapshot::formatReferenceMonthForDisplay(GuaranteeSnapshot::previousBusinessMonth()),
             ])
             ->form([
-                TextInput::make('reference_month')
-                    ->label('Competência')
-                    ->placeholder('MM/AAAA')
-                    ->mask('99/9999')
-                    ->required(),
+                $this->competenceInput(closedCompetenceMessage: 'A competência %s está fechada. Reabra-a antes de informar o valor.'),
                 $this->currencyInput('current_value', 'Valor da garantia')->required(),
             ])
             ->action(function (Guarantee $record, array $data): void {
                 try {
-                    app(GuaranteeSnapshotWriter::class)->recordManualValue(
+                    $position = app(GuaranteeSnapshotWriter::class)->recordManualValue(
                         guarantee: $record,
-                        referenceMonth: $data['reference_month'],
+                        referenceMonth: (string) $data['reference_month'],
                         value: MoneyFormatter::normalizeDecimalValue($data['current_value']),
                         actor: auth()->user(),
                     );
@@ -485,7 +486,13 @@ class GuaranteesRelationManager extends RelationManager
 
                 $this->resetPositionCache();
 
-                Notification::make()->title('Valor da competência atualizado.')->success()->send();
+                Notification::make()
+                    ->title(sprintf(
+                        'Valor da competência %s informado.',
+                        GuaranteeSnapshot::formatReferenceMonthForDisplay($position->reference_month),
+                    ))
+                    ->success()
+                    ->send();
             });
     }
 
@@ -783,7 +790,8 @@ class GuaranteesRelationManager extends RelationManager
     }
 
     /**
-     * Competências fechadas, da mais recente para a mais antiga.
+     * Competências fechadas, da mais recente para a mais antiga, com a fonte
+     * que desatualizou cada uma: Quadro de Vendas, saldo devedor ou os dois.
      *
      * @return array<string, string>
      */
@@ -795,23 +803,26 @@ class GuaranteesRelationManager extends RelationManager
             ->orderByDesc('reference_month')
             ->get()
             ->mapWithKeys(fn (GuaranteeSnapshot $snapshot): array => [
-                $snapshot->reference_month->toDateString() => $snapshot->isSalesBoardOutdated()
-                    ? $snapshot->formatted_reference_month.' · desatualizada pelo Quadro de Vendas'
+                $snapshot->reference_month->toDateString() => $snapshot->isOutdated()
+                    ? $snapshot->formatted_reference_month.' · '.$snapshot->outdatedSourcesLabel()
                     : $snapshot->formatted_reference_month,
             ])
             ->all();
     }
 
     /**
-     * A reabertura sugere primeiro a competência fechada que um quadro publicado
-     * desatualizou; sem nenhuma, a mais recente.
+     * A reabertura sugere primeiro a competência fechada que alguma mudança
+     * desatualizou -- um quadro publicado depois ou o saldo devedor
+     * recalculado --; sem nenhuma, a mais recente.
      */
     protected function defaultCompetenceToReopen(): ?string
     {
         $outdated = $this->getOwnerRecord()
             ->guaranteeSnapshots()
             ->whereNotNull('closed_at')
-            ->whereNotNull('sales_board_outdated_at')
+            ->where(fn (Builder $query): Builder => $query
+                ->whereNotNull('sales_board_outdated_at')
+                ->orWhereNotNull('outstanding_balance_outdated_at'))
             ->orderByDesc('reference_month')
             ->first();
 

@@ -4,9 +4,11 @@ namespace App\Filament\Resources\ConstructionUnits\Tables;
 
 use App\Filament\Resources\ConstructionUnits\ConstructionUnitResource;
 use App\Filament\Support\AnchoredFilterDropdown;
+use App\Filament\Support\ImportRunFilter;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\Emission;
+use App\Support\BusinessTime;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -67,14 +69,33 @@ class ConstructionUnitsTable
                     ->sortable()
                     ->placeholder('—'),
 
+                /**
+                 * Branco só no modo escuro: no claro a cor é a padrão da
+                 * tabela -- o branco fixo deixava o número invisível na linha
+                 * clara.
+                 */
                 TextColumn::make('unit')
                     ->label('Unidade')
                     ->searchable()
                     ->sortable()
                     ->weight('bold')
                     ->extraAttributes([
-                        'class' => 'font-semibold tracking-tight text-white tabular-nums',
+                        'class' => 'font-semibold tracking-tight tabular-nums dark:text-white',
                     ]),
+
+                /**
+                 * Pela baixa aberta já carregada com a página: uma consulta a
+                 * mais por página, nunca uma por linha.
+                 */
+                TextColumn::make('situation')
+                    ->label('Situação')
+                    ->badge()
+                    ->state(fn (ConstructionUnit $record): string => $record->openRetirement === null ? 'Ativa' : 'Baixada')
+                    ->color(fn (string $state): string => $state === 'Ativa' ? 'success' : 'danger')
+                    ->description(fn (ConstructionUnit $record): ?string => $record->openRetirement === null
+                        ? null
+                        : 'desde '.$record->openRetirement->retired_on->format('d/m/Y'))
+                    ->toggleable(),
 
                 /**
                  * Ocultas por padrão: a tabela é usada para localizar unidades,
@@ -99,7 +120,7 @@ class ConstructionUnitsTable
 
                 TextColumn::make('created_at')
                     ->label('Cadastrada em')
-                    ->dateTime('d/m/Y H:i')
+                    ->dateTime('d/m/Y H:i', BusinessTime::timezone())
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -150,6 +171,26 @@ class ConstructionUnitsTable
                     ->searchable()
                     ->preload()
                     ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
+
+                /**
+                 * Sem padrão: esconder as baixadas confundiria quem procura a
+                 * unidade pela identificação, e o filtro resolve quando é isso
+                 * que se quer.
+                 */
+                SelectFilter::make('situation')
+                    ->label('Situação')
+                    ->options([
+                        'active' => 'Ativas',
+                        'retired' => 'Baixadas',
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? null) {
+                        'active' => $query->whereDoesntHave('openRetirement'),
+                        'retired' => $query->whereHas('openRetirement'),
+                        default => $query,
+                    })
+                    ->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField()),
+
+                ImportRunFilter::make(),
             ])
             ->actions([
                 ActionGroup::make([

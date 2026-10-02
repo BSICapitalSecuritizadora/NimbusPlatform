@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Support\SalesBoards;
 
+use App\DTOs\SalesBoards\BuilderResponseEvidence;
 use App\DTOs\SalesBoards\BuilderReviewerIdentity;
 use App\DTOs\SalesBoards\SalesBoardBuilderDivergenceInput;
 use App\Enums\ContractStatus;
+use App\Enums\SalesBoardBuilderResponseChannel;
 use App\Enums\SalesBoardBuilderReviewSection as SectionEnum;
 use App\Enums\SalesBoardMovementType;
 use App\Models\Construction;
@@ -20,9 +22,12 @@ use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleLine;
 use App\Models\SalesBoardCycleMovement;
 use App\Models\User;
+use App\Services\SalesBoards\SalesBoardBuilderResponseEvidenceStore;
 use App\Services\SalesBoards\SalesBoardBuilderReviewEditor;
 use App\Services\SalesBoards\SalesBoardBuilderReviewOpeningService;
 use App\Services\SalesBoards\SalesBoardBuilderReviewSubmissionService;
+use Carbon\CarbonImmutable;
+use Illuminate\Http\UploadedFile;
 
 /**
  * Monta ciclos já congelados e prontos para validação.
@@ -151,9 +156,20 @@ final class BuilderReviewFixture
         return $review->sections()->where('section', $section)->sole();
     }
 
-    public static function confirmAll(SalesBoardBuilderReview $review): void
+    /**
+     * Quem responde a validação, na identidade que o editor e o envio
+     * autorizam. Sem ator informado, responde alguém que opera a competência:
+     * os serviços recusam quem não tem `sales-boards.update`.
+     */
+    public static function reviewer(?User $actor = null): BuilderReviewerIdentity
+    {
+        return BuilderReviewerIdentity::forInternalUser($actor ?? GovernanceFixture::operator());
+    }
+
+    public static function confirmAll(SalesBoardBuilderReview $review, ?BuilderReviewerIdentity $reviewer = null): void
     {
         $editor = app(SalesBoardBuilderReviewEditor::class);
+        $reviewer ??= self::reviewer();
 
         foreach (SectionEnum::ordered() as $section) {
             $row = self::section($review, $section);
@@ -162,7 +178,7 @@ final class BuilderReviewFixture
                 continue;
             }
 
-            $editor->confirmSection($row);
+            $editor->confirmSection($row, $reviewer);
         }
     }
 
@@ -170,23 +186,115 @@ final class BuilderReviewFixture
         SalesBoardBuilderReview $review,
         SectionEnum $section,
         SalesBoardBuilderDivergenceInput $input,
+        ?BuilderReviewerIdentity $reviewer = null,
     ): SalesBoardBuilderDivergence {
         return app(SalesBoardBuilderReviewEditor::class)
-            ->addDivergence(self::section($review, $section), $input);
+            ->addDivergence(self::section($review, $section), $reviewer ?? self::reviewer(), $input);
     }
 
+    /**
+     * Sem ator informado, envia alguém que opera a competência -- e que não é
+     * da Gestão, para que a aprovação de outra pessoa não esbarre na
+     * segregação.
+     *
+     * O envio interno exige a resposta da construtora: sem evidência informada,
+     * vai a de {@see self::evidence()}. A gravação do arquivo fica com o
+     * armazenamento em memória, a menos que o teste peça o real -- quem prova o
+     * upload usa `Storage::fake()` e `$realStore`.
+     */
     public static function submit(
         SalesBoardBuilderReview $review,
         ?User $actor = null,
         ?string $comment = null,
+        ?BuilderResponseEvidence $evidence = null,
+        bool $realStore = false,
     ): SalesBoardBuilderReview {
-        $actor ??= User::factory()->create();
+        $actor ??= GovernanceFixture::operator();
+        $review = $review->fresh();
+
+        if (! $realStore) {
+            self::useInMemoryEvidenceStore();
+        }
 
         return app(SalesBoardBuilderReviewSubmissionService::class)->submit(
-            $review->fresh(),
+            $review,
             BuilderReviewerIdentity::forInternalUser($actor),
             $comment,
+            $evidence ?? self::evidence($review),
         );
+    }
+
+    /**
+     * Liga o armazenamento em memória da resposta da construtora no container.
+     */
+    public static function useInMemoryEvidenceStore(): void
+    {
+        app()->instance(
+            SalesBoardBuilderResponseEvidenceStore::class,
+            app(InMemoryBuilderResponseEvidenceStore::class),
+        );
+    }
+
+    /**
+     * Uma resposta da construtora completa: quem respondeu, o canal, o
+     * recebimento na data da posição e um PDF.
+     *
+     * @param  list<UploadedFile>|null  $files
+     */
+    public static function evidence(
+        ?SalesBoardBuilderReview $review = null,
+        SalesBoardBuilderResponseChannel $channel = SalesBoardBuilderResponseChannel::Email,
+        ?string $receivedOn = null,
+        ?array $files = null,
+        string $respondentName = 'Marina Ribeiro',
+        string $respondentEmail = 'marina.ribeiro@construtora.example',
+    ): BuilderResponseEvidence {
+        return new BuilderResponseEvidence(
+            respondentName: $respondentName,
+            respondentEmail: $respondentEmail,
+            channel: $channel,
+            receivedOn: CarbonImmutable::parse($receivedOn ?? self::positionDateOf($review)),
+            files: $files ?? [self::responseFile()],
+        );
+    }
+
+    /**
+     * Os campos da resposta da construtora como o formulário de envio os
+     * recebe -- é o que `callAction('submitReview')` precisa somar à
+     * declaração.
+     *
+     * @return array<string, mixed>
+     */
+    public static function evidenceFormData(?SalesBoardBuilderReview $review = null): array
+    {
+        return [
+            'builder_respondent_name' => 'Marina Ribeiro',
+            'builder_respondent_email' => 'marina.ribeiro@construtora.example',
+            'builder_response_channel' => SalesBoardBuilderResponseChannel::Email->value,
+            'builder_response_received_on' => self::positionDateOf($review),
+            'builder_response_attachments' => [self::responseFile()],
+        ];
+    }
+
+    /**
+     * Um PDF de verdade, pequeno: o MIME é derivado do conteúdo gravado, e um
+     * arquivo vazio não seria aceito como resposta.
+     */
+    public static function responseFile(string $name = 'resposta-construtora.pdf'): UploadedFile
+    {
+        return UploadedFile::fake()->createWithContent(
+            $name,
+            "%PDF-1.4\n% Resposta da construtora\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n",
+        );
+    }
+
+    /**
+     * A data da posição da rodada -- o fim da competência --, ou a das
+     * competências que estes cenários geram.
+     */
+    private static function positionDateOf(?SalesBoardBuilderReview $review): string
+    {
+        return $review?->cycle?->position_date?->toDateString() ?? '2026-07-31';
     }
 
     public static function lineFor(SalesBoardBuilderReview $review, ConstructionUnit $unit): SalesBoardCycleLine

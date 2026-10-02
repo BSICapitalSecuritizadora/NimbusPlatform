@@ -78,8 +78,16 @@
 
             @if (! $workspace->isApplicable)
                 <p class="mt-4 rounded-md bg-danger-50 p-3 text-sm text-danger-700 dark:bg-danger-400/10 dark:text-danger-400">
-                    Esta análise se refere a uma versão que não é mais a vigente. As decisões registradas
-                    continuam consultáveis, mas nada pode ser aprovado a partir dela.
+                    @if ($this->closedByReopenedCancellation($workspace))
+                        Esta análise foi encerrada pelo cancelamento da competência, que depois foi reaberta. As decisões
+                        registradas continuam consultáveis, mas nada pode ser aprovado a partir dela.
+                    @elseif ($this->closedByAbandonedRectification($workspace))
+                        Esta análise foi encerrada pela desistência da retificação: a competência voltou à posição publicada.
+                        As decisões registradas continuam consultáveis, mas nada pode ser aprovado a partir dela.
+                    @else
+                        Esta análise se refere a uma versão que não é mais a vigente. As decisões registradas
+                        continuam consultáveis, mas nada pode ser aprovado a partir dela.
+                    @endif
                 </p>
             @endif
 
@@ -100,6 +108,51 @@
                 </div>
             @endif
         </x-filament::section>
+
+        {{-- A retificação: o que esta análise aprova substitui a posição publicada. --}}
+        @if ($workspace->isRectification())
+            <x-filament::section wire:key="management-review-rectification">
+                <x-slot name="heading">Retificação da competência publicada</x-slot>
+                <x-slot name="description">
+                    A posição publicada ({{ $workspace->rectification['published_version'] ?? '—' }}@if ($workspace->rectification['published_at']), em {{ \App\Support\BusinessTime::at($workspace->rectification['published_at'])->format('d/m/Y') }}@endif)
+                    continua valendo até esta aprovação. Aprovar publica de novo o mesmo quadro, com o motivo no histórico de versões.
+                </x-slot>
+
+                <div class="space-y-2 text-sm">
+                    <p class="rounded-md bg-warning-50 p-3 text-warning-700 dark:bg-warning-400/10 dark:text-warning-400">
+                        <span class="font-medium">Motivo da retificação:</span> {{ $workspace->rectification['reason'] }}
+                        <span class="block text-xs">
+                            Aberta por {{ $workspace->rectification['requested_by'] ?? 'usuário não registrado' }}@if ($workspace->rectification['requested_at']) em {{ \App\Support\BusinessTime::at($workspace->rectification['requested_at'])->format('d/m/Y \à\s H:i') }}@endif. Quem abriu a retificação não aprova a publicação dela.
+                        </span>
+                    </p>
+                    @if (filled($workspace->publishedDiff))
+                        <p class="text-gray-600 dark:text-gray-300">
+                            <span class="font-medium">O que muda contra a posição publicada:</span> {{ $workspace->publishedDiff }}
+                        </p>
+                    @endif
+                </div>
+            </x-filament::section>
+        @endif
+
+        {{--
+            Os avisos que a apuração congelou com a versão analisada, com código
+            e dica. Sem as vendas fora da política -- do mês ou de competência
+            anterior --, que já estão nas não conformidades abaixo. Versão sem
+            registro diz isso, em vez de parecer limpa.
+        --}}
+        @if ($workspace->warnings !== [])
+            <x-filament::section wire:key="management-review-warnings">
+                <x-slot name="heading">Avisos da apuração</x-slot>
+                <x-slot name="description">
+                    Sinais que a apuração registrou nesta versão sem impedir o congelamento. Não bloqueiam a aprovação, mas precisam ser conferidos antes dela.
+                </x-slot>
+
+                @include('filament.sales-boards.derivation-warnings', [
+                    'warningGroups' => $workspace->warnings,
+                    'showCodes' => true,
+                ])
+            </x-filament::section>
+        @endif
 
         {{-- Resumo da posição: os quatro baldes, como o fechamento os apresenta. --}}
         <x-filament::section>
@@ -124,7 +177,7 @@
             <x-slot name="heading">Validação da construtora</x-slot>
             <x-slot name="description">
                 @if ($workspace->builderSubmittedAt)
-                    Enviada por {{ $workspace->builderReviewerName ?? '—' }} em {{ $workspace->builderSubmittedAt->format('d/m/Y H:i') }} ·
+                    Enviada por {{ $workspace->builderReviewerName ?? '—' }} em {{ \App\Support\BusinessTime::at($workspace->builderSubmittedAt)->format('d/m/Y H:i') }} ·
                     {{ $workspace->builderFullyConfirmed ? 'confirmada integralmente' : $workspace->builderDivergenceCount.' divergência(s) declarada(s)' }}
                 @else
                     Nenhuma submissão vinculada.
@@ -137,6 +190,12 @@
                 </p>
             @endif
 
+            @if ($workspace->builderResponse !== null)
+                <div class="mb-4">
+                    @include('filament.sales-boards.builder-response', ['builderResponse' => $workspace->builderResponse])
+                </div>
+            @endif
+
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach ($workspace->builderSections as $section)
                     <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
@@ -144,8 +203,9 @@
                         <p class="mt-1">
                             <x-filament::badge :color="$section['color']" size="sm">{{ $section['status'] }}</x-filament::badge>
                         </p>
+                        {{-- warning-800 no claro: o 600 sobre o cartão claro fica em 2,5:1, abaixo do AA para texto pequeno. --}}
                         @if ($section['divergences'] > 0)
-                            <p class="mt-1 text-xs text-warning-600 dark:text-warning-400">
+                            <p class="mt-1 text-xs text-warning-800 dark:text-warning-400" data-section-divergences>
                                 {{ $section['divergences'] }} divergência(s)
                             </p>
                         @endif
@@ -157,10 +217,69 @@
             </div>
         </x-filament::section>
 
+        {{-- Os fatos de competências anteriores que esta competência recebeu, com a conformidade (área interna). --}}
+        @if ($workspace->lateMovements !== [])
+            <x-filament::section collapsible wire:key="management-review-late-movements">
+                <x-slot name="heading">
+                    <span class="flex items-center gap-3">
+                        Movimentos de competências anteriores
+                        <x-filament::badge color="warning">{{ count($workspace->lateMovements) }}</x-filament::badge>
+                    </span>
+                </x-slot>
+                <x-slot name="description">
+                    Vendas, distratos e quitações de competências já fechadas lançados depois, vendas publicadas com valor ou data revistos e
+                    fatos de competências canceladas que esta absorve. A posição publicada das competências anteriores não muda: os fatos entram aqui.
+                    As vendas fora da política ou sem conformidade determinável também estão nas pendências abaixo.
+                </x-slot>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                            <tr>
+                                <th class="py-2 pr-4">Movimento</th>
+                                <th class="py-2 pr-4">Unidade</th>
+                                <th class="py-2 pr-4">Contrato</th>
+                                <th class="py-2 pr-4">Origem</th>
+                                <th class="py-2 pr-4">Data</th>
+                                <th class="py-2 pr-4 text-right">Valor</th>
+                                <th class="py-2 pr-4">Conformidade</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                            @foreach ($workspace->lateMovements as $movement)
+                                <tr wire:key="management-late-movement-{{ $loop->index }}">
+                                    <td class="py-2 pr-4">{{ $movement['type'] }}</td>
+                                    <td class="py-2 pr-4 font-medium">{{ $movement['unit'] }}</td>
+                                    <td class="py-2 pr-4">{{ $movement['contract'] ?? '—' }}</td>
+                                    <td class="py-2 pr-4">
+                                        <x-filament::badge :color="$movement['timing_color']" size="sm">{{ $movement['timing'] }}</x-filament::badge>
+                                    </td>
+                                    <td class="py-2 pr-4">{{ $movement['date'] ?? '—' }}</td>
+                                    <td class="py-2 pr-4 text-right tabular-nums">{{ $movement['value'] }}</td>
+                                    <td class="py-2 pr-4">{{ $movement['conformity'] ?? '—' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </x-filament::section>
+        @endif
+
+        {{-- Como a posição da competência anterior chega a esta, pelos movimentos congelados. --}}
+        @if ($workspace->bridge?->hasAnchor())
+            <x-filament::section collapsible wire:key="management-review-bridge">
+                <x-slot name="heading">Ponte com a competência anterior</x-slot>
+                <x-slot name="description">{{ $workspace->bridge->summary() }}</x-slot>
+
+                @include('filament.resources.sales-board-cycles.partials.competence-bridge', ['bridge' => $workspace->bridge])
+            </x-filament::section>
+        @endif
+
         {{-- As pendências, separadas por origem: são fatos de naturezas diferentes. --}}
         @foreach ([
             [\App\Enums\SalesBoardNonconformityOrigin::SystemSaleNonConform, 'Não conformidades do sistema', 'Vendas que o Nimbus apurou abaixo do mínimo autorizado pela política vigente na data. Área interna.'],
             [\App\Enums\SalesBoardNonconformityOrigin::SystemSaleUndetermined, 'Vendas sem conformidade determinável', 'Vendas que o Nimbus não conseguiu avaliar por falta do dado contra o qual elas seriam comparadas. Não são não conformidades: são ausências de informação, e só se resolvem corrigindo a fonte.'],
+            [\App\Enums\SalesBoardNonconformityOrigin::SystemLateSaleWithoutPolicy, 'Vendas de competência publicada sem política aplicável', 'Vendas extemporâneas ou revistas, com valor e tabela conhecidos, num mês já publicado em que não havia política de desconto aplicável. A política dessa competência não pode mais ser registrada: a Gestão aprova a exceção, com motivo, ou exige a correção da venda.'],
             [\App\Enums\SalesBoardNonconformityOrigin::BuilderDeclared, 'Divergências declaradas pela construtora', 'O que a construtora afirma que não confere. A posição apurada não é alterada por nenhuma delas.'],
         ] as [$origin, $title, $description])
             @php($rows = $workspace->nonconformitiesOf($origin))
@@ -195,6 +314,11 @@
                                                 <span class="text-gray-500 dark:text-gray-400">· {{ $row->contractCode }}</span>
                                             @endif
                                         </p>
+                                        @if ($row->isFromEarlierCompetence())
+                                            <p class="mt-1">
+                                                <x-filament::badge color="warning" size="sm">{{ $row->timingLabel }}</x-filament::badge>
+                                            </p>
+                                        @endif
                                     </div>
                                     <x-filament::badge :color="$row->decision->color()">{{ $row->decision->label() }}</x-filament::badge>
                                 </div>
@@ -232,6 +356,23 @@
                                     </p>
                                 @endif
 
+                                {{-- O caminho de correção conhecido, quando a pendência tem um. O link não consulta a unidade: o id vem da linha congelada. --}}
+                                @if ($row->correctionGuidance)
+                                    <div class="mt-3 rounded-md bg-info-50 p-3 text-sm text-info-700 dark:bg-info-400/10 dark:text-info-400">
+                                        <p>{{ $row->correctionGuidance }}</p>
+                                        @if ($row->unitToRetireId !== null && \App\Filament\Resources\ConstructionUnits\ConstructionUnitResource::canViewAny())
+                                            <a
+                                                href="{{ \App\Filament\Resources\ConstructionUnits\ConstructionUnitResource::getUrl('view', ['record' => $row->unitToRetireId]) }}"
+                                                target="_blank"
+                                                rel="noopener"
+                                                class="mt-2 inline-flex items-center gap-1 font-medium underline"
+                                            >
+                                                Abrir a unidade
+                                            </a>
+                                        @endif
+                                    </div>
+                                @endif
+
                                 @if (count($row->facts) > 0)
                                     <div class="mt-3 overflow-x-auto">
                                         <table class="w-full text-sm">
@@ -255,7 +396,7 @@
                                     <p class="mt-3 rounded-md bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                                         <span class="font-medium">{{ $row->decision->label() }}:</span> {{ $row->decisionReason }}
                                         <span class="block text-xs text-gray-500 dark:text-gray-400">
-                                            {{ $row->decidedByName ?? '—' }}@if ($row->decidedAt) · {{ $row->decidedAt->format('d/m/Y H:i') }} @endif
+                                            {{ $row->decidedByName ?? '—' }}@if ($row->decidedAt) · {{ \App\Support\BusinessTime::at($row->decidedAt)->format('d/m/Y H:i') }} @endif
                                         </span>
                                     </p>
                                 @endif
@@ -275,6 +416,19 @@
             </x-filament::section>
         @endforeach
 
+        {{-- A análise aprovada não apura a fonte de novo: mostra quando e por quem a posição foi publicada. --}}
+        @if ($workspace->approvedSummary !== null)
+            <x-filament::section wire:key="management-review-approved">
+                <x-slot name="heading">
+                    <span class="flex items-center gap-3">
+                        Publicação
+                        <x-filament::badge color="success">Publicada</x-filament::badge>
+                    </span>
+                </x-slot>
+
+                <p class="text-sm">{{ $workspace->approvedSummary }}</p>
+            </x-filament::section>
+        @else
         {{-- O portão: read model do estado real, nunca um checklist a marcar. --}}
         <x-filament::section>
             <x-slot name="heading">
@@ -312,13 +466,15 @@
 
             <ul class="space-y-2">
                 @foreach ($workspace->gate['checks'] as $check)
+                    @php($informative = (bool) ($check['informative'] ?? false))
                     <li class="flex items-start gap-3 text-sm">
                         <x-filament::icon
-                            :icon="$check['passed'] ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle'"
+                            :icon="$informative ? 'heroicon-o-information-circle' : ($check['passed'] ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle')"
                             @class([
                                 'mt-0.5 h-5 w-5 shrink-0',
-                                'text-success-600 dark:text-success-400' => $check['passed'],
-                                'text-danger-600 dark:text-danger-400' => ! $check['passed'],
+                                'text-info-600 dark:text-info-400' => $informative,
+                                'text-success-600 dark:text-success-400' => ! $informative && $check['passed'],
+                                'text-danger-600 dark:text-danger-400' => ! $informative && ! $check['passed'],
                             ])
                         />
                         <span>
@@ -366,11 +522,13 @@
 
             {{--
                 Ação escrita direto no Blade é impressa mesmo quando `visible()` a
-                esconde, como um botão inerte. As condições abaixo são as mesmas das
-                ações e usam o portão que o workspace já trouxe, sem apurá-lo de novo.
-                Rodada encerrada não mostra nenhuma das duas. O motivo do
-                maker/checker também vai em texto ao lado do botão desabilitado:
-                o tooltip não existe em tela de toque.
+                esconde, como um botão inerte: rodada encerrada não mostra nenhuma
+                das duas, pela mesma condição das ações. O botão de aprovar só
+                aparece com o portão aberto, lido do workspace que a página já
+                trouxe, sem apurá-lo de novo -- a ação em si não depende do portão,
+                que ela refaz ao executar. O motivo do maker/checker também vai em
+                texto ao lado do botão desabilitado: o tooltip não existe em tela
+                de toque.
             --}}
             @if ($canDecide)
                 @php($approvalConflict = $workspace->isReadyToPublish() ? $this->approvalConflict() : null)
@@ -383,14 +541,14 @@
 
                         @if ($approvalConflict !== null)
                             <p class="text-sm text-gray-600 dark:text-gray-300">
-                                <span class="font-medium">Aprovar e publicar indisponível:</span>
+                                <span class="font-medium">{{ $this->approveLabel() }} indisponível:</span>
                                 {{ $approvalConflict }}
                             </p>
                         @endif
                     @else
                         <p class="text-sm text-gray-600 dark:text-gray-300">
-                            <span class="font-medium">Aprovar e publicar indisponível:</span>
-                            {{ implode('; ', $this->failedGateChecks($workspace)) }}.
+                            <span class="font-medium">{{ $this->approveLabel() }} indisponível:</span>
+                            {{ \App\Support\SalesBoards\GateChecklistSummary::sentence($this->failedGateChecks($workspace)) }}
                         </p>
                     @endif
                 </div>
@@ -401,6 +559,7 @@
                 </p>
             @endif
         </x-filament::section>
+        @endif
 
         {{-- O encerramento, quando já houve um. --}}
         @if ($workspace->approvedAt || $workspace->returnReason)
@@ -410,8 +569,13 @@
                 @if ($workspace->approvedAt)
                     <p class="text-sm">
                         Aprovada por <strong>{{ $workspace->approvedByName ?? '—' }}</strong>
-                        em {{ $workspace->approvedAt->format('d/m/Y H:i') }}.
+                        em {{ \App\Support\BusinessTime::at($workspace->approvedAt)->format('d/m/Y H:i') }}.
                     </p>
+                    @if ($workspace->approvedBySubmitter)
+                        <p class="mt-2 rounded-md bg-warning-50 p-3 text-sm text-warning-700 dark:bg-warning-400/10 dark:text-warning-400">
+                            Aprovada pelo mesmo usuário que registrou a validação — isenção de segregação do super-admin.
+                        </p>
+                    @endif
                     @if ($workspace->sourceChangeReason)
                         <p class="mt-2 rounded-md bg-info-50 p-3 text-sm text-info-700 dark:bg-info-400/10 dark:text-info-400">
                             <span class="font-medium">Aprovada com a fonte alterada:</span> {{ $workspace->sourceChangeReason }}

@@ -3,12 +3,17 @@
 namespace App\Models;
 
 use App\Enums\SalesBoardCycleStatus;
+use App\Enums\SalesBoardRectificationStatus;
+use App\Support\SalesBoards\PublishedCompetenceBoundary;
 use Carbon\CarbonImmutable;
 use Database\Factories\SalesBoardCycleFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use LogicException;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -17,8 +22,17 @@ use Spatie\Activitylog\Support\LogOptions;
  * O ciclo mensal do Quadro de Vendas de um empreendimento.
  *
  * Raiz histórica protegida: nunca é apagado, e as versões que pendem dele
- * também não. O único campo que muda depois da criação é o ponteiro para a
- * versão vigente.
+ * também não. Depois da criação só mudam o ponteiro para a versão vigente, a
+ * situação e a trilha do cancelamento e da reabertura.
+ *
+ * O cancelamento tem volta: "Reabrir competência" devolve o mesmo ciclo a
+ * "Gerado", e as colunas de cancelamento ficam como registro do último
+ * cancelamento, ao lado das da reabertura.
+ *
+ * Competência publicada é a que tem publicação ({@see self::hasPublication()}),
+ * nunca o status Aprovado: a retificação devolve o ciclo publicado a "Gerado"
+ * enquanto a posição publicada continua valendo. "Em retificação" também não é
+ * status -- é a retificação aberta ({@see self::openRectification()}).
  *
  * Não confundir com {@see SalesBoard}, que continua sendo a posição publicada. O
  * ciclo é o que foi *apurado*, com todo o caminho até chegar lá.
@@ -33,7 +47,8 @@ class SalesBoardCycle extends Model
      *
      * `updated_at` entra porque o Eloquent toca o timestamp em qualquer save --
      * sem ele o guard bloquearia a própria troca de versão vigente. Os campos
-     * de cancelamento só são gravados junto com o status `Cancelled`.
+     * de cancelamento só são gravados junto com o status `Cancelled`, e os de
+     * reabertura junto com a volta a `Generated`.
      *
      * @var list<string>
      */
@@ -43,6 +58,9 @@ class SalesBoardCycle extends Model
         'cancelled_at',
         'cancelled_by_user_id',
         'cancellation_reason',
+        'reopened_at',
+        'reopened_by_user_id',
+        'reopen_reason',
         'updated_at',
     ];
 
@@ -57,6 +75,9 @@ class SalesBoardCycle extends Model
         'cancelled_at',
         'cancelled_by_user_id',
         'cancellation_reason',
+        'reopened_at',
+        'reopened_by_user_id',
+        'reopen_reason',
     ];
 
     /**
@@ -84,6 +105,7 @@ class SalesBoardCycle extends Model
             'position_date' => 'immutable_date',
             'status' => SalesBoardCycleStatus::class,
             'cancelled_at' => 'immutable_datetime',
+            'reopened_at' => 'immutable_datetime',
         ];
     }
 
@@ -121,6 +143,11 @@ class SalesBoardCycle extends Model
         return $this->belongsTo(User::class, 'cancelled_by_user_id');
     }
 
+    public function reopenedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reopened_by_user_id');
+    }
+
     /**
      * Versões do ciclo, da mais recente para a mais antiga.
      */
@@ -150,6 +177,93 @@ class SalesBoardCycle extends Model
     public function currentMovements(): HasMany
     {
         return $this->hasMany(SalesBoardCycleMovement::class, 'sales_board_cycle_baseline_id', 'current_baseline_id');
+    }
+
+    /**
+     * As publicações do ciclo, da primeira à mais recente.
+     *
+     * Uma por aprovação: a primeira publicação da competência e uma a cada
+     * retificação aprovada, encadeadas por `supersedes_publication_id`. Nenhuma
+     * é apagada nem reescrita.
+     */
+    public function publications(): HasMany
+    {
+        return $this->hasMany(SalesBoardPublication::class, 'sales_board_cycle_id')->orderBy('sequence_number');
+    }
+
+    /**
+     * A publicação vigente: a de maior sequência. É a posição que Quadro,
+     * leitor, garantias, relatório e a âncora da competência seguinte enxergam,
+     * inclusive enquanto uma retificação está em andamento.
+     */
+    public function currentPublication(): HasOne
+    {
+        return $this->hasOne(SalesBoardPublication::class, 'sales_board_cycle_id')->latestOfMany('sequence_number');
+    }
+
+    /**
+     * Os pedidos de retificação, do mais recente para o mais antigo.
+     */
+    public function rectifications(): HasMany
+    {
+        return $this->hasMany(SalesBoardCycleRectification::class, 'sales_board_cycle_id')->orderByDesc('sequence_number');
+    }
+
+    /**
+     * A retificação em andamento, se houver -- no máximo uma, pela unique da
+     * coluna gerada.
+     */
+    public function openRectification(): HasOne
+    {
+        return $this->hasOne(SalesBoardCycleRectification::class, 'sales_board_cycle_id')
+            ->where('status', SalesBoardRectificationStatus::Open->value);
+    }
+
+    /**
+     * Só os ciclos com posição publicada, em qualquer sequência.
+     *
+     * @param  Builder<SalesBoardCycle>  $query
+     */
+    public function scopeWithPublication(Builder $query): void
+    {
+        $cycles = $this->getTable();
+        $publications = (new SalesBoardPublication)->getTable();
+
+        $query->whereExists(function (QueryBuilder $exists) use ($cycles, $publications): void {
+            $exists->selectRaw('1')
+                ->from($publications)
+                ->whereColumn("{$publications}.sales_board_cycle_id", "{$cycles}.id");
+        });
+    }
+
+    /**
+     * A competência publicada mais recente da obra. A regra é a da fronteira
+     * única ({@see PublishedCompetenceBoundary}); este atalho só delega.
+     */
+    public static function lastPublishedMonthFor(int $constructionId): ?CarbonImmutable
+    {
+        return PublishedCompetenceBoundary::lastPublishedMonth($constructionId);
+    }
+
+    public function hasPublication(): bool
+    {
+        if ($this->relationLoaded('currentPublication')) {
+            return $this->currentPublication !== null;
+        }
+
+        return $this->publications()->exists();
+    }
+
+    /**
+     * A competência publicada está sendo retificada.
+     */
+    public function isUnderRectification(): bool
+    {
+        if ($this->relationLoaded('openRectification')) {
+            return $this->openRectification !== null;
+        }
+
+        return $this->openRectification()->exists();
     }
 
     /**

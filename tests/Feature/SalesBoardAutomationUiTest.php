@@ -2,6 +2,7 @@
 
 use App\Filament\Resources\SalesBoardAutomationTargets\Pages\ListSalesBoardAutomationTargets;
 use App\Filament\Resources\SalesBoardAutomationTargets\SalesBoardAutomationTargetResource;
+use App\Models\SalesBoardAutomationRun;
 use App\Models\SalesBoardAutomationTarget;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -45,6 +46,38 @@ it('says whether the scheduler has run at all', function () {
         ->assertOk()
         ->assertSee('Última execução em')
         ->assertSee('competência limite 08/2026');
+});
+
+it('shows how long the last run took on the automation screen', function () {
+    SalesBoardAutomationRun::factory()->create(['duration_ms' => 125_000]);
+
+    Livewire::test(ListSalesBoardAutomationTargets::class)
+        ->assertOk()
+        ->assertSee('durou 2 min 05 s');
+
+    SalesBoardAutomationRun::factory()->create(['started_at' => now()->addMinute(), 'duration_ms' => 840]);
+
+    Livewire::test(ListSalesBoardAutomationTargets::class)
+        ->assertOk()
+        ->assertSee('durou 0,8 s');
+});
+
+it('shows the reminder policy in force, item by item', function () {
+    Livewire::test(ListSalesBoardAutomationTargets::class)
+        ->assertOk()
+        ->assertSee('Avisos: bloqueio pela fonte no mesmo dia; falha técnica a partir de 3 falhas seguidas; '
+            .'posição pronta para a construtora no mesmo dia; validação da construtora — lembrete com 5 dias e escalação com 10; '
+            .'análise da Gestão — lembrete com 3 dias e escalação com 7 (dias corridos). Execução interrompida, suspensão por escopo '
+            .'e automação encerrada por liquidação são avisadas sempre.');
+
+    // Um item desligado -- por `off` ou por valor ilegível -- aparece como tal.
+    config()->set('sales_board.automation.reminders.builder_review_escalation_after_days', null);
+
+    Livewire::test(ListSalesBoardAutomationTargets::class)
+        ->assertOk()
+        ->assertSee('Avisos: bloqueio pela fonte no mesmo dia; falha técnica a partir de 3 falhas seguidas; '
+            .'posição pronta para a construtora no mesmo dia; validação da construtora — lembrete com 5 dias e escalação desligada; '
+            .'análise da Gestão — lembrete com 3 dias e escalação com 7 (dias corridos).');
 });
 
 it('says the automation is switched off instead of pretending the scheduler died', function () {

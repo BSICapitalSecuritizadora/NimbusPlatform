@@ -1,0 +1,81 @@
+name: sales-board-benchmarks
+
+# Benchmarks de escala do Quadro de Vendas e da importação de parcelas.
+#
+# NÃO bloqueante, de propósito: este workflow não entra no `needs` do deploy
+# (main_bsicapital.yml). Orçamentos de tempo oscilam em runner compartilhado, e
+# um portão vermelho por oscilação custaria cerca de 55 min de CI e travaria
+# correções. A regressão que importa -- hidratar parcelas como model -- já é
+# barrada na suíte comum por guardas determinísticos; aqui fica o sinal
+# automático de escala, que alguém precisa olhar quando ficar vermelho.
+#
+# Os testes são opt-in (NIMBUS_BENCH=1) e rodam igual à mão: `composer test:bench`.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/Services/SalesBoards/**'
+      - 'app/Support/SalesBoards/**'
+      - 'app/DTOs/SalesBoards/**'
+      - 'app/Models/**'
+      - 'app/Actions/ContractInstallments/**'
+      - 'app/Support/Imports/**'
+      - 'app/Concerns/ImportsContractInstallments.php'
+      - 'database/migrations/**'
+      - 'composer.lock'
+      - 'tests/Feature/SalesBoard*PerformanceTest.php'
+      - 'tests/Feature/ContractInstallmentImportScaleTest.php'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sales-board-benchmarks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmarks:
+    runs-on: ubuntu-latest
+    environment: Testing
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Install Node Dependencies
+        run: npm i
+
+      - name: Add Flux Credentials Loaded From ENV
+        run: composer config http-basic.composer.fluxui.dev "${{ secrets.FLUX_USERNAME }}" "${{ secrets.FLUX_LICENSE_KEY }}"
+
+      - name: Install Dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Copy Environment File
+        run: cp .env.example .env
+
+      - name: Generate Application Key
+        run: php artisan key:generate
+
+      - name: Build Assets
+        run: npm run build
+
+      - name: Run benchmarks
+        run: |
+          php artisan config:clear
+          NIMBUS_BENCH=1 ./vendor/bin/pest tests/Feature/SalesBoardVolumePerformanceTest.php tests/Feature/SalesBoardAutomationPerformanceTest.php tests/Feature/SalesBoardRolloutPerformanceTest.php tests/Feature/ContractInstallmentImportScaleTest.php

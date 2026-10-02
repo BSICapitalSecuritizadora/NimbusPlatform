@@ -4,6 +4,8 @@ namespace App\Actions\ConstructionUnits;
 
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
+use App\Models\ImportRun;
+use App\Support\Imports\ImportRunDraft;
 use App\Support\Money\IntegerMoney;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -14,15 +16,19 @@ use RuntimeException;
  * Nothing is written unless the whole spreadsheet is importable, and the rows
  * are inserted in chunks inside a single transaction: either every unit is
  * created or none is.
+ *
+ * With a draft, the {@see ImportRun} is opened inside the same transaction and
+ * its id is stamped on every unit created -- which is what later tells which
+ * file created a unit, instead of the time it was created at.
  */
 class ImportConstructionUnitsFromSpreadsheet
 {
     private const CHUNK_SIZE = 500;
 
     /**
-     * @return array{units: int, emissions: int, constructions: int}
+     * @return array{units: int, emissions: int, constructions: int, run: ImportRun|null}
      */
-    public function handle(ConstructionUnitSpreadsheetAnalysis $analysis): array
+    public function handle(ConstructionUnitSpreadsheetAnalysis $analysis, ?ImportRunDraft $draft = null): array
     {
         if (! $analysis->canImport()) {
             throw new RuntimeException('A planilha possui inconsistências e não pode ser importada.');
@@ -37,8 +43,11 @@ class ImportConstructionUnitsFromSpreadsheet
          * manual guardaria.
          */
         $model = new ConstructionUnit;
+        $run = null;
 
-        DB::transaction(function () use ($validRows, $model): void {
+        DB::transaction(function () use ($validRows, $model, $analysis, $draft, &$run): void {
+            $run = $draft?->open();
+            $runId = $run?->getKey();
             $now = now();
 
             $validRows
@@ -59,11 +68,18 @@ class ImportConstructionUnitsFromSpreadsheet
                     'base_value_reference_date' => $row['base_value_reference_date'] === null
                         ? null
                         : $model->fromDateTime($row['base_value_reference_date']),
+                    'import_run_id' => $runId,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ])
                 ->chunk(self::CHUNK_SIZE)
                 ->each(fn ($chunk) => ConstructionUnit::query()->insert($chunk->all()));
+
+            $run?->forceFill([
+                'records_analyzed' => $analysis->totalLines(),
+                'records_created' => $validRows->count(),
+                'records_warned' => $analysis->warningCount(),
+            ])->save();
         });
 
         return [
@@ -73,6 +89,7 @@ class ImportConstructionUnitsFromSpreadsheet
                 ->whereKey($constructionIds)
                 ->distinct()
                 ->count('emission_id'),
+            'run' => $run,
         ];
     }
 }

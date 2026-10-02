@@ -250,9 +250,13 @@ final class ManagementReviewFixture
         ]));
     }
 
+    /**
+     * Sem ator informado, abre alguém que opera a competência: abrir a análise
+     * é de quem opera ou da Gestão, e o serviço recusa os demais.
+     */
     public static function open(SalesBoardCycle $cycle, ?User $actor = null): SalesBoardManagementReview
     {
-        return app(SalesBoardManagementReviewOpeningService::class)->open($cycle->fresh(), $actor);
+        return app(SalesBoardManagementReviewOpeningService::class)->open($cycle->fresh(), $actor ?? GovernanceFixture::operator());
     }
 
     /**
@@ -271,8 +275,8 @@ final class ManagementReviewFixture
 
     /**
      * Resolve tudo pelo caminho que cada origem admite: declaração da
-     * construtora vira "não procede", venda fora da política vira "exceção
-     * aprovada". Serve aos testes que querem chegar ao portão com o caminho
+     * construtora vira "não procede", venda fora da política -- e a venda de
+     * competência publicada sem política aplicável -- vira "exceção aprovada". Serve aos testes que querem chegar ao portão com o caminho
      * livre, sem repetir a matriz de decisões em cada um.
      */
     public static function decideAll(SalesBoardManagementReview $review, ?User $actor = null): void
@@ -284,7 +288,8 @@ final class ManagementReviewFixture
                 $item,
                 match ($item->origin) {
                     SalesBoardNonconformityOrigin::BuilderDeclared => SalesBoardNonconformityDecision::Dismissed,
-                    SalesBoardNonconformityOrigin::SystemSaleNonConform => SalesBoardNonconformityDecision::AcceptedException,
+                    SalesBoardNonconformityOrigin::SystemSaleNonConform,
+                    SalesBoardNonconformityOrigin::SystemLateSaleWithoutPolicy => SalesBoardNonconformityDecision::AcceptedException,
                 },
                 self::REASON,
                 $actor,

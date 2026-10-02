@@ -3,24 +3,30 @@
 namespace App\Actions\ContractInstallments;
 
 use App\Enums\ChangeSeverity;
+use App\Enums\ImportRowWarningCode;
 use App\Enums\ReconciliationOutcome;
+use App\Exceptions\UnreadableSpreadsheetException;
 use App\Models\Construction;
 use App\Models\Contract;
 use App\Models\ContractInstallment;
 use App\Models\Emission;
 use App\Services\SalesBoards\RegisteredCompetenceIndex;
+use App\Support\BusinessTime;
 use App\Support\Dates\SpreadsheetDate;
+use App\Support\Imports\SpreadsheetAmount;
+use App\Support\Imports\SpreadsheetPlausibility;
+use App\Support\Imports\SpreadsheetRows;
 use App\Support\Money\IntegerMoney;
 use App\Support\Reconciliation\FieldChange;
 use App\Support\Reconciliation\ValueComparator;
 use Carbon\Carbon;
 use DateTimeInterface;
+use Generator;
 use Illuminate\Support\Str;
-use Spatie\SimpleExcel\SimpleExcelReader;
 
 /**
  * Reads an import spreadsheet and classifies every row, without writing
- * anything. The result feeds the preview and, once confirmed, the import.
+ * anything. The result feeds the conference and, once confirmed, the import.
  *
  * Nothing is ever created on the fly. The contract has to already exist, and it
  * is resolved the way the contracts module made it unique -- development plus
@@ -28,8 +34,18 @@ use Spatie\SimpleExcel\SimpleExcelReader;
  * of development Y are different contracts, and a file that only says "A606"
  * would otherwise book a schedule against the wrong sale.
  *
- * Lookups are batched per chunk instead of per row, so a file with hundreds of
- * installments costs a handful of queries rather than thousands.
+ * The file is read as a stream ({@see self::open()}): rows are classified chunk
+ * by chunk and handed over one at a time, and nothing keeps the whole file in
+ * memory. A monthly portfolio runs to hundreds of thousands of rows; holding
+ * them all -- each with its hydrated installment -- cost hundreds of megabytes
+ * and took the request past its time limit. {@see self::handle()} folds the
+ * stream into the bounded conference summary.
+ *
+ * Lookups are batched per chunk instead of per row, and the installments on
+ * record are read as raw rows ({@see StoredInstallment}) rather than models.
+ * Most rows of a monthly file are identical to what is on record; that is
+ * decided by a quick comparison, and only what differs goes through
+ * {@see ContractInstallmentReconciler}, which stays the authority.
  *
  * Reported line numbers count the header plus the data rows returned by the
  * reader. Fully blank rows are dropped by the reader itself, so a file with
@@ -41,6 +57,12 @@ class AnalyzeContractInstallmentSpreadsheet
      * Rows are read in chunks so large files do not sit in memory at once.
      */
     private const CHUNK_SIZE = 500;
+
+    /**
+     * The reader cannot open the file. Reported as a problem of the file, never
+     * as an exception on the conference screen.
+     */
+    public const UNREADABLE_FILE_MESSAGE = SpreadsheetRows::UNREADABLE_FILE_MESSAGE;
 
     /**
      * Emission name (normalized) => id.
@@ -56,91 +78,132 @@ class AnalyzeContractInstallmentSpreadsheet
      */
     private array $constructions = [];
 
-    /**
-     * "contract id|number" => line of the earlier row that already carries it.
-     *
-     * @var array<string, int>
-     */
-    private array $seenNumbers = [];
-
-    /**
-     * When set, the file is being imported from inside one contract's page and
-     * may only touch that contract. The spreadsheet keeps the very same shape --
-     * a row pointing somewhere else is reported, not silently redirected.
-     */
-    private ?int $restrictToContractId = null;
-
     public function __construct(
         private readonly ContractInstallmentReconciler $reconciler = new ContractInstallmentReconciler,
     ) {}
 
+    /**
+     * The conference summary of the file: the stream folded into counters, a
+     * bounded sample and the digest.
+     */
     public function handle(string $path, ?int $restrictToContractId = null): ContractInstallmentSpreadsheetAnalysis
     {
-        $this->restrictToContractId = $restrictToContractId;
+        return ContractInstallmentSpreadsheetAnalysis::fold($this->open($path, $restrictToContractId));
+    }
 
-        $firstRow = SimpleExcelReader::create($path)->getRows()->first();
+    /**
+     * Opens the file for one streamed pass.
+     *
+     * @param  int|null  $restrictToContractId  when set, the file is being imported
+     *                                          from inside one contract's page and
+     *                                          may only touch that contract
+     */
+    public function open(string $path, ?int $restrictToContractId = null): ContractInstallmentSpreadsheetReading
+    {
+        try {
+            $firstRow = SpreadsheetRows::first($path);
+        } catch (UnreadableSpreadsheetException $exception) {
+            return ContractInstallmentSpreadsheetReading::withFileErrors([$exception->getMessage()]);
+        }
 
         if ($firstRow === null) {
-            return ContractInstallmentSpreadsheetAnalysis::emptyFile();
+            return ContractInstallmentSpreadsheetReading::withFileErrors(['A planilha está vazia.']);
         }
 
         $resolvedHeaders = ContractInstallmentSpreadsheetColumns::resolve($firstRow);
         $missingHeaders = ContractInstallmentSpreadsheetColumns::missingHeaders($resolvedHeaders);
 
         if ($missingHeaders !== []) {
-            return ContractInstallmentSpreadsheetAnalysis::invalidHeaders($missingHeaders);
+            return ContractInstallmentSpreadsheetReading::withFileErrors([
+                'A planilha não possui as colunas obrigatórias: '.implode(', ', $missingHeaders).'.',
+            ]);
         }
 
         $this->loadReferenceData();
 
-        $analyzedRows = [];
-        $lineNumber = 1;
-
-        SimpleExcelReader::create($path)
-            ->getRows()
-            ->chunk(self::CHUNK_SIZE)
-            ->each(function (mixed $chunk) use (&$analyzedRows, &$lineNumber, $resolvedHeaders): void {
-                $parsedRows = collect($chunk)
-                    ->map(function (array $row) use (&$lineNumber, $resolvedHeaders): array {
-                        $lineNumber++;
-
-                        return $this->parseRow($row, $resolvedHeaders, $lineNumber);
-                    })
-                    ->all();
-
-                $context = $this->loadChunkContext($parsedRows);
-
-                foreach ($parsedRows as $parsedRow) {
-                    $analyzedRows[] = $this->classifyRow($parsedRow, $context);
-                }
-            });
-
-        return new ContractInstallmentSpreadsheetAnalysis($this->flagRegisteredCompetences($analyzedRows));
+        return ContractInstallmentSpreadsheetReading::streaming(
+            $this->classifiedRows($path, $resolvedHeaders, $restrictToContractId),
+        );
     }
 
     /**
-     * Marks the rows that touch a fact of a competence already registered on the
-     * Sales Board. The warning never blocks: correcting the source is legitimate,
-     * but the registered position does not follow it on its own, and whoever
-     * confirms has to know that.
+     * The rows of the file, classified chunk by chunk, followed by the absence
+     * report once the last one is out.
      *
-     * @param  list<array<string, mixed>>  $rows
-     * @return list<array<string, mixed>>
+     * Everything that belongs to one reading lives here, in local variables:
+     * which numbers each contract already carried, which contracts the file
+     * reached, the registered competences of each development. Two readings
+     * never share any of it.
+     *
+     * @param  array<string, string>  $resolvedHeaders
+     * @return Generator<int, array<string, mixed>, mixed, ContractInstallmentAbsenceReport>
      */
-    private function flagRegisteredCompetences(array $rows): array
+    private function classifiedRows(string $path, array $resolvedHeaders, ?int $restrictToContractId): Generator
     {
-        $index = RegisteredCompetenceIndex::forConstructions(array_column($rows, 'construction_id'));
+        $state = new InstallmentReadingState(
+            restrictToContractId: $restrictToContractId,
+            businessToday: BusinessTime::dateString(),
+            registeredCompetences: RegisteredCompetenceIndex::onDemand(),
+        );
 
-        return array_map(function (array $row) use ($index): array {
-            if (! $row['outcome']->writesToDatabase()) {
-                return $row;
+        $lineNumber = 1;
+
+        foreach (SpreadsheetRows::chunks($path, self::CHUNK_SIZE) as $chunk) {
+            $parsedRows = [];
+
+            foreach ($chunk as $row) {
+                $lineNumber++;
+                $parsedRows[] = $this->parseRow($row, $resolvedHeaders, $lineNumber);
             }
 
-            return [
-                ...$row,
-                'registered_competences' => $index->reachedBy($row['construction_id'], ...$this->affectedDates($row)),
-            ];
-        }, $rows);
+            $context = $this->loadChunkContext($parsedRows);
+
+            foreach ($parsedRows as $parsedRow) {
+                yield $this->flagRegisteredCompetence($this->classifyRow($parsedRow, $context, $state), $state);
+            }
+        }
+
+        return ContractInstallmentAbsenceReport::collect($state->presentContracts, $state->mentionedNumbers(), $state->contractConstructions);
+    }
+
+    /**
+     * Marks the row that touches a fact of a competence already registered on
+     * the Sales Board. The warning never blocks: correcting the source is
+     * legitimate, but the registered position does not follow it on its own,
+     * and whoever confirms has to know that.
+     *
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    private function flagRegisteredCompetence(array $row, InstallmentReadingState $state): array
+    {
+        if (! $row['outcome']->writesToDatabase()) {
+            return $row;
+        }
+
+        $dates = $this->affectedDates($row);
+
+        $row['registered_competences'] = $state->registeredCompetences->reachedBy($row['construction_id'], ...$dates);
+        $row['registered_competence_notice'] = $state->registeredCompetences->noticeFor(
+            $row['construction_id'],
+            $this->noticeSubject($row),
+            ...$dates,
+        );
+
+        return $row;
+    }
+
+    /**
+     * Como o aviso fala do fato da linha: o pagamento ou o cancelamento da
+     * parcela -- os dois decidem a quitação.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private function noticeSubject(array $row): string
+    {
+        return filled($row['cancellation_date'] ?? null) && blank($row['payment_date'] ?? null)
+            ? RegisteredCompetenceIndex::SUBJECT_INSTALLMENT_CANCELLATION
+            : (filled($row['payment_date'] ?? null) ? RegisteredCompetenceIndex::SUBJECT_PAYMENT : RegisteredCompetenceIndex::SUBJECT_FACT);
     }
 
     /**
@@ -172,7 +235,7 @@ class AnalyzeContractInstallmentSpreadsheet
 
             $dates = [...$dates, ...match ($change->field) {
                 'payment_date' => [$row['payment_date'], $row['stored_payment_date']],
-                'paid_value', 'expected_value' => [$row['payment_date'] ?? $row['stored_payment_date']],
+                'paid_value', 'expected_value', 'discount_value' => [$row['payment_date'] ?? $row['stored_payment_date']],
                 'cancellation_date' => [$row['cancellation_date'], $row['stored_cancellation_date']],
                 default => [],
             }];
@@ -235,6 +298,13 @@ class AnalyzeContractInstallmentSpreadsheet
             'payment_date_raw' => $this->rawCell($row, $resolvedHeaders, ContractInstallmentSpreadsheetColumns::PAYMENT_DATE),
             'paid_value_raw' => $this->rawCell($row, $resolvedHeaders, ContractInstallmentSpreadsheetColumns::PAID_VALUE),
             'cancellation_date_raw' => $this->rawCell($row, $resolvedHeaders, ContractInstallmentSpreadsheetColumns::CANCELLATION_DATE),
+            'discount_value_raw' => $this->rawCell($row, $resolvedHeaders, ContractInstallmentSpreadsheetColumns::DISCOUNT_VALUE),
+            /**
+             * Whether the file carries the optional discount column at all. A
+             * file without it says nothing about the discount on record, which
+             * is then neither compared nor written.
+             */
+            'discount_in_file' => isset($resolvedHeaders[ContractInstallmentSpreadsheetColumns::DISCOUNT_VALUE]),
         ];
     }
 
@@ -247,26 +317,29 @@ class AnalyzeContractInstallmentSpreadsheet
      * what lets a row whose code exists somewhere else be told apart from a row
      * whose code does not exist at all.
      *
+     * The installments come back as raw rows through `toBase()`, which keeps
+     * the soft delete scope: hydrating the model cost about 2 KB per row, and a
+     * monthly file is mostly rows that only need to be recognized.
+     *
      * @param  list<array<string, mixed>>  $parsedRows
-     * @return array{contracts: array<string, Contract>, contractsByCode: array<string, list<Contract>>, numbers: array<string, ContractInstallment>}
+     * @return array{contracts: array<string, Contract>, contractsByCode: array<string, list<Contract>>, numbers: array<string, StoredInstallment>}
      */
-    private function loadChunkContext(array $parsedRows): array
+    protected function loadChunkContext(array $parsedRows): array
     {
-        $rows = collect($parsedRows);
-
-        $codes = $rows->pluck('contract_code_normalized')->filter()->unique()->values();
+        $codes = array_values(array_unique(array_filter(array_column($parsedRows, 'contract_code_normalized'))));
 
         /**
          * Resolved on the same normalized identity the contracts module made
          * unique, so a spreadsheet saying "a606" finds the contract registered
          * as "A606". `code` is still selected because the messages quote the
          * code as the incorporadora wrote it, not as the comparison sees it.
+         * `sale_value` is the reference of the plausibility rules.
          */
-        $contracts = $codes->isEmpty()
+        $contracts = $codes === []
             ? collect()
             : Contract::withTrashed()
-                ->whereIn('code_normalized', $codes->all())
-                ->get(['id', 'construction_id', 'code', 'code_normalized', 'sale_date', 'deleted_at']);
+                ->whereIn('code_normalized', $codes)
+                ->get(['id', 'construction_id', 'code', 'code_normalized', 'sale_date', 'sale_value', 'deleted_at']);
 
         $contractsByCode = [];
         $contractsByKey = [];
@@ -276,38 +349,37 @@ class AnalyzeContractInstallmentSpreadsheet
             $contractsByKey[self::contractKey($contract->construction_id, $contract->code_normalized)] = $contract;
         }
 
-        $contractIds = $contracts->pluck('id')->unique()->values();
-        $numbers = $rows->pluck('number_normalized')->filter()->unique()->values();
+        $contractIds = $contracts->pluck('id')->unique()->values()->all();
+        $numbers = array_values(array_unique(array_filter(array_column($parsedRows, 'number_normalized'))));
 
-        /**
-         * The whole record, not just its key: a monthly file is mostly rows that
-         * already exist, and each one has to be compared field by field rather
-         * than merely recognized.
-         */
-        $registered = ($contractIds->isEmpty() || $numbers->isEmpty())
-            ? collect()
-            : ContractInstallment::query()
-                ->whereIn('contract_id', $contractIds->all())
-                ->whereIn('number_normalized', $numbers->all())
-                ->get();
+        $registered = [];
+
+        if (($contractIds !== []) && ($numbers !== [])) {
+            ContractInstallment::query()
+                ->toBase()
+                ->whereIn('contract_id', $contractIds)
+                ->whereIn('number_normalized', $numbers)
+                ->get(StoredInstallment::COLUMNS)
+                ->each(function (object $row) use (&$registered): void {
+                    $installment = StoredInstallment::fromRow($row);
+
+                    $registered[self::numberKey($installment->contractId, $installment->numberNormalized)] = $installment;
+                });
+        }
 
         return [
             'contracts' => $contractsByKey,
             'contractsByCode' => $contractsByCode,
-            'numbers' => $registered
-                ->mapWithKeys(fn (ContractInstallment $installment): array => [
-                    self::numberKey($installment->contract_id, $installment->number_normalized) => $installment,
-                ])
-                ->all(),
+            'numbers' => $registered,
         ];
     }
 
     /**
      * @param  array<string, mixed>  $row
-     * @param  array{contracts: array<string, Contract>, contractsByCode: array<string, list<Contract>>, numbers: array<string, ContractInstallment>}  $context
+     * @param  array{contracts: array<string, Contract>, contractsByCode: array<string, list<Contract>>, numbers: array<string, StoredInstallment>}  $context
      * @return array<string, mixed>
      */
-    private function classifyRow(array $row, array $context): array
+    private function classifyRow(array $row, array $context, InstallmentReadingState $state): array
     {
         $base = [
             'line' => $row['line'],
@@ -323,12 +395,19 @@ class AnalyzeContractInstallmentSpreadsheet
             'comparison' => null,
             'due_date' => null,
             'expected_value' => null,
+            'expected_cents' => null,
             'payment_date' => null,
             'paid_value' => null,
+            'paid_cents' => null,
+            'discount_value' => null,
+            'discount_cents' => null,
+            'discount_in_file' => $row['discount_in_file'],
             'cancellation_date' => null,
             'stored_payment_date' => null,
             'stored_cancellation_date' => null,
             'registered_competences' => [],
+            'registered_competence_notice' => null,
+            'warnings' => [],
         ];
 
         if ($this->isBlankRow($row)) {
@@ -359,16 +438,25 @@ class AnalyzeContractInstallmentSpreadsheet
             return $this->error($base, 'Há mais de um empreendimento com este nome nesta emissão. Diferencie os nomes antes de importar.');
         }
 
-        $contractError = $this->resolveContract($row, $construction['id'], $context);
+        $contractError = $this->resolveContract($row, $construction['id'], $context, $state->restrictToContractId);
 
         if ($contractError['error'] !== null) {
             return $this->error($base, $contractError['error']);
         }
 
         $contract = $contractError['contract'];
+        $contractId = (int) $contract->getKey();
+
         $base['construction_id'] = $construction['id'];
-        $base['contract_id'] = (int) $contract->getKey();
+        $base['contract_id'] = $contractId;
         $base['contract_sale_date'] = ValueComparator::date($contract->sale_date);
+
+        /**
+         * From here on the row names a parcela of a contract on record, valid or
+         * not: it is in the file, so it is never reported as absent from it.
+         */
+        $state->reachContract($contractId, (string) $contract->code, (int) $construction['id']);
+        $state->mention($contractId, $row['number_normalized'], $row['line']);
 
         $dueDate = $this->parseDate($row['due_date_raw']);
 
@@ -378,22 +466,30 @@ class AnalyzeContractInstallmentSpreadsheet
 
         $base['due_date'] = $dueDate;
 
-        $expectedValue = $this->parseAmount($row['expected_value_raw']);
+        $expectedAmount = SpreadsheetAmount::read($row['expected_value_raw']);
 
-        if (($expectedValue === null) || ($expectedValue <= 0)) {
+        if (($expectedAmount->cents === null) || ($expectedAmount->cents <= 0)) {
             return $this->error($base, 'Valor previsto inválido: informe um valor maior que zero.');
         }
 
-        $base['expected_value'] = $expectedValue;
+        $base['expected_cents'] = $expectedAmount->cents;
+        $base['expected_value'] = self::decimalAmount($expectedAmount->cents);
 
-        $payment = $this->resolvePayment($row);
+        $warnings = self::ambiguityWarning($expectedAmount, 'Valor previsto');
+
+        $payment = $this->resolvePayment($row, $state->businessToday);
 
         if ($payment['error'] !== null) {
             return $this->error($base, $payment['error']);
         }
 
         $base['payment_date'] = $payment['date'];
-        $base['paid_value'] = $payment['value'];
+        $base['paid_cents'] = $payment['cents'];
+        $base['paid_value'] = $payment['cents'] === null ? null : self::decimalAmount($payment['cents']);
+
+        if ($payment['amount'] !== null) {
+            $warnings = [...$warnings, ...self::ambiguityWarning($payment['amount'], 'Valor pago')];
+        }
 
         $cancellation = $this->resolveCancellationDate($row);
 
@@ -403,36 +499,81 @@ class AnalyzeContractInstallmentSpreadsheet
 
         $base['cancellation_date'] = $cancellation['date'];
 
-        $numberKey = self::numberKey($base['contract_id'], $row['number_normalized']);
+        $discount = $this->resolveDiscount($row, $payment['date'], $base['expected_cents']);
 
-        if (isset($this->seenNumbers[$numberKey])) {
+        if ($discount['error'] !== null) {
+            return $this->error($base, $discount['error']);
+        }
+
+        $base['discount_cents'] = $discount['cents'];
+        $base['discount_value'] = $discount['cents'] === null ? null : self::decimalAmount($discount['cents']);
+
+        if ($discount['amount'] !== null) {
+            $warnings = [...$warnings, ...self::ambiguityWarning($discount['amount'], 'Desconto')];
+        }
+
+        /**
+         * Against the sale value of the contract: the clearly impossible is an
+         * error of the row, the doubtful a warning beside it.
+         */
+        $plausibility = SpreadsheetPlausibility::installment(
+            $base['expected_cents'],
+            $base['paid_cents'],
+            IntegerMoney::cents($contract->sale_value),
+        );
+
+        if ($plausibility->isImpossible()) {
+            return $this->error($base, (string) $plausibility->error);
+        }
+
+        $warnings = [...$warnings, ...self::scalarWarnings($plausibility->warnings)];
+
+        $seenAt = $state->seenAt($contractId, $row['number_normalized']);
+
+        if ($seenAt !== null) {
             return [
                 ...$base,
                 'outcome' => ReconciliationOutcome::DuplicatedInFile,
-                'message' => "Parcela repetida na planilha (linha {$this->seenNumbers[$numberKey]}). Maiúsculas, minúsculas e espaços não distinguem uma parcela da outra.",
+                'message' => "Parcela repetida na planilha (linha {$seenAt}). Maiúsculas, minúsculas e espaços não distinguem uma parcela da outra.",
             ];
         }
 
-        $this->seenNumbers[$numberKey] = $row['line'];
+        $state->see($contractId, $row['number_normalized'], $row['line']);
 
-        $existing = $context['numbers'][$numberKey] ?? null;
+        $base['warnings'] = $warnings;
+
+        $existing = $context['numbers'][self::numberKey($contractId, $row['number_normalized'])] ?? null;
 
         if ($existing === null) {
             return [...$base, 'outcome' => ReconciliationOutcome::New, 'message' => null];
         }
 
+        $base['installment_id'] = $existing->id;
+        $base['stored_payment_date'] = $existing->paymentDate;
+        $base['stored_cancellation_date'] = $existing->cancellationDate;
+
         /**
-         * The row matched an installment already on the schedule. What happens
-         * next depends on whether anything about it actually moved -- which is
-         * what turns a re-import of the same position into a no-op.
+         * The row matched an installment already on the schedule. Most of a
+         * monthly file is exactly what is on record, and that is decided here in
+         * plain strings and cents; only a row that differs is handed to the
+         * reconciler, which decides what moved and how much it matters.
          */
+        if ($existing->isIdenticalTo(
+            $dueDate,
+            $base['expected_cents'],
+            $base['payment_date'],
+            $base['paid_cents'],
+            $base['cancellation_date'],
+            $base['discount_cents'],
+            $base['discount_in_file'],
+        )) {
+            return [...$base, 'outcome' => ReconciliationOutcome::Unchanged, 'message' => null];
+        }
+
         $comparison = $this->reconciler->compare($existing, $base);
 
         return [
             ...$base,
-            'stored_payment_date' => ValueComparator::date($existing->payment_date),
-            'stored_cancellation_date' => ValueComparator::date($existing->cancellation_date),
-            'installment_id' => (int) $existing->getKey(),
             'comparison' => $comparison,
             'outcome' => $comparison->outcome(),
             'message' => $comparison->isUnchanged() ? null : $comparison->summary(),
@@ -443,10 +584,10 @@ class AnalyzeContractInstallmentSpreadsheet
      * The contract the row points at, or the reason it cannot be reached.
      *
      * @param  array<string, mixed>  $row
-     * @param  array{contracts: array<string, Contract>, contractsByCode: array<string, list<Contract>>, numbers: array<string, ContractInstallment>}  $context
+     * @param  array{contracts: array<string, Contract>, contractsByCode: array<string, list<Contract>>, numbers: array<string, StoredInstallment>}  $context
      * @return array{contract: Contract|null, error: string|null}
      */
-    private function resolveContract(array $row, int $constructionId, array $context): array
+    private function resolveContract(array $row, int $constructionId, array $context, ?int $restrictToContractId): array
     {
         $contract = $context['contracts'][self::contractKey($constructionId, $row['contract_code_normalized'])] ?? null;
 
@@ -468,7 +609,7 @@ class AnalyzeContractInstallmentSpreadsheet
             ];
         }
 
-        if (($this->restrictToContractId !== null) && ((int) $contract->getKey() !== $this->restrictToContractId)) {
+        if (($restrictToContractId !== null) && ((int) $contract->getKey() !== $restrictToContractId)) {
             return [
                 'contract' => null,
                 'error' => 'Esta linha pertence a outro contrato. Importe a partir da listagem geral de parcelas.',
@@ -485,12 +626,15 @@ class AnalyzeContractInstallmentSpreadsheet
      * can place in time.
      *
      * @param  array<string, mixed>  $row
-     * @return array{date: ?string, value: ?float, error: ?string}
+     * @param  string  $businessToday  today in the business calendar, computed once per reading
+     * @return array{date: ?string, cents: ?int, amount: ?SpreadsheetAmount, error: ?string}
      */
-    private function resolvePayment(array $row): array
+    private function resolvePayment(array $row, string $businessToday): array
     {
         $hasDateCell = $this->isFilled($row['payment_date_raw']);
         $hasValueCell = $this->isFilled($row['paid_value_raw']);
+
+        $none = ['date' => null, 'cents' => null, 'amount' => null, 'error' => null];
 
         /**
          * A paid value of zero with no payment date beside it means the same as
@@ -505,42 +649,84 @@ class AnalyzeContractInstallmentSpreadsheet
          * falls through to the amount check below -- a settlement of zero on a
          * given day is a real thing to decide about, not something to swallow.
          */
-        if ($hasValueCell && ! $hasDateCell && ($this->parseAmount($row['paid_value_raw']) === 0.0)) {
+        if ($hasValueCell && ! $hasDateCell && (SpreadsheetAmount::read($row['paid_value_raw'])->cents === 0)) {
             $hasValueCell = false;
         }
 
         if (! $hasDateCell && ! $hasValueCell) {
-            return ['date' => null, 'value' => null, 'error' => null];
+            return $none;
         }
 
         if (! $hasDateCell) {
-            return ['date' => null, 'value' => null, 'error' => 'Informe a data do pagamento junto com o valor pago.'];
+            return [...$none, 'error' => 'Informe a data do pagamento junto com o valor pago.'];
         }
 
         if (! $hasValueCell) {
-            return ['date' => null, 'value' => null, 'error' => 'Informe o valor pago junto com a data do pagamento.'];
+            return [...$none, 'error' => 'Informe o valor pago junto com a data do pagamento.'];
         }
 
         $paymentDate = $this->parseDate($row['payment_date_raw']);
 
         if ($paymentDate === null) {
-            return ['date' => null, 'value' => null, 'error' => 'Data do pagamento inválida. '.SpreadsheetDate::FORMAT_HINT];
+            return [...$none, 'error' => 'Data do pagamento inválida. '.SpreadsheetDate::FORMAT_HINT];
         }
 
         // A receipt is a fact: it is recorded after it happens, never ahead.
-        if (SpreadsheetDate::isAfterBusinessToday($paymentDate)) {
-            return ['date' => null, 'value' => null, 'error' => 'A data do pagamento não pode ser futura: um recebimento só é registrado depois de acontecer.'];
+        if ($paymentDate > $businessToday) {
+            return [...$none, 'error' => 'A data do pagamento não pode ser futura: um recebimento só é registrado depois de acontecer.'];
         }
 
-        $paidValue = $this->parseAmount($row['paid_value_raw']);
+        $paidAmount = SpreadsheetAmount::read($row['paid_value_raw']);
 
         // No ceiling against the expected value on purpose: juros, multa and
         // correção monetária routinely push a receipt above what was due.
-        if (($paidValue === null) || ($paidValue <= 0)) {
-            return ['date' => null, 'value' => null, 'error' => 'Valor pago inválido: informe um valor maior que zero.'];
+        if (($paidAmount->cents === null) || ($paidAmount->cents <= 0)) {
+            return [...$none, 'error' => 'Valor pago inválido: informe um valor maior que zero.'];
         }
 
-        return ['date' => $paymentDate, 'value' => $paidValue, 'error' => null];
+        return ['date' => $paymentDate, 'cents' => $paidAmount->cents, 'amount' => $paidAmount, 'error' => null];
+    }
+
+    /**
+     * The discount given on the receipt, from the optional "Desconto" column.
+     *
+     * A zero or an empty cell means no discount, as a zero in the paid column
+     * means nothing received. A discount only exists on the receipt -- the
+     * pontualidade or antecipação abated when the installment was paid --, so it
+     * needs the payment in the same row, and it never goes above the expected
+     * value. Read by {@see SpreadsheetAmount}, with the same warning for text
+     * that reads two ways.
+     *
+     * @param  array<string, mixed>  $row
+     * @return array{cents: ?int, amount: ?SpreadsheetAmount, error: ?string}
+     */
+    private function resolveDiscount(array $row, ?string $paymentDate, int $expectedCents): array
+    {
+        $none = ['cents' => null, 'amount' => null, 'error' => null];
+
+        if (! $this->isFilled($row['discount_value_raw'] ?? null)) {
+            return $none;
+        }
+
+        $amount = SpreadsheetAmount::read($row['discount_value_raw']);
+
+        if ($amount->cents === 0) {
+            return $none;
+        }
+
+        if (($amount->cents === null) || ($amount->cents < 0)) {
+            return [...$none, 'error' => 'Desconto inválido: informe um valor maior que zero.'];
+        }
+
+        if ($paymentDate === null) {
+            return [...$none, 'error' => 'Informe o pagamento junto com o desconto: desconto só existe na baixa da parcela.'];
+        }
+
+        if ($amount->cents > $expectedCents) {
+            return [...$none, 'error' => 'O desconto não pode superar o valor previsto da parcela.'];
+        }
+
+        return ['cents' => $amount->cents, 'amount' => $amount, 'error' => null];
     }
 
     /**
@@ -598,7 +784,43 @@ class AnalyzeContractInstallmentSpreadsheet
      */
     private function error(array $base, string $message): array
     {
-        return [...$base, 'outcome' => ReconciliationOutcome::Error, 'message' => $message];
+        return [...$base, 'warnings' => [], 'outcome' => ReconciliationOutcome::Error, 'message' => $message];
+    }
+
+    /**
+     * The amount the row carries for display and for writing. The comparison and
+     * the plausibility rules run on the cents, never on this.
+     */
+    private static function decimalAmount(int $cents): float
+    {
+        return $cents / 100;
+    }
+
+    /**
+     * The ambiguity warning of an amount written as text, in the shape the row
+     * carries.
+     *
+     * @return list<array{code: string, message: string}>
+     */
+    private static function ambiguityWarning(SpreadsheetAmount $amount, string $fieldLabel): array
+    {
+        $message = $amount->warning($fieldLabel);
+
+        return $message === null
+            ? []
+            : [['code' => ImportRowWarningCode::AmbiguousAmountText->value, 'message' => $message]];
+    }
+
+    /**
+     * @param  list<array{code: ImportRowWarningCode, message: string}>  $warnings
+     * @return list<array{code: string, message: string}>
+     */
+    private static function scalarWarnings(array $warnings): array
+    {
+        return array_map(
+            static fn (array $warning): array => ['code' => $warning['code']->value, 'message' => $warning['message']],
+            $warnings,
+        );
     }
 
     /**
@@ -606,7 +828,7 @@ class AnalyzeContractInstallmentSpreadsheet
      */
     private function isBlankRow(array $row): bool
     {
-        foreach (['emission', 'construction', 'contract_code', 'number', 'due_date_raw', 'expected_value_raw', 'payment_date_raw', 'paid_value_raw', 'cancellation_date_raw'] as $field) {
+        foreach (['emission', 'construction', 'contract_code', 'number', 'due_date_raw', 'expected_value_raw', 'payment_date_raw', 'paid_value_raw', 'cancellation_date_raw', 'discount_value_raw'] as $field) {
             if ($this->isFilled($row[$field] ?? null)) {
                 return false;
             }
@@ -686,22 +908,6 @@ class AnalyzeContractInstallmentSpreadsheet
     private function parseDate(mixed $value): ?string
     {
         return SpreadsheetDate::parse($value);
-    }
-
-    /**
-     * The amount of a cell, through the same exact cents parser the unit
-     * importers use. A numeric cell keeps its number; text is read in either
-     * convention ("1.553,92" or "1,553.92").
-     */
-    private function parseAmount(mixed $value): ?float
-    {
-        if (! is_int($value) && ! is_float($value) && ! is_string($value)) {
-            return null;
-        }
-
-        $cents = IntegerMoney::cents($value);
-
-        return $cents === null ? null : $cents / 100;
     }
 
     /**

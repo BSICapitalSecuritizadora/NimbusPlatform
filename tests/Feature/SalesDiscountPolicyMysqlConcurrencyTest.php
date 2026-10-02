@@ -3,6 +3,7 @@
 use App\Exceptions\SalesDiscountPolicyPeriodException;
 use App\Models\Construction;
 use App\Models\SalesDiscountPolicy;
+use App\Models\User;
 use App\Services\SalesBoards\SalesDiscountPolicyRegistrar;
 use App\Services\SalesBoards\SalesDiscountPolicyResolver;
 use Carbon\CarbonImmutable;
@@ -49,7 +50,7 @@ afterEach(function () {
 });
 
 /**
- * @param  array{construction_id: int, confirmed_substitution_id: int, percent: string, from: string, until: string, lock_marker?: string, wait_for_marker?: string, hold_after_lock_ms?: int}  $instruction
+ * @param  array{construction_id: int, confirmed_substitution_id: int, actor_id: int, percent: string, from: string, until: string, lock_marker?: string, wait_for_marker?: string, hold_after_lock_ms?: int}  $instruction
  */
 function salesDiscountPolicyTask(array $instruction): Closure
 {
@@ -89,7 +90,7 @@ function salesDiscountPolicyTask(array $instruction): Closure
                     'reason' => 'Substituição concorrente.',
                 ],
                 $instruction['confirmed_substitution_id'],
-                null,
+                User::query()->findOrFail($instruction['actor_id']),
             );
 
             return ['success' => true, 'policy_id' => (int) $policy->getKey(), 'exception' => null];
@@ -117,9 +118,17 @@ it('serializes two confirmed substitutions of the same policy', function () {
     $marker = temporaryTestFilePath('sales-discount-policy-lock', 'lock');
     @unlink($marker);
 
+    /**
+     * Quem registra precisa da permissão de editar emissões. O ator é criado
+     * aqui e relido pelo id nos processos filhos.
+     */
+    $manager = User::factory()->create();
+    $manager->givePermissionTo(['emissions.update', 'sales-boards.approve']);
+
     $substitution = [
         'construction_id' => $construction->id,
         'confirmed_substitution_id' => $current->id,
+        'actor_id' => (int) $manager->id,
         'from' => "{$year}-06-01",
         'until' => "{$year}-12-31",
     ];

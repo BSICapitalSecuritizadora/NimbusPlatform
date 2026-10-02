@@ -7,6 +7,7 @@ namespace App\Services\SalesBoards;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\ConstructionUnitExchange;
+use App\Models\ConstructionUnitRetirement;
 use App\Models\ConstructionUnitValue;
 use App\Models\Contract;
 use App\Models\Emission;
@@ -59,7 +60,9 @@ class SalesBoardSourceGuard
      *
      * Contrato (inclusive excluído), histórico de valor e permuta são a
      * história comercial dela; a linha congelada num ciclo é a unidade como a
-     * construtora conferiu. Qualquer um deles basta.
+     * construtora conferiu. A baixa é decisão da Gestão com motivo: apagar a
+     * unidade apagaria a trilha dela, e mover a unidade levaria a baixa para
+     * outra obra sem explicação. Qualquer um deles basta.
      *
      * @return list<string> motivos em linguagem de tela; vazio quando nada prende
      */
@@ -186,6 +189,7 @@ class SalesBoardSourceGuard
         return [
             ['tem histórico de valores', ConstructionUnitValue::query()->whereIn('construction_unit_id', $unitIds)],
             ['tem permuta registrada', ConstructionUnitExchange::query()->whereIn('construction_unit_id', $unitIds)],
+            ['tem baixa registrada', ConstructionUnitRetirement::query()->whereIn('construction_unit_id', $unitIds)],
             ['já compõe a posição congelada de um ciclo do Quadro de Vendas', SalesBoardCycleLine::query()->whereIn('construction_unit_id', $unitIds)],
             ['já compõe a posição congelada de um ciclo do Quadro de Vendas', SalesBoardCycleMovement::query()->whereIn('construction_unit_id', $unitIds)],
             ['já compõe a posição congelada de um ciclo do Quadro de Vendas', SalesBoardBuilderDivergence::query()->whereIn('construction_unit_id', $unitIds)],

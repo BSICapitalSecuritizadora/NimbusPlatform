@@ -1,14 +1,17 @@
 <?php
 
 use App\Enums\SalesBoardRolloutHomologationStatus;
+use App\Enums\SalesBoardRolloutRecipientRole;
 use App\Enums\SalesBoardSource;
 use App\Exceptions\SalesBoardRolloutException;
 use App\Models\Emission;
 use App\Models\SalesBoardRolloutEvent;
 use App\Models\SalesBoardRolloutHomologation;
+use App\Models\SalesBoardRolloutRecipient;
 use App\Models\User;
 use App\Services\SalesBoards\SalesBoardRolloutActivationService;
 use App\Services\SalesBoards\SalesBoardRolloutHomologationService;
+use App\Services\SalesBoards\SalesBoardRolloutRecipientDirectory;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Concurrency;
@@ -23,7 +26,10 @@ use Tests\Support\SalesBoards\RolloutFixture;
  * O que se protege aqui é a resposta a "quem produz os próximos quadros desta
  * Emissão?" nunca ficar ambígua: duas ativações simultâneas não podem produzir
  * dois eventos, e ativar contra desativar não pode terminar em modo automatizado
- * sem homologação vigente.
+ * sem homologação vigente, e a remoção do último responsável não pode passar
+ * por baixo da conferência que a ativação faz deles. Uma atestação iniciada
+ * antes da aprovação também não pode regravar quem atestou a homologação já
+ * aprovada.
  *
  * Cada corrida tem barreira: o primeiro processo avisa quando está com a Emissão
  * travada e segura o lock; o segundo só dispara depois do aviso e mede quanto
@@ -124,7 +130,7 @@ function rolloutRaceChallenger(array $markers): array
 }
 
 /**
- * @param  array{action: string, emission: int, homologation?: int, actor: int, wait_for_ready?: string, lock_marker?: string, hold_after_lock_ms?: int, ready_marker?: string, wait_for_marker?: string}  $instruction
+ * @param  array{action: string, emission: int, homologation?: int, recipient?: int, actor: int, wait_for_ready?: string, lock_marker?: string, hold_after_lock_ms?: int, ready_marker?: string, wait_for_marker?: string}  $instruction
  */
 function rolloutTask(array $instruction): Closure
 {
@@ -202,6 +208,18 @@ function rolloutTask(array $instruction): Closure
                     $actor,
                     'Aprovação concorrente para teste de corrida.',
                 )->status->value,
+                'attest' => app(SalesBoardRolloutHomologationService::class)->markGuaranteesReviewed(
+                    SalesBoardRolloutHomologation::query()->findOrFail($instruction['homologation']),
+                    $actor,
+                )->status->value,
+                'remove-recipient' => (function () use ($instruction, $actor): string {
+                    app(SalesBoardRolloutRecipientDirectory::class)->remove(
+                        SalesBoardRolloutRecipient::query()->findOrFail($instruction['recipient']),
+                        $actor,
+                    );
+
+                    return 'removido';
+                })(),
             };
 
             return ['success' => true, 'outcome' => $outcome, 'exception' => null, 'emission_lock_ms' => $emissionLockMs];
@@ -309,4 +327,120 @@ it('never approves the same homologation twice', function () {
         ->and($homologation->fresh()->status)->toBe(SalesBoardRolloutHomologationStatus::Approved)
         // Um aprovador só, e uma data só.
         ->and($homologation->fresh()->approved_by_user_id)->not->toBeNull();
+})->group('mysql');
+
+/**
+ * O único responsável operacional da Emissão do cenário, e quem pode removê-lo.
+ *
+ * @param  array{emission: int, homologation: int, actor: int}  $scenario
+ * @return array{recipient: int, actor: int}
+ */
+function rolloutRaceRecipientRemoval(array $scenario): array
+{
+    return [
+        'recipient' => (int) SalesBoardRolloutRecipient::query()
+            ->where('emission_id', $scenario['emission'])
+            ->forRole(SalesBoardRolloutRecipientRole::Operational)
+            ->sole()
+            ->getKey(),
+        'actor' => (int) GovernanceFixture::operator()->getKey(),
+    ];
+}
+
+it('refuses the activation when the last operational recipient is removed while it waits', function () {
+    $scenario = rolloutRaceScenario();
+    $removal = rolloutRaceRecipientRemoval($scenario);
+    $markers = rolloutRaceMarkers('remove-before-activate');
+
+    $results = Concurrency::driver('process')->run([
+        rolloutTask(['action' => 'remove-recipient', 'emission' => $scenario['emission'], ...$removal, ...rolloutRaceHolder($markers)]),
+        rolloutTask(['action' => 'activate', ...$scenario, ...rolloutRaceChallenger($markers)]),
+    ]);
+
+    array_map(static fn (string $marker): bool => @unlink($marker), $markers);
+
+    $emission = Emission::query()->findOrFail($scenario['emission']);
+
+    // A remoção travou a Emissão primeiro; a ativação esperou o commit dela e,
+    // conferindo os responsáveis sob o lock, não encontrou mais o operacional.
+    expect($results[0]['success'])->toBeTrue()
+        ->and($results[0]['outcome'])->toBe('removido')
+        ->and($results[1]['exception'])->toBe(SalesBoardRolloutException::class)
+        ->and($results[1]['emission_lock_ms'])->toBeGreaterThan(500)
+        ->and($emission->sales_board_source)->toBe(SalesBoardSource::Legacy)
+        ->and($emission->sales_board_active_homologation_id)->toBeNull()
+        ->and(SalesBoardRolloutRecipient::query()->whereKey($removal['recipient'])->exists())->toBeFalse()
+        ->and(SalesBoardRolloutEvent::query()->count())->toBe(0);
+})->group('mysql');
+
+it('makes the recipient removal wait for an activation already holding the emission', function () {
+    $scenario = rolloutRaceScenario();
+    $removal = rolloutRaceRecipientRemoval($scenario);
+    $markers = rolloutRaceMarkers('activate-before-remove');
+
+    $results = Concurrency::driver('process')->run([
+        rolloutTask(['action' => 'activate', ...$scenario, ...rolloutRaceHolder($markers)]),
+        rolloutTask(['action' => 'remove-recipient', 'emission' => $scenario['emission'], ...$removal, ...rolloutRaceChallenger($markers)]),
+    ]);
+
+    array_map(static fn (string $marker): bool => @unlink($marker), $markers);
+
+    $emission = Emission::query()->findOrFail($scenario['emission']);
+
+    // A ativação conferiu os responsáveis com a Emissão travada e commitou; só
+    // então a remoção passou -- nunca entre a conferência e o commit.
+    expect($results[0]['outcome'])->toBe(SalesBoardSource::Automated->value)
+        ->and($results[1]['outcome'])->toBe('removido')
+        ->and($results[1]['emission_lock_ms'])->toBeGreaterThan(500)
+        ->and($emission->sales_board_source)->toBe(SalesBoardSource::Automated)
+        ->and($emission->sales_board_active_homologation_id)->toBe($scenario['homologation'])
+        ->and(SalesBoardRolloutRecipient::query()->whereKey($removal['recipient'])->exists())->toBeFalse()
+        ->and(SalesBoardRolloutEvent::query()->count())->toBe(1);
+})->group('mysql');
+
+it('serializes an attestation against the approval of the same homologation', function () {
+    $scenario = RolloutFixture::emission(2);
+
+    foreach ($scenario['constructions'] as $construction) {
+        RolloutFixture::legacyBoard($construction);
+    }
+
+    $homologation = RolloutFixture::open($scenario['emission']);
+    RolloutFixture::recipients($scenario['emission']);
+
+    $attestedBy = GovernanceFixture::approver();
+    RolloutFixture::reviewImpacts($homologation, $attestedBy);
+
+    $attested = $homologation->fresh();
+    $markers = rolloutRaceMarkers('approve-before-attest');
+
+    $results = Concurrency::driver('process')->run([
+        rolloutTask([
+            'action' => 'approve',
+            'emission' => (int) $scenario['emission']->getKey(),
+            'homologation' => (int) $homologation->getKey(),
+            'actor' => (int) GovernanceFixture::approver()->getKey(),
+            ...rolloutRaceHolder($markers),
+        ]),
+        rolloutTask([
+            'action' => 'attest',
+            'emission' => (int) $scenario['emission']->getKey(),
+            'homologation' => (int) $homologation->getKey(),
+            'actor' => (int) GovernanceFixture::approver()->getKey(),
+            ...rolloutRaceChallenger($markers),
+        ]),
+    ]);
+
+    array_map(static fn (string $marker): bool => @unlink($marker), $markers);
+
+    $approved = $homologation->fresh();
+
+    // A aprovação travou a Emissão primeiro; a atestação esperou o commit dela,
+    // releu a homologação sob o lock e encontrou-a encerrada.
+    expect($results[0]['outcome'])->toBe(SalesBoardRolloutHomologationStatus::Approved->value)
+        ->and($results[1]['exception'])->toBe(SalesBoardRolloutException::class)
+        ->and($results[1]['emission_lock_ms'])->toBeGreaterThan(500)
+        ->and($approved->status)->toBe(SalesBoardRolloutHomologationStatus::Approved)
+        ->and($approved->guarantees_reviewed_by_user_id)->toBe($attestedBy->id)
+        ->and($approved->guarantees_reviewed_at?->toIso8601String())->toBe($attested->guarantees_reviewed_at?->toIso8601String());
 })->group('mysql');

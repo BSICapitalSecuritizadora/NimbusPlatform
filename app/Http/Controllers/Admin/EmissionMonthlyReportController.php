@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Emission;
 use App\Services\Reports\EmissionMonthlyReportService;
+use App\Support\SalesBoards\CompetenceCalendar;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -36,23 +37,42 @@ class EmissionMonthlyReportController extends Controller
             ->stream($service->fileName($emission, $referenceMonth));
     }
 
+    /**
+     * Sem competência informada, vale o mês de negócio anterior -- o mesmo
+     * padrão da tela de Relatórios e das garantias: o quadro de um mês só
+     * existe no seguinte.
+     */
     private function resolveReferenceMonth(mixed $value): CarbonImmutable
     {
-        return $this->resolveOptionalMonth($value) ?? CarbonImmutable::now()->startOfMonth();
+        return $this->resolveOptionalMonth($value) ?? CompetenceCalendar::lastClosedMonth();
     }
 
+    /**
+     * Omissão cai no padrão; valor ilegível falha visível.
+     *
+     * Antes, um texto que não era mês virava o mês corrente em silêncio, e o
+     * PDF saía de uma competência que ninguém pediu com o rótulo de que a
+     * escolha foi respeitada. Aceita `AAAA-MM` e `AAAA-MM-DD`, com data válida;
+     * o resto é 422.
+     */
     private function resolveOptionalMonth(mixed $value): ?CarbonImmutable
     {
-        if (is_string($value) && $value !== '') {
-            $normalized = preg_match('/^\d{4}-\d{2}$/', $value) === 1 ? $value.'-01' : $value;
-
-            try {
-                return CarbonImmutable::parse($normalized)->startOfMonth();
-            } catch (\Throwable) {
-                // Valor inválido é ignorado.
-            }
+        if ($value === null || $value === '') {
+            return null;
         }
 
-        return null;
+        if (! is_string($value) || preg_match('/^(\d{4})-(\d{2})(?:-(\d{2}))?$/', $value, $matches) !== 1) {
+            abort(Response::HTTP_UNPROCESSABLE_ENTITY, 'Competência inválida. Use o formato AAAA-MM.');
+        }
+
+        $year = (int) $matches[1];
+        $month = (int) $matches[2];
+        $day = isset($matches[3]) ? (int) $matches[3] : 1;
+
+        if (! checkdate($month, $day, $year)) {
+            abort(Response::HTTP_UNPROCESSABLE_ENTITY, 'Competência inválida. Use o formato AAAA-MM.');
+        }
+
+        return CarbonImmutable::create($year, $month, 1);
     }
 }

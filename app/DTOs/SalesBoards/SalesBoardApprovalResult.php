@@ -32,18 +32,33 @@ readonly class SalesBoardApprovalResult extends BaseDTO
         return $this->outcome === SalesBoardApprovalOutcome::Approved;
     }
 
+    /**
+     * A retificação diz que o quadro publicado foi atualizado, e não criado: a
+     * Gestão precisa saber que a posição anterior ficou no histórico.
+     */
     public function message(): string
     {
-        return $this->wasPublishedNow()
-            ? sprintf(
-                'Quadro de Vendas de %s publicado para a competência %s.',
-                (string) ($this->payload->constructionName ?? '—'),
-                $this->payload->referenceMonth->format('m/Y'),
-            )
-            : sprintf(
+        if (! $this->wasPublishedNow()) {
+            return sprintf(
                 'A competência %s já havia sido aprovada e publicada.',
                 $this->payload->referenceMonth->format('m/Y'),
             );
+        }
+
+        if ($this->publication->isRectification()) {
+            return sprintf(
+                'Retificação publicada: o Quadro de Vendas de %s na competência %s foi atualizado (%s). A posição anterior continua no histórico de versões.',
+                (string) ($this->payload->constructionName ?? '—'),
+                $this->payload->referenceMonth->format('m/Y'),
+                mb_strtolower($this->publication->sequenceLabel()),
+            );
+        }
+
+        return sprintf(
+            'Quadro de Vendas de %s publicado para a competência %s.',
+            (string) ($this->payload->constructionName ?? '—'),
+            $this->payload->referenceMonth->format('m/Y'),
+        );
     }
 
     /**

@@ -1,7 +1,10 @@
 <?php
 
 use App\Actions\ContractInstallments\ContractInstallmentSpreadsheetColumns;
+use App\Actions\Contracts\ContractSpreadsheetColumns;
 use App\Enums\AccessPermission;
+use App\Filament\Resources\ConstructionUnits\ConstructionUnitResource;
+use App\Filament\Resources\ConstructionUnits\Pages\ListConstructionUnits;
 use App\Filament\Resources\ContractInstallments\Pages\ListContractInstallments;
 use App\Filament\Resources\Contracts\Pages\ListContracts;
 use App\Filament\Resources\ImportRuns\ImportRunResource;
@@ -10,11 +13,11 @@ use App\Filament\Resources\ImportRuns\Pages\ViewImportRun;
 use App\Models\Client;
 use App\Models\ConstructionUnit;
 use App\Models\Contract;
+use App\Models\ContractInstallment;
 use App\Models\ImportRun;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Testing\TestAction;
-use Filament\Forms\Components\FileUpload;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -373,7 +376,7 @@ it('explains the empty history instead of showing a bare table', function () {
         ->test(ListImportRuns::class)
         ->assertSuccessful()
         ->assertSee('Nenhuma importação registrada')
-        ->assertSee('As próximas importações e conciliações confirmadas de contratos e parcelas serão exibidas aqui.');
+        ->assertSee('As próximas importações e conciliações confirmadas de contratos, parcelas, unidades e valores de unidade serão exibidas aqui.');
 });
 
 // ── Imutabilidade do resultado ────────────────────────────────────────────
@@ -429,18 +432,14 @@ it('records the name the operator uploaded, not the generated storage name', fun
     $headers = ContractInstallmentSpreadsheetColumns::headers();
 
     $writer = SimpleExcelWriter::create($path)->addHeader($headers);
-    $writer->addRow(array_combine($headers, [
+    $writer->addRow(array_combine($headers, array_pad([
         'CRI Conviva', 'Conviva Camboinhas', 'CVC-00123', '001', '10/01/2026', '10000.00', '', '', '',
-    ]));
+    ], count($headers), '')));
     $writer->close();
-
-    $storedPath = 'imports/contract-installments/'.basename($path);
-    Storage::disk('local')->put($storedPath, file_get_contents($path));
 
     Livewire::test(ListContractInstallments::class)
         ->callAction(TestAction::make('importContractInstallments'), [
-            'file' => ['upload' => $storedPath],
-            'original_file_name' => 'carteira_08_2026.xlsx',
+            'file' => spreadsheetUpload($path, 'carteira_08_2026.xlsx'),
         ])
         ->assertHasNoActionErrors();
 
@@ -457,21 +456,183 @@ it('records the name the operator uploaded, not the generated storage name', fun
 });
 
 /**
- * The upload is stored under a generated name, so the name the operator
- * recognises only reaches the history because the component keeps it aside. The
- * resolved state path proves it lands inside the action data the import reads.
+ * The upload is no longer stored under a generated name while the wizard is
+ * open: it stays the temporary file Livewire signed, which keeps the name the
+ * operator sent. Both import screens must record that name -- and the archived
+ * copy of the very same bytes.
  */
-it('keeps the original file name beside the stored upload on both import screens', function (string $page, string $action) {
+it('records the uploaded name and archives the file on both import screens', function (string $screen) {
     $this->actingAs(makeAdminUser());
 
-    $component = Livewire::test($page)->mountAction($action)->instance();
+    [, $construction] = unitEmissionAndConstruction(status: 'active');
 
-    $upload = collect($component->getSchema($component->getMountedActionSchemaName())->getFlatComponents())
-        ->first(fn ($field): bool => $field instanceof FileUpload);
+    $unit = ConstructionUnit::factory()->forConstruction($construction)->create(['block' => '01', 'unit' => '305']);
+    $client = Client::factory()->create(['document' => '52998224725']);
 
-    expect($upload)->not->toBeNull()
-        ->and($upload->getFileNamesStatePath())->toEndWith('data.original_file_name');
-})->with([
-    'parcelas' => [ListContractInstallments::class, 'importContractInstallments'],
-    'contratos' => [ListContracts::class, 'importContracts'],
-]);
+    Contract::factory()->forUnit($unit)->forClient($client)->create(['code' => 'CVC-00123']);
+
+    [$page, $action, $type, $headers, $row] = match ($screen) {
+        'parcelas' => [
+            ListContractInstallments::class,
+            'importContractInstallments',
+            ImportRun::TYPE_CONTRACT_INSTALLMENTS,
+            ContractInstallmentSpreadsheetColumns::headers(),
+            ['CRI Conviva', 'Conviva Camboinhas', 'CVC-00123', '001', '10/01/2026', '10000.00', '', '', ''],
+        ],
+        'contratos' => [
+            ListContracts::class,
+            'importContracts',
+            ImportRun::TYPE_CONTRACTS,
+            ContractSpreadsheetColumns::headers(),
+            ['CRI Conviva', 'Conviva Camboinhas', '01', '305', '52998224725', 'CVC-00123', '10/03/2024', '850000.00', 'Ativo', ''],
+        ],
+    };
+
+    $path = temporaryTestFilePath('import-run-history-'.$screen);
+    SimpleExcelWriter::create($path)->addHeader($headers)->addRow(array_combine($headers, array_pad($row, count($headers), '')))->close();
+
+    Livewire::test($page)
+        ->callAction(TestAction::make($action), ['file' => spreadsheetUpload($path, 'posicao_'.$screen.'_08_2026.xlsx')])
+        ->assertHasNoActionErrors();
+
+    $run = ImportRun::query()->sole();
+
+    expect($run->type)->toBe($type)
+        ->and($run->file_name)->toBe('posicao_'.$screen.'_08_2026.xlsx')
+        ->and($run->checksum)->toBe(hash_file('sha256', $path))
+        ->and($run->file_path)->toStartWith('imports/')
+        ->and(Storage::disk('local')->get((string) $run->file_path))->toBe(file_get_contents($path));
+})->with(['parcelas', 'contratos']);
+
+// ── Unidades, valores, ausências e proveniência ──────────────────────────
+
+it('names the units and the unit values runs and filters by them', function () {
+    $user = importHistoryUser();
+
+    $units = ImportRun::factory()->units()->create();
+    $values = ImportRun::factory()->unitValues()->create();
+    $contracts = ImportRun::factory()->create();
+
+    expect(ImportRun::typeOptions())->toMatchArray([
+        ImportRun::TYPE_CONSTRUCTION_UNITS => 'Unidades',
+        ImportRun::TYPE_CONSTRUCTION_UNIT_VALUES => 'Valores de unidade',
+    ])
+        ->and($units->typeLabel())->toBe('Unidades')
+        ->and($values->typeLabel())->toBe('Valores de unidade')
+        ->and($units->coverageLabel())->toBe('Cadastro de unidades')
+        ->and($values->coverageLabel())->toBe('Tabela de valores');
+
+    Livewire::actingAs($user)
+        ->test(ListImportRuns::class)
+        ->filterTable('type', ImportRun::TYPE_CONSTRUCTION_UNIT_VALUES)
+        ->assertCanSeeTableRecords([$values])
+        ->assertCanNotSeeTableRecords([$units, $contracts]);
+});
+
+it('counts the cancellation of absent installments as a result with critical changes', function () {
+    $user = importHistoryUser();
+
+    $cancelled = ImportRun::factory()->withCancelledAbsences()->create();
+    $plain = ImportRun::factory()->create();
+
+    expect($cancelled->result())->toBe(ImportRun::RESULT_CRITICAL)
+        ->and($cancelled->madeChanges())->toBeTrue()
+        ->and(ImportRun::factory()->unchanged()->withCancelledAbsences(1)->create()->madeChanges())->toBeTrue();
+
+    Livewire::actingAs($user)
+        ->test(ListImportRuns::class)
+        ->filterTable('result', ImportRun::RESULT_CRITICAL)
+        ->assertCanSeeTableRecords([$cancelled])
+        ->assertCanNotSeeTableRecords([$plain])
+        ->filterTable('result', ImportRun::RESULT_COMPLETED)
+        ->assertCanSeeTableRecords([$plain])
+        ->assertCanNotSeeTableRecords([$cancelled]);
+});
+
+it('shows what the run created, the absences, the cancellation, the warnings and the archived file', function () {
+    $user = importHistoryUser();
+
+    [, $construction] = unitEmissionAndConstruction(status: 'active');
+
+    $contract = Contract::factory()
+        ->forUnit(ConstructionUnit::factory()->forConstruction($construction)->create())
+        ->forClient(Client::factory()->create())
+        ->create();
+
+    $run = ImportRun::factory()->withCancelledAbsences(2, '2026-07-05', 'Renegociação com novo cronograma.')->create([
+        'records_warned' => 4,
+        'file_path' => 'imports/contract-installments/01k6abcdefghjkmnpqrstvwxyz.xlsx',
+    ]);
+
+    ContractInstallment::factory()->forContract($contract)->count(3)->create(['import_run_id' => $run->id]);
+
+    Livewire::actingAs($user)
+        ->test(ViewImportRun::class, ['record' => $run->getKey()])
+        ->assertSuccessful()
+        ->assertSee('Registros criados por esta importação')
+        ->assertSee('Parcelas criadas')
+        ->assertSee('Ausentes da planilha')
+        ->assertSee('Parcelas canceladas por ausência')
+        ->assertSee('05/07/2026')
+        ->assertSee('Renegociação com novo cronograma.')
+        ->assertSee('Com aviso')
+        ->assertSee('imports/contract-installments/01k6abcdefghjkmnpqrstvwxyz.xlsx')
+        ->assertSee('Concluída com críticas');
+
+    expect($run->createdRecordsCount())->toBe(3);
+});
+
+it('keeps the absence, cancellation and warning columns available on the history table', function () {
+    $user = importHistoryUser();
+
+    $run = ImportRun::factory()->withCancelledAbsences(2)->create(['records_warned' => 4]);
+
+    Livewire::actingAs($user)
+        ->test(ListImportRuns::class)
+        ->assertTableColumnExists('records_absent')
+        ->assertTableColumnExists('records_cancelled')
+        ->assertTableColumnExists('records_warned')
+        ->assertTableColumnStateSet('records_cancelled', 2, $run)
+        ->assertTableColumnStateSet('records_warned', 4, $run);
+});
+
+it('leads a units or values run back to the units listing', function () {
+    $user = makeAdminUser();
+
+    $run = ImportRun::factory()->unitValues()->create();
+
+    Livewire::actingAs($user)
+        ->test(ViewImportRun::class, ['record' => $run->getKey()])
+        ->assertActionHasLabel('viewModule', 'Ver Unidades')
+        ->assertActionHasUrl('viewModule', ConstructionUnitResource::getUrl());
+});
+
+it('filters contracts, installments and units by the run that created them', function (string $table) {
+    $user = makeAdminUser();
+
+    [, $construction] = unitEmissionAndConstruction(status: 'active');
+    $run = ImportRun::factory()->create();
+
+    $client = Client::factory()->create();
+    $fromRun = ConstructionUnit::factory()->forConstruction($construction)->create(['import_run_id' => $run->id]);
+    $manual = ConstructionUnit::factory()->forConstruction($construction)->create();
+
+    $contractFromRun = Contract::factory()->forUnit($fromRun)->forClient($client)->create(['import_run_id' => $run->id]);
+    $manualContract = Contract::factory()->forUnit($manual)->forClient($client)->create();
+
+    $installmentFromRun = ContractInstallment::factory()->forContract($manualContract)->create(['number' => '001', 'import_run_id' => $run->id]);
+    $manualInstallment = ContractInstallment::factory()->forContract($manualContract)->create(['number' => '002']);
+
+    [$page, $wanted, $other] = match ($table) {
+        'contratos' => [ListContracts::class, $contractFromRun, $manualContract],
+        'parcelas' => [ListContractInstallments::class, $installmentFromRun, $manualInstallment],
+        'unidades' => [ListConstructionUnits::class, $fromRun, $manual],
+    };
+
+    Livewire::actingAs($user)
+        ->test($page)
+        ->assertTableFilterExists('import_run')
+        ->filterTable('import_run', ['import_run_id' => $run->id])
+        ->assertCanSeeTableRecords([$wanted])
+        ->assertCanNotSeeTableRecords([$other]);
+})->with(['contratos', 'parcelas', 'unidades']);

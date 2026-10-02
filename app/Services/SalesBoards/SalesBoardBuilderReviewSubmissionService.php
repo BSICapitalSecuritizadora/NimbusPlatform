@@ -4,19 +4,28 @@ declare(strict_types=1);
 
 namespace App\Services\SalesBoards;
 
+use App\DTOs\SalesBoards\BuilderResponseEvidence;
 use App\DTOs\SalesBoards\BuilderReviewerIdentity;
+use App\DTOs\SalesBoards\StagedBuilderResponseAttachment;
+use App\Enums\BuilderReviewerType;
+use App\Enums\MalwareScanStatus;
 use App\Enums\SalesBoardBuilderReviewSection as SectionEnum;
 use App\Enums\SalesBoardBuilderReviewSectionStatus;
 use App\Enums\SalesBoardBuilderReviewStatus;
 use App\Enums\SalesBoardCycleStatus;
 use App\Exceptions\SalesBoardBuilderReviewException;
 use App\Models\SalesBoardBuilderReview;
+use App\Models\SalesBoardBuilderReviewAttachment;
 use App\Models\SalesBoardBuilderReviewSection;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleBaseline;
+use App\Support\BusinessTime;
+use App\Support\SalesBoards\SalesBoardAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Throwable;
 
 /**
  * Fecha a validação da construtora e entrega a competência à Gestão.
@@ -30,6 +39,14 @@ use Illuminate\Support\Facades\DB;
  * nenhuma não conformidade é criada, nenhum quadro é publicado, ninguém é
  * notificado. Essas decisões são da fase seguinte, e antecipá-las aqui faria a
  * submissão da construtora parecer um aval que ela não é.
+ *
+ * O envio interno -- o único que existe hoje -- carrega a resposta da
+ * construtora ({@see BuilderResponseEvidence}): quem respondeu por ela, o
+ * canal, a data do recebimento e de 1 a 5 arquivos. É ela que dá ao registro
+ * o peso de "validação da construtora", e por isso a exigência mora aqui, e
+ * não só na tela: uma chamada direta ao serviço passa pela mesma regra. A
+ * identidade externa, que nenhum caminho produz ainda, fica dispensada -- a
+ * resposta dela é o próprio envio.
  */
 class SalesBoardBuilderReviewSubmissionService
 {
@@ -37,18 +54,37 @@ class SalesBoardBuilderReviewSubmissionService
      * Versão do texto que a construtora aceita ao enviar. Congelada junto com a
      * submissão para que, se o texto mudar, se saiba qual foi aceito.
      */
-    public const DECLARATION_VERSION = '2026-09-v1';
+    public const DECLARATION_VERSION = '2026-10-v2';
+
+    public const MINIMUM_RESPONDENT_NAME_LENGTH = 3;
+
+    public const MAXIMUM_RESPONDENT_LENGTH = 255;
 
     public function __construct(
         private readonly SalesBoardStaleDetectionService $staleDetectionService,
         private readonly SalesBoardBuilderReviewApplicability $applicability,
+        private readonly SalesBoardBuilderResponseEvidenceStore $evidenceStore,
     ) {}
 
     public function submit(
         SalesBoardBuilderReview $review,
         BuilderReviewerIdentity $reviewer,
         ?string $overallComment = null,
+        ?BuilderResponseEvidence $evidence = null,
     ): SalesBoardBuilderReview {
+        /**
+         * Quem envia vem antes de tudo: uma identidade que não diz quem é não
+         * envia, e quem não opera a competência não envia. As duas recusas
+         * acontecem antes da conferência contra a fonte, para que nenhuma
+         * derivação rode e nenhuma constatação seja gravada a pedido de quem
+         * não pode enviar. A identidade é conferida primeiro para que a recusa
+         * de domínio -- "não foi possível identificar quem está enviando" --
+         * continue sendo a resposta a uma identidade vazia.
+         */
+        $this->assertReviewerIdentified($reviewer);
+
+        SalesBoardAccess::authorizeBuilderReviewer($reviewer);
+
         /**
          * A conferência final contra a fonte acontece **fora** da transação,
          * pelo mesmo motivo da abertura: ela grava o que encontrou, e uma recusa
@@ -61,7 +97,48 @@ class SalesBoardBuilderReviewSubmissionService
          */
         $this->refreshStaleMetadata($review);
 
-        return DB::transaction(function () use ($review, $reviewer, $overallComment): SalesBoardBuilderReview {
+        /**
+         * A resposta da construtora é conferida e gravada no disco privado
+         * antes da transação: a varredura e a cópia dos arquivos não podem
+         * segurar os locks do ciclo. Dentro dela só nascem as linhas. Qualquer
+         * recusa daqui em diante apaga o que foi gravado, e o sucesso apaga os
+         * temporários do upload depois do commit.
+         */
+        $staged = [];
+
+        if ($reviewer->type === BuilderReviewerType::InternalPreview) {
+            $evidence = $this->assertBuilderResponse($evidence, $review, $overallComment);
+            $staged = $this->evidenceStore->stage($evidence->files, (int) $review->sales_board_cycle_id);
+        } else {
+            $evidence = null;
+        }
+
+        try {
+            $submitted = $this->transition($review, $reviewer, $overallComment, $evidence, $staged);
+        } catch (Throwable $exception) {
+            $this->evidenceStore->discard($staged);
+
+            throw $exception;
+        }
+
+        $this->evidenceStore->deleteTemporaryUploads($staged);
+
+        return $submitted;
+    }
+
+    /**
+     * A transição de rascunho para enviada, com a resposta da construtora.
+     *
+     * @param  list<StagedBuilderResponseAttachment>  $staged
+     */
+    private function transition(
+        SalesBoardBuilderReview $review,
+        BuilderReviewerIdentity $reviewer,
+        ?string $overallComment,
+        ?BuilderResponseEvidence $evidence,
+        array $staged,
+    ): SalesBoardBuilderReview {
+        return DB::transaction(function () use ($review, $reviewer, $overallComment, $evidence, $staged): SalesBoardBuilderReview {
             /**
              * Ciclo e revisão travados na mesma ordem em que a abertura e a
              * edição os tocam: o ciclo primeiro. Dois envios simultâneos
@@ -99,9 +176,27 @@ class SalesBoardBuilderReviewSubmissionService
 
             $this->assertStillApplies($cycle, $review);
             $this->assertSectionsResolved($review);
-            $this->assertReviewerIdentified($reviewer);
 
             $now = CarbonImmutable::now();
+
+            /**
+             * As linhas dos anexos nascem enquanto a rodada ainda é rascunho,
+             * na mesma transação que a congela: ou a validação é enviada com a
+             * resposta inteira, ou não é enviada.
+             */
+            foreach ($staged as $attachment) {
+                SalesBoardBuilderReviewAttachment::query()->create([
+                    'sales_board_builder_review_id' => $review->getKey(),
+                    'disk' => $attachment->disk,
+                    'path' => $attachment->path,
+                    'original_name' => $attachment->originalName,
+                    'mime_type' => $attachment->mimeType,
+                    'size_bytes' => $attachment->sizeBytes,
+                    'checksum' => $attachment->checksum,
+                    'scan_status' => MalwareScanStatus::Clean,
+                    'uploaded_by_user_id' => $reviewer->internalUserId,
+                ]);
+            }
 
             $review->forceFill([
                 'status' => SalesBoardBuilderReviewStatus::Submitted,
@@ -111,6 +206,10 @@ class SalesBoardBuilderReviewSubmissionService
                 'reviewer_key' => $reviewer->stableKey,
                 'reviewer_name' => $reviewer->displayName,
                 'reviewer_email' => $reviewer->email,
+                'builder_respondent_name' => $evidence?->respondentName,
+                'builder_respondent_email' => $evidence?->respondentEmail,
+                'builder_response_channel' => $evidence?->channel,
+                'builder_response_received_on' => $evidence?->receivedOn?->toDateString(),
                 'declaration_version' => self::DECLARATION_VERSION,
                 'overall_comment' => $this->normalizeComment($overallComment) ?? $review->overall_comment,
             ])->save();
@@ -119,6 +218,78 @@ class SalesBoardBuilderReviewSubmissionService
 
             return $review->refresh();
         });
+    }
+
+    /**
+     * A resposta da construtora que o envio interno exige.
+     *
+     * Falha fechada: sem evidência, ou com qualquer campo fora da regra, o
+     * envio é recusado antes de qualquer arquivo ser gravado. A data é dia de
+     * negócio, entre a data da posição -- a construtora responde sobre um
+     * quadro já fechado -- e hoje. O canal "outro" só é aceito descrito nas
+     * observações gerais, as que o envio grava ou as que o rascunho já tinha.
+     */
+    private function assertBuilderResponse(
+        ?BuilderResponseEvidence $evidence,
+        SalesBoardBuilderReview $review,
+        ?string $overallComment,
+    ): BuilderResponseEvidence {
+        if ($evidence === null) {
+            throw SalesBoardBuilderReviewException::builderResponseEvidenceRequired();
+        }
+
+        $name = trim(strip_tags((string) $evidence->respondentName));
+
+        if ((mb_strlen($name) < self::MINIMUM_RESPONDENT_NAME_LENGTH) || (mb_strlen($name) > self::MAXIMUM_RESPONDENT_LENGTH)) {
+            throw SalesBoardBuilderReviewException::builderRespondentRequired();
+        }
+
+        $email = trim((string) $evidence->respondentEmail);
+
+        /**
+         * A mesma regra de e-mail do formulário (a `email` do Laravel), e não
+         * `FILTER_VALIDATE_EMAIL`, que recusa endereço válido com acento ou
+         * com a parte local longa -- a coluna aceita os 255 caracteres de
+         * `users.email`.
+         */
+        if (($email === '')
+            || (mb_strlen($email) > self::MAXIMUM_RESPONDENT_LENGTH)
+            || Validator::make(['email' => $email], ['email' => ['email']])->fails()) {
+            throw SalesBoardBuilderReviewException::builderRespondentEmailInvalid();
+        }
+
+        if ($evidence->channel === null) {
+            throw SalesBoardBuilderReviewException::builderResponseChannelRequired();
+        }
+
+        $from = CarbonImmutable::parse($review->cycle->position_date->toDateString())->startOfDay();
+        $until = CarbonImmutable::parse(BusinessTime::dateString())->startOfDay();
+        $receivedOn = $evidence->receivedOn?->startOfDay();
+
+        if (($receivedOn === null) || $receivedOn->lessThan($from) || $receivedOn->greaterThan($until)) {
+            throw SalesBoardBuilderReviewException::builderResponseReceivedOutOfRange($from, $until);
+        }
+
+        if ($evidence->channel->requiresComment()
+            && (($this->normalizeComment($overallComment) ?? $this->normalizeComment($review->overall_comment)) === null)) {
+            throw SalesBoardBuilderReviewException::builderResponseChannelNeedsComment();
+        }
+
+        if ($evidence->files === []) {
+            throw SalesBoardBuilderReviewException::builderResponseAttachmentRequired();
+        }
+
+        if (count($evidence->files) > SalesBoardBuilderResponseEvidenceStore::maxFiles()) {
+            throw SalesBoardBuilderReviewException::tooManyBuilderResponseAttachments(SalesBoardBuilderResponseEvidenceStore::maxFiles());
+        }
+
+        return new BuilderResponseEvidence(
+            respondentName: $name,
+            respondentEmail: $email,
+            channel: $evidence->channel,
+            receivedOn: $receivedOn,
+            files: $evidence->files,
+        );
     }
 
     /**

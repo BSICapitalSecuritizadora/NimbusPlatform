@@ -19,7 +19,7 @@
         <span class="bsi-cycle-description">{{ $this->getSubheading() }}</span>
         @if ($record->updated_at)
             <span class="bsi-cycle-updated">
-                Atualizada <time datetime="{{ $record->updated_at->toIso8601String() }}" title="{{ $record->updated_at->format('d/m/Y \à\s H:i') }}">{{ $record->updated_at->diffForHumans() }}</time>
+                Atualizada <time datetime="{{ $record->updated_at->toIso8601String() }}" title="{{ \App\Support\BusinessTime::at($record->updated_at)->format('d/m/Y \à\s H:i') }}">{{ $record->updated_at->diffForHumans() }}</time>
             </span>
         @endif
     </x-slot>

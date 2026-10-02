@@ -147,6 +147,24 @@ it('never defaults the production filesystem to a disk without credentials', fun
     }
 });
 
+/**
+ * O disco dos envios temporários do Livewire guarda planilhas com CPF/CNPJ e é
+ * lido pelas conferências das importações: na produção ele é `local` (raiz
+ * privada, fora do wwwroot), nunca um disco remoto. No `.env.example` a linha fica
+ * comentada -- a esteira copia esse arquivo, e um valor ativo esconderia se o
+ * padrão do `config/livewire.php` ainda vale.
+ */
+it('pins the livewire temporary upload disk to local in production and leaves it commented in the example', function () {
+    $productionEnv = File::get(base_path('.env.example.production'));
+    $exampleEnv = File::get(base_path('.env.example'));
+
+    preg_match_all('/^LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK=(.*)$/m', $productionEnv, $productionValues);
+
+    expect($productionValues[1])->toBe(['local'])
+        ->and($exampleEnv)->toMatch('/^# LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK=local$/m')
+        ->and($exampleEnv)->not->toMatch('/^LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK=/m');
+});
+
 it('keeps the production mailer aligned with the transport it configures', function () {
     $productionEnv = File::get(base_path('.env.example.production'));
 

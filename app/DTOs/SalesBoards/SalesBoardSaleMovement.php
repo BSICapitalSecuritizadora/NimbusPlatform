@@ -6,6 +6,7 @@ namespace App\DTOs\SalesBoards;
 
 use App\DTOs\BaseDTO;
 use App\Enums\ResolvedUnitValueSource;
+use App\Enums\SalesBoardMovementTiming;
 use App\Support\Money\IntegerMoney;
 use Carbon\CarbonImmutable;
 
@@ -18,6 +19,10 @@ use Carbon\CarbonImmutable;
  * vem apurada em {@see SalesPriceConformityResult} -- mas são o que permite ao
  * snapshot da fase seguinte explicar a venda sem reabrir a tabela viva, que é
  * justamente a que pode ter mudado desde então.
+ *
+ * O `timing` separa a venda do mês (`null`) da venda de competência anterior --
+ * extemporânea, revisão de venda publicada ou de competência sem posição. A
+ * conformidade é sempre a da data da venda.
  */
 readonly class SalesBoardSaleMovement extends BaseDTO
 {
@@ -34,7 +39,17 @@ readonly class SalesBoardSaleMovement extends BaseDTO
         public ?ResolvedUnitValueSource $unitReferenceValueSource,
         public ?CarbonImmutable $unitReferenceEffectiveFrom,
         public ?int $salesDiscountPolicyId,
+        public ?SalesBoardMovementTiming $timing = null,
     ) {}
+
+    /**
+     * A venda é de competência já fechada (extemporânea) ou revisão de venda
+     * publicada: os achados dela avisam, nunca bloqueiam.
+     */
+    public function isLate(): bool
+    {
+        return $this->timing?->isLate() ?? false;
+    }
 
     /**
      * @return array<string, mixed>
@@ -53,6 +68,7 @@ readonly class SalesBoardSaleMovement extends BaseDTO
             'unit_reference_value_effective_from' => $this->unitReferenceEffectiveFrom?->toDateString(),
             'sales_discount_policy_id' => $this->salesDiscountPolicyId,
             'conformity' => $this->conformity->toDisplayArray(),
+            'timing' => $this->timing?->value,
         ];
     }
 }

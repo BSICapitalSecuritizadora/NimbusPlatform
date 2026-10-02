@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Enums\SalesBoardBuilderResponseChannel;
 use App\Enums\SalesBoardBuilderReviewSection as SectionEnum;
 use App\Enums\SalesBoardBuilderReviewSectionStatus;
 use App\Enums\SalesBoardBuilderReviewStatus;
+use App\Enums\SalesBoardManagementReviewStatus;
 use Database\Factories\SalesBoardBuilderReviewFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -26,6 +28,12 @@ use Spatie\Activitylog\Support\LogOptions;
  * quando uma nova versão material do quadro faz o que ela revisou deixar de
  * existir. Isso não altera nada do que a construtora declarou: apenas registra
  * que aquela declaração se refere a um quadro que não é mais o vigente.
+ *
+ * Enquanto a construtora não tem canal próprio, a validação é registrada por
+ * um operador interno, e o envio carrega a resposta dela: quem respondeu pela
+ * construtora, o canal, a data do recebimento e os arquivos
+ * ({@see SalesBoardBuilderReviewAttachment}). Rodadas enviadas antes dessa
+ * exigência ficam sem resposta anexada, e a tela as reconhece por isso.
  */
 class SalesBoardBuilderReview extends Model
 {
@@ -46,6 +54,10 @@ class SalesBoardBuilderReview extends Model
         'reviewer_key',
         'reviewer_name',
         'reviewer_email',
+        'builder_respondent_name',
+        'builder_respondent_email',
+        'builder_response_channel',
+        'builder_response_received_on',
         'declaration_version',
         'superseded_at',
         'superseded_reason',
@@ -80,6 +92,10 @@ class SalesBoardBuilderReview extends Model
         'reviewer_key',
         'reviewer_name',
         'reviewer_email',
+        'builder_respondent_name',
+        'builder_respondent_email',
+        'builder_response_channel',
+        'builder_response_received_on',
         'overall_comment',
         'declaration_version',
     ];
@@ -114,13 +130,18 @@ class SalesBoardBuilderReview extends Model
             'opened_at' => 'immutable_datetime',
             'submitted_at' => 'immutable_datetime',
             'superseded_at' => 'immutable_datetime',
+            'builder_response_channel' => SalesBoardBuilderResponseChannel::class,
+            'builder_response_received_on' => 'immutable_date',
         ];
     }
 
     /**
      * Grava em `sales_board`, a categoria protegida do módulo. O envio fica
      * registrado com quem enviou e com a versão da declaração, e não só com a
-     * data.
+     * data -- e com a resposta da construtora que o sustenta: quem respondeu,
+     * por qual canal e quando. O e-mail de quem respondeu fica só na linha,
+     * como o do revisor: é dado pessoal, e a trilha guarda o necessário para
+     * localizar a resposta sem espalhá-lo por sete anos.
      */
     public function getActivitylogOptions(): LogOptions
     {
@@ -133,6 +154,9 @@ class SalesBoardBuilderReview extends Model
                 'submitted_by_user_id',
                 'reviewer_type',
                 'reviewer_name',
+                'builder_respondent_name',
+                'builder_response_channel',
+                'builder_response_received_on',
                 'declaration_version',
                 'superseded_at',
                 'superseded_reason',
@@ -174,6 +198,63 @@ class SalesBoardBuilderReview extends Model
     public function divergences(): HasMany
     {
         return $this->hasMany(SalesBoardBuilderDivergence::class, 'sales_board_builder_review_id');
+    }
+
+    /**
+     * Os arquivos da resposta da construtora, na ordem em que foram anexados.
+     */
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(SalesBoardBuilderReviewAttachment::class, 'sales_board_builder_review_id')
+            ->orderBy('id');
+    }
+
+    /**
+     * A rodada carrega a resposta da construtora?
+     *
+     * Rodadas enviadas antes da exigência de evidência ficam com as colunas
+     * nulas -- é assim que a tela as distingue, sem bloquear nada.
+     */
+    public function hasBuilderResponseEvidence(): bool
+    {
+        return filled($this->builder_respondent_name)
+            && ($this->builder_response_channel !== null)
+            && ($this->builder_response_received_on !== null);
+    }
+
+    /**
+     * A devolução da Gestão que abriu esta rodada, se foi uma.
+     *
+     * A rodada criada por uma devolução é, por construção, a seguinte à rodada
+     * devolvida e sobre o mesmo quadro. O critério usa só o que já existe: a
+     * análise devolvida que analisou a rodada imediatamente anterior, com o
+     * mesmo resumo de posição desta. Uma rodada aberta depois de um recálculo
+     * material tem outro resumo, e o pedido da Gestão falava de um quadro que
+     * não existe mais; um recálculo só de origem mantém o resumo, e o pedido
+     * continua valendo.
+     */
+    public function originatingReturn(): ?SalesBoardManagementReview
+    {
+        if ((int) $this->attempt <= 1) {
+            return null;
+        }
+
+        $previousRoundId = self::query()
+            ->where('sales_board_cycle_id', $this->sales_board_cycle_id)
+            ->where('attempt', '<', (int) $this->attempt)
+            ->orderByDesc('attempt')
+            ->value('id');
+
+        if ($previousRoundId === null) {
+            return null;
+        }
+
+        return SalesBoardManagementReview::query()
+            ->where('sales_board_builder_review_id', $previousRoundId)
+            ->where('status', SalesBoardManagementReviewStatus::Returned)
+            ->where('snapshot_fingerprint', (string) $this->snapshot_fingerprint)
+            ->orderByDesc('attempt')
+            ->first();
     }
 
     public function isEditable(): bool

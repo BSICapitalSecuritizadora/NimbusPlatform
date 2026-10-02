@@ -8,8 +8,12 @@ use App\Models\Contract;
 use App\Models\ContractInstallment;
 use App\Models\SalesBoard;
 use App\Models\SalesDiscountPolicy;
+use App\Services\SalesBoards\SalesBoardCycleCancellationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\SalesBoards\CycleFixture;
 use Tests\Support\SalesBoards\DerivationFixture;
+use Tests\Support\SalesBoards\ExtemporaneousFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 
 uses(RefreshDatabase::class);
 
@@ -149,5 +153,21 @@ it('shows the legacy comparison verdict', function () {
     ])
         ->expectsOutputToContain('divergente')
         ->expectsOutputToContain('stock_units')
+        ->assertSuccessful();
+});
+
+it('names the cancelled competences absorbed without an anchor', function () {
+    [$construction, $units] = CycleFixture::readyConstruction(2);
+
+    $july = CycleFixture::generate($construction, '2026-07-01')->cycle;
+    app(SalesBoardCycleCancellationService::class)->cancel($july, GovernanceFixture::approver(), 'Primeira competência cancelada no piloto.');
+    ExtemporaneousFixture::sale($units[0], '2026-07-12');
+
+    $this->artisan('sales-boards:derive', [
+        '--construction' => $construction->id,
+        '--reference-month' => '08/2026',
+    ])
+        ->expectsOutputToContain('Competência anterior (âncora): nenhuma no ciclo mensal · canceladas absorvidas: 07/2026')
+        ->expectsOutputToContain('Movimentos de competências anteriores: de competência sem posição 1')
         ->assertSuccessful();
 });

@@ -27,10 +27,21 @@ use Closure;
  * O contexto é um objeto `scoped` no container -- vive por requisição/comando --
  * e a publicação o abre em volta da própria escrita, devolvendo-o ao estado
  * anterior mesmo em caso de exceção.
+ *
+ * A republicação -- a aprovação de uma retificação, que atualiza o quadro já
+ * publicado da competência -- tem contexto próprio e mais estreito: vale só
+ * para o quadro informado, e o guard só a aceita no update, nunca na exclusão.
  */
 class SalesBoardWriteContext
 {
     private int $publicationDepth = 0;
+
+    /**
+     * Profundidade da republicação, por quadro.
+     *
+     * @var array<int, int>
+     */
+    private array $republicationDepth = [];
 
     /**
      * A escrita atual vem da publicação do ciclo mensal?
@@ -61,6 +72,41 @@ class SalesBoardWriteContext
             return $callback();
         } finally {
             $this->publicationDepth--;
+        }
+    }
+
+    /**
+     * A escrita atual é a republicação deste quadro?
+     */
+    public function isRepublishing(int $salesBoardId): bool
+    {
+        return ($this->republicationDepth[$salesBoardId] ?? 0) > 0;
+    }
+
+    /**
+     * Executa a republicação de um quadro publicado.
+     *
+     * Mesmo padrão de {@see self::asPublication()}: aninhável e à prova de
+     * exceção. O contexto é do quadro, e não global: qualquer outra escrita da
+     * mesma requisição continua barrada como sempre.
+     *
+     * @template TReturn
+     *
+     * @param  Closure(): TReturn  $callback
+     * @return TReturn
+     */
+    public function asRepublication(int $salesBoardId, Closure $callback): mixed
+    {
+        $this->republicationDepth[$salesBoardId] = ($this->republicationDepth[$salesBoardId] ?? 0) + 1;
+
+        try {
+            return $callback();
+        } finally {
+            $this->republicationDepth[$salesBoardId]--;
+
+            if ($this->republicationDepth[$salesBoardId] <= 0) {
+                unset($this->republicationDepth[$salesBoardId]);
+            }
         }
     }
 }

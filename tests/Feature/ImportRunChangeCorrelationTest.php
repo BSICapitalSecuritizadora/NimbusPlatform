@@ -20,12 +20,12 @@ use App\Models\User;
 use App\Support\ActivityLog\ActivityChange;
 use App\Support\ActivityLog\ActivityPresenter;
 use App\Support\ActivityLog\LogBatch;
+use App\Support\Imports\ImportRunDraft;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
@@ -74,16 +74,13 @@ function correlationInstallmentImport(array $rows): void
     $writer = SimpleExcelWriter::create($path)->addHeader($headers);
 
     foreach ($rows as $row) {
-        $writer->addRow(array_combine($headers, $row));
+        $writer->addRow(array_combine($headers, array_pad($row, count($headers), '')));
     }
 
     $writer->close();
 
-    $storedPath = 'imports/contract-installments/'.basename($path);
-    Storage::disk('local')->put($storedPath, file_get_contents($path));
-
     Livewire::test(ListContractInstallments::class)
-        ->callAction(TestAction::make('importContractInstallments'), ['file' => ['upload' => $storedPath]])
+        ->callAction(TestAction::make('importContractInstallments'), ['file' => spreadsheetUpload($path)])
         ->assertHasNoActionErrors();
 }
 
@@ -117,16 +114,13 @@ function correlationContractImport(array $rows): void
     $writer = SimpleExcelWriter::create($path)->addHeader($headers);
 
     foreach ($rows as $row) {
-        $writer->addRow(array_combine($headers, $row));
+        $writer->addRow(array_combine($headers, array_pad($row, count($headers), '')));
     }
 
     $writer->close();
 
-    $storedPath = 'imports/contracts/'.basename($path);
-    Storage::disk('local')->put($storedPath, file_get_contents($path));
-
     Livewire::test(ListContracts::class)
-        ->callAction(TestAction::make('importContracts'), ['file' => ['upload' => $storedPath]])
+        ->callAction(TestAction::make('importContracts'), ['file' => spreadsheetUpload($path)])
         ->assertHasNoActionErrors();
 }
 
@@ -420,7 +414,7 @@ it('leaves no correlation behind when the import is rolled back', function () {
         ImportContractsFromSpreadsheet::class,
         fn (): object => new class extends ImportContractsFromSpreadsheet
         {
-            public function handle(ContractSpreadsheetAnalysis $analysis): array
+            public function handle(ContractSpreadsheetAnalysis $analysis, ?ImportRunDraft $draft = null): array
             {
                 return DB::transaction(function (): array {
                     Contract::query()->first()?->update(['sale_value' => 1]);
@@ -460,7 +454,7 @@ it('does not let a failed execution contaminate the next one', function () {
 
             return new class extends ImportContractsFromSpreadsheet
             {
-                public function handle(ContractSpreadsheetAnalysis $analysis): array
+                public function handle(ContractSpreadsheetAnalysis $analysis, ?ImportRunDraft $draft = null): array
                 {
                     throw ContractImportConcurrencyException::raced();
                 }
@@ -711,4 +705,69 @@ it('names the same column after the record it belongs to', function () {
 
     expect($installmentLabels)->toContain('Data de cancelamento')
         ->and($contractLabels)->toContain('Data do distrato');
+});
+
+// ── Cancelamento das ausentes ─────────────────────────────────────────────
+
+it('puts the cancellation of the absent installments in the batch of the execution', function () {
+    $user = correlationHistoryUser();
+
+    $this->actingAs(makeAdminUser());
+
+    [$contract] = correlationScenario();
+
+    ContractInstallment::factory()->for($contract)->create([
+        'number' => '001',
+        'due_date' => '2026-01-10',
+        'expected_value' => 10000.00,
+    ]);
+    $absent = ContractInstallment::factory()->for($contract)->create([
+        'number' => '002',
+        'due_date' => '2026-02-10',
+        'expected_value' => 10000.00,
+    ]);
+
+    $path = temporaryTestFilePath('correlation-absent');
+    $headers = ContractInstallmentSpreadsheetColumns::headers();
+
+    SimpleExcelWriter::create($path)
+        ->addHeader($headers)
+        ->addRow(array_combine($headers, array_pad(correlationInstallmentRow(['paid_value' => '10000.00', 'payment_date' => '10/01/2026']), count($headers), '')))
+        ->close();
+
+    Livewire::test(ListContractInstallments::class)
+        ->mountAction(TestAction::make('importContractInstallments'))
+        ->fillForm(['file' => spreadsheetUpload($path)])
+        ->fillForm([
+            'cancel_absent_open' => true,
+            'absent_cancellation_date' => '2026-07-05',
+            'absent_cancellation_reason' => 'Renegociação com novo cronograma.',
+        ])
+        ->callMountedAction()
+        ->assertHasNoActionErrors();
+
+    $run = ImportRun::query()->sole();
+
+    $cancellation = $run->activities()
+        ->where('subject_type', ContractInstallment::class)
+        ->where('subject_id', $absent->id)
+        ->sole();
+
+    $presented = collect(ActivityPresenter::changesFor($cancellation))
+        ->keyBy(fn (ActivityChange $change): string => $change->key);
+
+    expect($run->activities()->where('subject_type', ContractInstallment::class)->count())->toBe(2)
+        ->and($presented['cancellation_date']->label)->toBe('Data de cancelamento')
+        ->and($presented['cancellation_date']->old)->toBeNull()
+        ->and($presented['cancellation_date']->new)->toBe('05/07/2026');
+
+    Livewire::actingAs($user)
+        ->test(ImportRunChangesRelationManager::class, [
+            'ownerRecord' => $run,
+            'pageClass' => ViewImportRun::class,
+        ])
+        ->assertSuccessful()
+        ->assertCanSeeTableRecords([$cancellation])
+        ->assertSee('Contrato CVC-00123 · Parcela 002')
+        ->assertSee('Data de cancelamento');
 });

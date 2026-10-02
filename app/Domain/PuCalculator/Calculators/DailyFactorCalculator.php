@@ -2,12 +2,15 @@
 
 namespace App\Domain\PuCalculator\Calculators;
 
+use App\Domain\PuCalculator\Exceptions\PuNumericConvergenceException;
 use App\Domain\PuCalculator\Services\DecimalRounder;
 use App\Domain\PuCalculator\ValueObjects\Decimal;
 use InvalidArgumentException;
 
 class DailyFactorCalculator
 {
+    private const MAX_NEWTON_ITERATIONS = 60;
+
     /** @var array<string, string> */
     private array $cache = [];
 
@@ -83,22 +86,49 @@ class DailyFactorCalculator
         );
     }
 
+    /**
+     * Raiz n-ésima por Newton em BCMath, que nunca devolve aproximação não convergida.
+     *
+     * A iteração parte de 1 para qualquer base. O primeiro passo dá 1 + (base - 1) / n,
+     * que pela desigualdade de Bernoulli nunca fica abaixo da raiz exata; como
+     * x^n - base é convexa e crescente em x > 0, Newton desce dali até a raiz de forma
+     * monótona e quadrática: no máximo 8 iterações de -50% a 100% a.a. (denominadores
+     * 2 a 372); as 60 só se esgotam acima de ~6.000% a.a.
+     *
+     * Bases >= 1 partiam da própria base: x^(n-1) explodia, cada passo só encolhia a
+     * estimativa em (n-1)/n e o laço esgotava sem convergir (base 252 a partir de
+     * 23,78% a.a.; 360, de 16,08%; 372, de 15,51%). A última aproximação saía como se
+     * fosse a raiz -- errada já na 8ª casa a partir de 25,33%, 17,13% e 16,50%. Bases
+     * < 1 já partiam de 1 e seguem a mesma sequência de antes.
+     *
+     * Só a base exatamente zero tem raiz zero: comparar na escala de trabalho tomava
+     * uma base positiva menor que 10^-workingScale por zero.
+     *
+     * Convergência: dois iterados consecutivos iguais em `$scale` casas. Antes de sair,
+     * o resultado ainda precisa provar que a raiz exata está a menos de uma unidade da
+     * última casa (`assertBracketsExactRoot()`). Qualquer outro desfecho lança
+     * `PuNumericConvergenceException`.
+     */
     private function nthRoot(string $value, int $root, int $scale, int $workingScale): string
     {
-        if (bccomp($value, '0', $workingScale) === 0) {
+        $exactScale = strlen($value);
+
+        if (bccomp($value, '0', $exactScale) === 0) {
             return $this->rounder->round('0', $scale);
         }
 
-        $currentApproximation = bccomp($value, '1', $workingScale) >= 0 ? $value : '1';
+        if ($root % 2 === 0 && bccomp($value, '0', $exactScale) < 0) {
+            throw new InvalidArgumentException(sprintf('A negative base [%s] has no real root of even degree [%d].', $value, $root));
+        }
+
+        $currentApproximation = '1';
         $rootMinusOne = (string) ($root - 1);
 
-        for ($attempt = 0; $attempt < 60; $attempt++) {
+        for ($attempt = 1; $attempt <= self::MAX_NEWTON_ITERATIONS; $attempt++) {
             $denominator = Decimal::of($currentApproximation)->powerInt($root - 1, $workingScale)->value();
 
             if (bccomp($denominator, '0', $workingScale) === 0) {
-                $currentApproximation = '1';
-
-                continue;
+                throw PuNumericConvergenceException::vanishingDerivative($value, $root, $attempt);
             }
 
             $numeratorLeft = bcmul($rootMinusOne, $currentApproximation, $workingScale);
@@ -110,12 +140,32 @@ class DailyFactorCalculator
             );
 
             if (bccomp($nextApproximation, $currentApproximation, $scale) === 0) {
-                return $this->rounder->round($nextApproximation, $scale);
+                $result = $this->rounder->round($nextApproximation, $scale);
+
+                $this->assertBracketsExactRoot($result, $value, $root, $scale, $workingScale);
+
+                return $result;
             }
 
             $currentApproximation = $nextApproximation;
         }
 
-        return $this->rounder->round($currentApproximation, $scale);
+        throw PuNumericConvergenceException::didNotConverge($value, $root, self::MAX_NEWTON_ITERATIONS);
+    }
+
+    /**
+     * Prova que a raiz exata está a menos de uma unidade da última casa de `$candidate`:
+     * (candidato - ulp)^n <= base <= (candidato + ulp)^n. Vale porque x^n é crescente
+     * em x >= 0 (e, para n ímpar, em toda a reta) e `bcpow` é exato antes de truncar.
+     */
+    private function assertBracketsExactRoot(string $candidate, string $value, int $root, int $scale, int $workingScale): void
+    {
+        $unitInLastPlace = '0.'.str_repeat('0', $scale - 1).'1';
+        $lowerPower = Decimal::of(bcsub($candidate, $unitInLastPlace, $scale))->powerInt($root, $workingScale)->value();
+        $upperPower = Decimal::of(bcadd($candidate, $unitInLastPlace, $scale))->powerInt($root, $workingScale)->value();
+
+        if (bccomp($lowerPower, $value, $workingScale) > 0 || bccomp($upperPower, $value, $workingScale) < 0) {
+            throw PuNumericConvergenceException::failedVerification($value, $root, $candidate, $unitInLastPlace);
+        }
     }
 }

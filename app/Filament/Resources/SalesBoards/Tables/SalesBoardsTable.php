@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\SalesBoards\Tables;
 
+use App\Filament\Resources\SalesBoards\Pages\ViewSalesBoard;
 use App\Filament\Resources\SalesBoards\SalesBoardResource;
 use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\SalesBoard;
@@ -23,10 +24,16 @@ class SalesBoardsTable
      * o histórico de versões -- inclusive a posição do início da operação --
      * iria junto com o quadro, pela FK em cascata. Uma posição errada se corrige
      * com uma nova versão, que fica no histórico.
+     *
+     * Quadro publicado pelo ciclo mensal não recebe versão manual: "Nova
+     * Atualização" aparece desabilitada, com o motivo. A existência da
+     * publicação vem na própria consulta da lista (`withExists`), e não de uma
+     * consulta por linha.
      */
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->withExists('publications'))
             ->recordUrl(fn (SalesBoard $record): ?string => SalesBoardResource::canView($record)
                 ? SalesBoardResource::getUrl('view', ['record' => $record])
                 : null)
@@ -172,6 +179,8 @@ class SalesBoardsTable
                     Action::make('newUpdate')
                         ->label('Nova Atualização')
                         ->icon('heroicon-o-plus')
+                        ->disabled(fn (SalesBoard $record): bool => (bool) $record->publications_exists)
+                        ->tooltip(fn (SalesBoard $record): ?string => $record->publications_exists ? ViewSalesBoard::PUBLISHED_BOARD_TOOLTIP : null)
                         ->visible(fn (SalesBoard $record): bool => SalesBoardResource::canEdit($record))
                         ->url(fn (SalesBoard $record): string => SalesBoardResource::getUrl('create', [
                             'from' => $record->getKey(),

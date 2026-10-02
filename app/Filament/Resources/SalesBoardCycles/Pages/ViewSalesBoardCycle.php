@@ -3,11 +3,14 @@
 namespace App\Filament\Resources\SalesBoardCycles\Pages;
 
 use App\Enums\SalesBoardCycleStatus;
+use App\Filament\Resources\SalesBoardCycles\Actions\AbandonSalesBoardRectificationAction;
 use App\Filament\Resources\SalesBoardCycles\Actions\CancelSalesBoardCycleAction;
 use App\Filament\Resources\SalesBoardCycles\Actions\CheckSalesBoardCycleStaleAction;
 use App\Filament\Resources\SalesBoardCycles\Actions\OpenBuilderReviewAction;
 use App\Filament\Resources\SalesBoardCycles\Actions\OpenManagementReviewAction;
 use App\Filament\Resources\SalesBoardCycles\Actions\RecalculateSalesBoardCycleAction;
+use App\Filament\Resources\SalesBoardCycles\Actions\RectifySalesBoardCycleAction;
+use App\Filament\Resources\SalesBoardCycles\Actions\ReopenSalesBoardCycleAction;
 use App\Filament\Resources\SalesBoardCycles\SalesBoardCycleResource;
 use App\Filament\Resources\SalesBoards\SalesBoardResource;
 use App\Models\SalesBoardCycle;
@@ -58,6 +61,9 @@ class ViewSalesBoardCycle extends ViewRecord
             CheckSalesBoardCycleStaleAction::make()->outlined(),
             RecalculateSalesBoardCycleAction::make()->color('gray')->link(),
             CancelSalesBoardCycleAction::make(),
+            ReopenSalesBoardCycleAction::make(),
+            RectifySalesBoardCycleAction::make(),
+            AbandonSalesBoardRectificationAction::make(),
         ];
     }
 
@@ -65,6 +71,10 @@ class ViewSalesBoardCycle extends ViewRecord
      * Depois de publicada, a competência continua sendo consultada: o quadro que
      * ela produziu e a análise que a aprovou são o histórico, e sem estes links
      * o único caminho até eles seria saber a URL.
+     *
+     * O quadro publicado aparece pela publicação, e não pelo status: a
+     * competência em retificação voltou a "Gerado" e o quadro dela continua
+     * publicado e valendo.
      */
     protected function viewPublishedBoardAction(): Action
     {
@@ -72,7 +82,7 @@ class ViewSalesBoardCycle extends ViewRecord
             ->label('Ver Quadro de Vendas publicado')
             ->icon('heroicon-o-rectangle-stack')
             ->color('gray')
-            ->visible(fn (SalesBoardCycle $record): bool => ($record->status === SalesBoardCycleStatus::Approved)
+            ->visible(fn (SalesBoardCycle $record): bool => $record->hasPublication()
                 && ($this->publishedSalesBoardId($record) !== null))
             ->url(fn (SalesBoardCycle $record): ?string => ($salesBoardId = $this->publishedSalesBoardId($record)) === null
                 ? null
@@ -93,6 +103,7 @@ class ViewSalesBoardCycle extends ViewRecord
     {
         $salesBoardId = SalesBoardPublication::query()
             ->where('sales_board_cycle_id', $cycle->getKey())
+            ->orderByDesc('sequence_number')
             ->value('sales_board_id');
 
         return $salesBoardId === null ? null : (int) $salesBoardId;

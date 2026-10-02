@@ -26,6 +26,8 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Concurrency;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\CommittedRowsSweeper;
+use Tests\Support\SalesBoards\BuilderReviewFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 
 /**
  * As corridas da validação, em conexões reais.
@@ -95,7 +97,7 @@ function builderReviewRaceScenario(): array
 
     return [
         'cycle' => SalesBoardCycle::query()->sole(),
-        'actor' => User::factory()->create(),
+        'actor' => GovernanceFixture::operator(),
         'contract' => $contract,
     ];
 }
@@ -138,11 +140,24 @@ function builderReviewTask(array $instruction): Closure
                 'open' => (string) app(SalesBoardBuilderReviewOpeningService::class)
                     ->open(SalesBoardCycle::query()->findOrFail($instruction['cycle_id']), $actor)
                     ->getKey(),
-                'submit' => app(SalesBoardBuilderReviewSubmissionService::class)
-                    ->submit(
-                        SalesBoardBuilderReview::query()->findOrFail($instruction['review_id']),
-                        BuilderReviewerIdentity::forInternalUser($actor),
-                    )->status->value,
+                /**
+                 * O processo filho commita: a resposta da construtora vai para
+                 * o armazenamento em memória, e nenhum arquivo fica no disco
+                 * privado sem que alguém o apague.
+                 */
+                'submit' => (static function () use ($instruction, $actor): string {
+                    BuilderReviewFixture::useInMemoryEvidenceStore();
+
+                    $review = SalesBoardBuilderReview::query()->findOrFail($instruction['review_id']);
+
+                    return app(SalesBoardBuilderReviewSubmissionService::class)
+                        ->submit(
+                            $review,
+                            BuilderReviewerIdentity::forInternalUser($actor),
+                            null,
+                            BuilderReviewFixture::evidence($review),
+                        )->status->value;
+                })(),
                 'recalculate' => app(SalesBoardRecalculationService::class)
                     ->recalculate(
                         SalesBoardCycle::query()->findOrFail($instruction['cycle_id']),
@@ -180,7 +195,7 @@ it('never submits the same review twice', function () {
     $editor = app(SalesBoardBuilderReviewEditor::class);
 
     foreach (SectionEnum::ordered() as $section) {
-        $editor->confirmSection($review->sections()->where('section', $section)->sole());
+        $editor->confirmSection($review->sections()->where('section', $section)->sole(), BuilderReviewFixture::reviewer($scenario['actor']));
     }
 
     $marker = temporaryTestFilePath('builder-review-submit-lock', 'lock');
@@ -220,7 +235,7 @@ it('never lets a review cross into management while a new version is being creat
     $editor = app(SalesBoardBuilderReviewEditor::class);
 
     foreach (SectionEnum::ordered() as $section) {
-        $editor->confirmSection($review->sections()->where('section', $section)->sole());
+        $editor->confirmSection($review->sections()->where('section', $section)->sole(), BuilderReviewFixture::reviewer($scenario['actor']));
     }
 
     // A fonte muda: o recálculo concorrente vai produzir uma V2 material.

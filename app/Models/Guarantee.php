@@ -91,9 +91,16 @@ class Guarantee extends Model
         ];
     }
 
+    /**
+     * O cadastro da garantia decide elegibilidade, exigência e situação
+     * jurídica -- é o que o fechamento de cada competência usou. A trilha vai
+     * para `guarantees`, protegida em `config/audit.php`; no balde `default` ela
+     * seria descartada em um ano, antes do número que ajudou a fechar.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('guarantees')
             ->logFillable()
             ->logOnlyDirty()
             ->dontLogEmptyChanges();

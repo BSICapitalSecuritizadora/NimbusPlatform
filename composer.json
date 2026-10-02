@@ -81,6 +81,11 @@
             "Composer\\Config::disableProcessTimeout",
             "bash ./scripts/parity-check.sh"
         ],
+        "test:bench": [
+            "Composer\\Config::disableProcessTimeout",
+            "@putenv NIMBUS_BENCH=1",
+            "@php artisan test --compact tests/Feature/SalesBoardVolumePerformanceTest.php tests/Feature/SalesBoardAutomationPerformanceTest.php tests/Feature/SalesBoardRolloutPerformanceTest.php tests/Feature/ContractInstallmentImportScaleTest.php"
+        ],
         "test:measurements:mysql": [
             "Composer\\Config::disableProcessTimeout",
             "./scripts/parity-check.sh --compact --fail-on-skipped tests/Feature/MeasurementMysqlConcurrencyTest.php tests/Feature/MeasurementReceiptEvidenceMysqlConcurrencyTest.php"

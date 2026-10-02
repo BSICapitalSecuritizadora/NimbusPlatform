@@ -13,7 +13,6 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Testing\TestAction;
 use Filament\Notifications\Livewire\Notifications;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Permission;
@@ -208,15 +207,12 @@ it('imports through the list page wizard and records the audit trail without pii
         ['PJ', 'Empresa Exemplo Ltda', '11.222.333/0001-81', null, null],
     ]);
 
-    $storedPath = 'imports/clients/'.basename($path);
-    Storage::disk('local')->put($storedPath, file_get_contents($path));
-
     Livewire::test(ListClients::class)
         ->assertActionExists('downloadTemplate')
         ->assertActionHasLabel('downloadTemplate', 'Baixar Modelo')
         ->assertActionExists('importClients')
         ->assertActionHasLabel('importClients', 'Importar Clientes')
-        ->callAction(TestAction::make('importClients'), ['file' => ['upload' => $storedPath]])
+        ->callAction(TestAction::make('importClients'), ['file' => spreadsheetUpload($path)])
         ->assertHasNoActionErrors();
 
     expect(Client::query()->count())->toBe(2);
@@ -238,11 +234,8 @@ it('does not import through the wizard when the spreadsheet has errors', functio
         ['PF', 'Inválido', '12345678900', null, null],
     ]);
 
-    $storedPath = 'imports/clients/'.basename($path);
-    Storage::disk('local')->put($storedPath, file_get_contents($path));
-
     Livewire::test(ListClients::class)
-        ->callAction(TestAction::make('importClients'), ['file' => ['upload' => $storedPath]]);
+        ->callAction(TestAction::make('importClients'), ['file' => spreadsheetUpload($path)]);
 
     expect(Client::query()->count())->toBe(0)
         ->and(Activity::query()->where('log_name', 'importacao-clientes')->count())->toBe(0);
@@ -291,11 +284,9 @@ it('offers the deleted clients listing when an import is blocked by a deleted re
     $trashed->delete();
 
     $path = clientSpreadsheet([['PF', 'Cliente Excluído', '529.982.247-25', null, null]]);
-    $storedPath = 'imports/clients/'.basename($path);
-    Storage::disk('local')->put($storedPath, file_get_contents($path));
 
     Livewire::test(ListClients::class)
-        ->callAction(TestAction::make('importClients'), ['file' => ['upload' => $storedPath]]);
+        ->callAction(TestAction::make('importClients'), ['file' => spreadsheetUpload($path)]);
 
     // Mounting the notifications component drains them, so it happens once.
     $notifications = new Notifications;
@@ -319,13 +310,54 @@ it('never registers a second client for a document held by a deleted one', funct
     $trashed->delete();
 
     $path = clientSpreadsheet([['PF', 'Nome Diferente', '529.982.247-25', null, null]]);
-    $storedPath = 'imports/clients/'.basename($path);
-    Storage::disk('local')->put($storedPath, file_get_contents($path));
 
     Livewire::test(ListClients::class)
-        ->callAction(TestAction::make('importClients'), ['file' => ['upload' => $storedPath]]);
+        ->callAction(TestAction::make('importClients'), ['file' => spreadsheetUpload($path)]);
 
     expect(Client::withTrashed()->count())->toBe(1)
         ->and($trashed->refresh()->name)->toBe('Nome Original')
         ->and($trashed->trashed())->toBeTrue();
 });
+
+/**
+ * Com o comparador de um argumento, a ordem da conferência não seguia regra
+ * nenhuma: uma linha a corrigir depois da quinquagésima saía da tabela.
+ */
+it('puts the blocking rows first on the conference, each group in the order of the file', function () {
+    Client::factory()->create(['document' => '52998224725']);
+
+    $rows = [];
+
+    foreach (range(1, 55) as $index) {
+        $rows[] = ['PF', 'Cliente '.$index, validTestCpf($index), '', ''];
+    }
+
+    $rows[] = ['PF', 'Cadastrado', '529.982.247-25', '', ''];
+    $rows[] = ['XX', 'Tipo inválido', '111.444.777-35', '', ''];
+
+    $preview = analyzeClientSpreadsheet($rows)->previewRows();
+
+    expect($preview->take(2)->pluck('line')->all())->toBe([57, 58])
+        ->and($preview->slice(2)->pluck('line')->all())->toBe(range(2, 56));
+});
+
+/**
+ * Um CPF válido, diferente para cada índice.
+ */
+function validTestCpf(int $index): string
+{
+    $base = str_pad((string) (100000000 + $index * 7919), 9, '0', STR_PAD_LEFT);
+
+    foreach ([10, 11] as $weight) {
+        $sum = 0;
+
+        foreach (str_split($base) as $position => $digit) {
+            $sum += (int) $digit * ($weight - $position);
+        }
+
+        $remainder = ($sum * 10) % 11;
+        $base .= (string) ($remainder === 10 ? 0 : $remainder);
+    }
+
+    return $base;
+}

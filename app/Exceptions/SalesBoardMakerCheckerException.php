@@ -10,8 +10,9 @@ use RuntimeException;
  * Recusa da segregação maker/checker do Quadro de Vendas.
  *
  * Quem prepara um ato não o conclui: quem enviou a validação da construtora não
- * aprova a publicação daquela rodada, e quem abriu a homologação não a aprova nem
- * ativa a automação com base nela. Super admin é a exceção, como no módulo de PU
+ * aprova a publicação daquela rodada, quem abriu a retificação de uma
+ * competência publicada não aprova a publicação dela, e quem abriu a
+ * homologação não a aprova nem ativa a automação com base nela. Super admin é a exceção, como no módulo de PU
  * ({@see PuMakerCheckerException}).
  *
  * É situação prevista, não defeito: não sobe para o log de erros e vira mensagem
@@ -24,6 +25,13 @@ class SalesBoardMakerCheckerException extends RuntimeException implements Should
         return new self('A publicação exige segregação maker/checker: quem enviou a validação da construtora '
             .'desta rodada não pode aprová-la. Solicite a aprovação a outro usuário com a permissão de aprovação '
             .'do Quadro de Vendas (ou a um super admin).');
+    }
+
+    public static function approverRequestedRectification(): self
+    {
+        return new self('A publicação da retificação exige segregação maker/checker: quem abriu a retificação '
+            .'não pode aprová-la. Solicite a aprovação a outro usuário com a permissão de aprovação do Quadro de '
+            .'Vendas (ou a um super admin).');
     }
 
     public static function approverOpenedHomologation(): self

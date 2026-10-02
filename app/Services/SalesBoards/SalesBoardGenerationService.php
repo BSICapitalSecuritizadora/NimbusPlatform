@@ -17,6 +17,9 @@ use App\Models\SalesBoardCycleBaseline;
 use App\Models\User;
 use App\Support\Dates\InclusiveDateBound;
 use App\Support\SalesBoards\CompetenceCalendar;
+use App\Support\SalesBoards\PublishedCompetenceBoundary;
+use App\Support\SalesBoards\SalesBoardAccess;
+use App\Support\SalesBoards\SalesBoardFrozenWarnings;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -35,7 +38,7 @@ use Illuminate\Support\Facades\DB;
  * estoque, financiado, quitado ou permutado aqui seria a segunda resposta para a
  * mesma pergunta, e o Quadro passou três fases eliminando exatamente isso.
  *
- * Cinco portas, nesta ordem:
+ * Seis portas, nesta ordem:
  *
  * 1. **Emissão em elaboração não gera.** É a fase em que a posição inicial ainda
  *    está sendo composta, permutas inclusive. Congelar ali criaria uma "V1" que
@@ -60,12 +63,24 @@ use Illuminate\Support\Facades\DB;
  *    retorno não cancela nada --, e responder "modo legado" a quem pede uma
  *    dessas competências esconderia um ciclo que existe. É a mesma ordem da
  *    automação, que reconhece o ciclo existente antes de pedir a geração;
- * 5. **Prontidão bloqueada não persiste nada.** Nenhum ciclo, nenhuma versão,
+ * 5. **Competência posterior publicada não deixa gerar.** A posição publicada
+ *    da posterior já reflete os fatos desta, e o que chegar depois dela entra
+ *    como extemporâneo na competência seguinte; gerar e publicar esta daria
+ *    aos mesmos fatos um segundo dono. É a mesma regra da reabertura recusada.
+ *    A automação encerra o alvo com motivo próprio, que não volta -- uma
+ *    publicação nunca é desfeita --, em vez de tentar de novo para sempre. A
+ *    leitura é comum: a geração que correr com a aprovação da posterior pode
+ *    criar o ciclo logo depois da publicação, e é a aprovação dele que o recusa
+ *    pela mesma regra ({@see SalesBoardManagementApprovalService});
+ * 6. **Prontidão bloqueada não persiste nada.** Nenhum ciclo, nenhuma versão,
  *    nenhuma linha. Um ciclo incompleto "para preencher depois" seria lido como
  *    posição pela primeira pessoa que abrisse a tela.
  *
  * As portas valem para toda entrada -- ação da tela, comando e automação --
- * porque moram aqui, e não em quem chama.
+ * porque moram aqui, e não em quem chama. Quem chama em nome de uma pessoa
+ * passa o ator, e ele precisa poder congelar competência
+ * ({@see SalesBoardAccess::authorizeGeneration()}); o ator nulo é a automação
+ * ou o comando.
  *
  * Venda fora da política não bloqueia: ela é um fato apurado, não um dado
  * faltando, e é congelada como tal no movimento.
@@ -120,6 +135,10 @@ class SalesBoardGenerationService
         ?User $actor = null,
         bool $dryRun = false,
     ): array {
+        if ($actor !== null) {
+            SalesBoardAccess::authorizeGeneration($actor);
+        }
+
         $month = CarbonImmutable::parse($referenceMonth->toDateString())->startOfMonth();
         $positionDate = $month->endOfMonth()->startOfDay();
 
@@ -171,6 +190,9 @@ class SalesBoardGenerationService
         }
 
         $existing = $candidates->isEmpty() ? [] : $this->existingCycles($candidates->keys()->all(), $month);
+        $lastPublished = $candidates->isEmpty()
+            ? []
+            : PublishedCompetenceBoundary::lastPublishedMonths($candidates->keys()->map(fn (mixed $id): int => (int) $id)->values()->all());
 
         foreach ($candidates as $constructionId => $construction) {
             $constructionId = (int) $constructionId;
@@ -192,9 +214,17 @@ class SalesBoardGenerationService
 
             $coverageRefusal = $this->coverageRefusal($construction, $month);
 
-            $results[$constructionId] = $coverageRefusal === null
-                ? $this->generateOne($construction, $month, $positionDate, $actor, $dryRun)
-                : $this->blocked($construction, $month, $positionDate, $coverageRefusal, dryRun: $dryRun);
+            if ($coverageRefusal !== null) {
+                $results[$constructionId] = $this->blocked($construction, $month, $positionDate, $coverageRefusal, dryRun: $dryRun);
+
+                continue;
+            }
+
+            $laterPublished = $lastPublished[$constructionId] ?? null;
+
+            $results[$constructionId] = (($laterPublished !== null) && $laterPublished->greaterThan($month))
+                ? $this->blockedByLaterPublication($construction, $month, $positionDate, $laterPublished, $dryRun)
+                : $this->generateOne($construction, $month, $positionDate, $actor, $dryRun);
         }
 
         return $constructions->keys()
@@ -341,7 +371,7 @@ class SalesBoardGenerationService
     ): SalesBoardGenerationResult {
         try {
             /** @var array{0: SalesBoardCycle, 1: SalesBoardCycleBaseline} $created */
-            $created = DB::transaction(function () use ($construction, $month, $positionDate, $comparable, $sourceFingerprint, $actor): array {
+            $created = DB::transaction(function () use ($construction, $month, $positionDate, $comparable, $sourceFingerprint, $actor, $position): array {
                 $cycle = SalesBoardCycle::query()->create([
                     'emission_id' => $construction->emission_id,
                     'construction_id' => $construction->getKey(),
@@ -358,6 +388,7 @@ class SalesBoardGenerationService
                     sourceFingerprint: $sourceFingerprint,
                     actor: $actor,
                     reason: null,
+                    frozenWarnings: SalesBoardFrozenWarnings::fromPosition($position),
                 );
 
                 $cycle->forceFill(['current_baseline_id' => $baseline->getKey()])->save();
@@ -427,6 +458,39 @@ class SalesBoardGenerationService
             ->get()
             ->keyBy(fn (SalesBoardCycle $cycle): int => (int) $cycle->construction_id)
             ->all();
+    }
+
+    /**
+     * A competência ficou para trás de uma publicação do empreendimento.
+     *
+     * Nada é apurado: a resposta não depende da fonte. O mês da posterior vai
+     * no resultado, para a automação encerrar o alvo em vez de tentar de novo.
+     */
+    private function blockedByLaterPublication(
+        Construction $construction,
+        CarbonImmutable $month,
+        CarbonImmutable $positionDate,
+        CarbonImmutable $laterPublished,
+        bool $dryRun,
+    ): SalesBoardGenerationResult {
+        return new SalesBoardGenerationResult(
+            outcome: SalesBoardGenerationOutcome::Blocked,
+            constructionId: (int) $construction->getKey(),
+            constructionName: $construction->development_name,
+            referenceMonth: $month,
+            positionDate: $positionDate,
+            blockedReason: sprintf(
+                'A competência %s não pode ser congelada: %s já foi publicada, e a posição dela já reflete os fatos de %s. '
+                    .'Os fatos de %s lançados depois entram como extemporâneos na próxima competência a ser publicada; '
+                    .'para corrigir a posição publicada, use "Retificar competência" na última competência publicada.',
+                $month->format('m/Y'),
+                $laterPublished->format('m/Y'),
+                $month->format('m/Y'),
+                $month->format('m/Y'),
+            ),
+            dryRun: $dryRun,
+            laterPublishedMonth: $laterPublished,
+        );
     }
 
     private function blocked(

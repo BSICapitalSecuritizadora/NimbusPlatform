@@ -6,6 +6,7 @@ use App\Enums\ContractStatus;
 use App\Enums\ReconciliationOutcome;
 use App\Support\Contracts\ContractOccupancyPeriod;
 use App\Support\Contracts\ContractOccupancyTimeline;
+use App\Support\SalesBoards\UnitRetirementTimeline;
 
 /**
  * Reads the whole spreadsheet as one position instead of a sequence of lines.
@@ -20,12 +21,16 @@ use App\Support\Contracts\ContractOccupancyTimeline;
  * file listing the distrato first and one listing the new contract first reach
  * the same verdict.
  *
- * Two questions are asked of every unit, in this order and never mixed:
+ * Three questions are asked of every unit, in this order and never mixed:
  *
  *   1. would more than one contract hold it? -- the occupancy the database
  *      itself refuses through `occupied_unit_lock`;
  *   2. would any two contracts hold it at the same time? -- the history, which
- *      no index can express, checked by {@see ContractOccupancyTimeline}.
+ *      no index can express, checked by {@see ContractOccupancyTimeline};
+ *   3. would a contract the file creates or changes hold it while it is
+ *      retired? -- a unidade baixada não compõe o Quadro, e a venda nela
+ *      sumiria do número ({@see UnitRetirementTimeline}). A importação grava
+ *      por insert em lote, sem eventos, e por isso a recusa mora aqui.
  *
  * The order matters. Two contracts both holding the unit trivially overlap, so
  * the timeline runs only where occupancy already came out right; that way a unit
@@ -186,7 +191,10 @@ class ContractBatchProjection
      *
      * Only units that came out of the projection with a single holder are looked
      * at: where occupancy itself is wrong, that is the finding, and adding a date
-     * complaint on top of it would only bury it.
+     * complaint on top of it would only bury it. O mesmo vale para a baixa: ela
+     * só é conferida quando os contratos não se sobrepõem entre si, e só contra
+     * os períodos que o arquivo cria ou muda -- a linha que não muda nada não é
+     * acusada.
      *
      * @param  list<array<string, mixed>>  $rows
      * @param  array<int, list<UnitContract>>  $unitContracts
@@ -196,24 +204,37 @@ class ContractBatchProjection
     private function findOverlaps(array $rows, array $unitContracts, array $occupancies): array
     {
         $messages = [];
+        $groups = $this->groupByUnit($rows);
+        $retirements = UnitRetirementTimeline::forUnits(array_keys($groups));
 
-        foreach ($this->groupByUnit($rows) as $unitId => $group) {
+        foreach ($groups as $unitId => $group) {
             $occupancy = $occupancies[$unitId] ?? null;
 
             if (($occupancy === null) || $occupancy->isOverOccupied()) {
                 continue;
             }
 
-            $overlap = ContractOccupancyTimeline::of(
-                $this->periodsOf($group['rows'], $unitContracts[$unitId] ?? []),
-            )->firstOverlap();
+            $periods = $this->periodsOf($group['rows'], $unitContracts[$unitId] ?? []);
+            $overlap = ContractOccupancyTimeline::of($periods)->firstOverlap();
 
-            if ($overlap === null) {
+            if ($overlap !== null) {
+                foreach ($overlap->lines() as $line) {
+                    $messages[$line] = $overlap->describe($group['label']);
+                }
+
                 continue;
             }
 
-            foreach ($overlap->lines() as $line) {
-                $messages[$line] = $overlap->describe($group['label']);
+            foreach ($periods as $period) {
+                if (($period === null) || ! $period->isSubject || ($period->line === null)) {
+                    continue;
+                }
+
+                $conflict = $retirements->conflictWith((int) $unitId, $period->startsOn, $period->endsOn);
+
+                if ($conflict !== null) {
+                    $messages[$period->line] = $conflict->describe($group['label']);
+                }
             }
         }
 

@@ -7,12 +7,17 @@ use App\Actions\Contracts\ContractSpreadsheetAnalysis;
 use App\Actions\Contracts\ImportContractsFromSpreadsheet;
 use App\Enums\ReconciliationOutcome;
 use App\Exceptions\ContractImportConcurrencyException;
+use App\Exceptions\ImportConferenceOutdatedException;
 use App\Filament\Resources\Contracts\ContractResource;
 use App\Filament\Resources\ImportRuns\ImportRunResource;
 use App\Models\ImportRun;
+use App\Rules\XlsxSpreadsheetFile;
 use App\Services\SalesBoards\RegisteredCompetenceIndex;
 use App\Support\ActivityLog\LogBatch;
 use App\Support\Dates\SpreadsheetDate;
+use App\Support\Imports\ImportConferenceStore;
+use App\Support\Imports\ImportRunDraft;
+use App\Support\Imports\ImportSpreadsheetSource;
 use App\Support\Reconciliation\ValueComparator;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -24,9 +29,8 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Throwable;
 
 class ListContracts extends ListRecords
 {
@@ -34,6 +38,11 @@ class ListContracts extends ListRecords
      * Maximum number of rows rendered on the preview table.
      */
     private const PREVIEW_LIMIT = 50;
+
+    /**
+     * Where the confirmed spreadsheet is archived, on the private disk.
+     */
+    private const ARCHIVE_DIRECTORY = 'imports/contracts';
 
     protected static string $resource = ContractResource::class;
 
@@ -49,12 +58,14 @@ class ListContracts extends ListRecords
     }
 
     /**
-     * Memoized analysis, so moving through the wizard does not re-read the file
-     * on every render.
+     * The analysis of the upload, by checksum: the conference and the
+     * confirmation of one request read the file once. Private, so it lasts one
+     * request -- a contracts file is small enough to be analysed again on every
+     * step, and what travels between the steps is only its digest.
      *
-     * @var array{path: string, analysis: ContractSpreadsheetAnalysis}|null
+     * @var array<string, ContractSpreadsheetAnalysis>
      */
-    private ?array $memoizedAnalysis = null;
+    private array $contractAnalyses = [];
 
     protected function getHeaderActions(): array
     {
@@ -84,7 +95,11 @@ class ListContracts extends ListRecords
             ->modalHeading('Importar Contratos')
             ->modalWidth(Width::FiveExtraLarge)
             ->modalSubmitActionLabel('Confirmar')
-            ->visible(fn (): bool => ContractResource::canCreate())
+            /**
+             * A conciliação cadastra e atualiza -- inclusive a passagem para
+             * distratado --, então exige criar e editar contratos.
+             */
+            ->visible(fn (): bool => ContractResource::canImport())
             ->steps([
                 Step::make('Arquivo')
                     ->description('Envie a posição completa da carteira')
@@ -92,21 +107,17 @@ class ListContracts extends ListRecords
                         FileUpload::make('file')
                             ->label('Planilha de Contratos (.xlsx)')
                             ->disk('local')
-                            ->directory('imports/contracts')
-                            ->acceptedFileTypes([
-                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                'text/csv',
-                                'application/csv',
-                            ])
+                            /**
+                             * The upload stays the temporary file Livewire
+                             * signed until the confirmation, which archives it:
+                             * the conference and the import read the same bytes.
+                             */
+                            ->storeFiles(false)
+                            ->acceptedFileTypes((array) config('uploads.spreadsheet_import.allowed_mimes', []))
+                            ->rules([new XlsxSpreadsheetFile])
+                            ->validationMessages(['mimetypes' => XlsxSpreadsheetFile::MESSAGE])
                             ->required()
                             ->live()
-                            /**
-                             * The upload is stored under a generated name, so
-                             * the name the operator recognises -- the one that
-                             * has to show up in the import history months later
-                             * -- is kept aside here.
-                             */
-                            ->storeFileNamesIn('original_file_name')
                             ->helperText('Envie a planilha completa da carteira. Contratos novos são cadastrados, os que mudaram são atualizados e os que já estão iguais são ignorados. Um contrato com mais de um comprador ocupa uma linha por comprador, repetindo os mesmos dados contratuais. Emissões, empreendimentos, unidades e clientes precisam já existir no sistema.'),
                     ]),
 
@@ -118,120 +129,196 @@ class ListContracts extends ListRecords
                             ->content(fn (Get $get): Htmlable => $this->renderPreview($get('file'))),
                     ]),
             ])
-            ->action(function (array $data): void {
-                $analysis = $this->analyze($this->resolvePath($data['file'] ?? null));
+            ->action(function (array $data, Action $action): void {
+                $this->confirmContractImport($data, $action);
+            });
+    }
 
-                if (($analysis === null) || ! $analysis->canImport()) {
+    /**
+     * The confirmation analyses the file again -- a couple of thousand lines --
+     * and writes only if it still says what the conference said: the digest of
+     * the conference the operator saw is kept between the requests of the
+     * wizard. When the position moved in between, the new conference is shown
+     * instead of being applied unseen.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function confirmContractImport(array $data, Action $action): void
+    {
+        $source = ImportSpreadsheetSource::fromState($data['file'] ?? null);
+        $analysis = $source === null ? null : $this->analyze($source);
+
+        if (($source === null) || ($analysis === null) || ! $analysis->canImport()) {
+            $this->notifyImportRefused();
+
+            return;
+        }
+
+        $store = app(ImportConferenceStore::class);
+        $key = $this->conferenceKey($source);
+        $seen = $store->get($key);
+
+        /**
+         * Com o cache indisponível -- na leitura ou na gravação -- o digest que
+         * o operador viu não pode ser lido de volta, e o Confirmar segue sem a
+         * guarda, como antes de ela existir. Um cache que lê mas recusa gravar
+         * responderia "Conferência refeita." a todo Confirmar, para sempre: o
+         * digest guardado aqui nunca seria encontrado pelo seguinte.
+         */
+        if (! $store->isUnavailable($key)) {
+            if (($seen === null) || $store->wasComputedInThisRequest($key)) {
+                $store->put($key, ['digest' => $analysis->digest()]);
+
+                if (! $store->isUnavailable($key)) {
                     Notification::make()
-                        ->danger()
-                        ->title('Importação não realizada.')
-                        ->body('Corrija as inconsistências apontadas na conferência e envie a planilha novamente.')
+                        ->warning()
+                        ->title('Conferência refeita.')
+                        ->body('A conferência anterior expirou e foi recalculada com a posição atual. Revise-a e confirme novamente.')
                         ->persistent()
                         ->send();
 
-                    return;
+                    $action->halt();
                 }
+            } elseif (! hash_equals((string) ($seen['digest'] ?? ''), $analysis->digest())) {
+                $store->put($key, ['digest' => $analysis->digest()]);
+
+                Notification::make()
+                    ->warning()
+                    ->title('Conferência desatualizada.')
+                    ->body(ImportConferenceOutdatedException::MESSAGE)
+                    ->persistent()
+                    ->send();
+
+                $action->halt();
+            }
+        }
+
+        $archivedPath = $source->archive(self::ARCHIVE_DIRECTORY);
+
+        /**
+         * The position may have moved between the conference and this click.
+         * Nothing was written when that happens -- the check runs inside the
+         * transaction, before the first statement -- so the run is not recorded
+         * either.
+         *
+         * Everything the confirmation writes happens inside one activity log
+         * batch: each contract saved through the model stamps the batch uuid on
+         * its own activity, which is what later answers "what did this run
+         * change" without confusing it with a manual edit made afterwards on the
+         * same contract.
+         *
+         * The batch wraps the transaction, never the other way round:
+         * `withinBatch()` closes it in a `finally`, so a failed import rolls back
+         * its writes -- activities included, they are written by the same
+         * transaction -- and leaves no batch open for the next execution to fall
+         * into.
+         */
+        try {
+            $result = app(LogBatch::class)->withinBatch(function () use ($analysis, $source, $archivedPath): array {
+                $result = app(ImportContractsFromSpreadsheet::class)->handle($analysis, new ImportRunDraft(
+                    type: ImportRun::TYPE_CONTRACTS,
+                    fileName: $source->originalName(),
+                    checksum: $source->checksum(),
+                    filePath: $archivedPath,
+                    userId: self::importUserId(),
+                ));
+
+                /** @var ImportRun $run */
+                $run = $result['run'];
 
                 /**
-                 * The position may have moved between the conference and this
-                 * click. Nothing was written when that happens -- the check runs
-                 * inside the transaction, before the first statement -- so the
-                 * run is not recorded either.
-                 *
-                 * Everything the confirmation writes happens inside one activity
-                 * log batch: each contract saved through the model stamps the
-                 * batch uuid on its own activity, which is what later answers
-                 * "what did this run change" without confusing it with a manual
-                 * edit made afterwards on the same contract.
-                 *
-                 * The batch wraps the transaction, never the other way round:
-                 * `withinBatch()` closes it in a `finally`, so a failed import
-                 * rolls back its writes -- activities included, they are written
-                 * by the same transaction -- and leaves no batch open for the
-                 * next execution to fall into.
+                 * Part of the same batch, deliberately: it is the entry that
+                 * describes the execution itself. It carries no subject, which
+                 * is how the change listing tells it apart from the individual
+                 * records.
                  */
-                try {
-                    [$result, $run] = app(LogBatch::class)->withinBatch(function (?string $batchUuid) use ($analysis, $data): array {
-                        $result = app(ImportContractsFromSpreadsheet::class)->handle($analysis);
+                activity('importacao-contratos')
+                    ->causedBy(auth()->user())
+                    ->withProperties([
+                        'arquivo' => $run->file_name,
+                        'importacao_id' => $run->getKey(),
+                        'contratos_cadastrados' => $result['created'],
+                        'contratos_atualizados' => $result['updated'],
+                        'contratos_sem_alteracao' => $result['unchanged'],
+                        'unidades_envolvidas' => $result['units'],
+                        'clientes_envolvidos' => $result['clients'],
+                        'empreendimentos_envolvidos' => $result['constructions'],
+                        'contratos_ausentes' => $analysis->absentContractCount(),
+                        'avisos_por_codigo' => $analysis->warningsByCode(),
+                    ])
+                    ->log('Conciliação de contratos concluída.');
 
-                        $path = $this->resolvePath($data['file'] ?? null);
-
-                        $run = ImportRun::query()->create([
-                            'type' => ImportRun::TYPE_CONTRACTS,
-                            'file_name' => $this->resolveFileName($data, $path),
-                            'checksum' => is_file((string) $path) ? hash_file('sha256', (string) $path) : null,
-                            'batch_uuid' => $batchUuid,
-                            'user_id' => auth()->id(),
-                            'records_analyzed' => $analysis->totalLines(),
-                            'records_created' => $result['created'],
-                            'records_updated' => $result['updated'],
-                            'records_unchanged' => $result['unchanged'],
-                            'records_critical' => $analysis->criticalUpdateCount(),
-                        ]);
-
-                        /**
-                         * Part of the same batch, deliberately: it is the entry
-                         * that describes the execution itself. It carries no
-                         * subject, which is how the change listing tells it
-                         * apart from the individual records.
-                         */
-                        activity('importacao-contratos')
-                            ->causedBy(auth()->user())
-                            ->withProperties([
-                                'arquivo' => $run->file_name,
-                                'importacao_id' => $run->getKey(),
-                                'contratos_cadastrados' => $result['created'],
-                                'contratos_atualizados' => $result['updated'],
-                                'contratos_sem_alteracao' => $result['unchanged'],
-                                'unidades_envolvidas' => $result['units'],
-                                'clientes_envolvidos' => $result['clients'],
-                                'empreendimentos_envolvidos' => $result['constructions'],
-                            ])
-                            ->log('Conciliação de contratos concluída.');
-
-                        return [$result, $run];
-                    });
-                } catch (ContractImportConcurrencyException $exception) {
-                    Notification::make()
-                        ->danger()
-                        ->title('Importação não realizada.')
-                        ->body($exception->getMessage())
-                        ->persistent()
-                        ->send();
-
-                    return;
-                }
-
-                $notification = Notification::make()
-                    ->success()
-                    ->title('Posição processada com sucesso.')
-                    ->body(sprintf(
-                        '%d contrato(s) adicionado(s), %d atualizado(s), %d sem alteração.',
-                        $result['created'],
-                        $result['updated'],
-                        $result['unchanged'],
-                    ))
-                    ->persistent();
-
-                if (ImportRunResource::canViewAny()) {
-                    $notification->actions([
-                        Action::make('viewImportRun')
-                            ->label('Ver detalhes da importação')
-                            ->url(ImportRunResource::getUrl('view', ['record' => $run])),
-                    ]);
-                }
-
-                $notification->send();
+                return $result;
             });
+        } catch (ContractImportConcurrencyException $exception) {
+            ImportSpreadsheetSource::forgetArchive($archivedPath);
+
+            Notification::make()
+                ->danger()
+                ->title('Importação não realizada.')
+                ->body($exception->getMessage())
+                ->persistent()
+                ->send();
+
+            return;
+        } catch (Throwable $exception) {
+            ImportSpreadsheetSource::forgetArchive($archivedPath);
+
+            throw $exception;
+        }
+
+        $store->forget($key);
+        $source->discard();
+
+        $notification = Notification::make()
+            ->success()
+            ->title('Posição processada com sucesso.')
+            ->body(sprintf(
+                '%d contrato(s) adicionado(s), %d atualizado(s), %d sem alteração.',
+                $result['created'],
+                $result['updated'],
+                $result['unchanged'],
+            ))
+            ->persistent();
+
+        if (ImportRunResource::canViewAny()) {
+            $notification->actions([
+                Action::make('viewImportRun')
+                    ->label('Ver detalhes da importação')
+                    ->url(ImportRunResource::getUrl('view', ['record' => $result['run']])),
+            ]);
+        }
+
+        $notification->send();
+    }
+
+    private function notifyImportRefused(): void
+    {
+        Notification::make()
+            ->danger()
+            ->title('Importação não realizada.')
+            ->body('Corrija as inconsistências apontadas na conferência e envie a planilha novamente.')
+            ->persistent()
+            ->send();
     }
 
     private function renderPreview(mixed $file): Htmlable
     {
-        $analysis = $this->analyze($this->resolvePath($file));
+        $source = ImportSpreadsheetSource::fromState($file);
+        $analysis = $source === null ? null : $this->analyze($source);
 
         if ($analysis === null) {
             return new HtmlString('<p class="fi-color-danger">Não foi possível ler a planilha enviada.</p>');
         }
+
+        /**
+         * The digest of the conference on screen, kept for the confirmation. The
+         * first one shown is the one that counts: a later request only reads it.
+         */
+        rescue(fn (): array => app(ImportConferenceStore::class)->remember(
+            $this->conferenceKey($source),
+            fn (): array => ['digest' => $analysis->digest()],
+        ), report: false);
 
         if ($analysis->fileErrors !== []) {
             return new HtmlString(
@@ -257,8 +344,16 @@ class ListContracts extends ListRecords
             $lines[] = 'Revendas na mesma unidade: <b>'.$analysis->resaleCount().'</b>';
         }
 
+        if ($analysis->warningCount() > 0) {
+            $lines[] = 'Com aviso: <b>'.$analysis->warningCount().'</b>';
+        }
+
         if ($analysis->registeredCompetenceCount() > 0) {
             $lines[] = 'Alteram competência já registrada no Quadro de Vendas: <b>'.$analysis->registeredCompetenceCount().'</b>';
+        }
+
+        if ($analysis->absentContractCount() > 0) {
+            $lines[] = 'Contratos cadastrados ausentes da planilha: <b>'.$analysis->absentContractCount().'</b>';
         }
 
         if ($analysis->emptyLineCount() > 0) {
@@ -267,10 +362,28 @@ class ListContracts extends ListRecords
 
         $verdict = match (true) {
             ! $analysis->canImport() => '<p class="fi-color-danger"><b>Corrija as inconsistências antes de confirmar. A importação só é liberada quando nenhuma linha estiver em conflito.</b></p>',
+            ($analysis->writeCount() === 0) && ($analysis->absentContractCount() > 0) => '<p class="fi-color-warning"><b>Nada a gravar nas linhas da planilha, mas há contratos cadastrados destes empreendimentos que não vieram nela. Confira a lista abaixo.</b></p>',
             $analysis->writeCount() === 0 => '<p class="fi-color-gray"><b>Nada a atualizar: a posição da planilha já é a posição registrada.</b></p>',
             $analysis->hasCriticalUpdates() => '<p class="fi-color-warning"><b>Há alterações críticas nesta planilha. Revise as linhas destacadas antes de confirmar.</b></p>',
             default => '<p class="fi-color-success"><b>Planilha pronta: '.$analysis->writeCount().' registro(s) serão gravados.</b></p>',
         };
+
+        /**
+         * Never blocking: a value read in a doubtful way, or one far from the
+         * table, is written as read -- but whoever confirms sees it first.
+         */
+        if ($analysis->warningCount() > 0) {
+            $verdict .= '<p class="fi-color-warning"><b>'.$analysis->warningCount().' linha(s) têm aviso (marcadas com ⚠). Confira os valores antes de confirmar.</b></p>';
+        }
+
+        /**
+         * Nothing is done to the contracts the file leaves out: a contract not
+         * mentioned keeps holding its unit. A distrato that never reached the
+         * file is the case worth saying out loud.
+         */
+        if ($analysis->absentContractCount() > 0) {
+            $verdict .= '<p class="fi-color-warning"><b>'.$analysis->absentContractCount().' contrato(s) cadastrado(s) destes empreendimentos não vieram na planilha. Nada muda neles; se algum foi distratado, inclua-o com o status Distratado e a data do distrato.</b></p>';
+        }
 
         /**
          * Never blocking: correcting the source after a competence was
@@ -279,7 +392,7 @@ class ListContracts extends ListRecords
          * follow the correction on its own.
          */
         if ($analysis->registeredCompetenceCount() > 0) {
-            $verdict .= '<p class="fi-color-warning"><b>'.$analysis->registeredCompetenceCount().' linha(s) alteram fatos de competências já registradas no Quadro de Vendas (marcadas com ⚑). A posição registrada não muda sozinha: depois de confirmar, verifique essas competências no Quadro de Vendas.</b></p>';
+            $verdict .= '<p class="fi-color-warning"><b>'.$analysis->registeredCompetenceCount().' linha(s) alteram fatos de competências já registradas no Quadro de Vendas (marcadas com ⚑). A posição registrada não muda sozinha: na competência publicada pelo ciclo, o fato entra como movimento extemporâneo na próxima competência; na registrada manualmente, revise o quadro dela.</b></p>';
         }
 
         return '<div class="fi-ta-text-item-label">'.implode(' &nbsp;·&nbsp; ', $lines).'</div>'.$verdict;
@@ -299,11 +412,22 @@ class ListContracts extends ListRecords
             $outcome = $row['outcome'];
             $detail = filled($row['message'] ?? null) ? e((string) $row['message']) : '—';
 
-            if ($outcome === ReconciliationOutcome::CriticalUpdate) {
+            if (in_array($outcome, [ReconciliationOutcome::CriticalUpdate, ReconciliationOutcome::InformativeDivergence], true)) {
                 $detail = '⚠ '.$detail;
             }
 
-            $registeredWarning = RegisteredCompetenceIndex::describe($row['registered_competences'] ?? []);
+            foreach ($row['warnings'] ?? [] as $warning) {
+                $detail .= '<br><span class="fi-color-warning">⚠ '.e((string) ($warning['message'] ?? '')).'</span>';
+            }
+
+            /**
+             * O aviso vem da própria linha: ele diz o caminho do fato pela forma
+             * como a competência foi registrada -- publicada pelo ciclo, em
+             * retificação ou manual. A forma antiga fica para a conferência
+             * guardada antes do aviso por linha.
+             */
+            $registeredWarning = $row['registered_competence_notice']
+                ?? RegisteredCompetenceIndex::describe($row['registered_competences'] ?? []);
 
             if ($registeredWarning !== null) {
                 $detail .= '<br><span class="fi-color-warning">⚑ '.e($registeredWarning).'</span>';
@@ -336,7 +460,7 @@ class ListContracts extends ListRecords
         $notes = [];
 
         if ($rows->count() > self::PREVIEW_LIMIT) {
-            $notes[] = 'Exibindo as primeiras '.self::PREVIEW_LIMIT.' de '.$rows->count().' linhas, em ordem de prioridade: conflitos, alterações críticas, atualizações, novos e por último os sem alteração.';
+            $notes[] = 'Exibindo as primeiras '.self::PREVIEW_LIMIT.' de '.$rows->count().' linhas, em ordem de prioridade: bloqueantes, alterações críticas, linhas gravadas com aviso ou competência registrada, linhas sem alteração com aviso, atualizações, novos e sem alteração.';
         }
 
         if ($unchanged > 0) {
@@ -355,61 +479,78 @@ class ListContracts extends ListRecords
             .'<th style="text-align:left;padding:.25rem .5rem;">Resultado</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Diferenças</th>'
             .'</tr></thead><tbody>'.$renderedRows.'</tbody></table></div>'
-            .($notes === [] ? '' : '<p>'.implode(' ', $notes).'</p>');
-    }
-
-    private function analyze(?string $path): ?ContractSpreadsheetAnalysis
-    {
-        if (blank($path) || ! is_file($path)) {
-            return null;
-        }
-
-        if (($this->memoizedAnalysis['path'] ?? null) === $path) {
-            return $this->memoizedAnalysis['analysis'];
-        }
-
-        $analysis = app(AnalyzeContractSpreadsheet::class)->handle($path);
-
-        $this->memoizedAnalysis = ['path' => $path, 'analysis' => $analysis];
-
-        return $analysis;
+            .($notes === [] ? '' : '<p>'.implode(' ', $notes).'</p>')
+            .$this->renderAbsentContracts($analysis);
     }
 
     /**
-     * The upload state is a temporary file while the wizard is open and a stored
-     * path once the step is dehydrated.
+     * The live contracts of the developments in the file that the file does not
+     * mention -- a sample, with the total.
      */
-    /**
-     * The name to record in the history: the one the operator uploaded, falling
-     * back to the stored name when the upload came in already saved.
-     *
-     * @param  array<string, mixed>  $data
-     */
-    private function resolveFileName(array $data, ?string $path): string
+    private function renderAbsentContracts(ContractSpreadsheetAnalysis $analysis): string
     {
-        $original = $data['original_file_name'] ?? null;
-
-        if (is_string($original) && ($original !== '')) {
-            return $original;
+        if ($analysis->absentContractCount() === 0) {
+            return '';
         }
 
-        return basename((string) $path);
+        $rows = $analysis->absentContracts();
+
+        $renderedRows = $rows->map(fn (array $contract): string => '<tr>'
+            .'<td style="padding:.25rem .5rem;">'.e($contract['construction']).'</td>'
+            .'<td style="padding:.25rem .5rem;">'.e($contract['unit']).'</td>'
+            .'<td style="padding:.25rem .5rem;">'.e($contract['code']).'</td>'
+            .'<td style="padding:.25rem .5rem;">'.e($contract['status']).'</td>'
+            .'</tr>')->implode('');
+
+        $note = $analysis->absentContractCount() > $rows->count()
+            ? '<p>Exibindo os primeiros '.$rows->count().' de '.$analysis->absentContractCount().' contratos ausentes.</p>'
+            : '';
+
+        return '<div><p><b>Contratos cadastrados que não vieram na planilha</b></p>'
+            .'<div style="overflow-x:auto;"><table style="width:100%;font-size:.875rem;">'
+            .'<thead><tr>'
+            .'<th style="text-align:left;padding:.25rem .5rem;">Empreendimento</th>'
+            .'<th style="text-align:left;padding:.25rem .5rem;">Unidade</th>'
+            .'<th style="text-align:left;padding:.25rem .5rem;">Contrato</th>'
+            .'<th style="text-align:left;padding:.25rem .5rem;">Status</th>'
+            .'</tr></thead><tbody>'.$renderedRows.'</tbody></table></div>'
+            .$note.'</div>';
     }
 
-    private function resolvePath(mixed $file): ?string
+    /**
+     * The analysis of the upload, once per request. A file that is not a
+     * spreadsheet is answered without being read.
+     */
+    private function analyze(ImportSpreadsheetSource $source): ?ContractSpreadsheetAnalysis
     {
-        if (is_array($file)) {
-            $file = collect($file)->first();
-        }
+        try {
+            $checksum = $source->checksum();
 
-        if ($file instanceof TemporaryUploadedFile) {
-            return $file->getRealPath();
-        }
+            if (isset($this->contractAnalyses[$checksum])) {
+                return $this->contractAnalyses[$checksum];
+            }
 
-        if (! is_string($file) || ($file === '')) {
+            $analysis = XlsxSpreadsheetFile::isSpreadsheet($source->file())
+                ? $source->read(fn (string $path): ContractSpreadsheetAnalysis => app(AnalyzeContractSpreadsheet::class)->handle($path))
+                : new ContractSpreadsheetAnalysis(fileErrors: [XlsxSpreadsheetFile::MESSAGE]);
+        } catch (Throwable $exception) {
+            report($exception);
+
             return null;
         }
 
-        return Storage::disk('local')->path($file);
+        return $this->contractAnalyses[$checksum] = $analysis;
+    }
+
+    private function conferenceKey(ImportSpreadsheetSource $source): string
+    {
+        return ImportConferenceStore::key(ImportRun::TYPE_CONTRACTS, self::importUserId(), null, $source);
+    }
+
+    private static function importUserId(): ?int
+    {
+        $id = auth()->id();
+
+        return $id === null ? null : (int) $id;
     }
 }

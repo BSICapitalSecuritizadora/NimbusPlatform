@@ -16,6 +16,7 @@ use App\Models\SalesBoardBuilderReview;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\SalesBoards\BuilderReviewFixture;
@@ -148,12 +149,15 @@ it('surfaces a domain refusal as a message, not an error', function () {
 });
 
 it('submits the review from the workspace and hands the cycle to management', function () {
+    Storage::fake('local');
+
     $scenario = BuilderReviewFixture::generatedCycle();
     $review = BuilderReviewFixture::open($scenario['cycle']);
     BuilderReviewFixture::confirmAll($review);
 
     Livewire::test(BuilderReviewWorkspace::class, ['record' => $scenario['cycle']->getKey()])
         ->callAction('submitReview', [
+            ...BuilderReviewFixture::evidenceFormData($review),
             'overall_comment' => 'Conferido pela equipe comercial.',
             'declaration' => true,
         ])
@@ -161,6 +165,7 @@ it('submits the review from the workspace and hands the cycle to management', fu
         ->assertNotified();
 
     expect($review->fresh()->status)->toBe(SalesBoardBuilderReviewStatus::Submitted)
+        ->and($review->fresh()->attachments)->toHaveCount(1)
         ->and($scenario['cycle']->fresh()->status)->toBe(SalesBoardCycleStatus::ManagementReview)
         ->and(SalesBoard::query()->count())->toBe(0);
 });
@@ -213,6 +218,37 @@ it('shows a superseded review as history and lets it be reopened read only', fun
         ->assertTableActionDoesNotExist('delete');
 
     $this->get(BuilderReviewWorkspace::getUrl(['record' => $scenario['cycle']]).'?review='.$first->id)
+        ->assertOk()
+        ->assertSee('Substituída por nova versão');
+});
+
+/**
+ * Os links das rodadas anteriores saem da rota da página. Depois de qualquer
+ * interação -- abrir outra seção, paginar, buscar -- a requisição corrente é a
+ * do Livewire, e um link montado com ela apontaria para o endereço de update,
+ * que só aceita POST.
+ */
+it('keeps the links to the previous rounds on the page route after moving between sections', function () {
+    $scenario = BuilderReviewFixture::generatedCycle();
+    $first = BuilderReviewFixture::open($scenario['cycle']);
+    BuilderReviewFixture::confirmAll($first);
+    BuilderReviewFixture::submit($first);
+
+    $scenario['contracts']['financed']->update(['sale_value' => '910000.00']);
+    CycleFixture::recalculate($scenario['cycle'], 'Correção do valor de venda.');
+    BuilderReviewFixture::open($scenario['cycle']->fresh());
+
+    $firstRound = BuilderReviewWorkspace::getUrl(['record' => $scenario['cycle'], 'review' => $first->id]);
+
+    $page = Livewire::test(BuilderReviewWorkspace::class, ['record' => $scenario['cycle']->getKey()])
+        ->assertSee('Rodadas anteriores')
+        ->assertSeeHtml('href="'.$firstRound.'"');
+
+    $page->call('showSection', SectionEnum::MovementSales->value)
+        ->assertSeeHtml('href="'.$firstRound.'"')
+        ->assertDontSeeHtml(Livewire::getUpdateUri().'?review=');
+
+    $this->get($firstRound)
         ->assertOk()
         ->assertSee('Substituída por nova versão');
 });

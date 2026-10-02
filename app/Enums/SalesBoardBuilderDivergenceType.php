@@ -19,6 +19,10 @@ namespace App\Enums;
  * fato congelado precisa se ancorar e o que a construtora precisa informar. Quem
  * aplica essas regras é o {@see App\Services\SalesBoards\SalesBoardBuilderDivergenceValidator};
  * aqui elas só são declaradas.
+ *
+ * A ordem dos casos é a ordem do formulário, e o primeiro tipo permitido numa
+ * seção é o padrão dela: caso novo entra antes de `Other`, sem passar à frente
+ * dos que já são padrão.
  */
 enum SalesBoardBuilderDivergenceType: string
 {
@@ -41,6 +45,14 @@ enum SalesBoardBuilderDivergenceType: string
     case ExchangeMismatch = 'permuta_divergente';
 
     case UnitValueMismatch = 'valor_de_referencia_divergente';
+
+    /**
+     * A construtora afirma que a unidade da linha congelada não existe --
+     * cadastro por engano, fusão, desmembramento. A saída não é editar a
+     * posição: a Gestão decide "Correção necessária", registra a baixa da
+     * unidade e recalcula a competência, que volta à construtora sem a unidade.
+     */
+    case UnitNonexistent = 'unidade_inexistente';
 
     case Other = 'outra';
 
@@ -73,7 +85,7 @@ enum SalesBoardBuilderDivergenceType: string
                 SalesBoardBuilderReviewSection::MovementCancellations,
                 SalesBoardBuilderReviewSection::PositionStock,
             ],
-            self::StockMismatch, self::ExchangeMismatch => $position,
+            self::StockMismatch, self::ExchangeMismatch, self::UnitNonexistent => $position,
             self::UnitValueMismatch => [...$position, SalesBoardBuilderReviewSection::MovementSales],
             self::Other => SalesBoardBuilderReviewSection::ordered(),
         };
@@ -98,7 +110,7 @@ enum SalesBoardBuilderDivergenceType: string
      */
     public function requiresLine(): bool
     {
-        return in_array($this, [self::StockMismatch, self::ExchangeMismatch], true);
+        return in_array($this, [self::StockMismatch, self::ExchangeMismatch, self::UnitNonexistent], true);
     }
 
     /**
@@ -168,6 +180,7 @@ enum SalesBoardBuilderDivergenceType: string
             self::StockMismatch => 'Classificação divergente',
             self::ExchangeMismatch => 'Permuta divergente',
             self::UnitValueMismatch => 'Valor de referência divergente',
+            self::UnitNonexistent => 'Unidade que não existe',
             self::Other => 'Outra divergência',
         };
     }
@@ -175,7 +188,7 @@ enum SalesBoardBuilderDivergenceType: string
     public function color(): string
     {
         return match ($this) {
-            self::SaleMissing, self::SaleExtra => 'danger',
+            self::SaleMissing, self::SaleExtra, self::UnitNonexistent => 'danger',
             self::Other => 'gray',
             default => 'warning',
         };

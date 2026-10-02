@@ -9,12 +9,15 @@ use App\Models\Emission;
 use App\Models\Receivable;
 use App\Models\SalesBoard;
 use App\Models\User;
+use App\Services\SalesBoards\SalesBoardCycleCancellationService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 uses(RefreshDatabase::class);
@@ -82,6 +85,16 @@ function receivableSalesStockBetaBoard(Construction $beta, string $month): Sales
         'stock_units' => 50, 'stock_value' => 9_000_000,
         'financed_units' => 50, 'financed_value' => 10_000_000,
     ]);
+}
+
+/**
+ * O texto visível da página, sem marcação e com os espaços normalizados.
+ */
+function receivableSalesStockText(string $html): string
+{
+    return str(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5))
+        ->squish()
+        ->toString();
 }
 
 function receivableSalesStockHtml(Emission $emission, string $month): string
@@ -177,7 +190,7 @@ it('flags a partial publication of an automated competence', function () {
     ]);
 
     $published = ManagementReviewFixture::submittedCycleOn($emission, '1');
-    ManagementReviewFixture::submittedCycleOn($emission, '2');
+    $pending = ManagementReviewFixture::submittedCycleOn($emission, '2');
 
     ManagementReviewFixture::approve(ManagementReviewFixture::open($published['cycle']));
 
@@ -187,8 +200,45 @@ it('flags a partial publication of an automated competence', function () {
         ->and($html)->toContain('1 de 2')
         ->and($html)->toContain('data-coverage="partial"')
         ->and($html)->toContain('Ciclo automatizado')
-        ->and($html)->toContain('Competência produzida pelo ciclo mensal automatizado: ainda não publicada para os empreendimentos acima.')
+        ->and(receivableSalesStockText($html))->toContain(
+            'Competência produzida pelo ciclo mensal automatizado, ainda não publicada para: '.$pending['construction']->development_name.'.',
+        )
         ->and($html)->not->toContain('pela Gestão');
+});
+
+it('labels a cancelled competence with the date and the reason on the receivable', function () {
+    $scenario = ManagementReviewFixture::submittedCycle();
+    $cycle = $scenario['cycle'];
+    $construction = $scenario['construction'];
+    $emission = Emission::query()->findOrFail($cycle->emission_id);
+
+    // Última posição conhecida, anterior ao início da automação.
+    SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create([
+        'reference_month' => '2025-12-01',
+        'stock_units' => 3,
+        'financed_units' => 0,
+        'paid_units' => 0,
+        'exchanged_units' => 0,
+    ]);
+
+    // 02:00 UTC de 21/07 = 23:00 de 20/07 em Brasília.
+    $this->travelTo(Carbon::parse('2026-07-21 02:00:00', 'UTC'));
+
+    app(SalesBoardCycleCancellationService::class)->cancel(
+        $cycle->fresh(),
+        GovernanceFixture::approver(),
+        'Competência refeita fora do ciclo por decisão da diretoria.',
+    );
+
+    $text = receivableSalesStockText(receivableSalesStockHtml($emission, '2026-07-01'));
+
+    expect($text)->toContain(
+        'Competência 07/2026 cancelada pela Gestão para '.$construction->development_name.' em 20/07/2026: '
+            .'Competência refeita fora do ciclo por decisão da diretoria. Os fatos do mês entram na competência seguinte; '
+            .'a Gestão pode reabri-la em “Ciclos do Quadro” enquanto nenhuma competência posterior tiver sido publicada.',
+    )
+        ->and($text)->toContain('Última posição conhecida: '.$construction->development_name.' entra com o quadro de 12/2025')
+        ->and($text)->not->toContain('ainda não publicada');
 });
 
 it('speaks of the expected constructions when a not-yet-positioned one is listed', function () {

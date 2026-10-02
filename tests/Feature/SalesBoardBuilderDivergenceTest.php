@@ -36,7 +36,7 @@ it('confirms a section that has no divergences', function () {
     $scenario = reviewUnderReview();
     $section = BuilderReviewFixture::section($scenario['review'], SectionEnum::PositionStock);
 
-    $confirmed = editor()->confirmSection($section, 'Estoque confere com o nosso controle.');
+    $confirmed = editor()->confirmSection($section, BuilderReviewFixture::reviewer(), 'Estoque confere com o nosso controle.');
 
     expect($confirmed->status)->toBe(SalesBoardBuilderReviewSectionStatus::Confirmed)
         ->and($confirmed->confirmed_at)->not->toBeNull()
@@ -69,7 +69,7 @@ it('returns the section to pending when the last divergence is removed, never to
         declaredClassification: SalesBoardUnitClassification::Stock,
     ));
 
-    editor()->removeDivergence($divergence);
+    editor()->removeDivergence($divergence, BuilderReviewFixture::reviewer());
 
     expect(BuilderReviewFixture::section($scenario['review'], SectionEnum::PositionFinanced)->status)
         ->toBe(SalesBoardBuilderReviewSectionStatus::Pending)
@@ -89,7 +89,7 @@ it('refuses to confirm a section that has divergences', function () {
 
     $section = BuilderReviewFixture::section($scenario['review'], SectionEnum::PositionFinanced);
 
-    expect(fn () => editor()->confirmSection($section))
+    expect(fn () => editor()->confirmSection($section, BuilderReviewFixture::reviewer()))
         ->toThrow(SalesBoardBuilderReviewException::class, 'não pode ser confirmada');
 });
 
@@ -332,7 +332,7 @@ it('lets the builder edit a divergence while the review is a draft', function ()
         declaredValueCents: 49_500_000,
     ));
 
-    $updated = editor()->updateDivergence($divergence, new SalesBoardBuilderDivergenceInput(
+    $updated = editor()->updateDivergence($divergence, BuilderReviewFixture::reviewer(), new SalesBoardBuilderDivergenceInput(
         type: SalesBoardBuilderDivergenceType::SaleValueMismatch,
         reason: 'Valor divergente — corrigido após conferir o contrato.',
         movementId: $movement->id,

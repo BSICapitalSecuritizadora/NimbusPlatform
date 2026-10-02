@@ -19,7 +19,7 @@
         $pendingHomologation = (! $isAutomated && $homologation !== null && ($homologation->isEditable() || ($homologation->isApproved() && ! $homologation->wasActivated())))
             ? $homologation
             : null;
-        $homologationIsOutdated = $homologation !== null && $this->outdatedHomologationId === (int) $homologation->getKey();
+        $homologationIsSuperseded = $homologation !== null && $homologation->isSuperseded() && ! $homologation->wasActivated();
     @endphp
 
     {{-- O modo atual, e o que ele significa. Tudo em texto: a cor só acompanha. --}}
@@ -66,7 +66,7 @@
                         @if ($activeHomologation !== null)
                             Tentativa {{ $activeHomologation->attempt }} · {{ $activeHomologation->status->label() }}
                             @if ($activeHomologation->activated_at)
-                                · ativada em {{ $activeHomologation->activated_at->format('d/m/Y') }}
+                                · ativada em {{ \App\Support\BusinessTime::at($activeHomologation->activated_at)->format('d/m/Y') }}
                             @endif
                         @elseif ($pendingHomologation !== null)
                             Tentativa {{ $pendingHomologation->attempt }} · {{ $pendingHomologation->status->label() }}
@@ -100,8 +100,11 @@
 
             @unless ($globalEnabled)
                 <p class="mt-4 rounded-md bg-warning-50 p-3 text-sm text-warning-700 dark:bg-warning-400/10 dark:text-warning-400">
-                    A automação global está desligada. Uma Emissão pode ser homologada e ativada, mas
-                    <strong>nenhuma competência será processada</strong> enquanto o agendador global estiver desligado.
+                    A automação global está desligada. O agendador <strong>não gera competências nem envia lembretes</strong>,
+                    mas o fluxo humano continua: “Congelar competência” segue disponível para Emissões ativadas.
+                    @if ($isAutomated)
+                        O freio de uma Emissão é “Retornar ao modo legado”.
+                    @endif
                 </p>
             @endunless
 
@@ -124,7 +127,7 @@
             @php
                 $modeActions = collect($homologation === null
                     ? [$this->activateAction, $this->returnToLegacyAction]
-                    : [$this->openHomologationAction, $this->activateAction, $this->returnToLegacyAction])
+                    : [$this->openHomologationAction, $this->checkHomologationValidityAction, $this->activateAction, $this->returnToLegacyAction])
                     ->filter(fn ($modeAction): bool => $modeAction->isVisible());
             @endphp
             @if ($modeActions->isNotEmpty())
@@ -185,13 +188,22 @@
                 Competência inicial {{ $homologation->startMonthLabel() }} ·
                 comparação contra {{ $homologation->comparisonMonthLabel() }} ·
                 abre validação: {{ $homologation->auto_open_builder_review ? 'sim' : 'não' }}
+                @if ($homologation->assessed_at)
+                    · Retrato avaliado em {{ \App\Support\BusinessTime::at($homologation->assessed_at)->format('d/m/Y H:i') }}
+                @endif
             </x-slot>
 
-            @if ($homologationIsOutdated)
+            @if ($homologationIsSuperseded)
+                {{--
+                    O status e o motivo vêm gravados: a ativação recusada, a
+                    conferência e a abertura de uma tentativa nova gravam a
+                    substituição, e qualquer visita encontra a mesma situação.
+                --}}
                 <p class="mb-4 rounded-md bg-danger-50 p-3 text-sm text-danger-700 dark:bg-danger-400/10 dark:text-danger-400">
-                    <strong>Esta homologação não representa mais o estado atual das fontes.</strong>
-                    A ativação foi recusada. Abra uma nova homologação antes de ativar — a aprovação registrada
-                    continua como está, porque homologação aprovada não se reescreve.
+                    <strong>Esta homologação não representa mais o estado atual das fontes{{ $homologation->supersessionReason() ? ': '.mb_lcfirst($homologation->supersessionReason()->label()) : '' }}.</strong>
+                    {{ $homologation->supersessionReason()?->description() }}
+                    Abra uma nova homologação antes de ativar. A aprovação registrada continua como está, porque
+                    homologação aprovada não se reescreve.
                 </p>
             @elseif (! $isAutomated && $homologation->isApproved() && ! $homologation->wasActivated())
                 <p class="bsi-rollout-note mb-4 rounded-md p-3 text-sm">
@@ -203,8 +215,14 @@
             @if ($homologation->auto_open_builder_review)
                 <p class="mb-4 rounded-md bg-info-50 p-3 text-sm text-info-700 dark:bg-info-400/10 dark:text-info-400">
                     A abertura automática cria apenas a <strong>validação interna em rascunho</strong>.
-                    A entrega e a autenticação externa da construtora ainda não estão configuradas,
-                    então nada é enviado a terceiros.
+                    Nada é enviado automaticamente à construtora: a posição vai a ela pelo canal combinado,
+                    e a resposta dela é anexada na validação.
+                </p>
+            @endif
+
+            @if ($homologation->wasApprovedByItsOpener())
+                <p class="mb-4 rounded-md bg-warning-50 p-3 text-sm text-warning-700 dark:bg-warning-400/10 dark:text-warning-400">
+                    Aprovada pelo mesmo usuário que abriu a homologação — isenção de segregação do super-admin.
                 </p>
             @endif
 
@@ -223,7 +241,7 @@
                     <p>Impacto sobre Garantias</p>
                     <p class="mt-1 text-sm">
                         {{ $homologation->guaranteesReviewed()
-                            ? 'Revisado por '.($homologation->guaranteesReviewedBy?->name ?? '—').' em '.$homologation->guarantees_reviewed_at->format('d/m/Y H:i')
+                            ? 'Revisado por '.($homologation->guaranteesReviewedBy?->name ?? '—').' em '.\App\Support\BusinessTime::at($homologation->guarantees_reviewed_at)->format('d/m/Y H:i')
                             : 'Ainda não revisado.' }}
                     </p>
                 </div>
@@ -231,7 +249,7 @@
                     <p>Impacto sobre o Relatório Mensal</p>
                     <p class="mt-1 text-sm">
                         {{ $homologation->monthlyReportReviewed()
-                            ? 'Revisado por '.($homologation->monthlyReportReviewedBy?->name ?? '—').' em '.$homologation->monthly_report_reviewed_at->format('d/m/Y H:i')
+                            ? 'Revisado por '.($homologation->monthlyReportReviewedBy?->name ?? '—').' em '.\App\Support\BusinessTime::at($homologation->monthly_report_reviewed_at)->format('d/m/Y H:i')
                             : 'Ainda não revisado.' }}
                     </p>
                 </div>
@@ -286,6 +304,25 @@
                                 @endif
                             </div>
                         @endunless
+
+                        {{--
+                            Os avisos da apuração na competência de comparação,
+                            registrados na avaliação. Não decidem a homologação e
+                            ficam fora do resumo que o aceite protege.
+                        --}}
+                        @php
+                            $rowWarnings = \App\Support\SalesBoards\SalesBoardIssuePresenter::groupFrozen($row->frozenWarnings());
+                        @endphp
+                        @if ($rowWarnings !== [])
+                            <div class="mt-3 rounded-md bg-warning-50 p-3 text-sm text-warning-700 dark:bg-warning-400/10 dark:text-warning-400" wire:key="rollout-row-warnings-{{ $row->id }}">
+                                <p class="mb-2 font-medium">Avisos da apuração na competência de comparação (não impedem a homologação)</p>
+                                @include('filament.sales-boards.derivation-warnings', [
+                                    'warningGroups' => $rowWarnings,
+                                    'showCodes' => true,
+                                    'notRecordedText' => 'Reavalie para registrar os avisos.',
+                                ])
+                            </div>
+                        @endif
 
                         @if ($row->comparison_status === \App\Enums\SalesBoardRolloutComparisonStatus::NoLegacyPosition)
                             <p class="mt-3 rounded-md bg-info-50 p-3 text-sm text-info-700 dark:bg-info-400/10 dark:text-info-400">
@@ -342,15 +379,15 @@
                                 <span class="font-medium">Diferença analisada:</span> {{ $row->difference_reason }}
                                 <span class="block text-xs">
                                     {{ $row->acceptedBy?->name ?? '—' }}
-                                    @if ($row->accepted_at) · {{ $row->accepted_at->format('d/m/Y H:i') }} @endif
+                                    @if ($row->accepted_at) · {{ \App\Support\BusinessTime::at($row->accepted_at)->format('d/m/Y H:i') }} @endif
                                 </span>
                             </p>
                         @endif
 
                         @if ($row->has_cancelled_cycle_at_or_after_start)
                             <p class="mt-3 text-xs text-warning-700 dark:text-warning-400">
-                                Existe ciclo cancelado a partir da competência inicial: a automação vai considerá-lo
-                                como identidade já existente e não criará outro.
+                                Existe ciclo cancelado a partir da competência inicial: a automação não gera outro ciclo
+                                para esse mês. Para retomá-lo depois da ativação, a Gestão usa “Reabrir competência” no ciclo.
                             </p>
                         @endif
 
@@ -481,7 +518,7 @@
                     @if (! $gate['ready'])
                         <p class="text-sm text-gray-600 dark:text-gray-300">
                             <span class="font-medium">Aprovar homologação indisponível:</span>
-                            {{ implode('; ', $this->failedGateChecks($gate)) }}.
+                            {{ \App\Support\SalesBoards\GateChecklistSummary::sentence($this->failedGateChecks($gate)) }}
                             @unless ($canApproveRollout)
                                 Atestar os impactos, aprovar e ativar são da Gestão: peça a quem tem a permissão de aprovação do Quadro de Vendas.
                             @endunless
@@ -518,7 +555,7 @@
                             {{ $event->event_type->label() }}
                         </x-filament::badge>
                         <span class="ml-2 text-gray-500 dark:text-gray-400">
-                            {{ $event->created_at?->format('d/m/Y H:i') }} ·
+                            {{ $event->created_at === null ? '—' : \App\Support\BusinessTime::at($event->created_at)->format('d/m/Y H:i') }} ·
                             {{ $event->actor?->name ?? '—' }}
                             @if ($event->start_reference_month) · a partir de {{ $event->start_reference_month->format('m/Y') }} @endif
                         </span>

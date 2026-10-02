@@ -287,11 +287,14 @@ class SalesBoardBaselineDiffService
      * A conformidade entra porque é o que muda com mais frequência sem que o
      * valor mude: uma política nova com vigência retroativa reprova uma venda
      * que estava aprovada, e um resumo que só mostrasse data e valor esconderia
-     * exatamente isso.
+     * exatamente isso. O timing também: o mesmo fato pode deixar de ser do mês
+     * para virar extemporâneo (ou de competência sem posição) quando a
+     * competência anterior muda.
      */
     private function movementSummary(SalesBoardSnapshotMovement $movement): string
     {
         $parts = array_filter([
+            $movement->timing?->label(),
             $movement->eventDate === null ? null : $movement->eventDate->format('d/m/Y'),
             $movement->saleValueCents === null ? null : 'R$ '.IntegerMoney::format($movement->saleValueCents),
             $movement->conformityStatus?->label(),

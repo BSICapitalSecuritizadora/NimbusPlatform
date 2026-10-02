@@ -141,6 +141,28 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Planilhas das importações (parcelas, contratos, unidades, valores, clientes)
+    |--------------------------------------------------------------------------
+    |
+    | Só XLSX. O CSV nunca funcionou: a regra global do Livewire o recusa no
+    | envio, e o CSV que o Excel pt-BR exporta usa `;` e cp1252, enquanto o
+    | leitor espera `,` e UTF-8 -- aceitá-lo abriria a leitura de texto ambíguo
+    | em todas as células. `application/zip` entra porque o libmagic identifica
+    | parte dos XLSX legítimos como zip; a estrutura de planilha é conferida por
+    | `App\Rules\XlsxSpreadsheetFile`, no mesmo padrão de `receivables_import`.
+    | Sem variável de ambiente: é regra do formato, não do ambiente.
+    |
+    */
+
+    'spreadsheet_import' => [
+        'allowed_mimes' => [
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/zip',
+        ],
+    ],
+
     'measurement' => [
         'max_kb' => (int) env('UPLOAD_MEASUREMENT_MAX_KB', 51200),
         'max_bytes' => (int) env('UPLOAD_MEASUREMENT_MAX_KB', 51200) * 1024,
@@ -191,6 +213,38 @@ return [
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'text/csv',
             'text/plain',
+            'image/png',
+            'image/jpeg',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Resposta da construtora na validação do Quadro de Vendas
+    |--------------------------------------------------------------------------
+    |
+    | Os arquivos que provam a resposta da construtora (e-mail salvo em PDF,
+    | planilha, ata, ofício) anexados ao envio interno da validação. De 1 a 5
+    | por envio, no disco privado, varridos pelo antivírus antes de gravar.
+    |
+    | Sem env() de propósito: são regra do controle, não ajuste de ambiente. Os
+    | tipos cabem todos na regra global do upload temporário do Livewire
+    | (`livewire.temporary_file_upload.rules`), que é por onde o arquivo passa
+    | antes de chegar aqui. `.eml` e `.msg` ficam de fora pelo mesmo motivo --
+    | o e-mail salvo em PDF resolve.
+    |
+    */
+
+    'sales_board_builder_response' => [
+        'max_kb' => 20480,
+        'max_files' => 5,
+        'allowed_extensions' => ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg'],
+        'allowed_mimes' => [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'image/png',
             'image/jpeg',
         ],

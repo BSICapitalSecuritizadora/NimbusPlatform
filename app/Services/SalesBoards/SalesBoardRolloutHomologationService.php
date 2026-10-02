@@ -6,11 +6,13 @@ namespace App\Services\SalesBoards;
 
 use App\Enums\SalesBoardRolloutHomologationStatus;
 use App\Enums\SalesBoardRolloutRecipientRole;
+use App\Enums\SalesBoardRolloutSupersessionReason;
 use App\Exceptions\SalesBoardRolloutException;
 use App\Models\Emission;
 use App\Models\SalesBoardRolloutHomologation;
 use App\Models\SalesBoardRolloutHomologationConstruction;
 use App\Models\User;
+use App\Support\SalesBoards\SalesBoardAccess;
 use App\Support\SalesBoards\SalesBoardApprovalAuthority;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +25,19 @@ use Illuminate\Support\Facades\DB;
  * entre um e outro a fonte pode mudar, um quadro manual pode aparecer, um
  * empreendimento pode entrar na Emissão. Fundi-los faria a aprovação carregar
  * uma promessa que ela não tem como cumprir.
+ *
+ * Cada ato confere o ator antes de qualquer derivação. Abrir, reavaliar,
+ * analisar diferenças e rejeitar são de quem opera a competência
+ * ({@see SalesBoardAccess::authorizeOperation()}); atestar, aprovar e ativar
+ * são da Gestão ({@see SalesBoardApprovalAuthority}); conferir se uma
+ * homologação aprovada ainda vale é de qualquer um dos dois lados. A tela
+ * esconde o que cada um não pode fazer, mas não é ela que garante: uma chamada
+ * forjada chega aqui sem passar por ela.
+ *
+ * Toda escrita numa homologação segue a mesma ordem de locks -- Emissão, depois
+ * a homologação -- e relê o status sob eles. O guard do model compara com o
+ * status que estava em memória, e uma tela aberta antes da aprovação ainda
+ * acha que tem um rascunho na mão.
  */
 class SalesBoardRolloutHomologationService
 {
@@ -43,6 +58,12 @@ class SalesBoardRolloutHomologationService
      * primeira que a automação vai produzir. Escolher outra é possível, mas
      * exige dizer por quê -- escolher "qualquer mês com dados" só para a
      * comparação ficar verde é o oposto de homologar.
+     *
+     * Uma tentativa aprovada e ainda não usada é marcada como substituída na
+     * mesma transação: duas homologações "aprovadas" para a mesma Emissão
+     * deixariam a trilha dizendo que as duas valem, e só a mais recente pode
+     * sustentar uma ativação. A que já foi usada numa ativação não é tocada --
+     * ela é o registro do que sustentou aquela ativação.
      */
     public function open(
         Emission $emission,
@@ -55,6 +76,8 @@ class SalesBoardRolloutHomologationService
         if ($actor === null) {
             throw SalesBoardRolloutException::actorRequired();
         }
+
+        SalesBoardAccess::authorizeOperation($actor);
 
         $start = $proposedStartReferenceMonth->startOfMonth();
         $comparison = ($comparisonReferenceMonth ?? $start->subMonth())->startOfMonth();
@@ -81,9 +104,13 @@ class SalesBoardRolloutHomologationService
                 throw SalesBoardRolloutException::emissionAlreadyAutomated();
             }
 
+            $this->assertEmissionOperating($locked);
+
             if ($this->assessment->constructionsOf($locked)->isEmpty()) {
                 throw SalesBoardRolloutException::withoutConstructions();
             }
+
+            $this->supersedeUnusedApprovedAttempts($locked);
 
             $homologation = SalesBoardRolloutHomologation::query()->create([
                 'emission_id' => $locked->getKey(),
@@ -110,9 +137,18 @@ class SalesBoardRolloutHomologationService
      * depois homologação --, e as linhas e o hash são gravados na mesma
      * transação, para uma reavaliação e uma aprovação simultâneas se
      * serializarem em vez de se intercalarem.
+     *
+     * Reavaliar refaz a avaliação inteira e reescreve o retrato: é ato de quem
+     * opera, e o ator é conferido antes de qualquer derivação.
      */
-    public function reassess(SalesBoardRolloutHomologation $homologation): SalesBoardRolloutHomologation
+    public function reassess(SalesBoardRolloutHomologation $homologation, ?User $actor): SalesBoardRolloutHomologation
     {
+        if ($actor === null) {
+            throw SalesBoardRolloutException::actorRequired();
+        }
+
+        SalesBoardAccess::authorizeOperation($actor);
+
         return DB::transaction(function () use ($homologation): SalesBoardRolloutHomologation {
             Emission::query()
                 ->whereKey($homologation->emission_id)
@@ -144,6 +180,8 @@ class SalesBoardRolloutHomologationService
         if ($actor === null) {
             throw SalesBoardRolloutException::actorRequired();
         }
+
+        SalesBoardAccess::authorizeOperation($actor);
 
         $reason = $this->normalizeReason($reason);
 
@@ -199,6 +237,16 @@ class SalesBoardRolloutHomologationService
         return $this->markReviewed($homologation, $actor, 'monthly_report');
     }
 
+    /**
+     * A atestação é escrita no rascunho travado e relido, na ordem da
+     * aprovação: Emissão e depois homologação.
+     *
+     * Atestar a instância que a tela carregou deixava passar a corrida em que
+     * a aprovação commita enquanto a atestação espera: o guard do model olha o
+     * status em memória -- ainda "em homologação" -- e a atestação regravava
+     * quem e quando atestou numa homologação já aprovada. Relida sob o lock,
+     * ela encontra a aprovação e é recusada.
+     */
     private function markReviewed(
         SalesBoardRolloutHomologation $homologation,
         ?User $actor,
@@ -210,14 +258,26 @@ class SalesBoardRolloutHomologationService
 
         SalesBoardApprovalAuthority::authorize($actor);
 
-        $this->assertEditable($homologation);
+        return DB::transaction(function () use ($homologation, $actor, $subject): SalesBoardRolloutHomologation {
+            Emission::query()
+                ->whereKey($homologation->emission_id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $homologation->forceFill([
-            $subject.'_reviewed_at' => CarbonImmutable::now(),
-            $subject.'_reviewed_by_user_id' => $actor->getKey(),
-        ])->save();
+            $locked = SalesBoardRolloutHomologation::query()
+                ->whereKey($homologation->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        return $homologation->refresh();
+            $this->assertEditable($locked);
+
+            $locked->forceFill([
+                $subject.'_reviewed_at' => CarbonImmutable::now(),
+                $subject.'_reviewed_by_user_id' => $actor->getKey(),
+            ])->save();
+
+            return $locked->refresh();
+        });
     }
 
     /**
@@ -262,6 +322,13 @@ class SalesBoardRolloutHomologationService
                 throw SalesBoardRolloutException::emissionAlreadyAutomated();
             }
 
+            /**
+             * Antes da reavaliação, que custa uma derivação: uma Emissão que
+             * voltou à elaboração -- ou foi liquidada -- depois da abertura não
+             * tem o que aprovar.
+             */
+            $this->assertEmissionOperating($emission);
+
             $reviewedHash = (string) $homologation->assessment_hash;
             $reviewedScope = (string) $homologation->construction_scope_hash;
 
@@ -288,6 +355,100 @@ class SalesBoardRolloutHomologationService
         });
     }
 
+    /**
+     * "Conferir se ainda vale": a homologação aprovada ainda descreve o mundo?
+     *
+     * Observa a fonte e o escopo de agora sem reescrever o retrato aprovado --
+     * a mesma reconferência da ativação, sem ativar. Se mudaram, a homologação
+     * é marcada como substituída, com o motivo, e devolve-se esse motivo; se
+     * não, nada é gravado e o retorno é `null`.
+     *
+     * A derivação só é paga neste ato deliberado e na ativação, nunca ao
+     * renderizar a tela. Quem prepara e quem aprova podem conferir: o que se
+     * descobre aqui é um fato, e não uma decisão sobre ele.
+     */
+    public function supersedeIfOutdated(
+        SalesBoardRolloutHomologation $homologation,
+        ?User $actor,
+    ): ?SalesBoardRolloutSupersessionReason {
+        if ($actor === null) {
+            throw SalesBoardRolloutException::actorRequired();
+        }
+
+        SalesBoardAccess::authorizeOperationOrApproval($actor);
+
+        return DB::transaction(function () use ($homologation): ?SalesBoardRolloutSupersessionReason {
+            $emission = Emission::query()
+                ->whereKey($homologation->emission_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $locked = SalesBoardRolloutHomologation::query()
+                ->whereKey($homologation->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! $locked->isApproved() || $locked->wasActivated()) {
+                throw SalesBoardRolloutException::homologationNotCheckable();
+            }
+
+            $reason = $this->outdatedReason($locked, $emission);
+
+            if ($reason !== null) {
+                $this->markSuperseded($locked, $reason);
+            }
+
+            return $reason;
+        });
+    }
+
+    /**
+     * Por que a homologação deixou de descrever o mundo, ou `null`.
+     *
+     * Escopo primeiro, porque é a leitura barata e a recusa mais específica;
+     * depois a observação da fonte, que custa uma derivação e é comparada com o
+     * hash aprovado sem gravar nada.
+     */
+    public function outdatedReason(
+        SalesBoardRolloutHomologation $homologation,
+        Emission $emission,
+    ): ?SalesBoardRolloutSupersessionReason {
+        $currentScope = $this->assessment->scopeHash(
+            $this->assessment->constructionsOf($emission)->keys()->all()
+        );
+
+        if ($currentScope !== (string) $homologation->construction_scope_hash) {
+            return SalesBoardRolloutSupersessionReason::ScopeChanged;
+        }
+
+        if ($this->assessment->observe($homologation)->assessmentHash !== (string) $homologation->assessment_hash) {
+            return SalesBoardRolloutSupersessionReason::SourceChanged;
+        }
+
+        return null;
+    }
+
+    /**
+     * Grava a substituição numa homologação já travada pelo chamador.
+     *
+     * É a única escrita que a homologação aprovada admite além do registro de
+     * uso ({@see SalesBoardRolloutHomologation::FINAL_MUTABLE_FIELDS}), e ela é
+     * irreversível: uma fonte que volta ao estado anterior não ressuscita a
+     * aprovação -- a Gestão olha de novo, numa tentativa nova.
+     */
+    public function markSuperseded(
+        SalesBoardRolloutHomologation $locked,
+        SalesBoardRolloutSupersessionReason $reason,
+    ): SalesBoardRolloutHomologation {
+        $locked->forceFill([
+            'status' => SalesBoardRolloutHomologationStatus::Superseded,
+            'superseded_at' => CarbonImmutable::now(),
+            'superseded_reason' => $reason->value,
+        ])->save();
+
+        return $locked;
+    }
+
     public function reject(
         SalesBoardRolloutHomologation $homologation,
         ?User $actor,
@@ -296,6 +457,8 @@ class SalesBoardRolloutHomologationService
         if ($actor === null) {
             throw SalesBoardRolloutException::actorRequired();
         }
+
+        SalesBoardAccess::authorizeOperation($actor);
 
         $reason = $this->normalizeReason($reason);
 
@@ -323,6 +486,32 @@ class SalesBoardRolloutHomologationService
     }
 
     /**
+     * A Emissão está em operação: fora da elaboração e não liquidada.
+     *
+     * Em elaboração, a posição inicial ainda está sendo composta -- o
+     * `EmissionObserver` só a consolida ao sair do rascunho --, e a homologação
+     * compararia contra algo que ainda vai mudar; ativada assim, a automação
+     * ficaria bloqueada todo dia pela geração. Liquidada, a operação acabou e
+     * não há competência a automatizar.
+     *
+     * Vale nos três atos -- abrir, aprovar e ativar --, porque a Emissão pode
+     * voltar ao rascunho entre um e outro. Pública porque a ativação a chama sob
+     * o próprio lock, e a tela a usa para explicar o botão desabilitado.
+     *
+     * @throws SalesBoardRolloutException
+     */
+    public function assertEmissionOperating(Emission $emission): void
+    {
+        if ($emission->isInDraft()) {
+            throw SalesBoardRolloutException::emissionInDraft();
+        }
+
+        if ($emission->isLiquidated()) {
+            throw SalesBoardRolloutException::emissionLiquidated();
+        }
+    }
+
+    /**
      * Tudo o que precisa ser verdade para a homologação sustentar uma ativação.
      *
      * Público porque a tela mostra exatamente esta lista, e a ativação a
@@ -344,6 +533,11 @@ class SalesBoardRolloutHomologationService
         $management = $this->recipients->activeFor($emission, SalesBoardRolloutRecipientRole::Management);
 
         $checks = [
+            [
+                'label' => 'Emissão em operação (fora de elaboração e não liquidada)',
+                'passed' => ! $emission->isInDraft() && ! $emission->isLiquidated(),
+                'detail' => 'Situação atual: '.$emission->status_label,
+            ],
             [
                 'label' => 'Empreendimentos avaliados',
                 'passed' => $rows->isNotEmpty(),
@@ -422,6 +616,26 @@ class SalesBoardRolloutHomologationService
             ))
             ->values()
             ->all();
+    }
+
+    /**
+     * As tentativas aprovadas e ainda não usadas da Emissão, travadas e
+     * marcadas como substituídas pela tentativa que está sendo aberta. A
+     * Emissão já está travada pelo chamador: a ordem é a de sempre.
+     */
+    private function supersedeUnusedApprovedAttempts(Emission $locked): void
+    {
+        SalesBoardRolloutHomologation::query()
+            ->where('emission_id', $locked->getKey())
+            ->where('status', SalesBoardRolloutHomologationStatus::Approved)
+            ->whereNull('activated_at')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get()
+            ->each(fn (SalesBoardRolloutHomologation $attempt): SalesBoardRolloutHomologation => $this->markSuperseded(
+                $attempt,
+                SalesBoardRolloutSupersessionReason::NewAttemptOpened,
+            ));
     }
 
     private function assertHomologable(SalesBoardRolloutHomologation $homologation, Emission $emission): void

@@ -21,12 +21,19 @@ use Carbon\CarbonImmutable;
  * conhecido. Somar só as que têm produziria um número menor que a realidade com
  * cara de número completo -- e é exatamente esse tipo de meia verdade que a
  * Fase 0 existiu para acabar.
+ *
+ * `priorPosition` é a âncora da apuração: a posição congelada da competência
+ * anterior contra a qual os fatos atrasados viraram movimento -- `null` quando
+ * não há competência anterior no ciclo mensal. Sem âncora, `absorbedCancelledMonths`
+ * lista as competências canceladas que esta absorve (a cadeia de canceladas
+ * que termina num mês sem ciclo), do mês mais recente para o mais antigo.
  */
 readonly class SalesBoardDerivedPosition extends BaseDTO
 {
     /**
      * @param  list<SalesBoardDerivedLine>  $lines
      * @param  list<SalesBoardIssue>  $issues
+     * @param  list<CarbonImmutable>  $absorbedCancelledMonths
      */
     public function __construct(
         public int $constructionId,
@@ -46,11 +53,14 @@ readonly class SalesBoardDerivedPosition extends BaseDTO
         public array $lines,
         public SalesBoardMovements $movements,
         public array $issues,
+        public ?SalesBoardPriorPosition $priorPosition = null,
+        public array $absorbedCancelledMonths = [],
     ) {}
 
     /**
      * @param  list<SalesBoardDerivedLine>  $lines
      * @param  list<SalesBoardIssue>  $issues
+     * @param  list<CarbonImmutable>  $absorbedCancelledMonths
      */
     public static function fromLines(
         int $constructionId,
@@ -60,6 +70,8 @@ readonly class SalesBoardDerivedPosition extends BaseDTO
         array $lines,
         SalesBoardMovements $movements,
         array $issues,
+        ?SalesBoardPriorPosition $priorPosition = null,
+        array $absorbedCancelledMonths = [],
     ): self {
         $bucket = static fn (SalesBoardUnitClassification $classification): array => self::aggregate($lines, $classification);
 
@@ -87,6 +99,8 @@ readonly class SalesBoardDerivedPosition extends BaseDTO
             lines: $lines,
             movements: $movements,
             issues: $issues,
+            priorPosition: $priorPosition,
+            absorbedCancelledMonths: $absorbedCancelledMonths,
         );
     }
 
@@ -211,6 +225,12 @@ readonly class SalesBoardDerivedPosition extends BaseDTO
             'undetermined_units' => $this->undeterminedUnits,
             'is_complete' => $this->isComplete(),
             'movements' => $this->movements->toArray(),
+            'movements_by_timing' => $this->movements->countsByTiming(),
+            'prior_position' => $this->priorPosition?->toArray(),
+            'absorbed_cancelled_months' => array_map(
+                static fn (CarbonImmutable $month): string => $month->format('m/Y'),
+                $this->absorbedCancelledMonths,
+            ),
             'issues' => array_map(fn (SalesBoardIssue $issue): array => $issue->toArray(), $this->issues),
         ];
 

@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\ObligationEvidenceDownloadController;
 use App\Http\Controllers\Admin\PaymentTemplateDownloadController;
 use App\Http\Controllers\Admin\ProjectReportController;
 use App\Http\Controllers\Admin\PuHistoryTemplateDownloadController;
+use App\Http\Controllers\Admin\SalesBoardBuilderReviewAttachmentDownloadController;
 use App\Http\Controllers\Admin\UnitValueTemplateDownloadController;
 use App\Http\Controllers\Auth\AzureController;
 use App\Http\Controllers\Nimbus\AdminDocumentController;
@@ -281,6 +282,9 @@ Route::middleware(['auth', 'approved', EnsureTwoFactorEnabled::class])->group(fu
     Route::get('/admin/emissions/{emission}/pu-curves/{version}/homologacao', EmissionPuHomologationReportController::class)
         ->name('admin.emissions.pu-homologation.pdf')
         ->middleware('throttle:30,1');
+    Route::get('/admin/sales-board-builder-responses/{attachment}/download', SalesBoardBuilderReviewAttachmentDownloadController::class)
+        ->name('admin.sales-board-builder-responses.download')
+        ->middleware('throttle:60,1');
 });
 
 Route::redirect('/admin/nimbus-dashboard', '/admin/gestao-documental-externa-dashboard');

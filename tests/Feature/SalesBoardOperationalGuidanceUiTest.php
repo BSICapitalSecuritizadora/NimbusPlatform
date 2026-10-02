@@ -1,6 +1,9 @@
 <?php
 
+use App\Enums\SalesBoardBuilderDivergenceType;
 use App\Enums\SalesBoardCycleStatus;
+use App\Enums\SalesBoardIssueCode;
+use App\Enums\SalesBoardIssueSeverity;
 use App\Enums\SalesBoardRolloutHomologationStatus;
 use App\Enums\SalesBoardSource;
 use App\Enums\SalesBoardStaleImpact;
@@ -26,6 +29,7 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Action;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\SalesBoards\AutomationFixture;
@@ -143,7 +147,7 @@ describe('modo do Quadro de Vendas no rollout', function () {
 
         Livewire::test(ListSalesBoardRollouts::class)
             ->assertOk()
-            ->assertSee('Automação global desligada: nada é processado.');
+            ->assertSee('Automação global desligada: o agendador não gera competências.');
     });
 });
 
@@ -232,12 +236,14 @@ describe('próxima ação', function () {
         $scenario = ManagementReviewFixture::submittedCycleWithNonConformSale();
         ManagementReviewFixture::open($scenario['cycle']);
 
-        Livewire::test(ManagementReviewWorkspace::class, ['record' => $scenario['cycle']->getKey()])
+        $page = Livewire::test(ManagementReviewWorkspace::class, ['record' => $scenario['cycle']->getKey()])
             ->assertOk()
             ->assertSee('Resolva as não conformidades e conclua a análise.')
             ->assertSee('Não conformidades decididas — 1 pendente(s) de decisão.')
-            ->assertSee('Aprovar e publicar indisponível:')
-            ->assertActionHidden('approve');
+            ->assertSee('Aprovar e publicar indisponível:');
+
+        // O motivo fica no lugar do botão: com o portão fechado, ele não é impresso.
+        expect(preg_match('/wire:click="mountAction\((?:\'|&#0?39;)approve(?:\'|&#0?39;)[,)]/', $page->html()))->toBe(0);
     });
 
     it('guides the rollout from legacy to activation', function (Closure $arrange, string $expected) {
@@ -330,12 +336,12 @@ describe('ações bloqueadas', function () {
 
         Livewire::test(ViewSalesBoardCycle::class, ['record' => $published['cycle']->getKey()])
             ->assertActionDisabled('recalculate')
-            ->assertActionExists('recalculate', fn (Action $action): bool => $action->getTooltip() === 'Competência aprovada e publicada: a posição publicada é imutável e não é recalculada.')
+            ->assertActionExists('recalculate', fn (Action $action): bool => $action->getTooltip() === 'Competência aprovada e publicada: a posição publicada não é recalculada. Para corrigi-la, a Gestão usa “Retificar competência” (só na última competência publicada); fatos lançados depois entram como movimentos extemporâneos na competência seguinte.')
             ->assertActionVisible('viewPublishedBoard')
             ->assertActionVisible('viewManagementReview');
     });
 
-    it('turns a manual write on an automated competence into a notification instead of an error', function () {
+    it('turns a manual write on an automated competence into a message on the month field instead of an error', function () {
         $scenario = RolloutFixture::emission(1);
         $construction = $scenario['constructions'][0];
         RolloutFixture::legacyBoard($construction);
@@ -357,16 +363,17 @@ describe('ações bloqueadas', function () {
                 'paid_value' => '0,00',
                 'exchanged_value' => '0,00',
             ])
-            ->call('create');
+            ->call('create')
+            ->assertHasFormErrors(['reference_month']);
 
+        // A recusa do domínio chega antes da gravação, no próprio campo da
+        // competência, com o texto que o guard daria no fim.
         expect(SalesBoard::query()->count())->toBe($before)
-            ->and(guidanceNotificationBody('Registro manual recusado'))->toBe(
+            ->and($page->errors()->get('data.reference_month'))->toContain(
                 'A Emissão está no modo automatizado a partir desta competência. '
                     .'O Quadro de Vendas de '.$construction->development_name.' em 08/2026 é produzido pelo ciclo mensal e publicado pela Gestão, '
                     .'e registrá-lo à mão criaria uma segunda posição para o mesmo mês.',
             );
-
-        $page->assertNotified('Registro manual recusado');
     });
 });
 
@@ -455,12 +462,14 @@ describe('tela atualizada logo depois da ação', function () {
     });
 
     it('says the competence went to management in the same response that submits the validation', function () {
+        Storage::fake('local');
+
         $scenario = BuilderReviewFixture::generatedCycle();
         $review = BuilderReviewFixture::open($scenario['cycle']);
         BuilderReviewFixture::confirmAll($review);
 
         Livewire::test(BuilderReviewWorkspace::class, ['record' => $scenario['cycle']->getKey()])
-            ->callAction('submitReview', data: ['declaration' => true])
+            ->callAction('submitReview', data: [...BuilderReviewFixture::evidenceFormData($review), 'declaration' => true])
             ->assertHasNoActionErrors()
             ->assertSee('Aguardando análise da Gestão.')
             ->assertDontSee('A competência voltou à construtora');
@@ -526,7 +535,8 @@ describe('ajustes do primeiro teste manual', function () {
         $message = SalesBoardRolloutException::publishedBoardIsImmutable()->getMessage();
 
         expect($message)->toContain('não pode ser alterado nem removido')
-            ->toContain('correções na fonte passam a valer a partir das próximas competências')
+            ->toContain('fatos lançados depois entram como movimentos extemporâneos na competência seguinte')
+            ->toContain('“Retificar competência”')
             ->not->toContain('recalcular');
     });
 
@@ -552,8 +562,103 @@ describe('ajustes do primeiro teste manual', function () {
 
         expect($hint)->toContain('enquanto a Emissão está em elaboração')
             ->toContain('leve o caso à Gestão')
+            ->toContain('distrata o contrato de permuta')
             ->and(SalesBoardIssuePresenter::describe(['SETTLEMENT_UNDETERMINED'])[0]['hint'])->toContain('permuta registrada');
     });
+
+    /**
+     * A permuta encerrada antes de o encerramento distratar o contrato não se
+     * encerra de novo: a dica aponta a ação que distrata o contrato dela.
+     */
+    it('points the exchange already ended to the cancellation of its contract', function () {
+        expect(SalesBoardIssuePresenter::describe(['EXCHANGE_SOURCE_MISSING'])[0]['hint'])
+            ->toContain('Se a permuta já está encerrada e o contrato continua como permutado, a Gestão usa “Distratar contrato de permuta” na permuta encerrada.')
+            ->and(SalesBoardIssuePresenter::describe(['SETTLEMENT_UNDETERMINED'])[0]['hint'])
+            ->toContain('o distrato do contrato de permuta (“Distratar contrato de permuta”, pela Gestão)')
+            ->and(SalesBoardIssuePresenter::describe(['SOURCE_DATE_BEFORE_1990'])[0]['hint'])
+            ->toContain('a permuta, que não se edita, é corrigida por “Substituir permuta”');
+    });
+
+    /**
+     * A venda já aconteceu: a política da data dela rejulga venda registrada, e
+     * quem opera o cadastro é recusado. A dica diz de quem é o registro.
+     */
+    it('tells that the missing policy of a sale already made is registered by management', function () {
+        expect(SalesBoardIssuePresenter::describe(['SALE_DISCOUNT_POLICY_MISSING'])[0]['hint'])
+            ->toContain('“Nova política”')
+            ->toContain('Como a venda já aconteceu, a política alcança venda já registrada e é registrada pela Gestão (permissão de aprovação do Quadro de Vendas).');
+    });
+
+    /**
+     * O catálogo dos códigos: todo caso do enum -- os que esta e as próximas
+     * frentes acrescentarem -- precisa de rótulo, de dica e da decisão de ser ou
+     * não mostrado à construtora. Os códigos são persistidos como texto nos
+     * bloqueios e nos avisos congelados, e um caso sem tradução apareceria cru
+     * na tela.
+     */
+    it('describes every issue code with a label and a hint', function (string $code) {
+        $issue = SalesBoardIssueCode::from($code);
+        $described = SalesBoardIssuePresenter::describe([$code])[0];
+
+        expect($described['label'])->toBe($issue->label())
+            ->and($described['label'])->not->toBe($code)
+            ->and($described['hint'])->toBeString()
+            ->and(trim((string) $described['hint']))->not->toBe('')
+            ->and($issue->isVisibleToBuilder())->toBeBool();
+
+        // A construtora só vê aviso sobre o dado dela, nunca um bloqueio nem a
+        // política comercial interna.
+        if ($issue->isVisibleToBuilder()) {
+            expect($issue->severity())->toBe(SalesBoardIssueSeverity::Warning)
+                ->and($issue)->not->toBe(SalesBoardIssueCode::SaleNonConform);
+        }
+    })->with(array_map(static fn (SalesBoardIssueCode $code): string => $code->value, SalesBoardIssueCode::cases()));
+
+    /**
+     * A baixa de unidade: sair e voltar ao Quadro avisa, e a construtora vê --
+     * é a carteira dela. A baixada ainda ocupada bloqueia, e não chega a ela:
+     * bloqueador nunca é congelado.
+     */
+    it('decides severity and builder visibility of the retirement codes', function (string $code, SalesBoardIssueSeverity $severity, bool $visibleToBuilder) {
+        $issue = SalesBoardIssueCode::from($code);
+
+        expect($issue->severity())->toBe($severity)
+            ->and($issue->isVisibleToBuilder())->toBe($visibleToBuilder);
+    })->with([
+        'unidade baixada' => ['UNIT_RETIRED', SalesBoardIssueSeverity::Warning, true],
+        'unidade reativada' => ['UNIT_REACTIVATED', SalesBoardIssueSeverity::Warning, true],
+        'baixada ocupada' => ['RETIRED_UNIT_IN_USE', SalesBoardIssueSeverity::Blocker, false],
+    ]);
+
+    /**
+     * Os fatos de competência anterior nunca bloqueiam a competência corrente.
+     * A venda fora da política -- do mês ou de competência anterior -- é a régua
+     * interna da Gestão e chega à Análise como pendência; a unidade que mudou
+     * sem movimento que explique é da carteira da construtora, e ela vê.
+     */
+    it('decides severity and builder visibility of the late fact codes', function (string $code, SalesBoardIssueSeverity $severity, bool $visibleToBuilder) {
+        $issue = SalesBoardIssueCode::from($code);
+
+        expect($issue->severity())->toBe($severity)
+            ->and($issue->isVisibleToBuilder())->toBe($visibleToBuilder);
+    })->with([
+        'venda extemporânea fora da política' => ['LATE_SALE_NON_CONFORM', SalesBoardIssueSeverity::Warning, false],
+        'venda extemporânea indeterminada' => ['LATE_SALE_UNDETERMINED', SalesBoardIssueSeverity::Warning, false],
+        'reclassificação sem explicação' => ['UNEXPLAINED_RECLASSIFICATION', SalesBoardIssueSeverity::Warning, true],
+    ]);
+
+    /**
+     * O catálogo das divergências: o formulário da Validação é montado a partir
+     * delas, e um tipo sem rótulo, sem cor ou sem seção quebraria a tela.
+     */
+    it('describes every builder divergence type with a label, a color and its sections', function (string $type) {
+        $divergence = SalesBoardBuilderDivergenceType::from($type);
+
+        expect($divergence->label())->not->toBe('')
+            ->and($divergence->label())->not->toBe($type)
+            ->and($divergence->color())->toBeString()
+            ->and($divergence->sections())->not->toBe([]);
+    })->with(array_map(static fn (SalesBoardBuilderDivergenceType $type): string => $type->value, SalesBoardBuilderDivergenceType::cases()));
 });
 
 describe('quadro publicado', function () {
@@ -591,13 +696,14 @@ describe('homologação desatualizada', function () {
         $page = Livewire::test(ManageSalesBoardRollout::class, ['record' => $scenario['emission']->getKey()])
             ->callAction('activate', data: ['reason' => 'Ativação acordada com a operação.'])
             ->assertSee('Esta homologação não representa mais o estado atual das fontes.')
-            ->assertActionDisabled('activate')
+            ->assertActionHidden('activate')
             ->assertActionVisible('openHomologation');
 
         expect((string) guidanceNotificationBody('Homologação desatualizada'))
             ->toStartWith('Esta homologação não representa mais o estado atual das fontes. Abra uma nova homologação antes de ativar.')
-            // A aprovação não é reescrita: o aviso é da tela, não do banco.
-            ->and(SalesBoardRolloutHomologation::query()->sole()->status)->toBe(SalesBoardRolloutHomologationStatus::Approved)
+            // O retrato aprovado não é reescrito: a homologação é gravada como
+            // substituída, e a próxima visita encontra a mesma situação.
+            ->and(SalesBoardRolloutHomologation::query()->sole()->status)->toBe(SalesBoardRolloutHomologationStatus::Superseded)
             ->and($scenario['emission']->fresh()->usesAutomatedSalesBoard())->toBeFalse()
             ->and($homologation->fresh()->activated_at)->toBeNull();
 
@@ -612,10 +718,13 @@ describe('homologação desatualizada', function () {
 
         $page = Livewire::test(ManageSalesBoardRollout::class, ['record' => $scenario['emission']->getKey()])
             ->callAction('activate', data: ['reason' => 'Ativação acordada com a operação.'])
-            ->assertActionDisabled('activate');
+            ->assertSee('Esta homologação não representa mais o estado atual das fontes.')
+            ->assertActionHidden('activate')
+            ->assertActionVisible('openHomologation');
 
         expect((string) guidanceNotificationBody('Escopo da Emissão alterado'))
             ->toStartWith('O escopo da Emissão mudou desde a homologação aprovada. É necessária nova homologação.')
+            ->and(SalesBoardRolloutHomologation::query()->sole()->status)->toBe(SalesBoardRolloutHomologationStatus::Superseded)
             ->and($scenario['emission']->fresh()->usesAutomatedSalesBoard())->toBeFalse();
 
         $page->assertNotified('Escopo da Emissão alterado');
@@ -710,6 +819,6 @@ describe('listas vazias', function () {
         Livewire::test(ListSalesBoardAutomationTargets::class)
             ->assertOk()
             ->assertSee('Automação desligada no interruptor global')
-            ->assertSee('nenhum processamento mensal é executado');
+            ->assertSee('o agendador não gera competências');
     });
 });

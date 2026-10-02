@@ -7,6 +7,7 @@ namespace App\Support\SalesBoards;
 use App\Enums\SalesBoardCycleStatus;
 use App\Enums\SalesBoardStaleImpact;
 use App\Models\SalesBoardCycle;
+use Carbon\CarbonImmutable;
 
 /**
  * "O que faço agora?" para uma competência, em uma frase.
@@ -31,7 +32,42 @@ final readonly class SalesBoardCycleNextAction
 
     public static function for(SalesBoardCycle $cycle): self
     {
+        $action = self::forCycle($cycle);
+
+        /**
+         * A retificação percorre o fluxo de sempre; a frase diz que é ela, e
+         * que a posição publicada continua valendo enquanto isso.
+         */
+        if ($cycle->isUnderRectification()) {
+            return new self(
+                'Retificação em andamento. '.$action->headline,
+                $action->detail.' A posição publicada continua valendo até a retificação ser aprovada -- ou a Gestão desistir dela.',
+                $action->color,
+                $action->icon,
+            );
+        }
+
+        return $action;
+    }
+
+    private static function forCycle(SalesBoardCycle $cycle): self
+    {
         $impact = $cycle->currentBaseline?->stale_impact ?? SalesBoardStaleImpact::None;
+
+        if (($cycle->status === SalesBoardCycleStatus::Approved) && ($impact !== SalesBoardStaleImpact::None)) {
+            $approved = self::forStatus(SalesBoardCycleStatus::Approved);
+
+            return new self(
+                $approved->headline,
+                match ($impact) {
+                    SalesBoardStaleImpact::Material => 'A fonte mudou depois da publicação, e a posição publicada não é recalculada: os fatos alterados entram como movimentos extemporâneos na próxima competência a ser publicada. Para corrigir a posição publicada da última competência, a Gestão pode usar “Retificar competência”.',
+                    SalesBoardStaleImpact::SourceOnly => 'A fonte mudou depois da publicação sem alterar a posição publicada: nada a fazer.',
+                    default => 'A posição publicada continua valendo; a próxima competência só será apurada quando o dado faltante for cadastrado.',
+                },
+                $approved->color,
+                $approved->icon,
+            );
+        }
 
         if (self::isInProgress($cycle->status)) {
             $sourceAction = match ($impact) {
@@ -71,6 +107,45 @@ final readonly class SalesBoardCycleNextAction
         }
 
         return $action;
+    }
+
+    /**
+     * "Verificar alterações" numa competência publicada, sem retificação aberta.
+     *
+     * A posição publicada não é recalculada. O que mudou depois dela entra como
+     * movimento extemporâneo na competência seguinte e passa pela validação da
+     * construtora e pela Gestão: na última publicada, a seguinte é a próxima a
+     * ser publicada; numa mais antiga, os fatos lançados antes da publicação da
+     * última já entraram nela -- a aprovação recusa versão desatualizada --, e
+     * os posteriores entram na próxima. Só a última competência publicada pode
+     * ser retificada, e só para ela a frase oferece o caminho.
+     *
+     * @param  CarbonImmutable|null  $lastPublishedMonth  a última competência publicada do empreendimento
+     */
+    public static function publishedStaleGuidance(SalesBoardStaleImpact $impact, SalesBoardCycle $cycle, ?CarbonImmutable $lastPublishedMonth): string
+    {
+        $month = CarbonImmutable::parse($cycle->reference_month->toDateString())->startOfMonth();
+        $last = (($lastPublishedMonth === null) || $lastPublishedMonth->lessThan($month)) ? $month : $lastPublishedMonth->startOfMonth();
+        $next = $last->addMonthNoOverflow()->format('m/Y');
+
+        return match ($impact) {
+            SalesBoardStaleImpact::None => 'A fonte continua igual à que produziu a posição publicada.',
+            SalesBoardStaleImpact::SourceOnly => 'A fonte mudou depois da publicação sem alterar a posição publicada: nada a fazer.',
+            SalesBoardStaleImpact::Material => $last->equalTo($month)
+                ? sprintf(
+                    'A posição publicada de %s não é recalculada: os fatos alterados depois da publicação entram como movimentos extemporâneos na próxima competência a ser publicada (%s) e passam pela validação e pela Gestão. Para corrigir a posição publicada, use “Retificar competência”.',
+                    $month->format('m/Y'),
+                    $next,
+                )
+                : sprintf(
+                    'A posição publicada de %s não é recalculada: os fatos alterados antes da publicação de %s já entraram nela como movimentos extemporâneos, e os posteriores entram na próxima competência a ser publicada (%s). Só a última competência publicada (%s) pode ser retificada.',
+                    $month->format('m/Y'),
+                    $last->format('m/Y'),
+                    $next,
+                    $last->format('m/Y'),
+                ),
+            SalesBoardStaleImpact::Blocking => 'A posição publicada continua valendo; a próxima competência só será apurada quando o dado faltante for cadastrado.',
+        };
     }
 
     /**
@@ -116,13 +191,14 @@ final readonly class SalesBoardCycleNextAction
             ),
             SalesBoardCycleStatus::Approved => new self(
                 'Posição aprovada e publicada no Quadro de Vendas.',
-                'O quadro publicado é imutável: não pode ser alterado nem excluído manualmente, e esta competência não é mais recalculada.',
+                'O quadro publicado é imutável: não pode ser alterado nem excluído manualmente, e esta competência não é mais recalculada. Fatos lançados depois entram como movimentos extemporâneos na competência seguinte; a última competência publicada pode ser corrigida pela Gestão com “Retificar competência”.',
                 'success',
                 'heroicon-o-check-badge',
             ),
             SalesBoardCycleStatus::Cancelled => new self(
                 'Competência cancelada.',
-                'Encerrada sem publicação: nenhuma ação está disponível para esta competência.',
+                'Encerrada sem publicação. A Gestão pode reabri-la com “Reabrir competência” enquanto ela estiver coberta '
+                    .'pela automação da Emissão e nenhuma competência posterior tiver sido publicada.',
                 'gray',
                 'heroicon-o-no-symbol',
             ),

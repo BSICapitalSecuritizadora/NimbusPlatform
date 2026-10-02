@@ -88,7 +88,7 @@ class EmissionGuaranteeCoverageEngine
         }
 
         return $emission->guaranteeSnapshots()
-            ->with('partialCoverageConfirmedBy')
+            ->with(['partialCoverageConfirmedBy', 'reopenedBy'])
             ->orderByDesc('reference_month')
             ->get();
     }

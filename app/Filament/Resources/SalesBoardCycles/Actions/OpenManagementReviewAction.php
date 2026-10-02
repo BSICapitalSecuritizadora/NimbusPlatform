@@ -23,6 +23,13 @@ use Filament\Notifications\Notification;
  * Só aparece quando a competência está com a Gestão. Antes disso não há
  * submissão para analisar; depois, a análise já existe e a própria tela é o
  * caminho.
+ *
+ * A Gestão também abre a análise, e não só quem opera: com `sales-boards.view`
+ * e `sales-boards.approve` ela decidia e aprovava uma análise já aberta, mas
+ * dependia de um operador para abri-la. Abrir não é preparo de dado -- é o que
+ * materializa as pendências que ela mesma vai decidir -- e não fura o
+ * maker/checker, que compara o aprovador com quem enviou a validação. O serviço
+ * confere a mesma regra.
  */
 class OpenManagementReviewAction
 {
@@ -32,7 +39,7 @@ class OpenManagementReviewAction
             ->label('Análise da Gestão')
             ->icon('heroicon-o-scale')
             ->color('primary')
-            ->visible(fn (SalesBoardCycle $record): bool => SalesBoardCycleResource::canRecalculate()
+            ->visible(fn (SalesBoardCycle $record): bool => SalesBoardCycleResource::canOperateOrApprove()
                 && ($record->status === SalesBoardCycleStatus::ManagementReview)
                 && ($record->current_baseline_id !== null))
             ->action(function (SalesBoardCycle $record) {

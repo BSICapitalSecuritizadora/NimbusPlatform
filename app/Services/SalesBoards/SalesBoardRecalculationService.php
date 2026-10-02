@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\SalesBoards;
 
+use App\DTOs\SalesBoards\SalesBoardChainStructure;
 use App\DTOs\SalesBoards\SalesBoardComparableSnapshot;
 use App\DTOs\SalesBoards\SalesBoardRecalculationResult;
 use App\Enums\SalesBoardCycleStatus;
@@ -13,6 +14,8 @@ use App\Events\SalesBoards\SalesBoardCurrentBaselineChanged;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleBaseline;
 use App\Models\User;
+use App\Support\SalesBoards\SalesBoardAccess;
+use App\Support\SalesBoards\SalesBoardFrozenWarnings;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -37,13 +40,23 @@ use RuntimeException;
  * - **sem prontidão, não recalcula.** Se a fonte atual está incompleta, não
  *   existe versão melhor a criar -- e a anterior continua sendo o melhor
  *   registro disponível;
- * - **sem mudança, não recalcula.** Fingerprints idênticos devolvem no-op. Uma
- *   V2 idêntica à V1 só polui o histórico e faz a próxima pessoa procurar uma
- *   diferença que não existe.
+ * - **sem mudança, não recalcula.** Fingerprints idênticos e a mesma cadeia de
+ *   competências devolvem no-op. Uma V2 idêntica à V1 só polui o histórico e
+ *   faz a próxima pessoa procurar uma diferença que não existe.
  *
  * Mudança apenas na fonte, sem impacto na posição, **cria** versão nova: a nova
  * versão passa a representar a fonte material atual, e a anterior preserva a
- * anterior. O diff mostra que o resultado ficou igual e a origem não.
+ * anterior. O diff mostra que o resultado ficou igual e a origem não. O mesmo
+ * vale para a cadeia que mudou sem mudar número nenhum -- uma competência
+ * anterior reaberta ou cancelada ({@see SalesBoardChainStructure}): a versão
+ * nova registra a cadeia atual, com os avisos e a ponte apurados nela, e é o
+ * que tira a competência de "Alterações materiais". Devolver no-op ali a
+ * deixaria presa, desatualizada para a verificação e sem versão possível.
+ *
+ * Recalcular é preparo da competência: quem pede em nome de uma pessoa passa o
+ * ator, e ele precisa operar a competência ({@see SalesBoardAccess::authorizeOperation()})
+ * -- a mesma regra que mostra o botão na tela, conferida aqui porque a tela não
+ * é segurança. O ator nulo fica para a rotina de sistema.
  */
 class SalesBoardRecalculationService
 {
@@ -69,6 +82,10 @@ class SalesBoardRecalculationService
         string $reason,
         ?int $expectedBaselineId = null,
     ): SalesBoardRecalculationResult {
+        if ($actor !== null) {
+            SalesBoardAccess::authorizeOperation($actor);
+        }
+
         $reason = trim($reason);
 
         if ($reason === '') {
@@ -94,7 +111,13 @@ class SalesBoardRecalculationService
              * Depois de aprovado existe um Quadro de Vendas publicado a partir
              * de uma versão específica, e criar a seguinte faria a posição
              * publicada deixar de corresponder à versão vigente do ciclo -- sem
-             * que nada no banco denunciasse a diferença. Cancelado é o mesmo
+             * que nada no banco denunciasse a diferença. O caminho governado
+             * para mudar uma posição publicada é a retificação
+             * ({@see SalesBoardCycleRectificationService}), que reabre o ciclo
+             * com motivo e devolve a competência ao fluxo; o fato lançado
+             * depois também entra, como extemporâneo, na competência
+             * seguinte. Dentro da retificação o ciclo está fora de "Aprovado" e
+             * recalcula normalmente. Cancelado é o mesmo
              * caso pelo motivo oposto: a competência foi encerrada sem posição,
              * e uma versão nova ressuscitaria um ciclo que ninguém pretende
              * seguir. A tela já esconde o botão; esta é a garantia que não
@@ -169,9 +192,11 @@ class SalesBoardRecalculationService
 
             $sourceFingerprint = $observation->fingerprint();
             $snapshotFingerprint = $live->snapshot->fingerprint();
+            $chainChange = SalesBoardChainStructure::changeSince($current, $position);
 
             if (($sourceFingerprint === (string) $current->source_fingerprint)
-                && ($snapshotFingerprint === (string) $current->snapshot_fingerprint)) {
+                && ($snapshotFingerprint === (string) $current->snapshot_fingerprint)
+                && ($chainChange === null)) {
                 $this->markUnchanged($current, $sourceFingerprint, $snapshotFingerprint);
 
                 /**
@@ -202,6 +227,7 @@ class SalesBoardRecalculationService
                 sourceFingerprint: $sourceFingerprint,
                 actor: $actor,
                 reason: $reason,
+                frozenWarnings: SalesBoardFrozenWarnings::fromPosition($position),
             );
 
             $locked->forceFill(['current_baseline_id' => $baseline->getKey()])->save();
@@ -238,6 +264,7 @@ class SalesBoardRecalculationService
                 reason: $reason,
                 readiness: $readiness,
                 diff: $diff,
+                chainChange: $chainChange,
             );
         });
     }

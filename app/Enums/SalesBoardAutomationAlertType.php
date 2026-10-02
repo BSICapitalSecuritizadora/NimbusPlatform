@@ -9,11 +9,13 @@ namespace App\Enums;
  * é o caminho mais curto para ninguém mais ler alerta nenhum. Cada tipo aqui
  * corresponde a algo parado esperando uma pessoa.
  *
- * Os sete primeiros são lembretes de prazo e só saem com o limiar configurado.
- * Os dois últimos não têm prazo a decidir: a execução que morreu no meio e a
- * Emissão cuja automação ficou suspensa por mudança de escopo são avisados na
- * primeira vez em que a automação os encontra -- esperar um SLA para contar que
- * o motor parou seria o mesmo silêncio com mais passos.
+ * Os sete primeiros são lembretes de prazo: cada um tem limiar padrão no
+ * config (sobrescrevível por ambiente, e `off` desliga). Os três últimos não têm
+ * prazo a decidir: a execução que morreu no meio, a Emissão cuja automação
+ * ficou suspensa por mudança de escopo e a Emissão liquidada, cuja automação
+ * foi encerrada, são avisadas na primeira vez em que a automação as encontra --
+ * esperar um SLA para contar que o motor parou seria o mesmo silêncio com mais
+ * passos.
  */
 enum SalesBoardAutomationAlertType: string
 {
@@ -35,6 +37,8 @@ enum SalesBoardAutomationAlertType: string
 
     case ScopeSuspended = 'automacao_suspensa';
 
+    case EmissionLiquidated = 'emissao_liquidada';
+
     public function label(): string
     {
         return match ($this) {
@@ -47,6 +51,7 @@ enum SalesBoardAutomationAlertType: string
             self::ManagementEscalation => 'Análise da Gestão em atraso',
             self::RunInterrupted => 'Execução da automação interrompida',
             self::ScopeSuspended => 'Automação suspensa por mudança de escopo',
+            self::EmissionLiquidated => 'Automação encerrada: Emissão liquidada',
         };
     }
 

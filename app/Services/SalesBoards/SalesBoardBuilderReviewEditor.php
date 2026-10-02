@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\SalesBoards;
 
+use App\DTOs\SalesBoards\BuilderReviewerIdentity;
 use App\DTOs\SalesBoards\SalesBoardBuilderDivergenceInput;
 use App\Enums\SalesBoardBuilderReviewSectionStatus;
 use App\Exceptions\SalesBoardBuilderReviewException;
@@ -12,6 +13,7 @@ use App\Models\SalesBoardBuilderReview;
 use App\Models\SalesBoardBuilderReviewSection;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleBaseline;
+use App\Support\SalesBoards\SalesBoardAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -32,6 +34,14 @@ use Illuminate\Support\Facades\DB;
  * ciclo, revisão, seção e, por último, a divergência. Travar só a seção deixava
  * o envio passar no meio da edição -- e a declaração enviada ganhava uma
  * divergência, ou uma seção voltava a "pendente", depois de congelada.
+ *
+ * Quem age chega como identidade abstrata ({@see BuilderReviewerIdentity}), e
+ * cada operação começa por autorizá-la
+ * ({@see SalesBoardAccess::authorizeBuilderReviewer()}), antes de ler ou travar
+ * qualquer coisa. A tela esconde as ações de quem não opera a competência; o
+ * serviço recusa, porque uma chamada forjada chega aqui sem passar pela tela --
+ * e foi assim que uma conta de consulta apagava, sem rastro, a divergência
+ * declarada pelo operador.
  */
 class SalesBoardBuilderReviewEditor
 {
@@ -49,8 +59,11 @@ class SalesBoardBuilderReviewEditor
      */
     public function confirmSection(
         SalesBoardBuilderReviewSection $section,
+        BuilderReviewerIdentity $reviewer,
         ?string $comment = null,
     ): SalesBoardBuilderReviewSection {
+        SalesBoardAccess::authorizeBuilderReviewer($reviewer);
+
         $anchors = $this->anchorsOfSection((int) $section->getKey());
 
         return DB::transaction(function () use ($anchors, $comment): SalesBoardBuilderReviewSection {
@@ -75,8 +88,12 @@ class SalesBoardBuilderReviewEditor
      *
      * Existe para a construtora poder desfazer uma confirmação antes de enviar.
      */
-    public function reopenSection(SalesBoardBuilderReviewSection $section): SalesBoardBuilderReviewSection
-    {
+    public function reopenSection(
+        SalesBoardBuilderReviewSection $section,
+        BuilderReviewerIdentity $reviewer,
+    ): SalesBoardBuilderReviewSection {
+        SalesBoardAccess::authorizeBuilderReviewer($reviewer);
+
         $anchors = $this->anchorsOfSection((int) $section->getKey());
 
         return DB::transaction(function () use ($anchors): SalesBoardBuilderReviewSection {
@@ -95,8 +112,11 @@ class SalesBoardBuilderReviewEditor
 
     public function addDivergence(
         SalesBoardBuilderReviewSection $section,
+        BuilderReviewerIdentity $reviewer,
         SalesBoardBuilderDivergenceInput $input,
     ): SalesBoardBuilderDivergence {
+        SalesBoardAccess::authorizeBuilderReviewer($reviewer);
+
         $anchors = $this->anchorsOfSection((int) $section->getKey());
 
         return DB::transaction(function () use ($anchors, $input): SalesBoardBuilderDivergence {
@@ -119,8 +139,11 @@ class SalesBoardBuilderReviewEditor
 
     public function updateDivergence(
         SalesBoardBuilderDivergence $divergence,
+        BuilderReviewerIdentity $reviewer,
         SalesBoardBuilderDivergenceInput $input,
     ): SalesBoardBuilderDivergence {
+        SalesBoardAccess::authorizeBuilderReviewer($reviewer);
+
         $anchors = $this->anchorsOfDivergence((int) $divergence->getKey());
 
         return DB::transaction(function () use ($anchors, $input): SalesBoardBuilderDivergence {
@@ -143,9 +166,14 @@ class SalesBoardBuilderReviewEditor
      *
      * Apagar o apontamento não é o mesmo que dizer que a seção confere: a
      * construtora precisa afirmar isso de novo, explicitamente.
+     *
+     * A remoção é física -- rascunho é formulário --, e o conteúdo apagado, com
+     * o autor e a data, fica na trilha protegida da divergência.
      */
-    public function removeDivergence(SalesBoardBuilderDivergence $divergence): void
+    public function removeDivergence(SalesBoardBuilderDivergence $divergence, BuilderReviewerIdentity $reviewer): void
     {
+        SalesBoardAccess::authorizeBuilderReviewer($reviewer);
+
         $anchors = $this->anchorsOfDivergence((int) $divergence->getKey());
 
         DB::transaction(function () use ($anchors): void {
@@ -158,8 +186,13 @@ class SalesBoardBuilderReviewEditor
         });
     }
 
-    public function updateOverallComment(SalesBoardBuilderReview $review, ?string $comment): SalesBoardBuilderReview
-    {
+    public function updateOverallComment(
+        SalesBoardBuilderReview $review,
+        BuilderReviewerIdentity $reviewer,
+        ?string $comment,
+    ): SalesBoardBuilderReview {
+        SalesBoardAccess::authorizeBuilderReviewer($reviewer);
+
         $cycleId = (int) SalesBoardBuilderReview::query()
             ->whereKey($review->getKey())
             ->valueOrFail('sales_board_cycle_id');

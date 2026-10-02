@@ -62,10 +62,14 @@ it('marks a run left executing by a dead process as interrupted, and alerts', fu
         ->and($run->status)->toBe(SalesBoardAutomationRunStatus::Completed)
         ->and($run->generated_count)->toBe(1);
 
-    $alert = SalesBoardAutomationAlert::query()->where('channel', 'mail')->sole();
+    // Com a política padrão sai também o "pronta para a construtora" do ciclo
+    // gerado agora; o aviso da execução morta é o da execução interrompida.
+    $alert = SalesBoardAutomationAlert::query()
+        ->where('channel', 'mail')
+        ->where('alert_type', SalesBoardAutomationAlertType::RunInterrupted)
+        ->sole();
 
-    expect($alert->alert_type)->toBe(SalesBoardAutomationAlertType::RunInterrupted)
-        ->and($alert->sales_board_automation_run_id)->toBe($dead->id)
+    expect($alert->sales_board_automation_run_id)->toBe($dead->id)
         ->and($alert->recipient_user_id)->toBe($recipient->id);
 
     // O horário do aviso é o de Brasília, não o UTC em que a execução foi gravada.
@@ -78,7 +82,10 @@ it('marks a run left executing by a dead process as interrupted, and alerts', fu
     // A execução seguinte não reabre nem reavisa.
     AutomationFixture::run();
 
-    expect(SalesBoardAutomationAlert::query()->where('channel', 'mail')->count())->toBe(1);
+    expect(SalesBoardAutomationAlert::query()
+        ->where('channel', 'mail')
+        ->where('alert_type', SalesBoardAutomationAlertType::RunInterrupted)
+        ->count())->toBe(1);
 });
 
 it('leaves a recent executing run alone, because it may still be alive', function () {

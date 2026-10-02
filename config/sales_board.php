@@ -32,6 +32,10 @@ return [
         | descobre nada, não tenta alvo nenhum, não roda lembrete e não registra
         | nem a própria execução.
         |
+        | Ele desliga o agendador, não o fluxo humano: "Congelar competência" e
+        | a condução dos ciclos já gerados continuam disponíveis. O freio de uma
+        | Emissão é "Retornar ao modo legado", na tela de rollout dela.
+        |
         | O default é `false` de propósito: as migrations desta fase podem ser
         | aplicadas muito antes de existir decisão de rollout, e um ambiente que
         | ganhasse a tabela já começaria a gerar competências sem que ninguém
@@ -92,31 +96,59 @@ return [
         /*
         | Lembretes e escalação.
         |
-        | Todos os limiares nascem `null`, e `null` significa desligado. O
-        | projeto não tem SLA definido para o Quadro de Vendas, e escolher "3
-        | dias" aqui seria inventar um requisito de negócio dentro de um arquivo
-        | de configuração -- que é onde ninguém procuraria por ele depois.
+        | Cada limiar tem um padrão -- o SLA decidido no pacote de conclusão do
+        | Quadro (ver `SalesBoardAutomationConfig::DEFAULT_REMINDERS`):
+        | bloqueio no mesmo dia, falha técnica a partir de 3 falhas seguidas,
+        | posição pronta para a construtora no mesmo dia, validação da
+        | construtora com lembrete em 5 dias e escalação em 10, análise da
+        | Gestão com lembrete em 3 dias e escalação em 7. Sem padrão o piloto
+        | ficava mudo: ninguém era avisado de competência parada.
         |
-        | Dias civis corridos, não dias úteis: enquanto não existir regra de
-        | negócio dizendo o contrário, contar dias úteis seria a mesma invenção.
+        | Dias civis corridos, não dias úteis: dias úteis exigiriam uma regra de
+        | calendário que ninguém definiu.
         |
-        | Só um inteiro não negativo liga o aviso. Zero vale -- "avisar assim que
-        | a condição existir" --, mas texto, decimal ou negativo desligam: um
-        | limiar ilegível nunca pode virar "avisar agora".
+        | A variável de ambiente sobrescreve o padrão. `off` (ou `false`)
+        | desliga o lembrete; um inteiro não negativo o liga com aquele valor,
+        | e zero vale "no mesmo dia". Ausente ou vazia, vale o padrão. Qualquer
+        | outro valor -- texto, decimal, negativo -- desliga: falha fechado,
+        | porque um limiar ilegível nunca pode virar "avisar agora".
         |
-        | As sete variáveis estão documentadas, comentadas, no `.env.example`.
-        | Com todas desligadas a tela de rollout avisa que ninguém receberá
-        | lembrete de prazo. A execução interrompida e a suspensão por mudança de
-        | escopo não dependem destes limiares: são avisadas sempre.
+        | A tela "Automação do Quadro" mostra a política vigente, item a item,
+        | com "desligado" onde for o caso -- é por ela que um valor ilegível
+        | aparece. Com os sete desligados as telas avisam que ninguém receberá
+        | lembrete de prazo. A execução interrompida, a suspensão por mudança de
+        | escopo e a automação encerrada pela liquidação da Emissão não dependem
+        | destes limiares: são avisadas sempre.
         */
         'reminders' => [
-            'blocked_after_days' => SalesBoardAutomationConfig::threshold(env('SALES_BOARD_AUTOMATION_BLOCKED_REMINDER_DAYS')),
-            'failed_after_attempts' => SalesBoardAutomationConfig::threshold(env('SALES_BOARD_AUTOMATION_FAILED_ESCALATION_ATTEMPTS')),
-            'ready_for_builder_after_days' => SalesBoardAutomationConfig::threshold(env('SALES_BOARD_AUTOMATION_READY_REMINDER_DAYS')),
-            'builder_review_after_days' => SalesBoardAutomationConfig::threshold(env('SALES_BOARD_AUTOMATION_BUILDER_REMINDER_DAYS')),
-            'builder_review_escalation_after_days' => SalesBoardAutomationConfig::threshold(env('SALES_BOARD_AUTOMATION_BUILDER_ESCALATION_DAYS')),
-            'management_review_after_days' => SalesBoardAutomationConfig::threshold(env('SALES_BOARD_AUTOMATION_MANAGEMENT_REMINDER_DAYS')),
-            'management_review_escalation_after_days' => SalesBoardAutomationConfig::threshold(env('SALES_BOARD_AUTOMATION_MANAGEMENT_ESCALATION_DAYS')),
+            'blocked_after_days' => SalesBoardAutomationConfig::reminderSetting(
+                env('SALES_BOARD_AUTOMATION_BLOCKED_REMINDER_DAYS'),
+                SalesBoardAutomationConfig::DEFAULT_REMINDERS['blocked_after_days'],
+            ),
+            'failed_after_attempts' => SalesBoardAutomationConfig::reminderSetting(
+                env('SALES_BOARD_AUTOMATION_FAILED_ESCALATION_ATTEMPTS'),
+                SalesBoardAutomationConfig::DEFAULT_REMINDERS['failed_after_attempts'],
+            ),
+            'ready_for_builder_after_days' => SalesBoardAutomationConfig::reminderSetting(
+                env('SALES_BOARD_AUTOMATION_READY_REMINDER_DAYS'),
+                SalesBoardAutomationConfig::DEFAULT_REMINDERS['ready_for_builder_after_days'],
+            ),
+            'builder_review_after_days' => SalesBoardAutomationConfig::reminderSetting(
+                env('SALES_BOARD_AUTOMATION_BUILDER_REMINDER_DAYS'),
+                SalesBoardAutomationConfig::DEFAULT_REMINDERS['builder_review_after_days'],
+            ),
+            'builder_review_escalation_after_days' => SalesBoardAutomationConfig::reminderSetting(
+                env('SALES_BOARD_AUTOMATION_BUILDER_ESCALATION_DAYS'),
+                SalesBoardAutomationConfig::DEFAULT_REMINDERS['builder_review_escalation_after_days'],
+            ),
+            'management_review_after_days' => SalesBoardAutomationConfig::reminderSetting(
+                env('SALES_BOARD_AUTOMATION_MANAGEMENT_REMINDER_DAYS'),
+                SalesBoardAutomationConfig::DEFAULT_REMINDERS['management_review_after_days'],
+            ),
+            'management_review_escalation_after_days' => SalesBoardAutomationConfig::reminderSetting(
+                env('SALES_BOARD_AUTOMATION_MANAGEMENT_ESCALATION_DAYS'),
+                SalesBoardAutomationConfig::DEFAULT_REMINDERS['management_review_escalation_after_days'],
+            ),
         ],
     ],
 

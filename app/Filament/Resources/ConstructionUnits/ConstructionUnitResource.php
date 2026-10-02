@@ -8,6 +8,7 @@ use App\Filament\Resources\ConstructionUnits\Pages\EditConstructionUnit;
 use App\Filament\Resources\ConstructionUnits\Pages\ListConstructionUnits;
 use App\Filament\Resources\ConstructionUnits\Pages\ViewConstructionUnit;
 use App\Filament\Resources\ConstructionUnits\RelationManagers\ConstructionUnitExchangesRelationManager;
+use App\Filament\Resources\ConstructionUnits\RelationManagers\ConstructionUnitRetirementsRelationManager;
 use App\Filament\Resources\ConstructionUnits\RelationManagers\ConstructionUnitValuesRelationManager;
 use App\Filament\Resources\ConstructionUnits\Schemas\ConstructionUnitForm;
 use App\Filament\Resources\ConstructionUnits\Tables\ConstructionUnitsTable;
@@ -72,6 +73,14 @@ class ConstructionUnitResource extends Resource
                         ->label('Empreendimento'),
                     TextEntry::make('block')->label('Bloco'),
                     TextEntry::make('unit')->label('Unidade')->weight('bold'),
+                    TextEntry::make('situation')
+                        ->label('Situação')
+                        ->badge()
+                        ->state(fn (ConstructionUnit $record): string => self::situationLabel($record))
+                        ->color(fn (ConstructionUnit $record): string => $record->openRetirement === null ? 'success' : 'danger')
+                        ->helperText(fn (ConstructionUnit $record): ?string => $record->openRetirement === null
+                            ? null
+                            : 'Não compõe o Quadro de Vendas. Veja a aba Baixas.'),
                 ]),
 
             Section::make('Valores')
@@ -135,11 +144,25 @@ class ConstructionUnitResource extends Resource
         return app(UnitValueResolver::class)->forUnit($record, CarbonImmutable::now());
     }
 
+    /**
+     * "Ativa" ou "Baixada desde dd/mm/aaaa", pela baixa aberta já carregada com
+     * a unidade. Como a baixa não aceita data futura, a aberta é a que vale hoje.
+     */
+    public static function situationLabel(ConstructionUnit $record): string
+    {
+        $retirement = $record->openRetirement;
+
+        return $retirement === null
+            ? 'Ativa'
+            : 'Baixada desde '.$retirement->retired_on->format('d/m/Y');
+    }
+
     public static function getRelations(): array
     {
         return [
             ConstructionUnitValuesRelationManager::class,
             ConstructionUnitExchangesRelationManager::class,
+            ConstructionUnitRetirementsRelationManager::class,
         ];
     }
 
@@ -152,6 +175,7 @@ class ConstructionUnitResource extends Resource
     {
         return parent::getEloquentQuery()->with([
             'construction.emission',
+            'openRetirement',
         ]);
     }
 

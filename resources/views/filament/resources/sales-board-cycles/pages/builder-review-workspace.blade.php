@@ -8,6 +8,7 @@
         $workspace = $this->workspace();
         $canEdit = $this->canEdit();
         $attempts = $this->attempts();
+        $openSection = $workspace === null ? null : $this->openSectionFor($workspace);
     @endphp
 
     @if ($workspace === null)
@@ -63,6 +64,39 @@
             </div>
         </x-filament::section>
 
+        {{-- A retificação da competência publicada: o que esta rodada valida substitui a posição publicada. --}}
+        @if ($workspace->isRectification())
+            <x-filament::section wire:key="builder-review-rectification">
+                <x-slot name="heading">Retificação da competência publicada</x-slot>
+                <x-slot name="description">
+                    Esta competência já foi publicada ({{ $workspace->rectification['published_version'] ?? '—' }}@if ($workspace->rectification['published_at']), em {{ \App\Support\BusinessTime::at($workspace->rectification['published_at'])->format('d/m/Y') }}@endif)
+                    e está sendo corrigida. A posição publicada continua valendo até a aprovação da Gestão.
+                </x-slot>
+
+                <div class="space-y-2 text-sm">
+                    <p class="rounded-md bg-warning-50 p-3 text-warning-700 dark:bg-warning-400/10 dark:text-warning-400">
+                        <span class="font-medium">Motivo da retificação:</span> {{ $workspace->rectification['reason'] }}
+                    </p>
+                    @if (filled($workspace->rectification['diff']))
+                        <p class="text-gray-600 dark:text-gray-300">
+                            <span class="font-medium">O que muda contra a posição publicada:</span> {{ $workspace->rectification['diff'] }}
+                        </p>
+                    @endif
+                </div>
+            </x-filament::section>
+        @endif
+
+        {{-- Os fatos de competências anteriores que esta competência recebeu, antes das seções. --}}
+        @if ($workspace->lateMovementsCount > 0)
+            <x-filament::section wire:key="builder-review-late-movements">
+                <p class="text-sm text-gray-700 dark:text-gray-200">
+                    Esta competência traz {{ $workspace->lateMovementsCount }} movimento(s) de competências anteriores: vendas, distratos ou
+                    quitações lançados depois do fechamento delas, ou vendas já publicadas com valor ou data revistos. Eles aparecem primeiro
+                    nas seções de movimentações, com um selo que diz de onde vieram. Confirme-os como os demais.
+                </p>
+            </x-filament::section>
+        @endif
+
         {{-- O que a Gestão pediu ao devolver, quando esta rodada nasceu de uma devolução. --}}
         @if ($returnReason = $this->returnReason())
             <x-filament::section>
@@ -94,11 +128,52 @@
             </div>
         </x-filament::section>
 
+        {{--
+            Os pontos que a apuração sinalizou sobre o dado da construtora, antes
+            das seções que ela confere. Só os códigos liberados para ela, sem
+            código técnico, sem dica interna e sem política comercial.
+        --}}
+        @if ($workspace->hasWarnings())
+            <x-filament::section wire:key="builder-review-warnings">
+                <x-slot name="heading">Pontos para conferir nesta posição</x-slot>
+
+                @include('filament.sales-boards.derivation-warnings', [
+                    'warningGroups' => $workspace->warnings,
+                    'showCodes' => false,
+                    'intro' => 'A apuração sinalizou os pontos abaixo sem impedir o quadro. Se algum número estiver errado, aponte a divergência na seção correspondente.',
+                ])
+            </x-filament::section>
+        @endif
+
+        {{-- Como a posição da competência anterior chega a esta, pelos movimentos congelados. --}}
+        @if ($workspace->bridge?->hasAnchor())
+            <x-filament::section collapsible collapsed wire:key="builder-review-bridge">
+                <x-slot name="heading">Ponte com a competência anterior</x-slot>
+                <x-slot name="description">{{ $workspace->bridge->summary() }}</x-slot>
+
+                @include('filament.resources.sales-board-cycles.partials.competence-bridge', ['bridge' => $workspace->bridge])
+            </x-filament::section>
+        @endif
+
+        {{--
+            Uma seção aberta por vez: só ela renderiza linhas, 100 por página,
+            com as ações no topo. As fechadas mostram o cabeçalho -- situação,
+            divergências e o resumo -- e o botão para abri-las. Confirmar continua
+            valendo para a seção inteira, não para a página.
+        --}}
         @foreach ([['Posição no fechamento', $workspace->positionSections()], ['Movimentações do mês', $workspace->movementSections()]] as [$groupLabel, $sections])
             <h2 class="mt-2 text-base font-semibold text-gray-950 dark:text-white">{{ $groupLabel }}</h2>
 
             @foreach ($sections as $section)
-                <x-filament::section collapsible :collapsed="$section->status->isResolved()">
+                @php
+                    $isOpen = $section->section === $openSection;
+                    $visible = $isOpen ? $this->visibleRowsOf($section) : null;
+                @endphp
+
+                <x-filament::section
+                    id="secao-{{ $section->section->value }}"
+                    wire:key="builder-review-section-{{ $section->sectionId }}"
+                >
                     <x-slot name="heading">
                         <span class="flex items-center gap-3">
                             {{ $section->section->label() }}
@@ -114,67 +189,131 @@
                         {{ $section->section->description() }} · {{ $section->headline() }}
                     </x-slot>
 
-                    @if ($section->comment)
-                        <p class="mb-4 rounded-md bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                            {{ $section->comment }}
-                        </p>
-                    @endif
+                    <x-slot name="afterHeader">
+                        @if ($isOpen && $canEdit)
+                            <div class="flex flex-wrap items-center gap-2">
+                                @if ($section->status === \App\Enums\SalesBoardBuilderReviewSectionStatus::Confirmed)
+                                    {{ ($this->reopenSectionAction)(['section' => $section->sectionId]) }}
+                                @else
+                                    {{ ($this->confirmSectionAction)(['section' => $section->sectionId]) }}
+                                @endif
 
-                    @if (count($section->rows) === 0)
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Nenhum lançamento nesta seção.</p>
-                    @else
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm">
-                                <thead class="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                                    <tr>
-                                        <th class="py-2 pr-4">Unidade</th>
-                                        <th class="py-2 pr-4">Contrato</th>
-                                        @if ($section->isPosition())
-                                            <th class="py-2 pr-4">Data da venda</th>
-                                            <th class="py-2 pr-4 text-right">Valor da venda</th>
-                                            <th class="py-2 pr-4 text-right">Valor de referência</th>
-                                            <th class="py-2 pr-4">Quitação</th>
-                                            <th class="py-2 pr-4 text-right">Permuta</th>
-                                        @else
-                                            <th class="py-2 pr-4">Data</th>
-                                            <th class="py-2 pr-4 text-right">Valor</th>
-                                            <th class="py-2 pr-4 text-right">Parcelas</th>
-                                        @endif
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                                    @foreach ($section->rows as $row)
+                                {{ ($this->declareDivergenceAction)(['section' => $section->sectionId]) }}
+                            </div>
+                        @elseif (! $isOpen)
+                            <x-filament::button
+                                color="gray"
+                                size="sm"
+                                icon="heroicon-o-chevron-down"
+                                wire:click="showSection('{{ $section->section->value }}')"
+                            >
+                                Abrir seção
+                            </x-filament::button>
+                        @endif
+                    </x-slot>
+
+                    @if ($isOpen)
+                        @if ($section->comment)
+                            <p class="mb-4 rounded-md bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                                {{ $section->comment }}
+                            </p>
+                        @endif
+
+                        @if ($visible['searchable'])
+                            <div class="mb-4 max-w-md">
+                                <x-filament::input.wrapper prefix-icon="heroicon-m-magnifying-glass">
+                                    <x-filament::input
+                                        type="search"
+                                        wire:model.live.debounce.400ms="sectionSearch"
+                                        placeholder="Buscar unidade ou contrato nesta seção"
+                                    />
+                                </x-filament::input.wrapper>
+                            </div>
+                        @endif
+
+                        @if (count($section->rows) === 0)
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Nenhum lançamento nesta seção.</p>
+                        @elseif ($visible['total'] === 0)
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Nenhuma unidade ou contrato encontrado para a busca.</p>
+                        @else
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead class="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:text-gray-400">
                                         <tr>
-                                            <td class="py-2 pr-4 font-medium">{{ $row->displayName() }}</td>
-                                            <td class="py-2 pr-4">{{ $row->contractCode ?? '—' }}</td>
+                                            <th class="py-2 pr-4">Unidade</th>
+                                            <th class="py-2 pr-4">Contrato</th>
                                             @if ($section->isPosition())
-                                                <td class="py-2 pr-4">{{ $row->saleDate?->format('d/m/Y') ?? '—' }}</td>
-                                                <td class="py-2 pr-4 text-right tabular-nums">{{ $this->money($row->saleValueCents) }}</td>
-                                                <td class="py-2 pr-4 text-right tabular-nums">{{ $this->money($row->referenceValueCents) }}</td>
-                                                <td class="py-2 pr-4">{{ $row->settlementLabel ?? '—' }}</td>
-                                                <td class="py-2 pr-4 text-right tabular-nums">{{ $this->money($row->exchangeValueCents) }}</td>
+                                                <th class="py-2 pr-4">Data da venda</th>
+                                                <th class="py-2 pr-4 text-right">Valor da venda</th>
+                                                <th class="py-2 pr-4 text-right">Valor de referência</th>
+                                                <th class="py-2 pr-4">Quitação</th>
+                                                <th class="py-2 pr-4 text-right">Permuta</th>
                                             @else
-                                                <td class="py-2 pr-4">{{ $row->eventDate?->format('d/m/Y') ?? '—' }}</td>
-                                                <td class="py-2 pr-4 text-right tabular-nums">{{ $this->money($row->saleValueCents) }}</td>
-                                                <td class="py-2 pr-4 text-right tabular-nums">{{ $row->settlementInstallmentsTotal ?? '—' }}</td>
+                                                <th class="py-2 pr-4">Data</th>
+                                                <th class="py-2 pr-4 text-right">Valor</th>
+                                                <th class="py-2 pr-4 text-right">Parcelas</th>
                                             @endif
                                         </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @endif
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                                        @foreach ($visible['rows'] as $row)
+                                            <tr wire:key="builder-review-row-{{ $section->sectionId }}-{{ $section->isPosition() ? $row->lineId : $row->movementId }}">
+                                                <td class="py-2 pr-4 font-medium">
+                                                    {{ $row->displayName() }}
+                                                    @if (! $section->isPosition() && $row->isFromEarlierCompetence())
+                                                        <span class="mt-1 block">
+                                                            <x-filament::badge :color="$row->timing->color()" size="sm">{{ $row->timingLabel }}</x-filament::badge>
+                                                        </span>
+                                                    @endif
+                                                </td>
+                                                <td class="py-2 pr-4">{{ $row->contractCode ?? '—' }}</td>
+                                                @if ($section->isPosition())
+                                                    <td class="py-2 pr-4">{{ $row->saleDate?->format('d/m/Y') ?? '—' }}</td>
+                                                    <td class="py-2 pr-4 text-right tabular-nums">{{ $this->money($row->saleValueCents) }}</td>
+                                                    <td class="py-2 pr-4 text-right tabular-nums">{{ $this->money($row->referenceValueCents) }}</td>
+                                                    <td class="py-2 pr-4">{{ $row->settlementLabel ?? '—' }}</td>
+                                                    <td class="py-2 pr-4 text-right tabular-nums">{{ $this->money($row->exchangeValueCents) }}</td>
+                                                @else
+                                                    <td class="py-2 pr-4">{{ $row->eventDate?->format('d/m/Y') ?? '—' }}</td>
+                                                    <td class="py-2 pr-4 text-right tabular-nums">{{ $this->money($row->saleValueCents) }}</td>
+                                                    <td class="py-2 pr-4 text-right tabular-nums">{{ $row->settlementInstallmentsTotal ?? '—' }}</td>
+                                                @endif
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
 
-                    @if ($canEdit)
-                        <div class="mt-4 flex flex-wrap gap-2">
-                            @if ($section->status === \App\Enums\SalesBoardBuilderReviewSectionStatus::Confirmed)
-                                {{ ($this->reopenSectionAction)(['section' => $section->sectionId]) }}
-                            @else
-                                {{ ($this->confirmSectionAction)(['section' => $section->sectionId]) }}
-                            @endif
+                            <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+                                <span class="text-gray-500 tabular-nums dark:text-gray-400">
+                                    Mostrando {{ $visible['from'] }}–{{ $visible['to'] }} de {{ $visible['total'] }}
+                                </span>
 
-                            {{ ($this->declareDivergenceAction)(['section' => $section->sectionId]) }}
-                        </div>
+                                @if ($visible['pages'] > 1)
+                                    <div class="flex items-center gap-2">
+                                        <x-filament::button
+                                            color="gray"
+                                            size="sm"
+                                            icon="heroicon-m-chevron-left"
+                                            wire:click="previousSectionPage"
+                                            :disabled="$visible['page'] <= 1"
+                                        >
+                                            Anteriores
+                                        </x-filament::button>
+                                        <x-filament::button
+                                            color="gray"
+                                            size="sm"
+                                            icon="heroicon-m-chevron-right"
+                                            icon-position="after"
+                                            wire:click="nextSectionPage"
+                                            :disabled="$visible['page'] >= $visible['pages']"
+                                        >
+                                            Próximas
+                                        </x-filament::button>
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
                     @endif
                 </x-filament::section>
             @endforeach
@@ -254,15 +393,24 @@
                     @endif
                 </div>
             </x-filament::section>
+        @elseif ($this->awaitsOperator($workspace))
+            <x-filament::section>
+                <p class="text-sm text-gray-600 dark:text-gray-300">
+                    <span class="font-medium">Confirmar seções, apontar divergências e enviar a validação são de quem opera a competência:</span>
+                    peça a quem tem a permissão de edição do Quadro de Vendas.
+                </p>
+            </x-filament::section>
         @endif
 
         @if ($workspace->submittedAt !== null)
+            @php($builderResponse = $this->builderResponse())
+
             <x-filament::section>
                 <x-slot name="heading">Envio</x-slot>
                 <div class="grid gap-6 md:grid-cols-3 text-sm">
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Enviada em</p>
-                        <p class="mt-1 font-medium">{{ $workspace->submittedAt->format('d/m/Y \à\s H:i') }}</p>
+                        <p class="mt-1 font-medium">{{ \App\Support\BusinessTime::at($workspace->submittedAt)->format('d/m/Y \à\s H:i') }}</p>
                     </div>
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Responsável</p>
@@ -273,10 +421,22 @@
                         <p class="mt-1">{{ $workspace->overallComment ?? '—' }}</p>
                     </div>
                 </div>
+
+                @if ($builderResponse !== null)
+                    <div class="mt-6">
+                        @include('filament.sales-boards.builder-response', ['builderResponse' => $builderResponse])
+                    </div>
+                @endif
             </x-filament::section>
         @endif
 
         @if (count($attempts) > 1)
+            {{--
+                O link sai da rota da página, e não da requisição corrente: depois
+                de qualquer interação a requisição é a do Livewire (POST), e o
+                morph reescreveria o href para um endereço que só aceita POST.
+                Sem `secao`: a outra rodada abre na primeira seção pendente dela.
+            --}}
             <x-filament::section collapsible collapsed>
                 <x-slot name="heading">Rodadas anteriores</x-slot>
                 <ul class="divide-y divide-gray-100 text-sm dark:divide-gray-800">
@@ -287,7 +447,7 @@
                                 <x-filament::badge :color="$attempt->status->color()">{{ $attempt->status->label() }}</x-filament::badge>
                             </span>
                             <a class="text-primary-600 hover:underline"
-                               href="{{ request()->url() }}?review={{ $attempt->getKey() }}">Ver</a>
+                               href="{{ \App\Filament\Resources\SalesBoardCycles\Pages\BuilderReviewWorkspace::getUrl(['record' => $this->getRecord(), 'review' => $attempt->getKey()]) }}">Ver</a>
                         </li>
                     @endforeach
                 </ul>

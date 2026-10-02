@@ -23,10 +23,13 @@ class ContractSpreadsheetTemplate implements GeneratedSpreadsheetTemplate
     public const EXAMPLE_SHEET = 'Exemplo';
 
     /**
-     * @var list<array<int, string>>
+     * The sale value is a numeric cell: typed as text with three digits after a
+     * single separator it reads two ways, and the template is what gets copied.
+     *
+     * @var list<array<int, string|float>>
      */
     private const EXAMPLE_ROWS = [
-        ['CRI Conviva', 'Conviva Camboinhas', '01', '305', '12345678900', 'CVC-00123', '10/03/2024', '850000.00', 'Ativo', ''],
+        ['CRI Conviva', 'Conviva Camboinhas', '01', '305', '12345678900', 'CVC-00123', '10/03/2024', 850000.00, 'Ativo', ''],
         /**
          * Two buyers on one contract: the contract line is repeated and only the
          * CPF/CNPJ changes. That is how a sale to more than one person is
@@ -35,9 +38,9 @@ class ContractSpreadsheetTemplate implements GeneratedSpreadsheetTemplate
          * the same contractual data; a value that disagrees is refused instead of
          * one of them being picked.
          */
-        ['CRI Conviva', 'Conviva Camboinhas', '01', '402', '98765432100', 'CVC-00124', '05/02/2024', '700000.00', 'Ativo', ''],
-        ['CRI Conviva', 'Conviva Camboinhas', '01', '402', '11144477735', 'CVC-00124', '05/02/2024', '700000.00', 'Ativo', ''],
-        ['CRI Conviva', 'Conviva Camboinhas', '02', '101', '52998224725', 'CVC-00125', '05/02/2024', '620000.00', 'Distratado', '15/06/2025'],
+        ['CRI Conviva', 'Conviva Camboinhas', '01', '402', '98765432100', 'CVC-00124', '05/02/2024', 700000.00, 'Ativo', ''],
+        ['CRI Conviva', 'Conviva Camboinhas', '01', '402', '11144477735', 'CVC-00124', '05/02/2024', 700000.00, 'Ativo', ''],
+        ['CRI Conviva', 'Conviva Camboinhas', '02', '101', '52998224725', 'CVC-00125', '05/02/2024', 620000.00, 'Distratado', '15/06/2025'],
     ];
 
     /**

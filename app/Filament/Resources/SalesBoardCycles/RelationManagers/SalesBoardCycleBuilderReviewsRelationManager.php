@@ -5,7 +5,9 @@ namespace App\Filament\Resources\SalesBoardCycles\RelationManagers;
 use App\Enums\BuilderReviewerType;
 use App\Enums\SalesBoardBuilderReviewStatus;
 use App\Filament\Resources\SalesBoardCycles\Pages\BuilderReviewWorkspace;
+use App\Filament\Support\GuardsRelationManagerAccess;
 use App\Models\SalesBoardBuilderReview;
+use App\Support\BusinessTime;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -23,6 +25,8 @@ use Filament\Tables\Table;
  */
 class SalesBoardCycleBuilderReviewsRelationManager extends RelationManager
 {
+    use GuardsRelationManagerAccess;
+
     protected static string $relationship = 'builderReviews';
 
     protected static ?string $title = 'Validações da construtora';
@@ -90,13 +94,13 @@ class SalesBoardCycleBuilderReviewsRelationManager extends RelationManager
 
                 TextColumn::make('submitted_at')
                     ->label('Enviada em')
-                    ->dateTime('d/m/Y H:i')
+                    ->dateTime('d/m/Y H:i', BusinessTime::timezone())
                     ->placeholder('—')
                     ->sortable(),
 
                 TextColumn::make('superseded_at')
                     ->label('Substituída em')
-                    ->dateTime('d/m/Y H:i')
+                    ->dateTime('d/m/Y H:i', BusinessTime::timezone())
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

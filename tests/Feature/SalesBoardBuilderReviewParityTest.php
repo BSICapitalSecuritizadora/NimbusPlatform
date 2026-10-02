@@ -1,6 +1,7 @@
 <?php
 
 use App\DTOs\SalesBoards\SalesBoardBuilderDivergenceInput;
+use App\Enums\AccessPermission;
 use App\Enums\SalesBoardBuilderDivergenceType;
 use App\Enums\SalesBoardBuilderReviewSection as SectionEnum;
 use App\Enums\SalesBoardBuilderReviewSectionStatus;
@@ -109,6 +110,7 @@ it('reads back exactly what the builder declared, in either engine', function ()
 it('reads back the frozen reviewer identity, in either engine', function () {
     $context = parityReview();
     $actor = User::factory()->create(['name' => 'Responsável Comercial']);
+    $actor->givePermissionTo(AccessPermission::SalesBoardsUpdate->value);
 
     BuilderReviewFixture::confirmAll($context['review']);
     $submitted = BuilderReviewFixture::submit($context['review'], $actor);

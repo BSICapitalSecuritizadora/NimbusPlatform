@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Contract;
 use App\Models\ContractInstallment;
+use App\Support\Money\IntegerMoney;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -52,6 +53,22 @@ class ContractInstallmentFactory extends Factory
         return $this->state(fn (array $attributes): array => [
             'payment_date' => $attributes['due_date'],
             'paid_value' => $attributes['expected_value'],
+        ]);
+    }
+
+    /**
+     * Received on the due date with a discount registered on the receipt: the
+     * paid value is the expected one minus the discount, so the installment
+     * settles exactly through the discount.
+     */
+    public function paidWithDiscount(string $discount): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'payment_date' => $attributes['due_date'],
+            'paid_value' => IntegerMoney::decimalString(
+                (int) IntegerMoney::cents($attributes['expected_value']) - (int) IntegerMoney::cents($discount),
+            ),
+            'discount_value' => $discount,
         ]);
     }
 

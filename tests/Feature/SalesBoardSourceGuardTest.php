@@ -12,6 +12,7 @@ use App\Filament\Resources\Emissions\EmissionResource;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\ConstructionUnitExchange;
+use App\Models\ConstructionUnitRetirement;
 use App\Models\ConstructionUnitValue;
 use App\Models\Contract;
 use App\Models\ContractInstallment;
@@ -87,6 +88,10 @@ dataset('unit anchors', [
     'permuta' => [
         fn (ConstructionUnit $unit) => ConstructionUnitExchange::factory()->forUnit($unit)->create(),
         'tem permuta registrada',
+    ],
+    'baixa registrada' => [
+        fn (ConstructionUnit $unit) => ConstructionUnitRetirement::factory()->forUnit($unit)->create(),
+        'tem baixa registrada',
     ],
     'linha congelada' => [
         fn (ConstructionUnit $unit) => SalesBoardCycleLine::factory()->create([
@@ -215,6 +220,18 @@ it('lists every blocker of a construction deletion, the units included', functio
     expect(app(SalesBoardSourceGuard::class)->constructionDeletionBlockers($construction))->toBe([
         'tem contrato registrado, inclusive excluído',
         'tem unidade que tem histórico de valores',
+    ])
+        ->and(ConstructionResource::canDelete($construction))->toBeFalse();
+});
+
+it('lists a retired unit among the blockers of a construction deletion', function () {
+    $this->actingAs(sourceGuardUser('super-admin'));
+
+    $construction = sourceGuardConstruction();
+    ConstructionUnitRetirement::factory()->forUnit(sourceGuardUnit($construction))->create();
+
+    expect(app(SalesBoardSourceGuard::class)->constructionDeletionBlockers($construction))->toBe([
+        'tem unidade que tem baixa registrada',
     ])
         ->and(ConstructionResource::canDelete($construction))->toBeFalse();
 });

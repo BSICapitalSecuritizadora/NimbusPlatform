@@ -17,8 +17,8 @@
     /** @var list<int> $automatedSalesBoardIds */
     $automatedSalesBoardIds ??= [];
 
-    /** @var bool $automationCoversMonth */
-    $automationCoversMonth ??= false;
+    /** @var \App\DTOs\SalesBoards\SalesBoardPublicationGaps $publicationGaps */
+    $publicationGaps ??= \App\DTOs\SalesBoards\SalesBoardPublicationGaps::none();
 
     $formatUnits = fn (int $units): string => number_format($units, 0, ',', '.');
     $formatShare = fn (float $part, float $whole): string => $whole > 0 ? number_format(($part / $whole) * 100, 1, ',', '.').'%' : '—';
@@ -80,9 +80,21 @@
                 </p>
             @endif
 
-            @if ($automationCoversMonth && ! $isComplete)
-                <p>Competência produzida pelo ciclo mensal automatizado: ainda não publicada para os empreendimentos acima.</p>
+            @if ($publicationGaps->awaitingPublication !== [])
+                <p>
+                    Competência produzida pelo ciclo mensal automatizado, ainda não publicada para:
+                    <span class="font-semibold">{{ collect($publicationGaps->awaitingPublication)->map(fn (ConstructionSalesPosition $construction): string => $constructionName($construction))->implode(', ') }}</span>.
+                </p>
             @endif
+
+            @foreach ($publicationGaps->cancelled as $cancelledCompetence)
+                <p>
+                    Competência {{ $competence }} cancelada pela Gestão para
+                    <span class="font-semibold">{{ $constructionName($cancelledCompetence['position']) }}</span>
+                    em {{ $cancelledCompetence['cycle']->cancelled_at === null ? '—' : \App\Support\BusinessTime::at($cancelledCompetence['cycle']->cancelled_at)->format('d/m/Y') }}: {{ rtrim((string) $cancelledCompetence['cycle']->cancellation_reason, '. ') }}.
+                    Os fatos do mês entram na competência seguinte; a Gestão pode reabri-la em “Ciclos do Quadro” enquanto nenhuma competência posterior tiver sido publicada.
+                </p>
+            @endforeach
         </div>
 
         <div class="bsi-financial-table-wrapper overflow-x-auto bg-white dark:bg-[#091b23]">

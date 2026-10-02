@@ -25,6 +25,7 @@ class SalesBoardPublicationFactory extends Factory
             'sales_board_builder_review_id' => SalesBoardBuilderReview::factory(),
             'sales_board_management_review_id' => SalesBoardManagementReview::factory(),
             'sales_board_id' => SalesBoard::factory(),
+            'sequence_number' => 1,
             'snapshot_fingerprint' => str_repeat('c', 64),
             'source_fingerprint' => str_repeat('d', 64),
             'observed_source_fingerprint' => str_repeat('d', 64),

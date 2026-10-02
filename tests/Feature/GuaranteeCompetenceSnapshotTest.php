@@ -170,6 +170,32 @@ it('records a manual value and audits the previous figure', function (): void {
         ->and($audit->properties['new_value'])->toEqual(9_000_000);
 });
 
+it('refuses a manual value for a competence that has not started yet', function (): void {
+    Carbon::setTestNow('2026-09-15 10:00:00');
+    $emission = Emission::factory()->create(['issued_quantity' => 1000, 'status' => 'active']);
+    $actor = makeAdminUser();
+
+    $guarantee = Guarantee::factory()
+        ->effectiveBetween()
+        ->ofType(GuaranteeType::QuotaFiduciaryAlienation)
+        ->create(['emission_id' => $emission->id, 'legal_status' => GuaranteeLegalStatus::Active]);
+
+    $writer = app(GuaranteeSnapshotWriter::class);
+
+    expect(fn () => $writer->recordManualValue($guarantee, '12/2030', 1_000_000, $actor))
+        ->toThrow(ValidationException::class, 'A competência 12/2030 ainda não começou.')
+        ->and(fn () => $writer->recordManualValue($guarantee, 'dezembro', 1_000_000, $actor))
+        ->toThrow(ValidationException::class, 'Informe a competência no formato MM/AAAA.');
+
+    expect(GuaranteeMonthlyPosition::query()->count())->toBe(0)
+        ->and(Activity::query()->where('event', GuaranteeSnapshotWriter::EVENT_VALUE_UPDATED)->exists())->toBeFalse();
+
+    // O mês em curso já começou e aceita o valor.
+    $writer->recordManualValue($guarantee, '09/2026', 1_000_000, $actor);
+
+    expect(GuaranteeMonthlyPosition::query()->sole()->reference_month->toDateString())->toBe('2026-09-01');
+});
+
 it('raises an alert when coverage falls below the contractual minimum', function (): void {
     $emission = emissionWithReceivablesGuarantee(20_000_000, 22_000_000);
 

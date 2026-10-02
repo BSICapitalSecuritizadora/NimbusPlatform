@@ -7,6 +7,7 @@ use App\Models\Obligation;
 use App\Models\ObligationEvidence;
 use App\Services\DocumentStorageService;
 use App\Services\Security\ClamAvFileScanner;
+use App\Support\Uploads\LocalUploadedFile;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -127,7 +128,17 @@ class ObligationEvidenceService
             return;
         }
 
-        $result = $this->fileScanner->scan($file->getRealPath() ?: null);
+        /**
+         * A varredura precisa do arquivo no disco local; com o envio temporário
+         * num disco remoto, {@see LocalUploadedFile} entrega uma cópia, apagada
+         * ao fim da varredura. Arquivo que nem chega a ser lido conta como
+         * antivírus indisponível: falha fechada, como antes.
+         */
+        $result = rescue(
+            fn (): string => LocalUploadedFile::using($file, fn (string $path): string => $this->fileScanner->scan($path)),
+            ClamAvFileScanner::RESULT_UNAVAILABLE,
+            report: false,
+        );
 
         if ($result === ClamAvFileScanner::RESULT_INFECTED) {
             Log::critical('ObligationEvidence: arquivo bloqueado pelo antivírus.', [

@@ -1,22 +1,32 @@
 <?php
 
 use App\DTOs\SalesBoards\SalesBoardComparableSnapshot;
+use App\Enums\SalesBoardAutomationSatisfiedVia;
+use App\Enums\SalesBoardAutomationTargetStatus;
+use App\Enums\SalesBoardCycleStatus;
 use App\Enums\SalesBoardMovementType;
 use App\Enums\SalesBoardUnitClassification;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\Contract;
+use App\Models\SalesBoardAutomationTarget;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleBaseline;
 use App\Models\SalesBoardCycleLine;
 use App\Models\SalesBoardCycleMovement;
+use App\Services\SalesBoards\SalesBoardCycleCancellationService;
+use App\Services\SalesBoards\SalesBoardCycleReopeningService;
 use App\Support\Money\IntegerMoney;
 use App\Support\SalesBoards\CanonicalDigest;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
+use Tests\Support\SalesBoards\AutomationFixture;
 use Tests\Support\SalesBoards\CycleFixture;
 use Tests\Support\SalesBoards\DerivationFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 
 uses(RefreshDatabase::class);
 
@@ -169,4 +179,45 @@ it('hashes a canonical document identically regardless of the database', functio
         "#contracts\n",
         "7|1|CT-7|2026-07-05|61234567|~|ativo\n",
     ])));
+});
+
+/**
+ * A reabertura grava as colunas novas do ciclo e devolve o alvo a satisfeito
+ * com um `UPDATE` que usa `COALESCE` -- e a FK de quem reabriu solta o vínculo
+ * quando o usuário some, sem apagar o ciclo. Os ids vêm do próprio resultado:
+ * os testes de concorrência deixam linhas commitadas no banco de paridade.
+ */
+it('reopens a cancelled competence and returns its target to satisfied', function () {
+    AutomationFixture::disable();
+    Notification::fake();
+
+    $construction = AutomationFixture::readyConstruction();
+    AutomationFixture::enable([$construction]);
+    AutomationFixture::run();
+
+    $target = SalesBoardAutomationTarget::query()->where('construction_id', $construction->id)->sole();
+    $cycle = SalesBoardCycle::query()->findOrFail($target->sales_board_cycle_id);
+
+    app(SalesBoardCycleCancellationService::class)
+        ->cancel($cycle, GovernanceFixture::approver(), 'Cancelada para conferir a reabertura no banco.');
+
+    $reopener = GovernanceFixture::approver();
+
+    app(SalesBoardCycleReopeningService::class)
+        ->reopen($cycle->fresh(), $reopener, 'Reaberta para conferir as colunas no banco.');
+
+    $persistedCycle = DB::table('sales_board_cycles')->where('id', $cycle->id)->first();
+    $persistedTarget = DB::table('sales_board_automation_targets')->where('id', $target->id)->first();
+
+    expect($persistedCycle->status)->toBe(SalesBoardCycleStatus::Generated->value)
+        ->and((int) $persistedCycle->reopened_by_user_id)->toBe($reopener->id)
+        ->and($persistedCycle->reopen_reason)->toBe('Reaberta para conferir as colunas no banco.')
+        ->and($persistedCycle->reopened_at)->not->toBeNull()
+        ->and($persistedTarget->status)->toBe(SalesBoardAutomationTargetStatus::Satisfied->value)
+        ->and($persistedTarget->satisfied_via)->toBe(SalesBoardAutomationSatisfiedVia::Generated->value)
+        ->and((int) $persistedTarget->sales_board_cycle_id)->toBe($cycle->id);
+
+    DB::table('users')->where('id', $reopener->id)->delete();
+
+    expect(DB::table('sales_board_cycles')->where('id', $cycle->id)->value('reopened_by_user_id'))->toBeNull();
 });

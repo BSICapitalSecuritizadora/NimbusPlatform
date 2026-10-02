@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ImportRuns\Pages;
 
+use App\Filament\Resources\ConstructionUnits\ConstructionUnitResource;
 use App\Filament\Resources\ContractInstallments\ContractInstallmentResource;
 use App\Filament\Resources\Contracts\ContractResource;
 use App\Filament\Resources\ImportRuns\ImportRunResource;
@@ -31,9 +32,11 @@ class ViewImportRun extends ViewRecord
     {
         return [
             Action::make('viewModule')
-                ->label(fn (ImportRun $record): string => $record->type === ImportRun::TYPE_CONTRACTS
-                    ? 'Ver Contratos'
-                    : 'Ver Parcelas')
+                ->label(fn (ImportRun $record): string => match ($record->type) {
+                    ImportRun::TYPE_CONTRACTS => 'Ver Contratos',
+                    ImportRun::TYPE_CONSTRUCTION_UNITS, ImportRun::TYPE_CONSTRUCTION_UNIT_VALUES => 'Ver Unidades',
+                    default => 'Ver Parcelas',
+                })
                 ->icon('heroicon-o-arrow-top-right-on-square')
                 ->color('gray')
                 ->url(fn (ImportRun $record): ?string => static::moduleUrl($record))
@@ -43,10 +46,12 @@ class ViewImportRun extends ViewRecord
 
     private static function moduleUrl(ImportRun $record): ?string
     {
-        if ($record->type === ImportRun::TYPE_CONTRACTS) {
-            return ContractResource::canViewAny() ? ContractResource::getUrl() : null;
-        }
-
-        return ContractInstallmentResource::canViewAny() ? ContractInstallmentResource::getUrl() : null;
+        return match ($record->type) {
+            ImportRun::TYPE_CONTRACTS => ContractResource::canViewAny() ? ContractResource::getUrl() : null,
+            ImportRun::TYPE_CONSTRUCTION_UNITS, ImportRun::TYPE_CONSTRUCTION_UNIT_VALUES => ConstructionUnitResource::canViewAny()
+                ? ConstructionUnitResource::getUrl()
+                : null,
+            default => ContractInstallmentResource::canViewAny() ? ContractInstallmentResource::getUrl() : null,
+        };
     }
 }

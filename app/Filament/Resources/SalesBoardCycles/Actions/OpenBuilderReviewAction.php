@@ -18,6 +18,10 @@ use Filament\Notifications\Notification;
  * qualquer coisa, o serviço confere a posição contra a fonte de agora -- mandar
  * para a construtora um quadro que já se sabe desatualizado custa uma ida e
  * volta inteira, e a mensagem de recusa diz exatamente isso.
+ *
+ * "Enviar" é o passo do fluxo, não um envio do sistema: a validação é aberta
+ * aqui dentro, a posição vai à construtora pelo canal combinado, e a resposta
+ * dela volta anexada ao envio da validação.
  */
 class OpenBuilderReviewAction
 {
@@ -39,7 +43,7 @@ class OpenBuilderReviewAction
             ->modalHeading('Abrir a validação da construtora')
             ->modalDescription(fn (SalesBoardCycle $record): string => $record->status === SalesBoardCycleStatus::BuilderReview
                 ? 'Abre a rodada de validação em andamento. Se a posição foi recalculada, uma nova rodada é aberta sobre a versão vigente.'
-                : 'A posição congelada será apresentada à construtora para conferência por seção. Nada do que ela declarar altera a posição.')
+                : 'Abre a validação interna da competência. Envie a posição congelada à construtora pelo canal combinado (e-mail, reunião) e registre aqui a resposta dela, com o anexo. O Nimbus ainda não tem acesso externo para a construtora: nada é enviado automaticamente.')
             ->modalSubmitActionLabel('Abrir validação')
             ->visible(fn (SalesBoardCycle $record): bool => SalesBoardCycleResource::canRecalculate()
                 && in_array($record->status, [SalesBoardCycleStatus::Generated, SalesBoardCycleStatus::BuilderReview], true)

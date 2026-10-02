@@ -9,6 +9,11 @@ use App\Models\SalesBoardPublication;
 use App\Models\User;
 use App\Notifications\SalesBoardAutomationNotification;
 use App\Services\SalesBoards\SalesBoardAutomationAlertDispatcher;
+use App\Services\SalesBoards\SalesBoardAutomationDiscoveryService;
+use App\Services\SalesBoards\SalesBoardAutomationDueDateService;
+use App\Services\SalesBoards\SalesBoardAutomationEligibilityProvider;
+use App\Support\SalesBoards\SalesBoardAutomationConfig;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\Support\SalesBoards\AutomationFixture;
@@ -32,18 +37,92 @@ function resolveRecipientsTo(User ...$users): void
     FixedSalesBoardAutomationRecipientResolver::bind(...$users);
 }
 
-it('sends nothing while no threshold is configured', function () {
+it('sends nothing when every reminder is switched off', function () {
     $construction = AutomationFixture::blockedConstruction();
     AutomationFixture::enable([$construction]);
     resolveRecipientsTo(User::factory()->create());
 
+    foreach (array_keys(SalesBoardAutomationConfig::DEFAULT_REMINDERS) as $key) {
+        config()->set('sales_board.automation.reminders.'.$key, null);
+    }
+
     AutomationFixture::run();
 
-    // Sem SLA definido, o motor existe e fica calado. Inventar "3 dias" aqui
-    // seria criar requisito de negócio dentro de um arquivo de configuração.
+    // Desligados -- por `off` ou por valor ilegível --, os lembretes calam: a
+    // competência bloqueada no mesmo dia não gera aviso nenhum.
     expect(SalesBoardAutomationAlert::query()->count())->toBe(0);
     Notification::assertNothingSent();
 });
+
+it('warns the operational owner on the first blocked day with the default policy', function () {
+    $this->freezeSecond();
+
+    $construction = AutomationFixture::blockedConstruction();
+    AutomationFixture::enable([$construction]);
+    $recipient = User::factory()->create();
+    resolveRecipientsTo($recipient);
+
+    AutomationFixture::run();
+
+    // Sem nenhuma configuração: o padrão avisa o bloqueio no mesmo dia, uma
+    // linha por canal, porque o retry do bloqueio é de 24 horas.
+    expect(SalesBoardAutomationAlert::query()->orderBy('channel')->get(['alert_type', 'channel'])
+        ->map(fn (SalesBoardAutomationAlert $alert): string => $alert->alert_type->value.'@'.$alert->channel)
+        ->all())
+        ->toBe(['geracao_bloqueada@database', 'geracao_bloqueada@mail']);
+
+    Notification::assertSentTo($recipient, SalesBoardAutomationNotification::class);
+});
+
+it('announces a competence ready for the builder in the same run with the default policy', function () {
+    $this->freezeSecond();
+
+    $construction = AutomationFixture::readyConstruction();
+    AutomationFixture::enable([$construction]);
+    resolveRecipientsTo(User::factory()->create());
+
+    $run = AutomationFixture::run();
+
+    expect(SalesBoardAutomationAlert::query()->where('channel', 'mail')->sole()->alert_type)
+        ->toBe(SalesBoardAutomationAlertType::ReadyForBuilder)
+        ->and($run->generated_count)->toBe(1)
+        ->and($run->alerts_sent)->toBe(1);
+});
+
+/**
+ * O par negativo do mecanismo: a tentativa grava `first_attempt_at` e o ciclo
+ * grava `updated_at` depois do início da execução. Com o instante do início, o
+ * relógio virar o segundo durante o processamento bastava para os lembretes de
+ * limiar zero ficarem para a execução seguinte. Aqui o relógio anda dois
+ * segundos exatamente entre a tomada do instante da execução e o processamento
+ * dos alvos -- de forma determinística, sem depender da sorte do runner.
+ */
+it('sends the same-day reminder in the run that produced the condition even when the clock moves on during processing', function (string $situation) {
+    $this->freezeSecond();
+
+    $construction = $situation === 'bloqueio'
+        ? AutomationFixture::blockedConstruction()
+        : AutomationFixture::readyConstruction();
+    AutomationFixture::enable([$construction]);
+    resolveRecipientsTo(User::factory()->create());
+
+    app()->bind(SalesBoardAutomationDiscoveryService::class, fn ($app): SalesBoardAutomationDiscoveryService => new class($app->make(SalesBoardAutomationEligibilityProvider::class), $app->make(SalesBoardAutomationDueDateService::class)) extends SalesBoardAutomationDiscoveryService
+    {
+        public function attemptable(array $targetIds, CarbonImmutable $now): array
+        {
+            test()->travel(2)->seconds();
+
+            return parent::attemptable($targetIds, $now);
+        }
+    });
+
+    AutomationFixture::run();
+
+    expect(SalesBoardAutomationAlert::query()->where('channel', 'mail')->sole()->alert_type)
+        ->toBe($situation === 'bloqueio'
+            ? SalesBoardAutomationAlertType::GenerationBlocked
+            : SalesBoardAutomationAlertType::ReadyForBuilder);
+})->with(['bloqueio', 'pronta para a construtora']);
 
 it('sends a blocked reminder once the configured threshold is crossed', function () {
     $construction = AutomationFixture::blockedConstruction();

@@ -4,12 +4,16 @@ use App\Enums\SalesBoardBuilderReviewStatus;
 use App\Enums\SalesBoardCycleStatus;
 use App\Enums\SalesBoardManagementReviewStatus;
 use App\Events\SalesBoards\SalesBoardCurrentBaselineChanged;
+use App\Events\SalesBoards\SalesBoardPriorPositionChanged;
+use App\Listeners\SalesBoards\RecheckFollowingCompetencesOnPriorPositionChange;
 use App\Listeners\SalesBoards\SupersedeBuilderReviewOnBaselineChange;
 use App\Listeners\SalesBoards\SupersedeManagementReviewOnBaselineChange;
 use App\Models\SalesBoardBuilderReview;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleBaseline;
 use App\Models\SalesBoardManagementReview;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -66,6 +70,27 @@ it('registers each baseline change listener exactly once', function () {
         SupersedeBuilderReviewOnBaselineChange::class,
         SupersedeManagementReviewOnBaselineChange::class,
     ]);
+});
+
+/**
+ * A reconferência das competências seguintes quando a posição de uma anterior
+ * muda segue a mesma regra: só o discovery a registra, e ela vai para a fila
+ * depois do commit.
+ */
+it('registers the recheck of the following competences exactly once, queued after commit', function () {
+    $listeners = collect(Event::getRawListeners()[SalesBoardPriorPositionChanged::class] ?? [])
+        ->map(fn (mixed $listener): string => is_array($listener)
+            ? (is_object($listener[0]) ? $listener[0]::class : (string) $listener[0])
+            : (is_string($listener) ? explode('@', $listener)[0] : 'closure'))
+        ->values()
+        ->all();
+
+    expect($listeners)->toBe([RecheckFollowingCompetencesOnPriorPositionChange::class])
+        ->and(new ReflectionClass(RecheckFollowingCompetencesOnPriorPositionChange::class))
+        ->implementsInterface(ShouldQueue::class)->toBeTrue()
+        ->and(app(RecheckFollowingCompetencesOnPriorPositionChange::class)->afterCommit)->toBeTrue()
+        ->and(new ReflectionClass(SalesBoardPriorPositionChanged::class))
+        ->implementsInterface(ShouldDispatchAfterCommit::class)->toBeTrue();
 });
 
 it('supersedes nothing when the recalculation is rolled back', function () {

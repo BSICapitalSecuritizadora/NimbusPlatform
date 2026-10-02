@@ -16,6 +16,7 @@ use App\Models\SalesBoardCycle;
 use App\Models\User;
 use App\Notifications\SalesBoardAutomationNotification;
 use App\Services\SalesBoards\SalesBoardAutomationService;
+use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -67,7 +68,7 @@ function activatedEmission(int $constructions = 2): array
     }
 
     // Quem abre a homologação não atesta, não aprova e não ativa.
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::operator();
     $approver = GovernanceFixture::approver();
     $homologation = RolloutFixture::open($scenario['emission'], $actor);
     $people = RolloutFixture::recipients($scenario['emission'], $actor);
@@ -299,30 +300,31 @@ it('shows who closed a competence and when, in Brasília time, on the closed tab
         ->assertSee('por Fulana da Gestão');
 });
 
-it('warns on the rollout screen that every reminder is off and that a liquidated emission is still automated', function () {
+it('warns on the rollout and automation screens only when every reminder is switched off', function () {
     app(PermissionRegistrar::class)->forgetCachedPermissions();
     $this->seed(RolesAndPermissionsSeeder::class);
     $this->actingAs(makeAdminUser());
 
     $scenario = activatedEmission(1);
-    $scenario['emission']->forceFill(['status' => 'closed'])->save();
 
+    // Com os padrões, há lembrete ligado: nenhum aviso de "todos desligados".
     Livewire::test(ManageSalesBoardRollout::class, ['record' => $scenario['emission']->getKey()])
         ->assertOk()
-        ->assertSee('lembretes de prazo da automação estão todos desligados')
-        ->assertSee('Esta Emissão está liquidada e continua automatizada');
+        ->assertDontSee('lembretes de prazo da automação estão todos desligados');
 
     Livewire::test(ListSalesBoardAutomationTargets::class)
         ->assertOk()
-        ->assertSee('lembretes de prazo da automação estão todos desligados')
-        ->assertSee('1 Emissão(ões) liquidada(s) continua(m) automatizada(s)');
+        ->assertDontSee('lembretes de prazo da automação estão todos desligados');
 
-    // Com um lembrete ligado e a Emissão em distribuição, os avisos somem.
-    config()->set('sales_board.automation.reminders.blocked_after_days', 2);
-    $scenario['emission']->forceFill(['status' => 'active'])->save();
+    foreach (array_keys(SalesBoardAutomationConfig::DEFAULT_REMINDERS) as $key) {
+        config()->set('sales_board.automation.reminders.'.$key, null);
+    }
 
     Livewire::test(ManageSalesBoardRollout::class, ['record' => $scenario['emission']->getKey()])
         ->assertOk()
-        ->assertDontSee('lembretes de prazo da automação estão todos desligados')
-        ->assertDontSee('Esta Emissão está liquidada');
+        ->assertSee('lembretes de prazo da automação estão todos desligados');
+
+    Livewire::test(ListSalesBoardAutomationTargets::class)
+        ->assertOk()
+        ->assertSee('lembretes de prazo da automação estão todos desligados');
 });

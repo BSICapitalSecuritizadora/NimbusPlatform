@@ -75,7 +75,7 @@ function manualRegistrationForm(SalesBoard $board, int $stockUnits): array
 it('refuses to rewrite a registered competence without sales-boards.update', function () {
     $board = manualRegistrationBoard();
 
-    $this->actingAs(manualRegistrationUser(['sales-boards.view', 'sales-boards.create']));
+    $this->actingAs(manualRegistrationUser(['emissions.view', 'sales-boards.view', 'sales-boards.create']));
 
     Livewire::test(CreateSalesBoard::class)
         ->fillForm(manualRegistrationForm($board, 5))
@@ -96,7 +96,7 @@ it('refuses to rewrite a registered competence without sales-boards.update', fun
 it('lets the create permission alone register a new competence', function () {
     $board = manualRegistrationBoard();
 
-    $this->actingAs(manualRegistrationUser(['sales-boards.view', 'sales-boards.create']));
+    $this->actingAs(manualRegistrationUser(['emissions.view', 'sales-boards.view', 'sales-boards.create']));
 
     Livewire::test(CreateSalesBoard::class)
         ->fillForm([...manualRegistrationForm($board, 5), 'reference_month' => '08/2026'])
@@ -110,7 +110,7 @@ it('lets the create permission alone register a new competence', function () {
 it('versions a registered competence for whoever may edit it', function () {
     $board = manualRegistrationBoard();
 
-    $this->actingAs(manualRegistrationUser(['sales-boards.view', 'sales-boards.create', 'sales-boards.update']));
+    $this->actingAs(manualRegistrationUser(['emissions.view', 'sales-boards.view', 'sales-boards.create', 'sales-boards.update']));
 
     Livewire::test(CreateSalesBoard::class)
         ->fillForm(manualRegistrationForm($board, 5))
@@ -133,7 +133,7 @@ it('finds the registered competence by construction and month, not by emission',
     $currentEmission = Emission::factory()->create(['status' => Emission::STATUS_DRAFT]);
     DB::table('constructions')->where('id', $board->construction_id)->update(['emission_id' => $currentEmission->id]);
 
-    $this->actingAs(manualRegistrationUser(['sales-boards.view', 'sales-boards.create', 'sales-boards.update']));
+    $this->actingAs(manualRegistrationUser(['emissions.view', 'sales-boards.view', 'sales-boards.create', 'sales-boards.update']));
 
     Livewire::test(CreateSalesBoard::class)
         ->fillForm([...manualRegistrationForm($board->fresh(), 5), 'emission_id' => $currentEmission->id])

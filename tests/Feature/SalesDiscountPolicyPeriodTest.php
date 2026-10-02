@@ -87,7 +87,7 @@ function periodTestRegister(
             'reason' => 'Revisão comercial',
         ],
         $confirmedSubstitutionId,
-        null,
+        auth()->user(),
     );
 }
 
@@ -379,7 +379,7 @@ it('refuses a confirmation that no longer matches the policy being substituted',
             'reason' => 'Revisão comercial',
         ],
         $current->id,
-        null,
+        auth()->user(),
         confirmedRetroactiveThrough: '2026-09-24',
     );
 

@@ -13,6 +13,7 @@ use App\Filament\Resources\SalesBoardCycles\RelationManagers\SalesBoardCycleMove
 use App\Filament\Resources\SalesBoardCycles\Schemas\SalesBoardCycleInfolist;
 use App\Filament\Resources\SalesBoardCycles\Tables\SalesBoardCyclesTable;
 use App\Models\SalesBoardCycle;
+use App\Support\SalesBoards\SalesBoardAccess;
 use App\Support\SalesBoards\SalesBoardApprovalAuthority;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -37,10 +38,15 @@ use UnitEnum;
  * cria versão nova e exige motivo. Deixar um formulário de campos crus aqui
  * permitiria escrever à mão uma posição que ninguém apurou.
  *
- * As permissões são as do Quadro de Vendas: quem enxerga a posição enxerga o
- * ciclo, e quem pode registrar posição pode congelar, recalcular e conduzir a
- * validação da construtora. Decidir, devolver, aprovar e publicar são da Gestão
- * e exigem `sales-boards.approve` ({@see SalesBoardApprovalAuthority}).
+ * As permissões são as do Quadro de Vendas ({@see SalesBoardAccess}): quem
+ * enxerga a posição enxerga o ciclo, e quem pode registrar posição pode
+ * congelar, recalcular e conduzir a validação da construtora. Ver exige também
+ * `emissions.view`: o ciclo é recorte da Emissão, e as telas dele carregam a
+ * Emissão e a obra no registro que o Filament entrega a quem chamar
+ * `getRecord()`. Decidir, devolver, aprovar e publicar são da Gestão e exigem
+ * `sales-boards.approve` ({@see SalesBoardApprovalAuthority}); abrir a
+ * análise, verificar a fonte e cancelar a competência são de quem conduz a
+ * competência, de um lado ou do outro.
  */
 class SalesBoardCycleResource extends Resource
 {
@@ -97,19 +103,24 @@ class SalesBoardCycleResource extends Resource
         ];
     }
 
+    /**
+     * A retificação aberta e a publicação vigente vêm junto: a lista, a tela e
+     * as ações perguntam por elas em cada ciclo, e sem o carregamento cada
+     * linha faria as suas consultas.
+     */
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['emission', 'construction', 'currentBaseline']);
+        return parent::getEloquentQuery()->with(['emission', 'construction', 'currentBaseline', 'openRectification', 'currentPublication']);
     }
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->can('sales-boards.view') ?? false;
+        return SalesBoardAccess::canView(auth()->user());
     }
 
     public static function canView(Model $record): bool
     {
-        return auth()->user()?->can('sales-boards.view') ?? false;
+        return SalesBoardAccess::canView(auth()->user());
     }
 
     /**
@@ -118,12 +129,25 @@ class SalesBoardCycleResource extends Resource
      */
     public static function canGenerate(): bool
     {
-        return auth()->user()?->can('sales-boards.create') ?? false;
+        return SalesBoardAccess::canGenerate(auth()->user());
     }
 
     public static function canRecalculate(): bool
     {
-        return auth()->user()?->can('sales-boards.update') ?? false;
+        return SalesBoardAccess::canOperate(auth()->user());
+    }
+
+    /**
+     * Quem conduz a competência, de qualquer dos dois lados: quem a opera
+     * (`sales-boards.update`) ou a Gestão (`sales-boards.approve`). Abrir a
+     * análise, verificar a fonte contra a versão vigente e cancelar a
+     * competência ficam visíveis para os dois -- a Gestão precisa deles para
+     * conduzir o que vai decidir, e quem só consulta não dispara derivação nem
+     * grava constatação.
+     */
+    public static function canOperateOrApprove(): bool
+    {
+        return SalesBoardAccess::canOperateOrApprove(auth()->user());
     }
 
     /**

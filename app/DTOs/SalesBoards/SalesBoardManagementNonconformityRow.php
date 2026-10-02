@@ -30,6 +30,14 @@ readonly class SalesBoardManagementNonconformityRow extends BaseDTO
      * @param  list<array{label: string, value: string}>  $facts  os números congelados
      *                                                            que sustentam o
      *                                                            apontamento
+     * @param  string|null  $correctionGuidance  como a fonte se corrige, quando a
+     *                                           pendência tem caminho conhecido --
+     *                                           montado só do fato congelado e do
+     *                                           mês do ciclo
+     * @param  int|null  $unitToRetireId  a unidade da linha congelada que a
+     *                                    construtora diz não existir, para o link
+     *                                    à ficha dela; vem da linha congelada,
+     *                                    sem consultar o cadastro
      */
     public function __construct(
         public int $id,
@@ -45,6 +53,9 @@ readonly class SalesBoardManagementNonconformityRow extends BaseDTO
         public ?string $decisionReason,
         public ?string $decidedByName,
         public ?CarbonImmutable $decidedAt,
+        public ?string $correctionGuidance = null,
+        public ?int $unitToRetireId = null,
+        public ?string $timingLabel = null,
     ) {}
 
     /**
@@ -69,10 +80,23 @@ readonly class SalesBoardManagementNonconformityRow extends BaseDTO
      */
     public function callout(): ?string
     {
-        return $this->origin === SalesBoardNonconformityOrigin::SystemSaleUndetermined
-            ? 'O Nimbus não conseguiu determinar a conformidade desta venda. '
-                .'A fonte precisa ser regularizada antes da publicação: não existe limite conhecido contra o qual uma exceção pudesse ser concedida.'
-            : null;
+        return match ($this->origin) {
+            SalesBoardNonconformityOrigin::SystemSaleUndetermined => 'O Nimbus não conseguiu determinar a conformidade desta venda. '
+                .'A fonte precisa ser regularizada antes da publicação: não existe limite conhecido contra o qual uma exceção pudesse ser concedida.',
+            SalesBoardNonconformityOrigin::SystemLateSaleWithoutPolicy => 'Venda de competência já publicada sem política de desconto aplicável na data: '
+                .'a política dessa competência não pode mais ser registrada, então não há limite de política para comparar. '
+                .'A exceção é admitida aqui, com motivo; a outra saída é corrigir o valor ou a data da venda.',
+            default => null,
+        };
+    }
+
+    /**
+     * A pendência é de uma venda de competência anterior -- extemporânea ou
+     * revisão de venda publicada.
+     */
+    public function isFromEarlierCompetence(): bool
+    {
+        return $this->timingLabel !== null;
     }
 
     public function isPending(): bool

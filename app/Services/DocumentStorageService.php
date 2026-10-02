@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\Uploads\LocalUploadedFile;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -100,7 +101,11 @@ class DocumentStorageService
             'original_name' => $file->getClientOriginalName(),
             'mime_type' => $file->getMimeType(),
             'size_bytes' => (int) $file->getSize(),
-            'checksum' => hash_file('sha256', $file->getRealPath()) ?: null,
+            /**
+             * Lido por stream: com o envio temporário num disco remoto, o
+             * `getRealPath()` era relativo e o `hash_file()` não achava nada.
+             */
+            'checksum' => LocalUploadedFile::checksum($file),
         ];
     }
 

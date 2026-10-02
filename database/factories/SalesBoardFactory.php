@@ -23,7 +23,13 @@ class SalesBoardFactory extends Factory
     {
         return [
             'emission_id' => Emission::factory(),
-            'construction_id' => Construction::factory(),
+            // O empreendimento nasce na Emissão do quadro: o guard de escrita
+            // recusa quadro fora da Emissão atual do empreendimento, porque o
+            // leitor da posição o somaria nas duas. A anomalia, quando um teste
+            // precisa dela, sai de Tests\Support\SalesBoards\SalesBoardAnomalyFixture.
+            'construction_id' => fn (array $attributes): Factory => Construction::factory()->state([
+                'emission_id' => $attributes['emission_id'],
+            ]),
             'reference_month' => fake()->dateTimeBetween('-12 months', 'now')->format('Y-m-01'),
             'stock_units' => fake()->numberBetween(0, 50),
             'financed_units' => fake()->numberBetween(0, 50),

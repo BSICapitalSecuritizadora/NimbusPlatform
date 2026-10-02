@@ -128,3 +128,16 @@ it('round-trips the dates and the json blocker codes', function () {
         ->and($target->blockerCodes())->toBe(['UNIT_VALUE_MISSING'])
         ->and(json_decode((string) $persisted->last_blocker_codes, true))->toBe(['UNIT_VALUE_MISSING']);
 });
+
+it('stores the run duration in milliseconds', function () {
+    $construction = AutomationFixture::readyConstruction();
+    AutomationFixture::enable([$construction]);
+
+    $run = AutomationFixture::run();
+
+    $persisted = DB::table('sales_board_automation_runs')->where('id', $run->id)->value('duration_ms');
+
+    expect($persisted)->not->toBeNull()
+        ->and((int) $persisted)->toBe($run->durationMs())
+        ->and((int) $persisted)->toBeGreaterThanOrEqual(0);
+});

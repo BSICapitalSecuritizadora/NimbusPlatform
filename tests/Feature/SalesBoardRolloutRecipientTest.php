@@ -19,6 +19,7 @@ use App\Services\SalesBoards\SalesBoardRolloutRecipientDirectory;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\RolloutFixture;
 
 uses(RefreshDatabase::class);
@@ -48,6 +49,8 @@ it('maps every alert type to exactly one role', function () {
         SalesBoardAutomationAlertType::ManagementReminder,
         SalesBoardAutomationAlertType::ManagementEscalation,
         SalesBoardAutomationAlertType::ScopeSuspended,
+        // Registrar o fim do rollout de uma Emissão liquidada é ato da Gestão.
+        SalesBoardAutomationAlertType::EmissionLiquidated,
     ];
 
     foreach ($management as $alert) {
@@ -82,11 +85,11 @@ it('warns the operational owners of every automated emission, once each, about a
     $shared = RolloutFixture::operationalUser();
     $directory = app(SalesBoardRolloutRecipientDirectory::class);
 
-    $directory->add($automated['emission'], SalesBoardRolloutRecipientRole::Operational, $shared, null);
-    $directory->add($legacy['emission'], SalesBoardRolloutRecipientRole::Operational, RolloutFixture::operationalUser(), null);
+    $directory->add($automated['emission'], SalesBoardRolloutRecipientRole::Operational, $shared, GovernanceFixture::operator());
+    $directory->add($legacy['emission'], SalesBoardRolloutRecipientRole::Operational, RolloutFixture::operationalUser(), GovernanceFixture::operator());
 
     $second = RolloutFixture::emission(1, 'C');
-    $directory->add($second['emission'], SalesBoardRolloutRecipientRole::Operational, $shared, null);
+    $directory->add($second['emission'], SalesBoardRolloutRecipientRole::Operational, $shared, GovernanceFixture::operator());
 
     foreach ([$automated['emission'], $second['emission']] as $emission) {
         $emission->forceFill(['sales_board_source' => SalesBoardSource::Automated])->save();
@@ -125,6 +128,15 @@ it('resolves management recipients for a management reminder', function () {
     expect(collect($resolved)->pluck('id')->all())->toBe([$people['management']->id]);
 });
 
+it('resolves management recipients for a liquidated emission', function () {
+    $scenario = RolloutFixture::emission(1);
+    $people = RolloutFixture::recipients($scenario['emission']);
+
+    $resolved = app(SalesBoardAutomationRecipientResolver::class)->forEmissionLiquidated($scenario['emission']);
+
+    expect(collect($resolved)->pluck('id')->all())->toBe([$people['management']->id]);
+});
+
 it('never falls back to administrators', function () {
     $scenario = RolloutFixture::emission(1);
 
@@ -145,8 +157,8 @@ it('stops notifying a recipient that became inactive', function () {
     $active = RolloutFixture::operationalUser();
     $leaving = RolloutFixture::operationalUser();
 
-    $directory->add($scenario['emission'], SalesBoardRolloutRecipientRole::Operational, $active, null);
-    $directory->add($scenario['emission'], SalesBoardRolloutRecipientRole::Operational, $leaving, null);
+    $directory->add($scenario['emission'], SalesBoardRolloutRecipientRole::Operational, $active, GovernanceFixture::operator());
+    $directory->add($scenario['emission'], SalesBoardRolloutRecipientRole::Operational, $leaving, GovernanceFixture::operator());
 
     $target = SalesBoardAutomationTarget::factory()->create([
         'construction_id' => $scenario['constructions'][0]->id,
@@ -168,7 +180,7 @@ it('resolves to nobody when the last recipient is deactivated', function () {
     $only = RolloutFixture::operationalUser();
 
     app(SalesBoardRolloutRecipientDirectory::class)
-        ->add($scenario['emission'], SalesBoardRolloutRecipientRole::Operational, $only, null);
+        ->add($scenario['emission'], SalesBoardRolloutRecipientRole::Operational, $only, GovernanceFixture::operator());
 
     $only->forceFill(['approved_at' => null])->save();
 
@@ -187,7 +199,7 @@ it('refuses to configure a recipient that is not operational', function () {
     $pending = User::factory()->create(['approved_at' => null]);
 
     expect(fn () => app(SalesBoardRolloutRecipientDirectory::class)
-        ->add($scenario['emission'], SalesBoardRolloutRecipientRole::Operational, $pending, null))
+        ->add($scenario['emission'], SalesBoardRolloutRecipientRole::Operational, $pending, GovernanceFixture::operator()))
         ->toThrow(SalesBoardRolloutException::class, 'ativos e aprovados');
 });
 
@@ -196,8 +208,8 @@ it('never configures the same person twice in the same role', function () {
     $user = RolloutFixture::operationalUser();
     $directory = app(SalesBoardRolloutRecipientDirectory::class);
 
-    $directory->add($scenario['emission'], SalesBoardRolloutRecipientRole::Operational, $user, null);
-    $directory->add($scenario['emission'], SalesBoardRolloutRecipientRole::Operational, $user, null);
+    $directory->add($scenario['emission'], SalesBoardRolloutRecipientRole::Operational, $user, GovernanceFixture::operator());
+    $directory->add($scenario['emission'], SalesBoardRolloutRecipientRole::Operational, $user, GovernanceFixture::operator());
 
     expect(SalesBoardRolloutRecipient::query()->count())->toBe(1);
 });
@@ -207,8 +219,8 @@ it('lets the same person cover both roles', function () {
     $user = RolloutFixture::operationalUser();
     $directory = app(SalesBoardRolloutRecipientDirectory::class);
 
-    $directory->add($scenario['emission'], SalesBoardRolloutRecipientRole::Operational, $user, null);
-    $directory->add($scenario['emission'], SalesBoardRolloutRecipientRole::Management, $user, null);
+    $directory->add($scenario['emission'], SalesBoardRolloutRecipientRole::Operational, $user, GovernanceFixture::operator());
+    $directory->add($scenario['emission'], SalesBoardRolloutRecipientRole::Management, $user, GovernanceFixture::operator());
 
     expect(SalesBoardRolloutRecipient::query()->count())->toBe(2);
 });
@@ -218,13 +230,16 @@ it('never grants any permission by being a recipient', function () {
     $user = RolloutFixture::operationalUser();
 
     app(SalesBoardRolloutRecipientDirectory::class)
-        ->add($scenario['emission'], SalesBoardRolloutRecipientRole::Operational, $user, null);
+        ->add($scenario['emission'], SalesBoardRolloutRecipientRole::Operational, $user, GovernanceFixture::operator());
 
     expect($user->fresh()->can('sales-boards.view'))->toBeFalse()
         ->and($user->fresh()->can('sales-boards.update'))->toBeFalse();
 });
 
 it('delivers a blocked-generation alert to the operational recipient only', function () {
+    // O bloqueio é avisado com limiar zero, comparando instantes de segundo.
+    $this->freezeSecond();
+
     $scenario = RolloutFixture::emission(1);
 
     foreach ($scenario['constructions'] as $construction) {

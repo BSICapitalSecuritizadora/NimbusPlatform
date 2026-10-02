@@ -17,9 +17,15 @@ use Illuminate\Auth\Access\AuthorizationException;
 /**
  * "Cancelar competência": encerra um ciclo que não vai ser publicado.
  *
- * É da Gestão, como aprovar. Quem opera a competência vê o botão desabilitado,
- * dizendo por quê, em vez de não encontrá-lo -- a mensagem do portão de
- * publicação manda usar este botão. O serviço confere a permissão de novo.
+ * É da Gestão, como aprovar. Aparece para quem conduz a competência, de um lado
+ * ou do outro: a Gestão sem `sales-boards.update` o encontra habilitado, e quem
+ * opera a competência vê o botão desabilitado, dizendo por quê, em vez de não
+ * encontrá-lo -- a mensagem do portão de publicação manda usar este botão.
+ * Quem só consulta não o vê: seria um botão sem saída. O serviço confere a
+ * permissão de novo.
+ *
+ * O cancelamento tem volta: "Reabrir competência"
+ * ({@see ReopenSalesBoardCycleAction}) devolve o mesmo ciclo a "Gerado".
  */
 class CancelSalesBoardCycleAction
 {
@@ -33,16 +39,23 @@ class CancelSalesBoardCycleAction
             ->modalWidth(Width::TwoExtraLarge)
             ->modalHeading('Cancelar a competência')
             ->modalDescription(fn (SalesBoardCycle $record): string => sprintf(
-                'A competência %s de %s é encerrada sem publicação. As rodadas abertas de validação e de análise são substituídas, '
-                    .'a automação deixa de responder por ela e nenhum outro ciclo pode ser gerado para o mesmo mês. '
-                    .'Tudo o que foi apurado continua consultável. Esta ação não pode ser desfeita.',
+                'A competência %s de %s é encerrada sem publicação. As rodadas abertas de validação e de análise são substituídas '
+                    .'e a automação deixa de responder por ela. Tudo o que foi apurado continua consultável. Se o cancelamento se '
+                    .'mostrar um engano, a Gestão pode reabrir a mesma competência depois, com motivo, enquanto ela estiver coberta '
+                    .'pela automação da Emissão e nenhuma competência posterior tiver sido publicada.',
                 $record->reference_month?->format('m/Y') ?? '—',
                 (string) $record->construction?->development_name,
             ))
             ->modalSubmitActionLabel('Cancelar competência')
             ->modalCancelActionLabel('Voltar')
-            ->visible(fn (SalesBoardCycle $record): bool => SalesBoardCycleResource::canRecalculate()
-                && ! in_array($record->status, [SalesBoardCycleStatus::Approved, SalesBoardCycleStatus::Cancelled], true))
+            /**
+             * Competência com publicação não é cancelada, nem a que está em
+             * retificação (voltou a "Gerado" com a posição publicada valendo):
+             * a saída dela é "Desistir da retificação".
+             */
+            ->visible(fn (SalesBoardCycle $record): bool => SalesBoardCycleResource::canOperateOrApprove()
+                && ! in_array($record->status, [SalesBoardCycleStatus::Approved, SalesBoardCycleStatus::Cancelled], true)
+                && ! $record->hasPublication())
             ->disabled(fn (): bool => ! SalesBoardCycleResource::canApprove())
             ->tooltip(fn (): ?string => SalesBoardCycleResource::canApprove()
                 ? null
@@ -73,7 +86,8 @@ class CancelSalesBoardCycleAction
 
                 Notification::make()
                     ->title('Competência cancelada')
-                    ->body('O ciclo foi encerrado sem publicação e a automação deixou de responder por esta competência.')
+                    ->body('O ciclo foi encerrado sem publicação e a automação deixou de responder por esta competência. '
+                        .'Para desfazer, use “Reabrir competência”.')
                     ->success()
                     ->send();
             });

@@ -86,6 +86,10 @@ final class RolloutFixture
         ]);
     }
 
+    /**
+     * Sem ator informado, abre alguém que opera a competência: conduzir a
+     * homologação exige `sales-boards.update`.
+     */
     public static function open(
         Emission $emission,
         ?User $actor = null,
@@ -95,19 +99,22 @@ final class RolloutFixture
         return app(SalesBoardRolloutHomologationService::class)->open(
             $emission->fresh(),
             CarbonImmutable::parse($startMonth),
-            $actor ?? User::factory()->create(),
+            $actor ?? GovernanceFixture::operator(),
             $autoOpen,
         );
     }
 
     /**
-     * Cobre os dois papéis com destinatários operacionais.
+     * Cobre os dois papéis com destinatários operacionais. Definir os
+     * responsáveis é preparo: sem ator informado, define alguém que opera a
+     * competência.
      *
      * @return array{operational: User, management: User}
      */
     public static function recipients(Emission $emission, ?User $actor = null): array
     {
         $directory = app(SalesBoardRolloutRecipientDirectory::class);
+        $actor ??= GovernanceFixture::operator();
 
         $operational = self::operationalUser();
         $management = self::operationalUser();
@@ -177,7 +184,7 @@ final class RolloutFixture
         bool $autoOpen = false,
         ?User $approver = null,
     ): SalesBoardRolloutHomologation {
-        $actor ??= User::factory()->create();
+        $actor ??= GovernanceFixture::operator();
         $approver ??= GovernanceFixture::approver();
 
         $homologation = self::open($emission, $actor, $startMonth, $autoOpen);

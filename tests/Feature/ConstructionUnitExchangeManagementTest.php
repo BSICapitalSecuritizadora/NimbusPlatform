@@ -70,7 +70,21 @@ it('requires a reason and a value to declare a baseline', function () {
         ])
         ->assertHasActionErrors(['exchange_value', 'effective_from', 'reason']);
 
-    expect(ConstructionUnitExchange::count())->toBe(0);
+    // Zero não é valor: é o marcador de "sem valor", e permuta sem valor não
+    // compõe o Quadro de Vendas.
+    $zero = Livewire::test(ConstructionUnitExchangesRelationManager::class, [
+        'ownerRecord' => $unit,
+        'pageClass' => ViewConstructionUnit::class,
+    ])
+        ->callAction(TestAction::make('declareBaseline')->table(), [
+            'exchange_value' => '0,00',
+            'effective_from' => '2026-01-01',
+            'reason' => 'Permuta acordada na estruturação',
+        ])
+        ->assertHasActionErrors(['exchange_value' => 'min']);
+
+    expect(collect($zero->errors()->all()))->toContain('O valor da permuta precisa ser maior que zero.')
+        ->and(ConstructionUnitExchange::count())->toBe(0);
 });
 
 it('hides the declaration once the emission has left draft', function () {

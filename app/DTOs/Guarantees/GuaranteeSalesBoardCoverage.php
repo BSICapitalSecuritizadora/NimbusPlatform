@@ -131,13 +131,18 @@ readonly class GuaranteeSalesBoardCoverage extends BaseDTO
     }
 
     /**
-     * Empreendimentos sem o quadro da própria competência: posição transportada
-     * ou sem quadro algum.
+     * Empreendimentos sem o quadro da própria competência: posição transportada,
+     * sem quadro até a competência ou sem quadro algum.
      *
-     * O empreendimento cujo primeiro quadro é posterior à competência não é
-     * lacuna — é a mesma leitura de {@see EmissionSalesPosition::isFullyCovered()}:
-     * cobrar uma posição que ainda não existia inventaria uma falta. Ele
-     * continua registrado em `constructions`, sem mês usado, e por isso um quadro
+     * Aqui as garantias divergem do leitor de posição de propósito. Para
+     * {@see EmissionSalesPosition::isFullyCovered()}, o empreendimento cujo
+     * primeiro quadro é posterior à competência não é esperado -- cobrar dele
+     * uma posição que ainda não existia inventaria uma falta no painel de
+     * unidades. Para as garantias ele é lacuna: na competência a obra já tinha
+     * unidades, e elas ficaram fora da soma do estoque. A decisão do dono
+     * (25/09) pede a confirmação explícita para fechar com "obra sem quadro do
+     * mês", e o erro silencioso seria subestimar a cobertura sem ninguém saber.
+     * Ele continua registrado em `constructions`, sem mês usado, e um quadro
      * retroativo dele ainda desatualiza a apuração ({@see self::dependsOn()}).
      *
      * @return list<array{construction_id: int, construction_name: string|null, status: string, reference_month_used: string|null}>
@@ -164,7 +169,8 @@ readonly class GuaranteeSalesBoardCoverage extends BaseDTO
     }
 
     /**
-     * Lacunas sem posição nenhuma: o empreendimento nunca teve quadro.
+     * Lacunas sem posição nenhuma na competência: o empreendimento nunca teve
+     * quadro, ou só passou a ter depois dela.
      *
      * @return list<array{construction_id: int, construction_name: string|null, status: string, reference_month_used: string|null}>
      */
@@ -236,20 +242,15 @@ readonly class GuaranteeSalesBoardCoverage extends BaseDTO
     }
 
     /**
-     * Um status desconhecido conta como lacuna: na dúvida, o fechamento pede
-     * confirmação em vez de passar calado.
+     * Só o quadro da própria competência não é lacuna. Todo o resto -- posição
+     * transportada, sem quadro até a competência, sem quadro algum e status
+     * desconhecido -- pede confirmação em vez de passar calado.
      *
      * @param  array{construction_id: int, construction_name: string|null, status: string, reference_month_used: string|null}  $entry
      */
     private static function isGap(array $entry): bool
     {
-        $status = SalesBoardPositionStatus::tryFrom($entry['status']);
-
-        if ($status === SalesBoardPositionStatus::Current) {
-            return false;
-        }
-
-        return $status?->isExpected() ?? true;
+        return SalesBoardPositionStatus::tryFrom($entry['status']) !== SalesBoardPositionStatus::Current;
     }
 
     /**

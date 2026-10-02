@@ -10,10 +10,10 @@ use Filament\Schemas\Schema;
 /**
  * The detail of one confirmed reconciliation.
  *
- * Everything shown is what the execution persisted. The platform keeps the name
- * and the content hash of the spreadsheet, not the spreadsheet itself, so there
- * is nothing to download here -- the checksum is what answers whether a file in
- * hand is the same one that was processed.
+ * Everything shown is what the execution persisted. Runs confirmed since the
+ * archive existed keep the spreadsheet on the private disk too; it is named
+ * here, not offered for download -- the checksum remains what answers whether a
+ * file in hand is the same one that was processed.
  */
 class ImportRunInfolist
 {
@@ -30,7 +30,12 @@ class ImportRunInfolist
                             ->label('Tipo')
                             ->badge()
                             ->state(fn (ImportRun $record): string => $record->typeLabel())
-                            ->color(fn (ImportRun $record): string => $record->type === ImportRun::TYPE_CONTRACTS ? 'info' : 'primary'),
+                            ->color(fn (ImportRun $record): string => match ($record->type) {
+                                ImportRun::TYPE_CONTRACTS => 'info',
+                                ImportRun::TYPE_CONSTRUCTION_UNITS => 'success',
+                                ImportRun::TYPE_CONSTRUCTION_UNIT_VALUES => 'warning',
+                                default => 'primary',
+                            }),
                         TextEntry::make('file_name')
                             ->label('Arquivo')
                             ->placeholder('—'),
@@ -70,12 +75,56 @@ class ImportRunInfolist
                             ->label('Críticos')
                             ->numeric()
                             ->color(fn (ImportRun $record): string => $record->records_critical > 0 ? 'warning' : 'gray'),
+                        TextEntry::make('records_warned')
+                            ->label('Com aviso')
+                            ->numeric()
+                            ->color(fn (ImportRun $record): string => (int) $record->records_warned > 0 ? 'warning' : 'gray'),
+                        TextEntry::make('records_absent')
+                            ->label('Ausentes da planilha')
+                            ->numeric()
+                            ->helperText('Registros cadastrados que a planilha não trouxe. Nada muda neles sem uma decisão explícita.'),
                     ])
-                    ->columns(5),
+                    ->columns(4),
+
+                Section::make('Registros criados por esta importação')
+                    ->description('Os registros que esta execução criou em lote e que continuam ligados a ela. Alterações aparecem na lista de alterações abaixo.')
+                    ->schema([
+                        TextEntry::make('created_records')
+                            ->label(fn (ImportRun $record): string => match ($record->type) {
+                                ImportRun::TYPE_CONTRACTS => 'Contratos criados',
+                                ImportRun::TYPE_CONSTRUCTION_UNITS => 'Unidades criadas',
+                                ImportRun::TYPE_CONSTRUCTION_UNIT_VALUES => 'Linhas de valor acrescentadas',
+                                default => 'Parcelas criadas',
+                            })
+                            ->state(fn (ImportRun $record): int => $record->createdRecordsCount())
+                            ->numeric(),
+                    ]),
+
+                Section::make('Parcelas canceladas por ausência')
+                    ->description('Parcelas em aberto, ausentes da planilha, que quem confirmou decidiu cancelar.')
+                    ->schema([
+                        TextEntry::make('records_cancelled')
+                            ->label('Canceladas')
+                            ->numeric(),
+                        TextEntry::make('absence_cancellation_date')
+                            ->label('Data do cancelamento')
+                            ->date('d/m/Y')
+                            ->placeholder('—'),
+                        TextEntry::make('absence_cancellation_reason')
+                            ->label('Motivo')
+                            ->placeholder('—')
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2)
+                    ->visible(fn (ImportRun $record): bool => (int) $record->records_cancelled > 0),
 
                 Section::make('Arquivo processado')
-                    ->description('O sistema preserva o nome e o checksum do arquivo, não a planilha enviada.')
+                    ->description('O nome e o checksum do arquivo e, nas importações mais recentes, a planilha arquivada no disco privado.')
                     ->schema([
+                        TextEntry::make('file_path')
+                            ->label('Planilha arquivada')
+                            ->placeholder('Não arquivada (importação anterior ao arquivamento)')
+                            ->columnSpanFull(),
                         TextEntry::make('checksum')
                             ->label('Checksum (SHA-256)')
                             ->placeholder('—')

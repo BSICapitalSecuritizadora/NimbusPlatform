@@ -7,7 +7,6 @@ use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\SalesBoardRolloutHomologation;
 use App\Models\SalesBoardRolloutHomologationConstruction;
-use App\Models\User;
 use App\Services\SalesBoards\SalesBoardRolloutHomologationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\SalesBoards\DerivationFixture;
@@ -37,7 +36,7 @@ function homologationApprovedBehindAStaleDraft(): array
         RolloutFixture::legacyBoard($construction);
     }
 
-    $stale = RolloutFixture::open($scenario['emission'], User::factory()->create());
+    $stale = RolloutFixture::open($scenario['emission'], GovernanceFixture::operator());
 
     RolloutFixture::recipients($scenario['emission']);
 
@@ -77,7 +76,7 @@ it('refuses to change a row of a rejected homologation', function () {
     $homologation = RolloutFixture::open($scenario['emission']);
 
     app(SalesBoardRolloutHomologationService::class)
-        ->reject($homologation, User::factory()->create(), 'Cadastro de unidades ainda incompleto.');
+        ->reject($homologation, GovernanceFixture::operator(), 'Cadastro de unidades ainda incompleto.');
 
     $row = $homologation->constructions()->firstOrFail();
 
@@ -109,7 +108,7 @@ it('refuses to reassess a draft the screen still holds after the homologation wa
     DerivationFixture::unit($scenario['constructions'][0], 'A0999', '400000.00');
 
     expect($stale->isEditable())->toBeTrue()
-        ->and(fn () => app(SalesBoardRolloutHomologationService::class)->reassess($stale))
+        ->and(fn () => app(SalesBoardRolloutHomologationService::class)->reassess($stale, GovernanceFixture::operator()))
         ->toThrow(SalesBoardRolloutException::class, 'já foi encerrada');
 
     $afterwards = $approved->fresh();
@@ -130,7 +129,7 @@ it('refuses to accept a difference on a row the screen loaded before the approva
     $row = $stale->constructions()->firstOrFail();
 
     expect(fn () => app(SalesBoardRolloutHomologationService::class)
-        ->acceptDifference($row, 'Diferença entendida depois da aprovação.', User::factory()->create()))
+        ->acceptDifference($row, 'Diferença entendida depois da aprovação.', GovernanceFixture::operator()))
         ->toThrow(SalesBoardRolloutException::class, 'já foi encerrada');
 
     expect($row->fresh()->difference_reason)->toBeNull();

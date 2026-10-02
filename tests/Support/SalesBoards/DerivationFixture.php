@@ -34,6 +34,15 @@ final class DerivationFixture
         return Construction::factory()->create(['emission_id' => Emission::factory()->create()->id]);
     }
 
+    /**
+     * O mesmo empreendimento, com a Emissão em operação declarada: a fábrica da
+     * Emissão sorteia o status, e os testes novos o fixam.
+     */
+    public static function activeConstruction(): Construction
+    {
+        return Construction::factory()->create(['emission_id' => Emission::factory()->create(['status' => 'active'])->id]);
+    }
+
     public static function unit(
         Construction $construction,
         string $unit,

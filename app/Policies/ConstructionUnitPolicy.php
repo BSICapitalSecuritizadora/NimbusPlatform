@@ -5,17 +5,19 @@ namespace App\Policies;
 use App\Exceptions\SalesBoardSourceException;
 use App\Models\ConstructionUnit;
 use App\Models\User;
+use App\Services\SalesBoards\ConstructionUnitRetirementService;
 use App\Services\SalesBoards\SalesBoardSourceGuard;
 use Illuminate\Auth\Access\Response;
 
 /**
  * As unidades respondem às permissões `constructions.*`, como o resource delas.
  *
- * Uma unidade com contrato, histórico de valor, permuta ou posição congelada
- * num ciclo não é apagada por ninguém: o banco recusaria (FK RESTRICT) e, se
- * não recusasse, a história lida dela perderia a unidade. Não existe baixa ou
- * inativação de unidade -- a regra ainda não foi decidida --, então a recusa
- * só explica o motivo.
+ * Uma unidade com contrato, histórico de valor, permuta, baixa ou posição
+ * congelada num ciclo não é apagada por ninguém, nem pelo super-admin: o banco
+ * recusaria (FK RESTRICT) e, se não recusasse, a história lida dela perderia a
+ * unidade. A saída para a unidade que deixou de existir é a baixa -- fato
+ * datado, registrado pela Gestão no {@see ConstructionUnitRetirementService} --,
+ * e a recusa da exclusão aponta para ela.
  */
 class ConstructionUnitPolicy
 {
@@ -51,7 +53,8 @@ class ConstructionUnitPolicy
 
         return $anchors === []
             ? Response::allow()
-            : Response::deny('A unidade não pode ser excluída: '.SalesBoardSourceException::joinReasons($anchors).'.');
+            : Response::deny('A unidade não pode ser excluída: '.SalesBoardSourceException::joinReasons($anchors).'. '
+                .'Para que ela deixe de compor o Quadro de Vendas, registre a baixa na aba "Baixas" da unidade.');
     }
 
     public function deleteAny(User $user): bool

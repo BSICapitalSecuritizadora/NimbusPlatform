@@ -25,6 +25,11 @@ class SalesBoardManagementReviewException extends RuntimeException implements Sh
      */
     public const LEGACY_POSITION_EXISTS = 'LEGACY_POSITION_EXISTS';
 
+    /**
+     * Código de domínio do empreendimento que deixou a Emissão do ciclo.
+     */
+    public const CONSTRUCTION_OUTSIDE_CYCLE_EMISSION = 'CONSTRUCTION_OUTSIDE_CYCLE_EMISSION';
+
     public static function cycleNotInManagement(SalesBoardCycleStatus $status): self
     {
         return new self(sprintf(
@@ -84,6 +89,11 @@ class SalesBoardManagementReviewException extends RuntimeException implements Sh
                 'O Nimbus não determinou a conformidade desta venda, então ela não pode terminar em "%s". '
                     .'Uma exceção é concedida contra um limite, e é o limite que está faltando: '
                     .'a fonte precisa ser corrigida e a posição recalculada.',
+                $decision->label(),
+            ),
+            SalesBoardNonconformityOrigin::SystemLateSaleWithoutPolicy => sprintf(
+                'Uma venda de competência publicada sem política aplicável não pode terminar em "%s". '
+                    .'Ou a exceção é aprovada, ou o valor ou a data da venda precisam ser corrigidos.',
                 $decision->label(),
             ),
         });
@@ -253,9 +263,128 @@ class SalesBoardManagementReviewException extends RuntimeException implements Sh
         ));
     }
 
+    /**
+     * O empreendimento pertence hoje a outra Emissão.
+     *
+     * Publicar sob a Emissão do ciclo gravaria um quadro fora da Emissão do
+     * empreendimento, e o leitor da posição o somaria nas duas. O guard de
+     * escrita também recusaria, mas com uma mensagem de registro manual que não
+     * diz nada a quem está aprovando.
+     */
+    public static function constructionOutsideCycleEmission(string $constructionName, string $referenceMonth): self
+    {
+        return new self(sprintf(
+            '[%s] O empreendimento %s pertence hoje a outra Emissão; a posição de %s não pode ser publicada sob a Emissão do ciclo. '
+                .'Corrija o vínculo antes de aprovar.',
+            self::CONSTRUCTION_OUTSIDE_CYCLE_EMISSION,
+            $constructionName,
+            $referenceMonth,
+        ));
+    }
+
     public static function actorRequired(): self
     {
         return new self('Não foi possível identificar quem está conduzindo esta análise.');
+    }
+
+    /**
+     * A regra de ordem: os movimentos de M partem da posição da âncora -- M-1
+     * ou, com M-1 cancelada, a primeira competência não cancelada antes dela --,
+     * então M só é publicada depois que a âncora estiver aprovada ou cancelada.
+     *
+     * Com competências canceladas no meio, a mensagem diz por que a âncora não
+     * é M-1: quem lê "aprove 06/2026" para liberar 08/2026 precisa saber que
+     * 07/2026 foi cancelada.
+     *
+     * @param  list<string>  $cancelledMonths  `m/Y`, as canceladas entre a âncora e a competência
+     */
+    public static function priorCompetenceOpen(string $previousMonth, string $situation, string $month, array $cancelledMonths = []): self
+    {
+        if ($cancelledMonths === []) {
+            return new self(sprintf(
+                'A competência anterior (%s) ainda não foi aprovada nem cancelada (situação: %s). '
+                    .'Os movimentos desta competência partem da posição da anterior: aprove ou cancele %s antes de aprovar %s.',
+                $previousMonth,
+                $situation,
+                $previousMonth,
+                $month,
+            ));
+        }
+
+        return new self(sprintf(
+            'A competência %s ainda não foi aprovada nem cancelada (situação: %s). '
+                .'Como %s, os movimentos de %s partem da posição de %s: aprove ou cancele %s antes de aprovar %s.',
+            $previousMonth,
+            $situation,
+            self::cancelledPhrase($cancelledMonths),
+            $month,
+            $previousMonth,
+            $previousMonth,
+            $month,
+        ));
+    }
+
+    /**
+     * @param  list<string>  $cancelledMonths  `m/Y`, as canceladas entre a âncora e a competência
+     */
+    public static function priorCompetenceUnderRectification(string $previousMonth, string $month, array $cancelledMonths = []): self
+    {
+        if ($cancelledMonths === []) {
+            return new self(sprintf(
+                'A competência anterior (%s) está em retificação. Conclua ou desista da retificação antes de aprovar %s.',
+                $previousMonth,
+                $month,
+            ));
+        }
+
+        return new self(sprintf(
+            'A competência %s está em retificação. Como %s, os movimentos de %s partem da posição de %s: '
+                .'conclua ou desista da retificação antes de aprovar %s.',
+            $previousMonth,
+            self::cancelledPhrase($cancelledMonths),
+            $month,
+            $previousMonth,
+            $month,
+        ));
+    }
+
+    /**
+     * Publicar uma competência anterior à última publicada daria aos fatos
+     * dela um segundo dono: a posterior já reflete a posição deles, e os que
+     * chegaram depois dela entram como extemporâneos na competência seguinte. A
+     * saída é a mesma da reabertura recusada: cancelar esta competência.
+     */
+    public static function laterCompetencePublished(string $month, string $laterMonth): self
+    {
+        return new self(sprintf(
+            'A competência %s não pode ser publicada: %s já foi publicada e a posição dela já reflete os fatos de %s. '
+                .'Os fatos de %s lançados depois entram como extemporâneos na próxima competência a ser publicada. '
+                .'Use "Cancelar competência" para encerrar %s.',
+            $month,
+            $laterMonth,
+            $month,
+            $month,
+            $month,
+        ));
+    }
+
+    /**
+     * "07/2026 foi cancelada" ou "07/2026 e 08/2026 foram canceladas", do mês
+     * mais antigo para o mais recente.
+     *
+     * @param  list<string>  $cancelledMonths  do mais recente para o mais antigo
+     */
+    private static function cancelledPhrase(array $cancelledMonths): string
+    {
+        $months = array_reverse($cancelledMonths);
+
+        if (count($months) === 1) {
+            return sprintf('%s foi cancelada', $months[0]);
+        }
+
+        $last = array_pop($months);
+
+        return sprintf('%s e %s foram canceladas', implode(', ', $months), $last);
     }
 
     public static function nonconformityOutsideReview(): self

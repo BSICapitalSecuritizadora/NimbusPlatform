@@ -17,6 +17,10 @@ use Carbon\CarbonImmutable;
  * relatório de prontidão inteiro, então quem executou sabe exatamente qual dado
  * falta -- "248 unidades em estoque sem valor" é acionável, "não foi possível
  * gerar" não é.
+ *
+ * `laterPublishedMonth` só vem na recusa por competência posterior já
+ * publicada: é um bloqueio que nenhuma correção de fonte desfaz, e a automação
+ * encerra o alvo por ele.
  */
 readonly class SalesBoardGenerationResult extends BaseDTO
 {
@@ -32,7 +36,17 @@ readonly class SalesBoardGenerationResult extends BaseDTO
         public ?SalesBoardDerivedPosition $position = null,
         public ?string $blockedReason = null,
         public bool $dryRun = false,
+        public ?CarbonImmutable $laterPublishedMonth = null,
     ) {}
+
+    /**
+     * A competência foi recusada porque uma posterior do empreendimento já foi
+     * publicada.
+     */
+    public function isBehindLaterPublication(): bool
+    {
+        return $this->isBlocked() && ($this->laterPublishedMonth !== null);
+    }
 
     public function wasGenerated(): bool
     {
@@ -65,6 +79,7 @@ readonly class SalesBoardGenerationResult extends BaseDTO
             'baseline_id' => $this->baseline?->getKey(),
             'version' => $this->baseline?->version,
             'blocked_reason' => $this->blockedReason,
+            'later_published_month' => $this->laterPublishedMonth?->format('m/Y'),
             'readiness' => $this->readiness?->toArray(),
         ];
     }

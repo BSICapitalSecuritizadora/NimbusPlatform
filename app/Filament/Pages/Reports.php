@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\Emission;
+use App\Support\SalesBoards\CompetenceCalendar;
 use Carbon\CarbonImmutable;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -39,9 +40,15 @@ class Reports extends Page
         return auth()->user()?->can('reports.view') ?? false;
     }
 
+    /**
+     * Abre no mês de negócio anterior: o Quadro de Vendas de um mês só é
+     * publicado no seguinte, e o mês corrente sairia sempre com a posição
+     * transportada. O calendário é o de Brasília, não o relógio UTC da
+     * aplicação -- que depois das 21h do último dia já está no mês seguinte.
+     */
     public function mount(): void
     {
-        $this->referenceMonth = CarbonImmutable::now()->format('Y-m');
+        $this->referenceMonth = CompetenceCalendar::lastClosedMonth()->format('Y-m');
     }
 
     public function getSubheading(): ?string

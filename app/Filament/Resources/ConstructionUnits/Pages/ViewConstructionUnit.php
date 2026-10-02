@@ -29,6 +29,7 @@ class ViewConstructionUnit extends ViewRecord
             $unit->construction?->development_name,
             filled($unit->block) ? 'Bloco '.$unit->block : null,
             'Unidade '.$unit->unit,
+            $unit->openRetirement === null ? null : ConstructionUnitResource::situationLabel($unit),
         ])->filter(fn (?string $value): bool => filled($value))->implode(' · ');
     }
 

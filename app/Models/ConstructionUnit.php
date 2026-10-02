@@ -22,6 +22,11 @@ use Spatie\Activitylog\Support\LogOptions;
  * Each unit is a record of its own so later features can relate to it by id.
  * The concatenated form ("Bloco 01 - Unidade 305") is for display only and must
  * never be used as the link between records.
+ *
+ * Uma unidade que deixou de existir -- cadastro por engano, fusão,
+ * desmembramento -- não é apagada nem inativada: a Gestão registra a baixa
+ * ({@see ConstructionUnitRetirement}), um fato datado que a tira do Quadro de
+ * Vendas a partir da data, sem reescrever as competências anteriores.
  */
 class ConstructionUnit extends Model
 {
@@ -87,6 +92,20 @@ class ConstructionUnit extends Model
     }
 
     /**
+     * A importação que criou o registro em lote, quando foi o caso.
+     *
+     * Fora de `$fillable` e da trilha de propósito: é carimbada só pelo insert
+     * em lote da importação e nunca muda depois. Registro criado à mão, ou antes
+     * da coluna existir, não tem importação.
+     *
+     * @return BelongsTo<ImportRun, $this>
+     */
+    public function importRun(): BelongsTo
+    {
+        return $this->belongsTo(ImportRun::class, 'import_run_id');
+    }
+
+    /**
      * Commercial history of the unit: every sale it ever had, the distratadas
      * included, newest first.
      */
@@ -126,6 +145,31 @@ class ConstructionUnit extends Model
         return $this->hasMany(ConstructionUnitExchange::class)
             ->orderByDesc('effective_from')
             ->orderByDesc('id');
+    }
+
+    /**
+     * Baixas da unidade, mais recentes primeiro -- as encerradas e as anuladas
+     * inclusive: a história inteira fica consultável.
+     *
+     * @return HasMany<ConstructionUnitRetirement, $this>
+     */
+    public function retirements(): HasMany
+    {
+        return $this->hasMany(ConstructionUnitRetirement::class)
+            ->orderByDesc('retired_on')
+            ->orderByDesc('id');
+    }
+
+    /**
+     * A baixa ainda sem reativação, se houver -- no máximo uma, garantida pela
+     * unique da tabela. Como nem a baixa nem a reativação aceitam data futura,
+     * a baixa aberta é a que vale hoje.
+     *
+     * @return HasOne<ConstructionUnitRetirement, $this>
+     */
+    public function openRetirement(): HasOne
+    {
+        return $this->hasOne(ConstructionUnitRetirement::class)->whereNull('reactivated_on');
     }
 
     public function hasBaseValue(): bool

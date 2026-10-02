@@ -79,6 +79,16 @@ interface SalesBoardAutomationRecipientResolver
     public function forScopeSuspended(Emission $emission): array;
 
     /**
+     * A automação da Emissão foi encerrada porque ela foi liquidada.
+     *
+     * É a Gestão quem registra o fim do rollout ("Retornar ao modo legado") e
+     * conduz ou cancela os ciclos que ficaram, por isso o aviso é dela.
+     *
+     * @return list<User>
+     */
+    public function forEmissionLiquidated(Emission $emission): array;
+
+    /**
      * Uma execução morreu no meio. Ela não pertence a uma Emissão só: todas as
      * automatizadas ficaram sem processamento naquele intervalo.
      *

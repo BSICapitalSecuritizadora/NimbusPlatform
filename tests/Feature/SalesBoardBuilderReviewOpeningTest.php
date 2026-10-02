@@ -9,16 +9,16 @@ use App\Exceptions\SalesBoardBuilderReviewException;
 use App\Models\ContractInstallment;
 use App\Models\SalesBoardBuilderReview;
 use App\Models\SalesBoardBuilderReviewSection;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\SalesBoards\BuilderReviewFixture;
 use Tests\Support\SalesBoards\CycleFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 
 uses(RefreshDatabase::class);
 
 it('opens a draft review anchored on the current baseline', function () {
     $scenario = BuilderReviewFixture::generatedCycle();
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::operator();
 
     $review = BuilderReviewFixture::open($scenario['cycle'], $actor);
     $baseline = CycleFixture::currentBaseline($scenario['cycle']);

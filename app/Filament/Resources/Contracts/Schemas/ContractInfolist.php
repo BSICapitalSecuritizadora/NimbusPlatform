@@ -138,10 +138,18 @@ class ContractInfolist
                     ->color('success')
                     ->state(fn (Contract $record): string => self::money($record->installmentsSummary()['paid'])),
 
+                /**
+                 * The saldo already discounts the discount registered with each
+                 * receipt, so it is no longer expected minus received: the hint
+                 * says by how much, instead of leaving the gap unexplained.
+                 */
                 TextEntry::make('installments_outstanding_total')
                     ->label('Saldo das Parcelas')
                     ->color('warning')
-                    ->state(fn (Contract $record): string => self::money($record->installmentsSummary()['outstanding'])),
+                    ->state(fn (Contract $record): string => self::money($record->installmentsSummary()['outstanding']))
+                    ->helperText(fn (Contract $record): ?string => $record->installmentsSummary()['discount'] > 0
+                        ? 'Descontos concedidos: '.self::money($record->installmentsSummary()['discount']).'.'
+                        : null),
 
                 TextEntry::make('installments_count')
                     ->label('Parcelas')

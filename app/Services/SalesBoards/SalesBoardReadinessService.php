@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Services\SalesBoards;
 
 use App\DTOs\SalesBoards\SalesBoardDerivedPosition;
+use App\DTOs\SalesBoards\SalesBoardIssue;
 use App\DTOs\SalesBoards\SalesBoardLegacyComparison;
 use App\DTOs\SalesBoards\SalesBoardReadinessReport;
+use App\Enums\SalesBoardIssueCode;
 use App\Models\Construction;
 use App\Support\Money\IntegerMoney;
 use Carbon\CarbonInterface;
@@ -74,7 +76,15 @@ class SalesBoardReadinessService
             'sales_undetermined' => $position->movements->undeterminedSalesCount(),
             'settlements' => $position->movements->settlementsCount(),
             'cancellations' => $position->movements->cancellationsCount(),
+            'late_movements' => $position->movements->lateCount(),
+            'late_sales_non_conform' => $this->issueCount($position, SalesBoardIssueCode::LateSaleNonConform),
+            'unexplained_reclassifications' => $this->issueCount($position, SalesBoardIssueCode::UnexplainedReclassification),
         ];
+    }
+
+    private function issueCount(SalesBoardDerivedPosition $position, SalesBoardIssueCode $code): int
+    {
+        return count(array_filter($position->issues, fn (SalesBoardIssue $issue): bool => $issue->code === $code));
     }
 
     /**

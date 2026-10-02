@@ -30,6 +30,8 @@ class SalesBoardCycleBaselineFactory extends Factory
             'exchanged_value' => '0.00',
             'undetermined_units' => 0,
             'is_complete' => true,
+            // Versão nova, sem aviso: a lista vazia, e não "não registrados".
+            'warnings' => [],
             'source_fingerprint' => str_repeat('a', 64),
             'snapshot_fingerprint' => str_repeat('b', 64),
             'computed_at' => now(),

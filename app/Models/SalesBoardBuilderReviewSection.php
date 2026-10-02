@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use LogicException;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * A resposta da construtora sobre uma das sete seções.
@@ -22,7 +24,7 @@ use LogicException;
 class SalesBoardBuilderReviewSection extends Model
 {
     /** @use HasFactory<SalesBoardBuilderReviewSectionFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'sales_board_builder_review_id',
@@ -71,6 +73,25 @@ class SalesBoardBuilderReviewSection extends Model
             'status' => SalesBoardBuilderReviewSectionStatus::class,
             'confirmed_at' => 'immutable_datetime',
         ];
+    }
+
+    /**
+     * Quem confirmou, desfez a confirmação ou viu a seção passar a divergente,
+     * e quando. Grava em `sales_board`, a categoria protegida do módulo.
+     *
+     * A criação não entra: as sete seções nascem juntas, por insert em lote, com
+     * a abertura da validação -- que já é registrada na trilha da própria
+     * validação. O que conta aqui é o que acontece com cada resposta enquanto a
+     * validação é rascunho, e que a linha não guarda: ela só tem o estado
+     * vigente.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('sales_board')
+            ->logOnly(['status', 'comment', 'confirmed_at'])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges();
     }
 
     public function review(): BelongsTo

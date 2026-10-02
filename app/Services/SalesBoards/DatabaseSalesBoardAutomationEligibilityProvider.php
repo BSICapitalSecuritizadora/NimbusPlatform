@@ -20,11 +20,13 @@ use Carbon\CarbonImmutable;
  * contrato {@see SalesBoardAutomationEligibilityProvider} --, e é isso que deixa
  * os testes do motor trocarem a fonte sem tocar em descoberta, retry ou avisos.
  *
- * Quatro travas em série, e cada uma existe por um motivo diferente:
+ * Cinco travas em série, e cada uma existe por um motivo diferente:
  *
  * 1. **o interruptor global** (`automation.enabled`) continua valendo, para
- *    incidente e deploy -- uma Emissão automatizada com o motor desligado não
- *    processa nada;
+ *    incidente e deploy: desligado, o agendador não descobre, não tenta e não
+ *    lembra nada. Ele **não** desliga o fluxo humano -- "Congelar competência"
+ *    e a condução dos ciclos seguem disponíveis. O freio de uma Emissão é
+ *    "Retornar ao modo legado";
  * 2. **o modo da Emissão** é a primeira trava de rollout. Legado devolve zero,
  *    mesmo que sobre uma competência inicial antiga por inconsistência;
  * 3. **a competência inicial** é obrigatória. Nulo nunca vira "desde sempre" --
@@ -32,7 +34,12 @@ use Carbon\CarbonImmutable;
  *    apurações que ninguém pediu;
  * 4. **o escopo homologado** precisa bater com os empreendimentos de hoje. Um
  *    empreendimento novo não entra sozinho numa Emissão já automatizada: o
- *    rollout é por Emissão inteira, e ninguém homologou aquele.
+ *    rollout é por Emissão inteira, e ninguém homologou aquele;
+ * 5. **a Emissão liquidada** sai do perímetro: a operação foi encerrada e não
+ *    há competência mensal a automatizar. É pelo perímetro que tudo para junto
+ *    -- a descoberta não cria alvo novo, os abertos são encerrados com motivo
+ *    próprio e os lembretes deixam de vê-la --, e o status é reversível: se a
+ *    liquidação for desfeita, a descoberta reabre os alvos.
  *
  * O escopo divergente suspende a Emissão **inteira**, e não apenas o
  * empreendimento novo. Continuar automatizando os antigos seria rollout parcial
@@ -54,6 +61,7 @@ class DatabaseSalesBoardAutomationEligibilityProvider implements SalesBoardAutom
         $emissions = Emission::query()
             ->where('sales_board_source', SalesBoardSource::Automated)
             ->whereNotNull('sales_board_automation_start_reference_month')
+            ->where('status', '!=', Emission::STATUS_LIQUIDATED)
             ->with('activeSalesBoardHomologation')
             ->get();
 

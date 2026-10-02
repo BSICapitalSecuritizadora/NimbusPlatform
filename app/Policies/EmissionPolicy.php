@@ -33,9 +33,16 @@ class EmissionPolicy
         return $user->can('emissions.view');
     }
 
+    /**
+     * O assistente de cadastro grava, na mesma transação, o Quadro de Vendas
+     * inicial de cada obra. O passo é obrigatório: uma obra nunca nasce sem
+     * posição base. Quem não pode criar Quadro de Vendas, portanto, não cadastra
+     * Emissão pelo assistente -- a regra vale para o botão, para a página e para
+     * a gravação, que o Filament autoriza pela mesma pergunta.
+     */
     public function create(User $user): bool
     {
-        return $user->can('emissions.create');
+        return $user->can('emissions.create') && $user->can('sales-boards.create');
     }
 
     public function update(User $user, Emission $emission): bool

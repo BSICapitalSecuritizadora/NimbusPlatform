@@ -116,6 +116,30 @@ class ImportRunsTable
                     ->tooltip(fn (ImportRun $record): ?string => $record->records_critical > 0 ? "{$record->records_critical} registros críticos identificados" : null)
                     ->sortable(),
 
+                TextColumn::make('records_warned')
+                    ->label('Avisos')
+                    ->numeric()
+                    ->fontFamily(FontFamily::Mono)
+                    ->alignEnd()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('records_absent')
+                    ->label('Ausentes')
+                    ->numeric()
+                    ->fontFamily(FontFamily::Mono)
+                    ->alignEnd()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('records_cancelled')
+                    ->label('Canceladas')
+                    ->numeric()
+                    ->fontFamily(FontFamily::Mono)
+                    ->alignEnd()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('result')
                     ->label('Resultado')
                     ->badge()
@@ -162,14 +186,18 @@ class ImportRunsTable
                     ->label('Resultado')
                     ->options(ImportRun::resultOptions())
                     ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? null) {
-                        ImportRun::RESULT_CRITICAL => $query->where('records_critical', '>', 0),
+                        ImportRun::RESULT_CRITICAL => $query->where(fn (Builder $query): Builder => $query
+                            ->where('records_critical', '>', 0)
+                            ->orWhere('records_cancelled', '>', 0)),
                         ImportRun::RESULT_COMPLETED => $query
                             ->where('records_critical', 0)
+                            ->where('records_cancelled', 0)
                             ->where(fn (Builder $query): Builder => $query
                                 ->where('records_created', '>', 0)
                                 ->orWhere('records_updated', '>', 0)),
                         ImportRun::RESULT_UNCHANGED => $query
                             ->where('records_critical', 0)
+                            ->where('records_cancelled', 0)
                             ->where('records_created', 0)
                             ->where('records_updated', 0),
                         default => $query,
@@ -185,7 +213,7 @@ class ImportRunsTable
             ])
             ->toolbarActions([])
             ->emptyStateHeading('Nenhuma importação registrada')
-            ->emptyStateDescription('As próximas importações e conciliações confirmadas de contratos e parcelas serão exibidas aqui.')
+            ->emptyStateDescription('As próximas importações e conciliações confirmadas de contratos, parcelas, unidades e valores de unidade serão exibidas aqui.')
             ->emptyStateIcon('heroicon-o-arrow-up-tray');
     }
 }

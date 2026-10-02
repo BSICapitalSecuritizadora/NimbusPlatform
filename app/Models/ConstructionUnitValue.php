@@ -55,6 +55,20 @@ class ConstructionUnitValue extends Model
         return $this->belongsTo(User::class, 'created_by_id');
     }
 
+    /**
+     * A importação que criou o registro em lote, quando foi o caso.
+     *
+     * Fora de `$fillable` e da trilha de propósito: é carimbada só pelo insert
+     * em lote da importação e nunca muda depois. Registro criado à mão, ou antes
+     * da coluna existir, não tem importação.
+     *
+     * @return BelongsTo<ImportRun, $this>
+     */
+    public function importRun(): BelongsTo
+    {
+        return $this->belongsTo(ImportRun::class, 'import_run_id');
+    }
+
     public function getFormattedValueAttribute(): string
     {
         return MoneyFormatter::formatCurrencyForDisplay($this->value);

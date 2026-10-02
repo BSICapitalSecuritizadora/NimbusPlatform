@@ -4,6 +4,8 @@ namespace App\Actions\ConstructionUnitValues;
 
 use App\Enums\UnitValueSource;
 use App\Models\ConstructionUnitValue;
+use App\Models\ImportRun;
+use App\Support\Imports\ImportRunDraft;
 use App\Support\Money\IntegerMoney;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -19,6 +21,13 @@ use RuntimeException;
  * Everything happens inside one transaction, as in the other importers: a batch
  * half applied would leave part of the portfolio repriced and part not, with
  * nothing on the screen saying which.
+ *
+ * An informative divergence never writes: the value already holds, from a date
+ * that only a person can say is wrong.
+ *
+ * With a draft, the {@see ImportRun} is opened inside the same transaction and
+ * its id is stamped on every line appended -- the "created" of a run of values
+ * are the lines it added to the history.
  */
 class ImportUnitValuesFromSpreadsheet
 {
@@ -27,9 +36,9 @@ class ImportUnitValuesFromSpreadsheet
     /**
      * @param  string|null  $batchReason  Motivo do lote, usado nas linhas que não
      *                                    trouxeram motivo próprio.
-     * @return array{created: int, unchanged: int, units: int, constructions: int}
+     * @return array{created: int, unchanged: int, units: int, constructions: int, run: ImportRun|null}
      */
-    public function handle(UnitValueSpreadsheetAnalysis $analysis, ?string $batchReason = null): array
+    public function handle(UnitValueSpreadsheetAnalysis $analysis, ?string $batchReason = null, ?ImportRunDraft $draft = null): array
     {
         if (! $analysis->canImport()) {
             throw new RuntimeException('A planilha possui inconsistências e não pode ser importada.');
@@ -47,8 +56,12 @@ class ImportUnitValuesFromSpreadsheet
          * id" deixava de valer justamente nos testes.
          */
         $model = new ConstructionUnitValue;
+        $run = null;
+        $unchanged = $analysis->unchangedCount() + $analysis->informativeDivergenceCount();
 
-        DB::transaction(function () use ($writableRows, $batchReason, $userId, $model): void {
+        DB::transaction(function () use ($writableRows, $batchReason, $userId, $model, $analysis, $draft, $unchanged, &$run): void {
+            $run = $draft?->open();
+            $runId = $run?->getKey();
             $now = now();
 
             $writableRows
@@ -59,22 +72,31 @@ class ImportUnitValuesFromSpreadsheet
                     'source' => UnitValueSource::SpreadsheetImport->value,
                     'reason' => $row['reason'] ?? $batchReason,
                     'created_by_id' => $userId,
+                    'import_run_id' => $runId,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ])
                 ->chunk(self::CHUNK_SIZE)
                 ->each(fn ($chunk) => ConstructionUnitValue::query()->insert($chunk->all()));
+
+            $run?->forceFill([
+                'records_analyzed' => $analysis->totalLines(),
+                'records_created' => $writableRows->count(),
+                'records_unchanged' => $unchanged,
+                'records_warned' => $analysis->warningCount(),
+            ])->save();
         });
 
         return [
             'created' => $writableRows->count(),
-            'unchanged' => $analysis->unchangedCount(),
+            'unchanged' => $unchanged,
             'units' => $writableRows->pluck('construction_unit_id')->unique()->count(),
             'constructions' => $analysis->collect()
                 ->pluck('construction')
                 ->filter()
                 ->unique()
                 ->count(),
+            'run' => $run,
         ];
     }
 }

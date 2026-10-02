@@ -28,6 +28,12 @@ class ContractInstallmentSpreadsheetColumns
     public const CANCELLATION_DATE = 'Data Cancelamento';
 
     /**
+     * Opcional: o "Desconto concedido" na baixa da parcela. Arquivo sem a coluna
+     * continua importando, e nada muda no desconto cadastrado.
+     */
+    public const DISCOUNT_VALUE = 'Desconto';
+
+    /**
      * Accepted header spellings, normalized (lowercase, no accents, no spaces).
      *
      * @var array<string, string>
@@ -64,6 +70,11 @@ class ContractInstallmentSpreadsheetColumns
         'datacancelamento' => self::CANCELLATION_DATE,
         'datadocancelamento' => self::CANCELLATION_DATE,
         'cancelamento' => self::CANCELLATION_DATE,
+        'desconto' => self::DISCOUNT_VALUE,
+        'descontoconcedido' => self::DISCOUNT_VALUE,
+        'valordesconto' => self::DISCOUNT_VALUE,
+        'valordodesconto' => self::DISCOUNT_VALUE,
+        'abatimento' => self::DISCOUNT_VALUE,
     ];
 
     /**
@@ -81,13 +92,15 @@ class ContractInstallmentSpreadsheetColumns
             self::PAYMENT_DATE,
             self::PAID_VALUE,
             self::CANCELLATION_DATE,
+            self::DISCOUNT_VALUE,
         ];
     }
 
     /**
-     * The payment and cancellation columns may be absent: a file with nothing
-     * but a future schedule has nothing to put in them. Every other column has
-     * to be there.
+     * The payment, cancellation and discount columns may be absent: a file with
+     * nothing but a future schedule has nothing to put in them, and the discount
+     * is an addition that older files never carried. Every other column has to
+     * be there.
      *
      * @return list<string>
      */
@@ -97,6 +110,7 @@ class ContractInstallmentSpreadsheetColumns
             self::PAYMENT_DATE,
             self::PAID_VALUE,
             self::CANCELLATION_DATE,
+            self::DISCOUNT_VALUE,
         ]));
     }
 

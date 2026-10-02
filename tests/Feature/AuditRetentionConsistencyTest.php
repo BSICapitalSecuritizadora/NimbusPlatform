@@ -5,15 +5,22 @@ use App\Filament\Resources\Activities\ActivityResource;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\ConstructionUnitExchange;
+use App\Models\ConstructionUnitRetirement;
 use App\Models\Contract;
 use App\Models\ContractInstallment;
 use App\Models\Emission;
+use App\Models\Guarantee;
+use App\Models\GuaranteeSnapshot;
 use App\Models\Measurement;
 use App\Models\MeasurementPayment;
 use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use App\Models\ResponsibilityDelegation;
 use App\Models\SalesBoard;
+use App\Models\SalesBoardBuilderDivergence;
+use App\Models\SalesBoardBuilderReviewAttachment;
+use App\Models\SalesBoardBuilderReviewSection;
+use App\Models\SalesBoardCycleRectification;
 use App\Models\SalesBoardManagementNonconformity;
 use App\Models\SalesBoardRolloutRecipient;
 use App\Models\User;
@@ -260,7 +267,8 @@ it('survives the disposable window in every category the aggregates now write to
     expect(Activity::query()->whereKey($activity->getKey())->exists())->toBeTrue();
 })->with([
     'measurements', 'measurement_payments', 'delegations', 'operations', 'measurement_workflow', 'measurement_file_access',
-    'sales_board', 'contracts', 'contract_installments', 'construction_units', 'construction_unit_exchanges', 'constructions', 'emissions',
+    'sales_board', 'contracts', 'contract_installments', 'construction_units', 'construction_unit_exchanges', 'construction_unit_retirements', 'constructions', 'emissions',
+    'guarantee_competences', 'guarantees',
 ]);
 
 it('still discards the same-age generic trail', function () {
@@ -313,14 +321,21 @@ it('protects the category every audited aggregate actually writes to', function 
     'ResponsibilityDelegation' => [ResponsibilityDelegation::class, 'delegations'],
     'Operation' => [Operation::class, 'operations'],
     'SalesBoard' => [SalesBoard::class, 'sales_board'],
+    'SalesBoardBuilderReviewSection' => [SalesBoardBuilderReviewSection::class, 'sales_board'],
+    'SalesBoardBuilderDivergence' => [SalesBoardBuilderDivergence::class, 'sales_board'],
+    'SalesBoardBuilderReviewAttachment' => [SalesBoardBuilderReviewAttachment::class, 'sales_board'],
     'SalesBoardManagementNonconformity' => [SalesBoardManagementNonconformity::class, 'sales_board'],
     'SalesBoardRolloutRecipient' => [SalesBoardRolloutRecipient::class, 'sales_board'],
+    'SalesBoardCycleRectification' => [SalesBoardCycleRectification::class, 'sales_board'],
     'Contract' => [Contract::class, 'contracts'],
     'ContractInstallment' => [ContractInstallment::class, 'contract_installments'],
     'ConstructionUnit' => [ConstructionUnit::class, 'construction_units'],
     'ConstructionUnitExchange' => [ConstructionUnitExchange::class, 'construction_unit_exchanges'],
+    'ConstructionUnitRetirement' => [ConstructionUnitRetirement::class, 'construction_unit_retirements'],
     'Construction' => [Construction::class, 'constructions'],
     'Emission' => [Emission::class, 'emissions'],
+    'Guarantee' => [Guarantee::class, 'guarantees'],
+    'GuaranteeSnapshot' => [GuaranteeSnapshot::class, 'guarantee_competences'],
 ]);
 
 it('reads the protected list from the config instead of a private copy', function () {
@@ -385,7 +400,10 @@ it('names every produced category in Portuguese instead of showing the raw slug'
     ['contract_installments', 'Parcelas de Contrato'],
     ['construction_units', 'Unidades'],
     ['construction_unit_exchanges', 'Permutas de Unidade'],
+    ['construction_unit_retirements', 'Baixas de Unidade'],
     ['constructions', 'Empreendimentos'],
     ['emissions', 'Emissões'],
+    ['guarantee_competences', 'Competências de Garantias'],
+    ['guarantees', 'Garantias'],
     ['default', 'Geral'],
 ]);

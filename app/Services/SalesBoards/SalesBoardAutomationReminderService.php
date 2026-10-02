@@ -21,14 +21,15 @@ use Illuminate\Database\Eloquent\Builder;
 /**
  * Os avisos sobre o que está parado esperando uma pessoa.
  *
- * Todos os limiares nascem `null`, e `null` desliga o aviso. O projeto não tem
- * SLA definido para o Quadro de Vendas, e escolher "três dias" aqui seria
- * inventar requisito de negócio dentro de um serviço -- onde ninguém procuraria
- * por ele quando quisesse mudar.
+ * Os limiares vêm do config, onde cada um tem padrão -- o SLA do Quadro,
+ * decidido no pacote de conclusão -- sobrescrevível por variável de ambiente
+ * ({@see SalesBoardAutomationConfig::DEFAULT_REMINDERS}). Aqui nada é escolhido:
+ * o serviço lê o valor já interpretado, e `null` continua desligando o aviso
+ * (é o que `off` e um valor ilegível produzem).
  *
  * A contagem é em dias civis corridos. Dias úteis exigiriam calendário, e o
  * calendário corporativo existe para prazos que alguém definiu como úteis;
- * aplicá-lo por conta própria seria a mesma invenção com mais passos.
+ * aplicá-lo por conta própria seria inventar regra.
  *
  * Nada aqui altera revisão, decide pendência ou aprova coisa alguma. O motor lê
  * estado e emite aviso; é a definição inteira do que ele faz.

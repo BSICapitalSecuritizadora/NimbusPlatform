@@ -10,6 +10,8 @@ use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Database\Factories\EmissionFactory;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -78,6 +80,18 @@ class Emission extends Model
 
     /** Status in which the emission is still being structured. */
     public const STATUS_DRAFT = 'draft';
+
+    /**
+     * "Liquidada": a operação foi encerrada.
+     *
+     * Não existe data de liquidação no cadastro -- o vencimento contratual
+     * (`maturity_date`) não é a liquidação real, porque pré-pagamento e
+     * repactuação mudam o fim --, e por isso o status é o fato operacional. É
+     * também a trava de parada da automação do Quadro de Vendas: uma operação
+     * encerrada não tem competência mensal a automatizar. O status é
+     * reversível, e a automação volta sozinha se a liquidação for desfeita.
+     */
+    public const STATUS_LIQUIDATED = 'closed';
 
     public const STATUS_OPTIONS = [
         'draft' => 'Em Elaboração',
@@ -355,6 +369,19 @@ class Emission extends Model
     public function isInDraft(): bool
     {
         return $this->status === self::STATUS_DRAFT;
+    }
+
+    /**
+     * A operação foi encerrada ("Liquidada").
+     *
+     * A automação do Quadro de Vendas para aqui: nenhuma competência nova é
+     * descoberta, os alvos abertos são encerrados e os lembretes param. Os atos
+     * humanos continuam -- congelar e concluir a última competência, cancelar,
+     * retornar ao legado.
+     */
+    public function isLiquidated(): bool
+    {
+        return $this->status === self::STATUS_LIQUIDATED;
     }
 
     public function usesContractNegotiations(): bool
@@ -705,14 +732,22 @@ class Emission extends Model
 
     /**
      * Por que a competência de garantias precisa de ação, ou `null` se nada
-     * está pendente.
+     * está pendente. Os motivos se acumulam, nesta ordem:
      *
-     * - Uma competência apurada antes de um Quadro de Vendas publicado depois
-     *   está desatualizada — aberta ou fechada, o número gravado não é mais o
-     *   que o motor apuraria;
-     * - a competência que se espera consolidar é o mês de negócio anterior
-     *   (America/Sao_Paulo): o quadro de um mês só existe no seguinte, e cobrar
-     *   o mês corrente empurrava a consolidação para antes do quadro existir.
+     * 1. competência apurada antes de um Quadro de Vendas publicado depois --
+     *    aberta ou fechada, o número gravado não é mais o que o motor apuraria;
+     * 2. competência cujo saldo devedor mudou depois da apuração (curva de PU
+     *    homologada ou invalidada, Histórico importado, verificação diária);
+     * 3. competência reaberta e ainda não fechada de novo: o número que saiu em
+     *    relatório foi desfeito e ainda não tem substituto;
+     * 4. a competência que se espera consolidar -- o mês de negócio anterior
+     *    (America/Sao_Paulo) -- ainda não existe, ou foi só atualizada. O quadro
+     *    de um mês só existe no seguinte, e o fechamento é o ritual que congela
+     *    o número: uma apuração aberta não é consolidação, e é só a fechada que
+     *    o relatório e a gravação tratam como o número do mês.
+     *
+     * A emissão sem garantia cadastrada não tem competência a consolidar, e não
+     * é cobrada pelo item 4: um aviso que nunca apaga ensina a ignorar os reais.
      *
      * `$referenceDate` é um instante; o mês é o do calendário de negócio, nunca
      * o mês UTC.
@@ -723,34 +758,114 @@ class Emission extends Model
             return null;
         }
 
-        $outdatedMonths = $this->guaranteeSnapshots()
-            ->whereNotNull('sales_board_outdated_at')
+        $expectedCompetence = GuaranteeSnapshot::previousBusinessMonth($referenceDate ?? now());
+
+        /** @var Collection<int, GuaranteeSnapshot> $snapshots */
+        $snapshots = $this->guaranteeSnapshots()
+            ->where(fn (Builder $query): Builder => $query
+                ->whereNotNull('sales_board_outdated_at')
+                ->orWhereNotNull('outstanding_balance_outdated_at')
+                ->orWhere(fn (Builder $reopened): Builder => $reopened->whereNotNull('reopened_at')->whereNull('closed_at'))
+                ->orWhereDate('reference_month', $expectedCompetence))
             ->orderBy('reference_month')
-            ->pluck('reference_month')
-            ->map(fn (mixed $referenceMonth): string => GuaranteeSnapshot::formatReferenceMonthForDisplay($referenceMonth))
+            ->get(['id', 'reference_month', 'sales_board_outdated_at', 'outstanding_balance_outdated_at', 'closed_at', 'reopened_at']);
+
+        $months = fn (callable $filter): array => $snapshots
+            ->filter($filter)
+            ->map(fn (GuaranteeSnapshot $snapshot): string => $snapshot->formatted_reference_month)
+            ->values()
             ->all();
 
-        if ($outdatedMonths !== []) {
-            return sprintf(
+        $reasons = [];
+
+        $salesBoardMonths = $months(fn (GuaranteeSnapshot $snapshot): bool => $snapshot->isSalesBoardOutdated());
+
+        if ($salesBoardMonths !== []) {
+            $reasons[] = sprintf(
                 'Quadro de Vendas publicado depois da apuração de %s. Atualize a competência (ou reabra, se fechada).',
-                implode(', ', $outdatedMonths),
+                implode(', ', $salesBoardMonths),
             );
         }
 
-        $expectedCompetence = GuaranteeSnapshot::previousBusinessMonth($referenceDate ?? now());
+        $balanceMonths = $months(fn (GuaranteeSnapshot $snapshot): bool => $snapshot->isOutstandingBalanceOutdated());
 
-        $isConsolidated = $this->guaranteeSnapshots()
-            ->whereDate('reference_month', $expectedCompetence)
-            ->exists();
+        if ($balanceMonths !== []) {
+            $reasons[] = sprintf(
+                'Saldo devedor alterado depois da apuração de %s. Atualize a competência (ou reabra, se fechada).',
+                implode(', ', $balanceMonths),
+            );
+        }
 
-        if ($isConsolidated) {
+        $reopenedMonths = $months(fn (GuaranteeSnapshot $snapshot): bool => $snapshot->wasReopenedAndNotClosed());
+
+        if ($reopenedMonths !== []) {
+            $reasons[] = sprintf('Competência reaberta e ainda não fechada: %s.', implode(', ', $reopenedMonths));
+        }
+
+        $expectedReason = $this->expectedCompetenceReason(
+            $expectedCompetence,
+            $snapshots->first(fn (GuaranteeSnapshot $snapshot): bool => $snapshot->reference_month->toDateString() === $expectedCompetence),
+        );
+
+        if ($expectedReason !== null) {
+            $reasons[] = $expectedReason;
+        }
+
+        return $reasons === [] ? null : implode(' ', $reasons);
+    }
+
+    /**
+     * O mês de negócio anterior só conta como consolidado quando está fechado.
+     *
+     * Reaberto, ele já aparece entre as competências reabertas. E não há o que
+     * consolidar -- o item 4 não cobra -- quando:
+     *
+     * - a Emissão não tem garantia cadastrada;
+     * - a operação foi liquidada: ela saiu da rotina mensal, e cobrar um
+     *   fechamento por mês de uma operação encerrada é o aviso que nunca apaga;
+     * - todas as garantias já estavam encerradas no fim da competência --
+     *   liberadas, encerradas ou substituídas. A data é o fim do mês, a mesma
+     *   em que o motor apura a competência
+     *   ({@see Guarantee::contributesToCoverageOn()}): a garantia liberada em
+     *   setembro ainda cobra o fechamento de agosto.
+     *
+     * Garantia suspensa, pendente, inconsistente ou vencida sem renovação
+     * continua cobrando: ela ainda é da operação, e a competência fechada é o
+     * que registra a cobertura que ela deixou de dar.
+     */
+    private function expectedCompetenceReason(string $expectedCompetence, ?GuaranteeSnapshot $expected): ?string
+    {
+        if ($expected?->isClosed() || $expected?->wasReopenedAndNotClosed()) {
             return null;
         }
 
-        return sprintf(
-            'A competência %s ainda não foi consolidada.',
-            GuaranteeSnapshot::formatReferenceMonthForDisplay($expectedCompetence),
-        );
+        if ($this->isLiquidated()) {
+            return null;
+        }
+
+        if (! $this->hasOpenGuaranteeOn(CarbonImmutable::parse($expectedCompetence)->endOfMonth())) {
+            return null;
+        }
+
+        $label = GuaranteeSnapshot::formatReferenceMonthForDisplay($expectedCompetence);
+
+        return $expected === null
+            ? sprintf('A competência %s ainda não foi consolidada.', $label)
+            : sprintf('A competência %s foi atualizada, mas ainda não foi fechada.', $label);
+    }
+
+    /**
+     * Alguma garantia da Emissão ainda estava em aberto na data: a situação
+     * jurídica dela naquela data não era de encerrada (liberada, encerrada ou
+     * substituída) e a liberação, se houve, ainda não tinha valido.
+     */
+    private function hasOpenGuaranteeOn(CarbonInterface $date): bool
+    {
+        return $this->guarantees()
+            ->with('events')
+            ->get()
+            ->contains(fn (Guarantee $guarantee): bool => (! $guarantee->legalStatusAsOf($date)->isClosed())
+                && (($guarantee->released_at === null) || $guarantee->released_at->gt($date)));
     }
 
     public static function hasGuaranteeSnapshotsTable(): bool

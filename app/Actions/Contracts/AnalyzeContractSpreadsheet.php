@@ -2,24 +2,34 @@
 
 namespace App\Actions\Contracts;
 
+use App\DTOs\SalesBoards\ResolvedUnitValue;
 use App\Enums\ContractStatus;
+use App\Enums\ImportRowWarningCode;
 use App\Enums\ReconciliationOutcome;
+use App\Exceptions\UnreadableSpreadsheetException;
 use App\Models\Client;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
+use App\Models\ConstructionUnitExchange;
 use App\Models\Contract;
 use App\Models\Emission;
 use App\Services\SalesBoards\RegisteredCompetenceIndex;
+use App\Services\SalesBoards\UnitValueResolver;
 use App\Support\Dates\SpreadsheetDate;
-use App\Support\Money\IntegerMoney;
+use App\Support\Imports\PlausibilityVerdict;
+use App\Support\Imports\SpreadsheetAmount;
+use App\Support\Imports\SpreadsheetPlausibility;
+use App\Support\Imports\SpreadsheetRows;
 use App\Support\Reconciliation\FieldChange;
 use App\Support\Reconciliation\ValueComparator;
+use App\Support\SalesBoards\ExchangeContractRecognizer;
+use App\Support\SalesBoards\SalesBoardPlausibility;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Spatie\SimpleExcel\SimpleExcelReader;
 
 /**
  * Reads an import spreadsheet and classifies every row, without writing
@@ -39,6 +49,12 @@ use Spatie\SimpleExcel\SimpleExcelReader;
  * not a property of any single line: a distrato on one row is what makes room
  * for the new contract on another, wherever in the file the two happen to be.
  *
+ * Besides the rows, the analysis says what the file leaves out: the live
+ * contracts of the developments it carries that it does not mention. Nothing is
+ * done to them -- the file may come in parts, and a contract not mentioned keeps
+ * holding its unit -- but the silence that let a missing distrato go unnoticed
+ * is gone.
+ *
  * Reported line numbers count the header plus the data rows returned by the
  * reader. Fully blank rows are dropped by the reader itself, so a file with
  * blank rows in the middle reports the lines below them shifted up.
@@ -49,6 +65,11 @@ class AnalyzeContractSpreadsheet
      * Rows are read in chunks so large files do not sit in memory at once.
      */
     private const CHUNK_SIZE = 500;
+
+    /**
+     * Absent contracts listed on the conference; the rest are counted.
+     */
+    private const ABSENT_SAMPLE_LIMIT = 100;
 
     /**
      * Emission name (normalized) => id.
@@ -63,6 +84,14 @@ class AnalyzeContractSpreadsheet
      * @var array<string, list<array{id: int, emission_id: int}>>
      */
     private array $constructions = [];
+
+    /**
+     * Development id => {emission id, name}, for the checks that look across the
+     * developments of one emission.
+     *
+     * @var array<int, array{emission_id: int, name: string}>
+     */
+    private array $constructionsById = [];
 
     /**
      * Development id => "block|unit" => unit id.
@@ -102,15 +131,34 @@ class AnalyzeContractSpreadsheet
      */
     private array $loadedUnitContracts = [];
 
+    /**
+     * As datas da posição contra as quais a venda sem tabela na data da venda é
+     * medida ({@see SpreadsheetPlausibility::positionReferenceDates()}), fixadas
+     * uma vez por arquivo.
+     *
+     * @var list<string>
+     */
+    private array $positionReferenceDates = [];
+
     public function __construct(
         private readonly ContractReconciler $reconciler = new ContractReconciler,
         private readonly ContractBatchProjection $projection = new ContractBatchProjection,
         private readonly ContractBuyerGrouping $grouping = new ContractBuyerGrouping,
+        private readonly UnitValueResolver $unitValueResolver = new UnitValueResolver,
     ) {}
 
     public function handle(string $path): ContractSpreadsheetAnalysis
     {
-        $firstRow = SimpleExcelReader::create($path)->getRows()->first();
+        try {
+            return $this->analyze($path);
+        } catch (UnreadableSpreadsheetException $exception) {
+            return new ContractSpreadsheetAnalysis(fileErrors: [$exception->getMessage()]);
+        }
+    }
+
+    private function analyze(string $path): ContractSpreadsheetAnalysis
+    {
+        $firstRow = SpreadsheetRows::first($path);
 
         if ($firstRow === null) {
             return ContractSpreadsheetAnalysis::emptyFile();
@@ -128,24 +176,20 @@ class AnalyzeContractSpreadsheet
         $analyzedRows = [];
         $lineNumber = 1;
 
-        SimpleExcelReader::create($path)
-            ->getRows()
-            ->chunk(self::CHUNK_SIZE)
-            ->each(function (mixed $chunk) use (&$analyzedRows, &$lineNumber, $resolvedHeaders): void {
-                $parsedRows = collect($chunk)
-                    ->map(function (array $row) use (&$lineNumber, $resolvedHeaders): array {
-                        $lineNumber++;
+        foreach (SpreadsheetRows::chunks($path, self::CHUNK_SIZE) as $chunk) {
+            $parsedRows = [];
 
-                        return $this->parseRow($row, $resolvedHeaders, $lineNumber);
-                    })
-                    ->all();
+            foreach ($chunk as $row) {
+                $lineNumber++;
+                $parsedRows[] = $this->parseRow($row, $resolvedHeaders, $lineNumber);
+            }
 
-                $context = $this->loadChunkContext($parsedRows);
+            $context = $this->loadChunkContext($parsedRows);
 
-                foreach ($parsedRows as $parsedRow) {
-                    $analyzedRows[] = $this->classifyRow($parsedRow, $context);
-                }
-            });
+            foreach ($parsedRows as $parsedRow) {
+                $analyzedRows[] = $this->classifyRow($parsedRow, $context);
+            }
+        }
 
         /**
          * The lines of one contract become one entry before anything else looks
@@ -159,6 +203,13 @@ class AnalyzeContractSpreadsheet
         );
 
         /**
+         * A escala da venda contra a tabela só é decidida aqui, quando já se
+         * sabe o que cada contrato grava -- os compradores também mudam o
+         * resultado -- e antes da projeção, que não conta linha recusada.
+         */
+        $analyzedRows = $this->judgeSaleScales($analyzedRows);
+
+        /**
          * Only now, with every row classified, can occupancy be decided: the
          * file is a position, not a sequence, and a distrato anywhere in it
          * frees the unit for a new contract anywhere else.
@@ -166,7 +217,288 @@ class AnalyzeContractSpreadsheet
         ['rows' => $analyzedRows, 'occupancies' => $occupancies] = $this->projection
             ->resolve($analyzedRows, $this->unitContracts);
 
-        return new ContractSpreadsheetAnalysis($this->flagRegisteredCompetences($analyzedRows), unitOccupancies: $occupancies);
+        $analyzedRows = $this->flagPossibleDuplicates($this->flagRegisteredCompetences($analyzedRows));
+
+        ['count' => $absentCount, 'sample' => $absentSample, 'ids' => $absentIds] = $this->absentContracts($analyzedRows);
+
+        return new ContractSpreadsheetAnalysis(
+            $analyzedRows,
+            unitOccupancies: $occupancies,
+            absentContracts: $absentSample,
+            absentContractCount: $absentCount,
+            absentContractIds: $absentIds,
+        );
+    }
+
+    /**
+     * Warns about a new contract that repeats, in another development of the same
+     * emission, a contract with the same code, on the same unit and with a buyer
+     * in common.
+     *
+     * The case it catches: a homonym development was told apart only after a
+     * first import had already booked the contract under the wrong one, and the
+     * re-import now creates it again under the right one -- leaving the wrong one
+     * behind. The code alone is unique only per development ("A606" exists in
+     * many), so the unit and the buyer are required too, and the row is only
+     * warned about, never refused.
+     *
+     * One query for the whole file.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    private function flagPossibleDuplicates(array $rows): array
+    {
+        $candidates = array_filter(
+            $rows,
+            fn (array $row): bool => ($row['outcome'] === ReconciliationOutcome::New) && ($row['construction_id'] !== null),
+        );
+
+        if ($candidates === []) {
+            return $rows;
+        }
+
+        $emissionIds = [];
+
+        foreach ($candidates as $row) {
+            $emissionIds[$this->constructionsById[$row['construction_id']]['emission_id'] ?? 0] = true;
+        }
+
+        $siblingConstructionIds = array_keys(array_filter(
+            $this->constructionsById,
+            static fn (array $construction): bool => isset($emissionIds[$construction['emission_id']]),
+        ));
+
+        $codes = array_values(array_unique(array_column($candidates, 'code_normalized')));
+
+        $existing = [];
+
+        foreach (array_chunk($codes, self::CHUNK_SIZE) as $chunk) {
+            Contract::query()
+                ->with(['clients:id', 'constructionUnit:id,block,unit'])
+                ->whereIn('construction_id', $siblingConstructionIds)
+                ->whereIn('code_normalized', $chunk)
+                ->get(['id', 'construction_id', 'construction_unit_id', 'code', 'code_normalized'])
+                ->each(function (Contract $contract) use (&$existing): void {
+                    $existing[(string) $contract->code_normalized][] = $contract;
+                });
+        }
+
+        foreach ($candidates as $index => $row) {
+            foreach ($existing[(string) $row['code_normalized']] ?? [] as $contract) {
+                if (! $this->repeatsContract($row, $contract)) {
+                    continue;
+                }
+
+                $rows[$index]['warnings'] = [...($rows[$index]['warnings'] ?? []), [
+                    'code' => ImportRowWarningCode::PossibleDuplicateAcrossConstructions->value,
+                    'message' => sprintf(
+                        'Já existe o contrato %s no empreendimento %s desta Emissão, na mesma unidade e com o mesmo comprador. Confira se não é o mesmo contrato gravado no empreendimento errado.',
+                        $contract->code,
+                        $this->constructionsById[(int) $contract->construction_id]['name'] ?? '—',
+                    ),
+                ]];
+
+                break;
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * A escala do valor da venda contra a tabela da unidade, aplicada só onde a
+     * derivação a aplica e só ao que a linha grava.
+     *
+     * A regra do dono é que a importação nunca seja mais permissiva que um
+     * bloqueador da derivação ({@see SalesBoardPlausibility}). Isso não pede
+     * conferir toda linha do arquivo, e conferir toda linha travava a
+     * reimportação mensal por dado que a derivação nunca mede:
+     *
+     * - o contrato de permuta não tem preço de tabela
+     *   ({@see ExchangeContractRecognizer::isOutsideTablePrice()}) e fica fora,
+     *   como a linha permutada fica fora da derivação;
+     * - a linha que grava a venda -- contrato novo, valor ou data da venda
+     *   alterados, ou contrato que volta a ocupar a unidade -- é recusada fora
+     *   de escala: é ela que levaria à obra a venda que a derivação bloqueia;
+     * - a linha que não grava a venda de um contrato ativo ou quitado (sem
+     *   alteração, quitação, troca de comprador) só avisa: a venda já está
+     *   cadastrada assim, a derivação já a bloqueia, e recusar o arquivo não
+     *   corrige nada;
+     * - o distratado que não grava a venda não é medido: a derivação só mede a
+     *   venda dele na competência em que ela aconteceu.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    private function judgeSaleScales(array $rows): array
+    {
+        return array_map(function (array $row): array {
+            $scale = $row['sale_scale'] ?? null;
+
+            unset($row['sale_scale']);
+
+            if (($scale === null) || $scale['exempt'] || $row['outcome']->blocksImport() || ($row['outcome'] === ReconciliationOutcome::Empty)) {
+                return $row;
+            }
+
+            /** @var PlausibilityVerdict $verdict */
+            $verdict = $scale['verdict'];
+
+            if (self::writesSale($row, $scale['stored_status'])) {
+                if ($verdict->isImpossible()) {
+                    return $this->error($row, (string) $verdict->error);
+                }
+
+                return [...$row, 'warnings' => [...$row['warnings'], ...self::scalarWarnings($verdict->warnings)]];
+            }
+
+            if (! self::isJudgedOccupant($row['contract_status'])) {
+                return $row;
+            }
+
+            $warnings = self::scalarWarnings($verdict->warnings);
+
+            if ($verdict->isImpossible()) {
+                $warnings[] = [
+                    'code' => ImportRowWarningCode::SaleValueOffTable->value,
+                    'message' => $verdict->error.' A venda já está cadastrada assim: nada é recusado por esta linha, mas o Quadro de Vendas bloqueia a obra enquanto um dos dois não for corrigido.',
+                ];
+            }
+
+            return [...$row, 'warnings' => [...$row['warnings'], ...$warnings]];
+        }, $rows);
+    }
+
+    /**
+     * Se a linha grava uma venda que a derivação passa a medir: contrato novo,
+     * valor ou data da venda alterados, ou contrato distratado ou permutado que
+     * volta a ser ativo ou quitado -- a derivação passa a medi-lo como ocupante.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private static function writesSale(array $row, ?ContractStatus $storedStatus): bool
+    {
+        if ($row['outcome'] === ReconciliationOutcome::New) {
+            return true;
+        }
+
+        if (! $row['outcome']->writesToDatabase()) {
+            return false;
+        }
+
+        foreach ($row['comparison']?->changes ?? [] as $change) {
+            /** @var FieldChange $change */
+            if (in_array($change->field, ['sale_value', 'sale_date'], true)) {
+                return true;
+            }
+        }
+
+        return self::isJudgedOccupant($row['contract_status']) && ! self::isJudgedOccupant($storedStatus);
+    }
+
+    /**
+     * Os status que a derivação mede como ocupante da unidade, contra a tabela
+     * da data da venda e, sem ela, contra a da data da posição: ativo e
+     * quitado. O permutado responde pela permuta e o distratado não ocupa.
+     */
+    private static function isJudgedOccupant(mixed $status): bool
+    {
+        return in_array($status, [ContractStatus::Active, ContractStatus::Settled], true);
+    }
+
+    /**
+     * @param  list<array{code: ImportRowWarningCode, message: string}>  $warnings
+     * @return list<array{code: string, message: string}>
+     */
+    private static function scalarWarnings(array $warnings): array
+    {
+        return array_map(
+            static fn (array $warning): array => ['code' => $warning['code']->value, 'message' => $warning['message']],
+            $warnings,
+        );
+    }
+
+    /**
+     * Whether a contract of another development of the same emission is, in all
+     * likelihood, the one the row describes: same unit (block and unit) and at
+     * least one buyer in common.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private function repeatsContract(array $row, Contract $contract): bool
+    {
+        if ((int) $contract->construction_id === (int) $row['construction_id']) {
+            return false;
+        }
+
+        $sameEmission = ($this->constructionsById[(int) $contract->construction_id]['emission_id'] ?? null)
+            === ($this->constructionsById[(int) $row['construction_id']]['emission_id'] ?? null);
+
+        if (! $sameEmission || ($contract->constructionUnit === null)) {
+            return false;
+        }
+
+        $sameUnit = self::unitKey($contract->constructionUnit->block, $contract->constructionUnit->unit)
+            === self::unitKey($row['block'], $row['unit']);
+
+        if (! $sameUnit) {
+            return false;
+        }
+
+        $buyers = array_map('intval', $row['client_ids'] !== [] ? $row['client_ids'] : array_filter([$row['buyer_id']]));
+
+        return array_intersect($buyers, $contract->clients->pluck('id')->map('intval')->all()) !== [];
+    }
+
+    /**
+     * The live contracts -- ativo, quitado or permutado -- of the developments the
+     * file carries that the file does not mention.
+     *
+     * Nothing changes in them: a file may come in parts, and the rule that a
+     * contract the file does not mention keeps holding its unit stays. What
+     * changes is that the conference says so, instead of "nothing to update".
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return array{count: int, sample: list<array{construction: string, unit: string, code: string, status: string}>, ids: list<int>}
+     */
+    private function absentContracts(array $rows): array
+    {
+        $constructionIds = array_values(array_unique(array_filter(array_column($rows, 'construction_id'))));
+
+        if ($constructionIds === []) {
+            return ['count' => 0, 'sample' => [], 'ids' => []];
+        }
+
+        $mentioned = array_flip(array_filter(array_column($rows, 'contract_id')));
+
+        $absent = Contract::query()
+            ->with('constructionUnit:id,block,unit')
+            ->whereIn('construction_id', $constructionIds)
+            ->whereIn('status', ContractStatus::occupyingValues())
+            ->get(['id', 'construction_id', 'construction_unit_id', 'code', 'status'])
+            ->reject(fn (Contract $contract): bool => isset($mentioned[(int) $contract->getKey()]))
+            ->sort(fn (Contract $first, Contract $second): int => strcmp(
+                $this->constructionsById[(int) $first->construction_id]['name'] ?? '',
+                $this->constructionsById[(int) $second->construction_id]['name'] ?? '',
+            )
+                ?: strnatcasecmp((string) $first->constructionUnit?->block, (string) $second->constructionUnit?->block)
+                ?: strnatcasecmp((string) $first->constructionUnit?->unit, (string) $second->constructionUnit?->unit)
+                ?: ((int) $first->getKey() <=> (int) $second->getKey()))
+            ->values();
+
+        return [
+            'count' => $absent->count(),
+            'sample' => $absent->take(self::ABSENT_SAMPLE_LIMIT)
+                ->map(fn (Contract $contract): array => [
+                    'construction' => $this->constructionsById[(int) $contract->construction_id]['name'] ?? '—',
+                    'unit' => trim(sprintf('%s / %s', (string) $contract->constructionUnit?->block, (string) $contract->constructionUnit?->unit), ' /'),
+                    'code' => (string) $contract->code,
+                    'status' => $contract->status instanceof ContractStatus ? $contract->status->label() : (string) $contract->status,
+                ])
+                ->all(),
+            'ids' => $absent->map(fn (Contract $contract): int => (int) $contract->getKey())->sort()->values()->all(),
+        ];
     }
 
     /**
@@ -189,11 +521,39 @@ class AnalyzeContractSpreadsheet
                 return $row;
             }
 
+            $dates = $this->affectedDates($row);
+
             return [
                 ...$row,
-                'registered_competences' => $index->reachedBy($row['construction_id'], ...$this->affectedDates($row)),
+                'registered_competences' => $index->reachedBy($row['construction_id'], ...$dates),
+                'registered_competence_notice' => $index->noticeFor($row['construction_id'], $this->noticeSubject($row), ...$dates),
             ];
         }, $rows);
+    }
+
+    /**
+     * Como o aviso fala do fato da linha: a venda nova, o distrato, ou o valor
+     * de uma venda já registrada -- que vira revisão de venda publicada.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private function noticeSubject(array $row): string
+    {
+        if ($row['outcome'] === ReconciliationOutcome::New) {
+            return RegisteredCompetenceIndex::SUBJECT_SALE;
+        }
+
+        $fields = array_map(
+            fn (FieldChange $change): string => $change->field,
+            $row['comparison']?->changes ?? [],
+        );
+
+        return match (true) {
+            in_array('sale_date', $fields, true) => RegisteredCompetenceIndex::SUBJECT_SALE,
+            in_array('sale_value', $fields, true) => RegisteredCompetenceIndex::SUBJECT_SALE_VALUE,
+            in_array('cancellation_date', $fields, true), in_array('status', $fields, true) => RegisteredCompetenceIndex::SUBJECT_CANCELLATION,
+            default => RegisteredCompetenceIndex::SUBJECT_FACT,
+        };
     }
 
     /**
@@ -285,12 +645,15 @@ class AnalyzeContractSpreadsheet
      */
     private function loadReferenceData(): void
     {
+        $this->positionReferenceDates = SpreadsheetPlausibility::positionReferenceDates();
+
         $this->emissions = Emission::query()
             ->pluck('id', 'name')
             ->mapWithKeys(fn (int $id, string $name): array => [self::normalizeName($name) => $id])
             ->all();
 
         $this->constructions = [];
+        $this->constructionsById = [];
 
         Construction::query()
             ->get(['id', 'emission_id', 'development_name'])
@@ -300,6 +663,11 @@ class AnalyzeContractSpreadsheet
                 $this->constructions[$key][] = [
                     'id' => (int) $construction->id,
                     'emission_id' => (int) $construction->emission_id,
+                ];
+
+                $this->constructionsById[(int) $construction->id] = [
+                    'emission_id' => (int) $construction->emission_id,
+                    'name' => (string) $construction->development_name,
                 ];
             });
     }
@@ -351,7 +719,7 @@ class AnalyzeContractSpreadsheet
      * and the projection at the end needs all of them at once.
      *
      * @param  list<array<string, mixed>>  $parsedRows
-     * @return array{clients: array<string, Client>, codes: array<string, Contract>}
+     * @return array{clients: array<string, Client>, codes: array<string, Contract>, unitValues: array<string, ResolvedUnitValue>, exchanges: array<int, Collection<int, ConstructionUnitExchange>>}
      */
     private function loadChunkContext(array $parsedRows): array
     {
@@ -388,12 +756,14 @@ class AnalyzeContractSpreadsheet
                 ->whereIn('code_normalized', $codes->all())
                 ->get();
 
-        $this->loadUnitContracts($rows
+        $unitIds = $rows
             ->map(fn (array $row): ?int => $this->findUnitId($this->resolveConstructionId($row), $row['block'], $row['unit']))
             ->filter()
             ->unique()
             ->values()
-            ->all());
+            ->all();
+
+        $this->loadUnitContracts($unitIds);
 
         return [
             'clients' => $clients->keyBy('document')->all(),
@@ -402,7 +772,70 @@ class AnalyzeContractSpreadsheet
                     self::codeKey($contract->construction_id, $contract->code_normalized) => $contract,
                 ])
                 ->all(),
+            'unitValues' => $this->unitReferenceValues($parsedRows),
+            'exchanges' => $this->exchangesOfUnits($takenCodes->pluck('construction_unit_id')->filter()->unique()->values()->all()),
         ];
+    }
+
+    /**
+     * As permutas das unidades dos contratos já cadastrados do lote, numa
+     * consulta: dizem se o contrato é de permuta, e por isso fica fora da escala
+     * contra a tabela ({@see ExchangeContractRecognizer::isOutsideTablePrice()}).
+     *
+     * @param  list<int>  $unitIds
+     * @return array<int, Collection<int, ConstructionUnitExchange>> unidade => permutas
+     */
+    private function exchangesOfUnits(array $unitIds): array
+    {
+        if ($unitIds === []) {
+            return [];
+        }
+
+        return ConstructionUnitExchange::query()
+            ->whereIn('construction_unit_id', $unitIds)
+            ->get(['id', 'construction_unit_id', 'contract_id', 'effective_from', 'ended_on'])
+            ->groupBy(fn (ConstructionUnitExchange $exchange): int => (int) $exchange->construction_unit_id)
+            ->all();
+    }
+
+    /**
+     * O valor de tabela de cada unidade na data da venda da linha e em cada data
+     * da posição a que a derivação recorre sem ele
+     * ({@see SpreadsheetPlausibility::positionReferenceDates()}), para a
+     * plausibilidade do valor da venda. Duas consultas para o lote inteiro, pelo
+     * mesmo resolvedor que o Quadro de Vendas lê.
+     *
+     * @param  list<array<string, mixed>>  $parsedRows
+     * @return array<string, ResolvedUnitValue> keyed `{unit id}@{Y-m-d}`
+     */
+    private function unitReferenceValues(array $parsedRows): array
+    {
+        $requests = [];
+
+        foreach ($parsedRows as $row) {
+            $unitId = $this->findUnitId($this->resolveConstructionId($row), $row['block'], $row['unit']);
+            $saleDate = $this->parseDate($row['sale_date_raw']);
+
+            if ($unitId === null) {
+                continue;
+            }
+
+            foreach ([$saleDate, ...$this->positionReferenceDates] as $day) {
+                if ($day !== null) {
+                    $requests[$unitId.'@'.$day] = ['unit_id' => $unitId, 'date' => CarbonImmutable::parse($day)];
+                }
+            }
+        }
+
+        if ($requests === []) {
+            return [];
+        }
+
+        $units = ConstructionUnit::query()
+            ->whereKey(array_values(array_unique(array_column($requests, 'unit_id'))))
+            ->get(['id', 'construction_id', 'base_value', 'base_value_reference_date']);
+
+        return $this->unitValueResolver->forUnitDates($units, array_values($requests));
     }
 
     /**
@@ -481,7 +914,7 @@ class AnalyzeContractSpreadsheet
      * every row has been read.
      *
      * @param  array<string, mixed>  $row
-     * @param  array{clients: array<string, Client>, codes: array<string, Contract>}  $context
+     * @param  array{clients: array<string, Client>, codes: array<string, Contract>, unitValues: array<string, ResolvedUnitValue>, exchanges: array<int, Collection<int, ConstructionUnitExchange>>}  $context
      * @return array<string, mixed>
      */
     private function classifyRow(array $row, array $context): array
@@ -506,11 +939,14 @@ class AnalyzeContractSpreadsheet
             'comparison' => null,
             'sale_date' => null,
             'sale_value' => null,
+            'sale_value_cents' => null,
             'contract_status' => null,
             'cancellation_date' => null,
             'stored_sale_date' => null,
             'stored_cancellation_date' => null,
             'registered_competences' => [],
+            'registered_competence_notice' => null,
+            'warnings' => [],
             'releases_unit' => false,
         ];
 
@@ -607,13 +1043,14 @@ class AnalyzeContractSpreadsheet
 
         $base['sale_date'] = $saleDate;
 
-        $saleValue = $this->parseAmount($row['sale_value_raw']);
+        $saleAmount = SpreadsheetAmount::read($row['sale_value_raw']);
 
-        if (($saleValue === null) || ($saleValue <= 0)) {
+        if (($saleAmount->cents === null) || ($saleAmount->cents <= 0)) {
             return $this->error($base, 'Valor da venda inválido: informe um valor maior que zero.');
         }
 
-        $base['sale_value'] = $saleValue;
+        $base['sale_value_cents'] = $saleAmount->cents;
+        $base['sale_value'] = self::decimalAmount($saleAmount->cents);
 
         ['date' => $cancellationDate, 'error' => $cancellationError] = $this->resolveCancellationDate($row, $status, $saleDate);
 
@@ -622,6 +1059,27 @@ class AnalyzeContractSpreadsheet
         }
 
         $base['cancellation_date'] = $cancellationDate;
+
+        /**
+         * Contra a tabela da unidade que a derivação usaria: a da data da venda
+         * e, sem ela, a da data da posição -- esta só para o contrato que a
+         * derivação continua medindo como ocupante da unidade. A uma ordem de
+         * grandeza é erro da linha, a duas vezes é aviso; se a linha leva o
+         * veredito só se decide quando se sabe o que ela grava
+         * ({@see self::judgeSaleScales()}).
+         */
+        $saleScale = SpreadsheetPlausibility::saleAgainstReference(
+            $saleAmount->cents,
+            $saleDate,
+            $context['unitValues'][$unitId.'@'.$saleDate] ?? null,
+            self::isJudgedOccupant($status) ? $this->positionValuesOf($unitId, $context['unitValues']) : [],
+        );
+
+        $ambiguity = $saleAmount->warning('Valor da venda');
+
+        $base['warnings'] = $ambiguity === null
+            ? []
+            : [['code' => ImportRowWarningCode::AmbiguousAmountText->value, 'message' => $ambiguity]];
 
         /**
          * A repeated contract code is no longer a defect: one line per buyer is
@@ -658,10 +1116,45 @@ class AnalyzeContractSpreadsheet
                 'comparison' => $comparison,
                 'outcome' => $comparison->outcome(),
                 'message' => $comparison->isUnchanged() ? null : $comparison->summary(),
+                'sale_scale' => [
+                    'verdict' => $saleScale,
+                    'exempt' => ExchangeContractRecognizer::isOutsideTablePrice(
+                        $status,
+                        $existing,
+                        $context['exchanges'][(int) $existing->construction_unit_id] ?? collect(),
+                    ),
+                    'stored_status' => $existing->status,
+                ],
             ];
         }
 
-        return [...$base, 'outcome' => ReconciliationOutcome::New, 'message' => null];
+        return [
+            ...$base,
+            'outcome' => ReconciliationOutcome::New,
+            'message' => null,
+            'sale_scale' => [
+                'verdict' => $saleScale,
+                'exempt' => ExchangeContractRecognizer::isOutsideTablePrice($status, null, collect()),
+                'stored_status' => null,
+            ],
+        ];
+    }
+
+    /**
+     * O valor da unidade em cada data da posição, na ordem das datas.
+     *
+     * @param  array<string, ResolvedUnitValue>  $unitValues
+     * @return array<string, ResolvedUnitValue|null>
+     */
+    private function positionValuesOf(int $unitId, array $unitValues): array
+    {
+        $values = [];
+
+        foreach ($this->positionReferenceDates as $day) {
+            $values[$day] = $unitValues[$unitId.'@'.$day] ?? null;
+        }
+
+        return $values;
     }
 
     /**
@@ -749,7 +1242,7 @@ class AnalyzeContractSpreadsheet
      */
     private function error(array $base, string $message): array
     {
-        return [...$base, 'outcome' => ReconciliationOutcome::Error, 'message' => $message];
+        return [...$base, 'warnings' => [], 'outcome' => ReconciliationOutcome::Error, 'message' => $message];
     }
 
     /**
@@ -842,19 +1335,12 @@ class AnalyzeContractSpreadsheet
     }
 
     /**
-     * The amount of a cell, through the same exact cents parser the unit
-     * importers use. A numeric cell keeps its number; text is read in either
-     * convention ("386.137,05" or "386,137.05").
+     * The sale value the row carries for display, for the projection and for
+     * writing. The comparison against the table runs on the cents.
      */
-    private function parseAmount(mixed $value): ?float
+    private static function decimalAmount(int $cents): float
     {
-        if (! is_int($value) && ! is_float($value) && ! is_string($value)) {
-            return null;
-        }
-
-        $cents = IntegerMoney::cents($value);
-
-        return $cents === null ? null : $cents / 100;
+        return $cents / 100;
     }
 
     private static function unitKey(?string $block, ?string $unit): string

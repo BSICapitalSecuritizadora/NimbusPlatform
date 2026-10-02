@@ -7,6 +7,7 @@ use App\Enums\ContractInstallmentStatus;
 use App\Filament\Resources\ContractInstallments\ContractInstallmentResource;
 use App\Filament\Resources\Contracts\ContractResource;
 use App\Filament\Support\AnchoredFilterDropdown;
+use App\Filament\Support\ImportRunFilter;
 use App\Models\Client;
 use App\Models\Construction;
 use App\Models\Contract;
@@ -98,6 +99,14 @@ class ContractInstallmentsTable
                     ->alignEnd()
                     ->sortable(),
 
+                TextColumn::make('discount_value')
+                    ->label('Desconto')
+                    ->formatStateUsing(fn (mixed $state): string => 'R$ '.MoneyFormatter::formatCurrencyForDisplay($state))
+                    ->placeholder('—')
+                    ->alignEnd()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 self::outstandingColumn(),
 
                 self::statusColumn(),
@@ -172,12 +181,16 @@ class ContractInstallmentsTable
     }
 
     /**
-     * Derived in PHP for display and in SQL for sorting, from the same formula.
-     * The direction is taken from the two literals Filament can produce, never
+     * Derived in PHP for display and in SQL for sorting, from the same formula:
+     * the expected value minus what was received and the discount registered
+     * with it ({@see ContractInstallment::COVERED_SQL}), floored at zero. The
+     * direction is taken from the two literals Filament can produce, never
      * interpolated from the request.
      */
     private static function outstandingColumn(): TextColumn
     {
+        $outstanding = 'expected_value - '.ContractInstallment::COVERED_SQL;
+
         return TextColumn::make('outstanding_value')
             ->label('Saldo')
             ->state(fn (ContractInstallment $record): float => $record->outstanding_value)
@@ -185,7 +198,7 @@ class ContractInstallmentsTable
             ->color(fn (mixed $state): string => ((float) $state) > 0 ? 'warning' : 'gray')
             ->alignEnd()
             ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderByRaw(
-                'CASE WHEN expected_value - COALESCE(paid_value, 0) < 0 THEN 0 ELSE expected_value - COALESCE(paid_value, 0) END '
+                "CASE WHEN {$outstanding} < 0 THEN 0 ELSE {$outstanding} END "
                     .($direction === 'desc' ? 'desc' : 'asc'),
             ));
     }
@@ -333,6 +346,8 @@ class ContractInstallmentsTable
                         $data['paid_until'] ?? null,
                         fn (Builder $query, string $date): Builder => $query->where('payment_date', '<=', $date),
                     )),
+
+            ImportRunFilter::make(),
 
             TrashedFilter::make()
                 ->label('Parcelas excluídas'),

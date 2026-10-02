@@ -92,6 +92,35 @@ it('refuses to activate a homologation that was not approved', function () {
     expect($scenario['emission']->fresh()->sales_board_source)->toBe(SalesBoardSource::Legacy);
 });
 
+it('refuses to activate an emission that went back to draft or was liquidated', function (string $status, string $message) {
+    $scenario = activatableEmission(1);
+    $homologation = RolloutFixture::approvedHomologation($scenario['emission']);
+
+    $scenario['emission']->forceFill(['status' => $status])->save();
+
+    expect(fn () => RolloutFixture::activate($scenario['emission'], $homologation))
+        ->toThrow(SalesBoardRolloutException::class, $message);
+
+    expect($scenario['emission']->fresh()->sales_board_source)->toBe(SalesBoardSource::Legacy)
+        ->and($homologation->fresh()->wasActivated())->toBeFalse()
+        ->and(SalesBoardRolloutEvent::query()->count())->toBe(0);
+})->with([
+    'em elaboração' => ['draft', 'Em Elaboração'],
+    'liquidada' => ['closed', 'Liquidada'],
+]);
+
+it('still returns a liquidated emission to legacy', function () {
+    $scenario = activatableEmission(1);
+    RolloutFixture::activate($scenario['emission'], RolloutFixture::approvedHomologation($scenario['emission']));
+
+    $scenario['emission']->forceFill(['status' => Emission::STATUS_LIQUIDATED])->save();
+
+    $emission = RolloutFixture::returnToLegacy($scenario['emission']);
+
+    expect($emission->sales_board_source)->toBe(SalesBoardSource::Legacy)
+        ->and(SalesBoardRolloutEvent::query()->latest('id')->first()->event_type)->toBe(SalesBoardRolloutEventType::ReturnedToLegacy);
+});
+
 it('refuses to activate twice with the same homologation', function () {
     $scenario = activatableEmission();
     $homologation = RolloutFixture::approvedHomologation($scenario['emission']);

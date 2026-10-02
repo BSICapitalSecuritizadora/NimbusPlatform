@@ -14,6 +14,7 @@ use App\Models\SalesBoardBuilderReviewSection;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleBaseline;
 use App\Models\User;
+use App\Support\SalesBoards\SalesBoardAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -40,6 +41,18 @@ class SalesBoardBuilderReviewOpeningService
 
     public function open(SalesBoardCycle $cycle, ?User $actor = null): SalesBoardBuilderReview
     {
+        /**
+         * Quem abre por conta própria precisa operar a competência, e isso é
+         * conferido antes da reconciliação e da derivação: uma conta de consulta
+         * não dispara a verificação completa da fonte nem grava a constatação.
+         * Ator nulo é a abertura automática, depois da apuração
+         * (`auto_open_builder_review`), e continua registrada como tal -- sem
+         * ator humano inventado.
+         */
+        if ($actor !== null) {
+            SalesBoardAccess::authorizeOperation($actor);
+        }
+
         /**
          * Antes de decidir qualquer coisa, conclui a substituição que uma versão
          * material nova deixou pendente. Sem isso, um rascunho desatualizado

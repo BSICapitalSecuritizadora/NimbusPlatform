@@ -22,10 +22,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Livewire\Features\SupportFileUploads\FileUploadConfiguration;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 uses(RefreshDatabase::class);
 
@@ -152,15 +149,4 @@ function disallowedUploadPayloads(): array
         'payload.html' => '<!doctype html><html><body>unsafe</body></html>',
         'payload.svg' => '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
     ];
-}
-
-function temporaryUploadWithContent(string $filename, string $contents): TemporaryUploadedFile
-{
-    $uploadedFile = UploadedFile::fake()->createWithContent($filename, $contents);
-    $storedPath = FileUploadConfiguration::storeTemporaryFile(
-        $uploadedFile,
-        FileUploadConfiguration::disk(),
-    );
-
-    return TemporaryUploadedFile::createFromLivewire(basename($storedPath));
 }

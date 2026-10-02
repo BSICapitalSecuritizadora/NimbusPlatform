@@ -9,6 +9,8 @@ use App\Exceptions\SalesBoardRolloutException;
 use App\Models\Emission;
 use App\Models\SalesBoardRolloutRecipient;
 use App\Models\User;
+use App\Support\SalesBoards\SalesBoardAccess;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Quem está configurado para receber os avisos de uma Emissão, e quem ainda
@@ -19,6 +21,11 @@ use App\Models\User;
  * mandar aviso operacional para uma conta desativada, e a automação seguiria
  * achando que avisou alguém. Aqui a configuração é durável e a resolução é
  * sempre sobre quem está operacional **agora**.
+ *
+ * Definir os responsáveis é preparo da homologação: adicionar e remover exigem
+ * um ator identificado que opere a competência
+ * ({@see SalesBoardAccess::authorizeOperation()}), conferido antes de qualquer
+ * gravação.
  */
 class SalesBoardRolloutRecipientDirectory
 {
@@ -76,6 +83,12 @@ class SalesBoardRolloutRecipientDirectory
         User $user,
         ?User $actor,
     ): SalesBoardRolloutRecipient {
+        if ($actor === null) {
+            throw SalesBoardRolloutException::actorRequired();
+        }
+
+        SalesBoardAccess::authorizeOperation($actor);
+
         if (! $user->isOperational()) {
             throw SalesBoardRolloutException::recipientNotOperational();
         }
@@ -86,12 +99,53 @@ class SalesBoardRolloutRecipientDirectory
                 'role' => $role,
                 'user_id' => $user->getKey(),
             ],
-            ['created_by_user_id' => $actor?->getKey()],
+            ['created_by_user_id' => $actor->getKey()],
         );
     }
 
-    public function remove(SalesBoardRolloutRecipient $recipient): void
+    /**
+     * Tira um destinatário da lista de avisos.
+     *
+     * A remoção trava a Emissão antes de apagar, na mesma ordem da ativação --
+     * Emissão primeiro. A ativação confere, com a Emissão travada, que os dois
+     * papéis têm alguém operacional; uma remoção que não esperasse por ela
+     * poderia apagar o último responsável entre a conferência e o commit, e a
+     * automação nasceria ativada sem ninguém para avisar. Travando a mesma
+     * linha, as duas se serializam: ou a remoção vem antes e a ativação é
+     * recusada pela falta de responsável, ou a ativação vem antes e a remoção
+     * acontece depois dela, já com a automação ligada.
+     *
+     * O destinatário é relido sob o lock: removido por outra pessoa nesse
+     * intervalo, não há o que apagar -- e a trilha não ganha uma segunda
+     * exclusão da mesma linha.
+     */
+    public function remove(SalesBoardRolloutRecipient $recipient, ?User $actor): void
     {
-        $recipient->delete();
+        if ($actor === null) {
+            throw SalesBoardRolloutException::actorRequired();
+        }
+
+        SalesBoardAccess::authorizeOperation($actor);
+
+        $emissionId = SalesBoardRolloutRecipient::query()
+            ->whereKey($recipient->getKey())
+            ->value('emission_id');
+
+        if ($emissionId === null) {
+            return;
+        }
+
+        DB::transaction(function () use ($recipient, $emissionId): void {
+            Emission::query()
+                ->whereKey($emissionId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            SalesBoardRolloutRecipient::query()
+                ->whereKey($recipient->getKey())
+                ->lockForUpdate()
+                ->first()
+                ?->delete();
+        });
     }
 }

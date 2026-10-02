@@ -16,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\SalesBoards\CycleFixture;
 use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
+use Tests\Support\SalesBoards\SalesBoardAnomalyFixture;
 
 uses(RefreshDatabase::class);
 
@@ -129,14 +130,17 @@ it('detects the conflict even when the manual board belongs to another emission'
     $cycle = $scenario['cycle']->fresh();
 
     // O leitor da posição consulta por empreendimento, sem filtrar emissão:
-    // publicar ao lado criaria duas posições para o mesmo mês.
+    // publicar ao lado criaria duas posições para o mesmo mês. O guard de
+    // escrita já não deixa esse quadro nascer pelo model -- ele só existe como
+    // carga feita por fora --, e o portão de publicação continua precisando
+    // reconhecê-lo.
     $otherEmission = Emission::factory()->create(['status' => 'active']);
 
-    CycleFixture::whileLegacy($cycle->emission_id, fn (): SalesBoard => SalesBoard::factory()->create([
-        'emission_id' => $otherEmission->id,
-        'construction_id' => $cycle->construction_id,
-        'reference_month' => $cycle->reference_month->toDateString(),
-    ]));
+    SalesBoardAnomalyFixture::misplacedBoard(
+        $otherEmission,
+        $scenario['construction'],
+        $cycle->reference_month->toDateString(),
+    );
 
     $review = ManagementReviewFixture::open($cycle);
 

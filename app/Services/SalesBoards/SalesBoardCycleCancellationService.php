@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\SalesBoards;
 
-use App\Enums\SalesBoardBuilderReviewStatus;
 use App\Enums\SalesBoardCycleStatus;
-use App\Enums\SalesBoardManagementReviewStatus;
+use App\Events\SalesBoards\SalesBoardPriorPositionChanged;
 use App\Exceptions\SalesBoardCycleCancellationException;
-use App\Models\SalesBoardBuilderReview;
 use App\Models\SalesBoardCycle;
-use App\Models\SalesBoardManagementReview;
+use App\Models\SalesBoardPublication;
 use App\Models\User;
 use App\Support\SalesBoards\SalesBoardApprovalAuthority;
 use Carbon\CarbonImmutable;
@@ -27,17 +25,27 @@ use Illuminate\Support\Facades\Log;
  *
  * Regras decididas pela Gestão:
  *
- * - só ciclo **não aprovado**: o quadro publicado é imutável;
+ * - só ciclo **não aprovado e sem publicação**: o quadro publicado é imutável.
+ *   A competência em retificação voltou a "Gerado", mas continua publicada --
+ *   a saída dela é "Desistir da retificação", e não o cancelamento;
  * - **motivo obrigatório**, com autor e data gravados no ciclo, e trilha no
  *   Activitylog (`sales_board`);
  * - a autoridade é a da Gestão (`sales-boards.approve`), a mesma de aprovar;
  * - as rodadas **abertas** de validação e de análise são substituídas -- nada é
- *   apagado, e as rodadas já encerradas (devolvidas) continuam como estavam;
+ *   apagado, e as rodadas já encerradas (devolvidas) continuam como estavam
+ *   ({@see SalesBoardOpenReviewsSuperseder});
  * - o **alvo da automação** da competência é encerrado e não é reaberto pela
- *   descoberta: gerar outro ciclo para a mesma competência é outra decisão.
+ *   descoberta. A volta, quando o cancelamento se mostra um engano, é reabrir
+ *   o mesmo ciclo ({@see SalesBoardCycleReopeningService}), não gerar outro
+ *   para a mesma competência.
  *
  * Nada do que foi apurado é tocado: versões, linhas e movimentos continuam
  * inteiros e consultáveis.
+ *
+ * Depois do commit sai {@see SalesBoardPriorPositionChanged}: a competência
+ * seguinte passa a absorver os fatos desta, e a verificação dela é antecipada
+ * -- a cadeia dela mudou, e ela fica "Alterações materiais" mesmo que o mês
+ * cancelado não tenha tido fato.
  */
 class SalesBoardCycleCancellationService
 {
@@ -45,6 +53,7 @@ class SalesBoardCycleCancellationService
 
     public function __construct(
         private readonly SalesBoardAutomationTargetClosureService $targetClosureService,
+        private readonly SalesBoardOpenReviewsSuperseder $openReviewsSuperseder,
     ) {}
 
     public function cancel(SalesBoardCycle $cycle, ?User $actor, string $reason): SalesBoardCycle
@@ -72,10 +81,25 @@ class SalesBoardCycleCancellationService
                 throw SalesBoardCycleCancellationException::notCancellable($locked->status);
             }
 
+            /**
+             * Publicação, e não status: a competência em retificação voltou a
+             * "Gerado" e continua com a posição publicada. Lida com lock, para
+             * enxergar a publicação de uma aprovação que acabou de commitar.
+             */
+            $published = SalesBoardPublication::query()
+                ->where('sales_board_cycle_id', $locked->getKey())
+                ->sharedLock()
+                ->exists();
+
+            if ($published) {
+                throw SalesBoardCycleCancellationException::publishedCompetence();
+            }
+
             $now = CarbonImmutable::now();
 
-            $supersededManagement = $this->supersedeOpenManagementReviews($locked, $now);
-            $supersededBuilder = $this->supersedeOpenBuilderReviews($locked, $now);
+            $superseded = $this->openReviewsSuperseder->supersede($locked, self::SUPERSEDED_REASON, $now);
+            $supersededManagement = $superseded['management'];
+            $supersededBuilder = $superseded['builder'];
 
             $locked->forceFill([
                 'status' => SalesBoardCycleStatus::Cancelled,
@@ -101,65 +125,14 @@ class SalesBoardCycleCancellationService
                 'closed_automation_targets' => $closedTargets,
             ]);
 
+            SalesBoardPriorPositionChanged::dispatch(
+                (int) $locked->construction_id,
+                CarbonImmutable::parse($locked->reference_month->toDateString())->startOfMonth(),
+                SalesBoardPriorPositionChanged::COMPETENCE_CANCELLED,
+            );
+
             return $locked->refresh();
         });
-    }
-
-    /**
-     * As análises em andamento. Devolvidas e substituídas já estão encerradas.
-     */
-    private function supersedeOpenManagementReviews(SalesBoardCycle $cycle, CarbonImmutable $now): int
-    {
-        $reviews = SalesBoardManagementReview::query()
-            ->where('sales_board_cycle_id', $cycle->getKey())
-            ->where('status', SalesBoardManagementReviewStatus::Draft)
-            ->lockForUpdate()
-            ->get();
-
-        foreach ($reviews as $review) {
-            $review->forceFill([
-                'status' => SalesBoardManagementReviewStatus::Superseded,
-                'superseded_at' => $now,
-                'superseded_reason' => self::SUPERSEDED_REASON,
-            ])->save();
-        }
-
-        return $reviews->count();
-    }
-
-    /**
-     * As validações em andamento e a enviada que ainda aguardava a Gestão.
-     *
-     * Uma validação enviada cuja análise foi devolvida é uma rodada encerrada: a
-     * construtora já recebeu a rodada seguinte, e marcá-la substituída
-     * reescreveria o que aconteceu naquela devolução.
-     */
-    private function supersedeOpenBuilderReviews(SalesBoardCycle $cycle, CarbonImmutable $now): int
-    {
-        $returnedRounds = SalesBoardManagementReview::query()
-            ->where('sales_board_cycle_id', $cycle->getKey())
-            ->where('status', SalesBoardManagementReviewStatus::Returned)
-            ->pluck('sales_board_builder_review_id')
-            ->filter()
-            ->map(fn (mixed $id): int => (int) $id)
-            ->all();
-
-        $reviews = SalesBoardBuilderReview::query()
-            ->where('sales_board_cycle_id', $cycle->getKey())
-            ->whereIn('status', [SalesBoardBuilderReviewStatus::Draft, SalesBoardBuilderReviewStatus::Submitted])
-            ->whereKeyNot($returnedRounds)
-            ->lockForUpdate()
-            ->get();
-
-        foreach ($reviews as $review) {
-            $review->forceFill([
-                'status' => SalesBoardBuilderReviewStatus::Superseded,
-                'superseded_at' => $now,
-                'superseded_reason' => self::SUPERSEDED_REASON,
-            ])->save();
-        }
-
-        return $reviews->count();
     }
 
     private function normalizeReason(?string $reason): string

@@ -31,8 +31,7 @@ class ListContractInstallments extends ListRecords
                 ->color('gray'),
 
             $this->installmentImportAction()
-                ->color('gray')
-                ->visible(fn (): bool => ContractInstallmentResource::canCreate()),
+                ->color('gray'),
 
             CreateAction::make()
                 ->label('Nova Parcela')

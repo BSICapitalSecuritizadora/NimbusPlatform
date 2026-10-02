@@ -27,6 +27,17 @@ class SalesBoardCycleCancellationException extends RuntimeException implements S
         ));
     }
 
+    /**
+     * A competência tem posição publicada -- inclusive a que está em
+     * retificação, que voltou a "Gerado". Competência publicada não é
+     * cancelada: a saída da retificação é desistir dela.
+     */
+    public static function publishedCompetence(): self
+    {
+        return new self('A competência tem posição publicada e está em retificação: use “Desistir da retificação” '
+            .'para voltar à posição publicada. Competência publicada não é cancelada.');
+    }
+
     public static function notCancellable(SalesBoardCycleStatus $status): self
     {
         return new self(match ($status) {

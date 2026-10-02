@@ -4,6 +4,7 @@ use App\Filament\Resources\ConstructionUnits\ConstructionUnitResource;
 use App\Filament\Resources\ConstructionUnits\Pages\EditConstructionUnit;
 use App\Filament\Resources\ConstructionUnits\Pages\ViewConstructionUnit;
 use App\Filament\Resources\ConstructionUnits\RelationManagers\ConstructionUnitExchangesRelationManager;
+use App\Filament\Resources\ConstructionUnits\RelationManagers\ConstructionUnitRetirementsRelationManager;
 use App\Filament\Resources\ConstructionUnits\RelationManagers\ConstructionUnitValuesRelationManager;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
@@ -80,6 +81,7 @@ it('retains both relation tabs and the native column controls without duplicate 
     Livewire::test(ViewConstructionUnit::class, ['record' => $unit->getRouteKey()])
         ->assertSee('Histórico de Valores')
         ->assertSee('Permutas')
+        ->assertSee('Baixas')
         ->set('activeRelationManager', '1')
         ->assertSee('Permutas');
 
@@ -95,6 +97,7 @@ it('retains both relation tabs and the native column controls without duplicate 
 })->with([
     [ConstructionUnitValuesRelationManager::class, 'Nenhuma atualização de valor'],
     [ConstructionUnitExchangesRelationManager::class, 'Nenhuma permuta registrada'],
+    [ConstructionUnitRetirementsRelationManager::class, 'Nenhuma baixa registrada'],
 ]);
 
 it('preserves the history page size and pagination with records', function () {
@@ -133,4 +136,7 @@ it('preserves the resource permissions and financial action visibility for a rea
 
     Livewire::test(ConstructionUnitExchangesRelationManager::class, ['ownerRecord' => $unit, 'pageClass' => ViewConstructionUnit::class])
         ->assertActionHidden(TestAction::make('declareBaseline')->table());
+
+    Livewire::test(ConstructionUnitRetirementsRelationManager::class, ['ownerRecord' => $unit, 'pageClass' => ViewConstructionUnit::class])
+        ->assertActionHidden(TestAction::make('retireUnit')->table());
 });

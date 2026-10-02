@@ -2,8 +2,10 @@
 
 namespace App\Filament\Resources\SalesBoards\RelationManagers;
 
+use App\Filament\Support\GuardsRelationManagerAccess;
 use App\Models\SalesBoard;
 use App\Models\SalesBoardHistory;
+use App\Support\BusinessTime;
 use Filament\Actions\Action;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -15,6 +17,8 @@ use Filament\Tables\Table;
 
 class SalesBoardHistoriesRelationManager extends RelationManager
 {
+    use GuardsRelationManagerAccess;
+
     protected static string $relationship = 'valueHistories';
 
     protected static ?string $title = 'Histórico de Valores';
@@ -85,7 +89,7 @@ class SalesBoardHistoriesRelationManager extends RelationManager
                     ->columns([
                         TextColumn::make('created_at')
                             ->label('Registrado em')
-                            ->dateTime('d/m/Y H:i')
+                            ->dateTime('d/m/Y H:i', BusinessTime::timezone())
                             ->sortable(),
                         TextColumn::make('position')
                             ->label('Posição')
@@ -193,7 +197,7 @@ class SalesBoardHistoriesRelationManager extends RelationManager
                         TextEntry::make('changed_at')
                             ->label('Data')
                             ->state($record->created_at !== null
-                                ? $record->created_at->format('d/m/Y').' às '.$record->created_at->format('H:i')
+                                ? BusinessTime::at($record->created_at)->format('d/m/Y \à\s H:i')
                                 : '—'),
                         TextEntry::make('competence')
                             ->label('Competência')

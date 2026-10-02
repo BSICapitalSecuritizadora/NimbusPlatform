@@ -169,6 +169,7 @@ final class ActivityPresenter
         'expected_value' => 'Valor previsto',
         'payment_date' => 'Data do pagamento',
         'paid_value' => 'Valor pago',
+        'discount_value' => 'Desconto concedido',
 
         // Cliente
         'document' => 'Documento (CPF/CNPJ)',
@@ -219,6 +220,7 @@ final class ActivityPresenter
         'sale_value',
         'expected_value',
         'paid_value',
+        'discount_value',
         'issued_volume',
         'issued_price',
         'issue_amount',

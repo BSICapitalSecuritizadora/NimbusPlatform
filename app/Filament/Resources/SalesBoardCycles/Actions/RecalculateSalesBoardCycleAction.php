@@ -2,12 +2,14 @@
 
 namespace App\Filament\Resources\SalesBoardCycles\Actions;
 
+use App\DTOs\SalesBoards\SalesBoardRecalculationResult;
 use App\Enums\SalesBoardCycleStatus;
 use App\Enums\SalesBoardRecalculationOutcome;
 use App\Filament\Resources\SalesBoardCycles\SalesBoardCycleResource;
 use App\Models\SalesBoardCycle;
 use App\Services\SalesBoards\SalesBoardRecalculationService;
 use App\Services\SalesBoards\SalesBoardStaleDetectionService;
+use App\Support\SalesBoards\SalesBoardFrozenWarnings;
 use App\Support\SalesBoards\SalesBoardIssuePresenter;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
@@ -78,7 +80,7 @@ class RecalculateSalesBoardCycleAction
                 $notification = Notification::make()
                     ->title($result->outcome->label())
                     ->body($blockers === []
-                        ? $result->message()
+                        ? self::resultBody($result)
                         : new HtmlString('A fonte atual está incompleta e não permite uma versão nova.<br>'
                             .SalesBoardIssuePresenter::toHtml($blockers)->toHtml()));
 
@@ -92,10 +94,30 @@ class RecalculateSalesBoardCycleAction
             });
     }
 
+    /**
+     * A mensagem do recálculo e, quando nasceu versão nova com avisos, os avisos
+     * dela -- os mesmos que ficaram congelados e que a construtora e a Gestão
+     * vão ver.
+     */
+    private static function resultBody(SalesBoardRecalculationResult $result): string|HtmlString
+    {
+        $warnings = $result->createdNewVersion()
+            ? SalesBoardFrozenWarnings::countsByCode($result->baseline?->frozenWarnings())
+            : [];
+
+        if ($warnings === []) {
+            return $result->message();
+        }
+
+        return new HtmlString(e($result->message())
+            .'<br><br>A apuração registrou avisos que não impedem o congelamento; confira-os na competência antes de enviar à construtora:<br>'
+            .SalesBoardIssuePresenter::toHtml($warnings)->toHtml());
+    }
+
     private static function finalStatusReason(SalesBoardCycle $record): ?string
     {
         return match ($record->status) {
-            SalesBoardCycleStatus::Approved => 'Competência aprovada e publicada: a posição publicada é imutável e não é recalculada.',
+            SalesBoardCycleStatus::Approved => 'Competência aprovada e publicada: a posição publicada não é recalculada. Para corrigi-la, a Gestão usa “Retificar competência” (só na última competência publicada); fatos lançados depois entram como movimentos extemporâneos na competência seguinte.',
             SalesBoardCycleStatus::Cancelled => 'Ciclo cancelado: não há recálculo.',
             default => null,
         };

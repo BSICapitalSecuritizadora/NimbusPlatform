@@ -1,5 +1,6 @@
 <?php
 
+use App\DTOs\SalesBoards\SalesBoardSnapshot;
 use App\Enums\ContractStatus;
 use App\Enums\SalesBoardDiffCode;
 use App\Enums\SalesBoardStaleImpact;
@@ -13,7 +14,10 @@ use App\Models\ContractInstallment;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleBaseline;
 use App\Models\SalesDiscountPolicy;
+use App\Services\SalesBoards\SalesBoardFingerprintService;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\Support\SalesBoards\CycleFixture;
 use Tests\Support\SalesBoards\DerivationFixture;
 
@@ -269,4 +273,33 @@ it('never recalculates while checking', function () {
 
     expect(SalesBoardCycleBaseline::query()->count())->toBe(1)
         ->and(CycleFixture::currentBaseline($scenario['cycle'])->version)->toBe(1);
+});
+
+/**
+ * Uma versão congelada antes de uma regra de prontidão existir -- aqui, a venda
+ * mil vezes acima da tabela, que a apuração passou a recusar. A fonte é idêntica
+ * à congelada, então os fingerprints não acusam nada; a prontidão acusa, e é ela
+ * que decide: a competência para até a fonte ser corrigida, em vez de seguir
+ * "sem alterações" pelos portões da validação e da aprovação.
+ */
+it('reports as blocking a frozen version that a newer readiness rule refuses', function () {
+    $scenario = generatedCycle();
+    $month = CarbonImmutable::parse('2026-07-01');
+
+    DB::table('contracts')->where('id', $scenario['older']->id)->update(['sale_value' => '550000000.00']);
+
+    // A versão como teria sido congelada antes da regra: com a fonte de agora.
+    DB::table('sales_board_cycle_baselines')->where('id', $scenario['cycle']->current_baseline_id)->update([
+        'source_fingerprint' => app(SalesBoardFingerprintService::class)->observeForConstruction($scenario['construction']->fresh(), $month)->fingerprint(),
+        'snapshot_fingerprint' => SalesBoardSnapshot::fromDerivedPosition(DerivationFixture::derive($scenario['construction']->fresh()))->fingerprint(),
+    ]);
+
+    $assessment = CycleFixture::check($scenario['cycle']);
+
+    expect($assessment->sourceChanged)->toBeFalse()
+        ->and($assessment->snapshotChanged)->toBeFalse()
+        ->and($assessment->impact)->toBe(SalesBoardStaleImpact::Blocking)
+        ->and($assessment->readiness->blockingIssueCounts())->toHaveKey('SALE_VALUE_OUT_OF_SCALE')
+        ->and($assessment->baseline->fresh()->is_stale)->toBeTrue()
+        ->and($assessment->baseline->fresh()->stale_impact)->toBe(SalesBoardStaleImpact::Blocking);
 });

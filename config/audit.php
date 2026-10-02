@@ -39,17 +39,32 @@ return [
         // um ano, e as linhas duráveis guardam só o estado vigente.
         //
         // `sales_board` (LogsActivity): SalesBoard, SalesBoardHistory,
-        // SalesBoardCycle, SalesBoardBuilderReview, SalesBoardManagementReview,
+        // SalesBoardCycle, SalesBoardBuilderReview,
+        // SalesBoardBuilderReviewSection, SalesBoardBuilderDivergence,
+        // SalesBoardBuilderReviewAttachment, SalesBoardManagementReview,
         // SalesBoardManagementNonconformity, SalesBoardPublication,
-        // SalesBoardRolloutHomologation, SalesBoardRolloutHomologationConstruction
-        // e SalesBoardRolloutRecipient.
-        'sales_board',               // quadro legado e versões, ciclo, validação, análise e decisões da Gestão, publicação, rollout
+        // SalesBoardCycleRectification, SalesBoardRolloutHomologation,
+        // SalesBoardRolloutHomologationConstruction e SalesBoardRolloutRecipient.
+        // Seções e divergências da validação da construtora entraram em
+        // 2026-10-01: a divergência é apagada fisicamente no rascunho, e o que
+        // ela dizia, quem a apagou e quando só sobrevivem nesta trilha. No
+        // mesmo dia entraram os anexos da resposta da construtora, a evidência
+        // que sustenta o envio interno da validação, e a retificação de
+        // competência publicada -- quem pediu para mudar uma posição publicada,
+        // por quê, e como o pedido terminou.
+        'sales_board',               // quadro legado e versões, ciclo, validação, análise e decisões da Gestão, publicação, retificação, rollout
         'contracts',                 // Contract (LogsActivity) + Contract::syncBuyers() — exclusão, restauração, status e compradores
         'contract_installments',     // ContractInstallment (LogsActivity) — vencimento, pagamento, cancelamento, exclusão
         'construction_units',        // ConstructionUnit (LogsActivity) — cadastro e valor base da unidade
         'construction_unit_exchanges', // ConstructionUnitExchange (LogsActivity) — vigência das permutas
+        'construction_unit_retirements', // ConstructionUnitRetirement (LogsActivity) — baixa e reativação de unidade
         'constructions',             // Construction (LogsActivity) — empreendimento e vínculo com a Emissão
         'emissions',                 // Emission (LogsActivity) — cadastro da Emissão e modo do Quadro de Vendas
+        // Garantias por competência. A decisão de 25/09 pede a confirmação do
+        // fechamento parcial gravada e um "Reabrir" com motivo: o número fechado
+        // já saiu em relatório, e a evidência dele não pode expirar antes.
+        'guarantee_competences',     // GuaranteeSnapshotWriter + GuaranteeSnapshot (LogsActivity) — valor manual, fechamento, reabertura e desatualização da competência
+        'guarantees',                // Guarantee (LogsActivity) — regra contratual, elegibilidade e situação jurídica da garantia
         // Sem produtor hoje, mantidos porque já constavam da lista efetiva do
         // comando: removê-los seria estreitar a política sem decisão.
         'measurement_receipts',

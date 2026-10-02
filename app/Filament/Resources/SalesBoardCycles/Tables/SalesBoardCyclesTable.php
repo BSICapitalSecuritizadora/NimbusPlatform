@@ -6,8 +6,10 @@ use App\Enums\SalesBoardCycleStatus;
 use App\Enums\SalesBoardStaleImpact;
 use App\Filament\Resources\SalesBoardCycles\Actions\CheckSalesBoardCycleStaleAction;
 use App\Filament\Resources\SalesBoardCycles\SalesBoardCycleResource;
+use App\Filament\Resources\SalesBoardCycles\Schemas\SalesBoardCycleInfolist;
 use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\SalesBoardCycle;
+use App\Support\BusinessTime;
 use App\Support\SalesBoards\SalesBoardCycleNextAction;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\ViewAction;
@@ -65,11 +67,17 @@ class SalesBoardCyclesTable
                     ->sortable()
                     ->toggleable(),
 
+                /**
+                 * "Em retificação" é a retificação aberta, e não um status: a
+                 * competência publicada voltou ao fluxo, e o selo diz por quê.
+                 */
                 TextColumn::make('status')
                     ->label('Situação')
                     ->badge()
-                    ->formatStateUsing(fn (SalesBoardCycleStatus $state): string => $state->label())
-                    ->color(fn (SalesBoardCycleStatus $state): string => $state->color()),
+                    ->formatStateUsing(fn (SalesBoardCycleStatus $state, SalesBoardCycle $record): string => $record->isUnderRectification()
+                        ? 'Em retificação · '.$state->label()
+                        : $state->label())
+                    ->color(fn (SalesBoardCycleStatus $state, SalesBoardCycle $record): string => $record->isUnderRectification() ? 'warning' : $state->color()),
 
                 TextColumn::make('next_action')
                     ->label('Próxima ação')
@@ -86,14 +94,23 @@ class SalesBoardCyclesTable
                     ->badge()
                     ->color('gray'),
 
+                /**
+                 * Na competência aprovada a fonte que mudou não pede recálculo:
+                 * o selo diz que há fatos posteriores à publicação, que entram
+                 * como extemporâneos na competência seguinte.
+                 */
                 TextColumn::make('currentBaseline.stale_impact')
                     ->label('Fonte')
                     ->badge()
                     ->placeholder('—')
-                    ->formatStateUsing(fn (?SalesBoardStaleImpact $state): string => ($state ?? SalesBoardStaleImpact::None)->label())
-                    ->color(fn (?SalesBoardStaleImpact $state): string => ($state ?? SalesBoardStaleImpact::None)->color())
-                    ->tooltip(fn (SalesBoardCycle $record): ?string => $record->currentBaseline?->last_checked_at
-                        ?->format('\Ú\l\t\i\m\a \v\e\r\i\f\i\c\a\ç\ã\o\: d/m/Y \à\s H:i')),
+                    ->formatStateUsing(fn (?SalesBoardStaleImpact $state, SalesBoardCycle $record): string => SalesBoardCycleInfolist::publishedSourceLabel($record)
+                        ?? ($state ?? SalesBoardStaleImpact::None)->label())
+                    ->color(fn (?SalesBoardStaleImpact $state, SalesBoardCycle $record): string => SalesBoardCycleInfolist::publishedSourceLabel($record) !== null
+                        ? 'info'
+                        : ($state ?? SalesBoardStaleImpact::None)->color())
+                    ->tooltip(fn (SalesBoardCycle $record): ?string => $record->currentBaseline?->last_checked_at === null
+                        ? null
+                        : BusinessTime::at($record->currentBaseline->last_checked_at)->format('\Ú\l\t\i\m\a \v\e\r\i\f\i\c\a\ç\ã\o\: d/m/Y \à\s H:i')),
 
                 TextColumn::make('currentBaseline.units_total')
                     ->label('Unidades')
@@ -118,7 +135,7 @@ class SalesBoardCyclesTable
 
                 TextColumn::make('currentBaseline.computed_at')
                     ->label('Gerado em')
-                    ->dateTime('d/m/Y H:i')
+                    ->dateTime('d/m/Y H:i', BusinessTime::timezone())
                     ->alignCenter()
                     ->sortable()
                     ->toggleable(),

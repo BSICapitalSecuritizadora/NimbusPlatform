@@ -6,6 +6,7 @@ use App\DTOs\SalesBoards\SalesBoardDerivedPosition;
 use App\DTOs\SalesBoards\SalesBoardIssue;
 use App\DTOs\SalesBoards\SalesBoardLegacyComparison;
 use App\DTOs\SalesBoards\SalesBoardReadinessReport;
+use App\Enums\SalesBoardMovementTiming;
 use App\Models\Construction;
 use App\Models\Emission;
 use App\Services\SalesBoards\SalesBoardDerivationService;
@@ -113,7 +114,7 @@ class DeriveSalesBoardCommand extends Command
             $this->error('Os baldes não fecham com o total de unidades. Isso é um defeito da derivação, não do cadastro.');
         }
 
-        $movements = $position->movements;
+        $movements = $position->movements->inMonth();
 
         $this->line(sprintf(
             'Vendas no mês: %d (conformes: %d | não conformes: %d | indeterminadas: %d)',
@@ -124,6 +125,8 @@ class DeriveSalesBoardCommand extends Command
         ));
         $this->line(sprintf('Quitações no mês: %d', $movements->settlementsCount()));
         $this->line(sprintf('Distratos no mês: %d', $movements->cancellationsCount()));
+
+        $this->renderAnchor($position);
         $this->newLine();
 
         $this->renderIssues('Bloqueadores', $report->blockingIssueCounts());
@@ -138,6 +141,59 @@ class DeriveSalesBoardCommand extends Command
         if ($this->option('details')) {
             $this->renderLines($position);
         }
+    }
+
+    /**
+     * A âncora da apuração -- a competência anterior contra a qual os fatos
+     * atrasados viraram movimento -- e os movimentos que vieram dela.
+     */
+    private function renderAnchor(SalesBoardDerivedPosition $position): void
+    {
+        $anchor = $position->priorPosition;
+
+        if ($anchor === null) {
+            $this->line($position->absorbedCancelledMonths === []
+                ? 'Competência anterior (âncora): nenhuma no ciclo mensal'
+                : sprintf(
+                    'Competência anterior (âncora): nenhuma no ciclo mensal · canceladas absorvidas: %s',
+                    implode(', ', array_map(static fn ($month): string => $month->format('m/Y'), $position->absorbedCancelledMonths)),
+                ));
+
+            if ($position->absorbedCancelledMonths === []) {
+                return;
+            }
+
+            $counts = $position->movements->countsByTiming();
+
+            $this->line(sprintf(
+                'Movimentos de competências anteriores: de competência sem posição %d',
+                $counts[SalesBoardMovementTiming::WithoutPosition->value],
+            ));
+
+            return;
+        }
+
+        $this->line(sprintf(
+            'Competência anterior (âncora): %s · %s · %s%s',
+            $anchor->label(),
+            $anchor->versionLabel(),
+            $anchor->isPublished ? 'publicada' : 'ainda não publicada',
+            $anchor->skipsCancelledMonths()
+                ? sprintf(' · canceladas absorvidas: %s', implode(', ', array_map(
+                    static fn ($month): string => $month->format('m/Y'),
+                    $anchor->skippedCancelledMonths,
+                )))
+                : '',
+        ));
+
+        $counts = $position->movements->countsByTiming();
+
+        $this->line(sprintf(
+            'Movimentos de competências anteriores: extemporâneos %d | revisões de venda %d | de competência sem posição %d',
+            $counts[SalesBoardMovementTiming::Extemporaneous->value],
+            $counts[SalesBoardMovementTiming::SaleRevision->value],
+            $counts[SalesBoardMovementTiming::WithoutPosition->value],
+        ));
     }
 
     /**

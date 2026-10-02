@@ -38,6 +38,13 @@ use Illuminate\Support\Arr;
  * que a confirmação é dada e que a competência aprovada é procurada -- senão
  * uma correção de um mês passado deixaria sem política, calada, uma
  * competência publicada depois dele.
+ *
+ * Uma política que rejulga venda já registrada -- começa antes de hoje, ou hoje
+ * com venda já feita hoje (`salesAlreadyRecordedInPeriod`) -- é registrada só
+ * pela Gestão ({@see self::requiresManagementAuthority()}): afrouxar a régua de
+ * uma venda já feita neutralizaria a exceção que a decisão da Gestão existe para
+ * conceder. A política que só vale daqui para a frente continua com quem opera o
+ * cadastro comercial.
  */
 readonly class SalesDiscountPolicyPeriodAssessment extends BaseDTO
 {
@@ -54,6 +61,7 @@ readonly class SalesDiscountPolicyPeriodAssessment extends BaseDTO
      * @param  list<CarbonImmutable>  $approvedCompetences  competências do alcance inteiro (`[from, reachThrough()]`) já aprovadas e publicadas para a obra
      * @param  CarbonImmutable|null  $uncoveredThrough  último dia já vivido que a substituição deixa sem política depois do fim da nova; nulo quando ela não deixa lacuna no passado
      * @param  list<array{month: CarbonImmutable, sales: int}>  $uncoveredCompetences  competências de `[until + 1, uncoveredThrough]`, com as vendas de cada uma dentro dele
+     * @param  int  $salesAlreadyRecordedInPeriod  contratos da obra com venda em `[from, min(until, hoje)]`, quando o início é hoje ou antes
      */
     public function __construct(
         public CarbonImmutable $from,
@@ -66,6 +74,7 @@ readonly class SalesDiscountPolicyPeriodAssessment extends BaseDTO
         public array $approvedCompetences = [],
         public ?CarbonImmutable $uncoveredThrough = null,
         public array $uncoveredCompetences = [],
+        public int $salesAlreadyRecordedInPeriod = 0,
     ) {}
 
     public function isBlocked(): bool
@@ -91,6 +100,49 @@ readonly class SalesDiscountPolicyPeriodAssessment extends BaseDTO
     public function reachesApprovedCompetence(): bool
     {
         return $this->approvedCompetences !== [];
+    }
+
+    /**
+     * A política rejulga venda já registrada, e por isso é da Gestão?
+     *
+     * Retroativa sempre: ela decide vendas de dias já vividos, mesmo que o
+     * período não tenha nenhuma ainda -- a venda lançada amanhã com data de
+     * ontem cairia nela. Começando hoje, só quando já há venda registrada
+     * hoje.
+     */
+    public function requiresManagementAuthority(): bool
+    {
+        return $this->isRetroactive() || ($this->salesAlreadyRecordedInPeriod > 0);
+    }
+
+    /**
+     * Por que só a Gestão registra esta política, e como deixá-la com quem
+     * opera o cadastro: começar amanhã.
+     */
+    public function managementAuthorityMessage(): ?string
+    {
+        if (! $this->requiresManagementAuthority()) {
+            return null;
+        }
+
+        if ($this->isRetroactive()) {
+            return sprintf(
+                'A política começa em %s, antes de hoje, e passa a decidir a conformidade de vendas já feitas: %s no período (%s). '
+                    .'Uma política que rejulga venda já registrada é registrada pela Gestão, com a permissão de aprovação do Quadro de Vendas. '
+                    .'Para valer só daqui para a frente, comece amanhã.',
+                $this->from->format('d/m/Y'),
+                self::describeSales($this->salesAlreadyRecordedInPeriod),
+                self::describeCompetences($this->reachedCompetences),
+            );
+        }
+
+        return sprintf(
+            'Já há %s hoje, %s, e a política passaria a decidir a conformidade delas. '
+                .'Uma política que rejulga venda já registrada é registrada pela Gestão, com a permissão de aprovação do Quadro de Vendas; '
+                .'para valer só para as próximas vendas, comece amanhã.',
+            $this->salesAlreadyRecordedInPeriod === 1 ? '1 venda registrada' : $this->salesAlreadyRecordedInPeriod.' vendas registradas',
+            $this->from->format('d/m/Y'),
+        );
     }
 
     /**

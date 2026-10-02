@@ -14,7 +14,6 @@ use App\Models\SalesBoardHistory;
 use App\Models\SalesBoardManagementReview;
 use App\Models\SalesBoardPublication;
 use App\Models\SalesBoardRolloutHomologation;
-use App\Models\User;
 use App\Services\SalesBoards\SalesBoardAutomationService;
 use App\Services\SalesBoards\SalesBoardPositionReader;
 use App\Services\SalesBoards\SalesBoardRolloutHomologationService;
@@ -75,7 +74,7 @@ function automatedCycleInManagement(): array
     ]);
 
     // O legado registrou só o estoque; a diferença é analisada, como no rollout real.
-    $operator = User::factory()->create();
+    $operator = GovernanceFixture::operator();
     $approver = GovernanceFixture::approver();
     $homologation = RolloutFixture::open($scenario['emission'], $operator);
 
@@ -197,14 +196,28 @@ it('blocks a manual board filed under another emission for a construction that i
     expect(SalesBoard::query()->where('construction_id', $construction->id)
         ->whereDate('reference_month', '2026-09-01')->exists())->toBeFalse();
 
-    // Antes do início, a mesma escrita continua sendo manutenção do passado.
-    $past = SalesBoard::factory()->create([
+    /**
+     * Antes do início a competência não é da automação, mas o quadro sob outra
+     * Emissão continua errado: a posição é lida por empreendimento, e ele seria
+     * somado pela Emissão legada e pela do empreendimento.
+     */
+    expect(fn () => SalesBoard::factory()->create([
         'emission_id' => $legacyEmission->id,
+        'construction_id' => $construction->id,
+        'reference_month' => '2026-05-01',
+    ]))->toThrow(SalesBoardRolloutException::class, 'somado nas duas');
+
+    // A manutenção do passado segue aberta sob a Emissão do empreendimento.
+    $past = SalesBoard::factory()->create([
+        'emission_id' => $construction->emission_id,
         'construction_id' => $construction->id,
         'reference_month' => '2026-05-01',
     ]);
 
-    expect($past->exists)->toBeTrue();
+    expect($past->exists)->toBeTrue()
+        ->and(SalesBoard::query()->where('construction_id', $construction->id)
+            ->whereDate('reference_month', '2026-05-01')->pluck('emission_id')->all())
+        ->toBe([$construction->emission_id]);
 });
 
 it('publishes exactly one board, one publication and one history version through the normal event path', function () {

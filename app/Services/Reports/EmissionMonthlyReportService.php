@@ -10,6 +10,7 @@ use App\DTOs\ConstructionProgressData;
 use App\DTOs\Guarantees\GuaranteePositionData;
 use App\DTOs\SalesBoards\ConstructionSalesPosition;
 use App\DTOs\SalesBoards\EmissionSalesPosition;
+use App\DTOs\SalesBoards\SalesBoardPublicationGaps;
 use App\Enums\GuaranteeType;
 use App\Enums\LegalInstrumentFieldKey;
 use App\Models\Construction;
@@ -29,6 +30,7 @@ use App\Services\ConstructionProgressProvider;
 use App\Services\Guarantees\EmissionGuaranteeCoverageEngine;
 use App\Services\LegalInstruments\InstrumentPositionResolver;
 use App\Services\SalesBoards\SalesBoardPositionReader;
+use App\Services\SalesBoards\SalesBoardPublicationGapClassifier;
 use App\Support\BusinessTime;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -58,6 +60,8 @@ class EmissionMonthlyReportService
 
     private const NO_SCHEDULED_EVENT = 'Nenhum evento cadastrado';
 
+    private const NO_GUARANTEES = 'Nenhuma garantia cadastrada para a emissão.';
+
     /**
      * Competências exibidas no histórico de unidades.
      */
@@ -67,22 +71,30 @@ class EmissionMonthlyReportService
         private readonly ConstructionProgressProvider $constructionProgressProvider,
         private readonly EmissionGuaranteeCoverageEngine $guaranteeCoverageEngine,
         private readonly ContractNegotiationEvents $contractNegotiationEvents,
+        private readonly CompetenceNegotiationEvents $competenceNegotiationEvents,
         private readonly SalesBoardPositionReader $salesBoardPositionReader,
         private readonly EmissionPuReader $puReader,
+        private readonly SalesBoardPublicationGapClassifier $publicationGapClassifier,
     ) {}
 
     /**
-     * Bloco de garantias do relatório (§48 do escopo).
+     * Bloco de garantias do relatório (§48 do escopo), a seção "Garantias e
+     * Cobertura" do PDF, logo depois do saldo devedor.
      *
      * O relatório consome o resultado do módulo — não recalcula nada. A
      * competência **fechada** tem prioridade sobre a apuração ao vivo: é o
      * número que foi consolidado naquele mês, e reapurar poderia devolver outro
      * depois de uma correção retroativa em recebíveis, estoque ou curva de PU.
+     * As marcas da competência fechada chegam a quem lê: desatualizada (pelo
+     * Quadro de Vendas ou pelo saldo devedor), posição parcial confirmada no
+     * fechamento e origem do quadro não registrada.
      *
      * Snapshot aberto não é consolidado: é uma apuração intermediária, em geral
      * gravada antes de o Quadro de Vendas do mês existir. Usá-lo congelaria no
      * relatório um estoque que a própria seção de unidades já não mostra — por
-     * isso, sem fechamento, vale a apuração ao vivo, rotulada como tal.
+     * isso, sem fechamento, vale a apuração ao vivo, rotulada como preliminar.
+     *
+     * Emissão sem garantia cadastrada diz isso, em vez de uma tabela de zeros.
      *
      * @return array<string, mixed>
      */
@@ -103,10 +115,16 @@ class EmissionMonthlyReportService
         $position = $this->guaranteeCoverageEngine->buildPosition($emission, $referenceMonth);
 
         return [
+            'has_data' => $position->positions->isNotEmpty(),
+            'empty_message' => self::NO_GUARANTEES,
             'consolidated' => false,
             'closed_at' => null,
+            'outdated' => false,
+            'outdated_reasons' => [],
             'sales_board_outdated' => false,
             'partial_sales_board_position' => $position->hasSalesBoardGaps(),
+            'partial_coverage_confirmed' => false,
+            'sales_board_coverage_unknown' => false,
             'sales_board_gaps' => $position->salesBoardGapDescriptions(),
             'status' => $position->coverageStatus->label(),
             'outstanding_balance' => $this->guaranteeMoney($position->outstandingBalance),
@@ -122,6 +140,7 @@ class EmissionMonthlyReportService
                     'name' => $item->guarantee->display_name,
                     'type' => GuaranteeType::labelFor($item->guarantee->type),
                     'source' => $item->value->source->label(),
+                    'value_status' => $item->value->status->value,
                     'contracted_value' => $this->guaranteeMoney(
                         $item->guarantee->contracted_value === null ? null : (float) $item->guarantee->contracted_value,
                     ),
@@ -150,10 +169,18 @@ class EmissionMonthlyReportService
         $salesBoardCoverage = $snapshot->salesBoardCoverage();
 
         return [
+            // Sem posição gravada por garantia, o fechamento ainda tem os totais
+            // da competência a mostrar quando contou alguma garantia.
+            'has_data' => $positions->isNotEmpty() || ((int) $snapshot->active_guarantees_count > 0),
+            'empty_message' => self::NO_GUARANTEES,
             'consolidated' => true,
             'closed_at' => $snapshot->closed_at === null ? null : BusinessTime::at($snapshot->closed_at)->format('d/m/Y H:i'),
+            'outdated' => $snapshot->isOutdated(),
+            'outdated_reasons' => $snapshot->outdatedReasons(),
             'sales_board_outdated' => $snapshot->isSalesBoardOutdated(),
             'partial_sales_board_position' => $salesBoardCoverage?->hasGaps() ?? false,
+            'partial_coverage_confirmed' => $snapshot->hasPartialCoverageConfirmation(),
+            'sales_board_coverage_unknown' => $snapshot->hasUnrecordedSalesBoardCoverage(),
             'sales_board_gaps' => $salesBoardCoverage?->gapDescriptions() ?? [],
             'status' => $snapshot->coverage_status?->label() ?? self::NOT_CONSOLIDATED,
             'outstanding_balance' => $this->guaranteeMoney($this->toFloat($snapshot->outstanding_balance)),
@@ -169,6 +196,7 @@ class EmissionMonthlyReportService
                     'name' => $item->guarantee?->display_name ?? '—',
                     'type' => GuaranteeType::labelFor($item->guarantee?->type),
                     'source' => $item->value_source?->label() ?? '—',
+                    'value_status' => $item->value_status?->value,
                     'contracted_value' => $this->guaranteeMoney(
                         $item->guarantee?->contracted_value === null ? null : (float) $item->guarantee->contracted_value,
                     ),
@@ -275,7 +303,7 @@ class EmissionMonthlyReportService
             'meta' => [
                 'reference_label' => $this->monthLabel($monthStart),
                 'reference_month' => $monthStart->format('m/Y'),
-                'generated_at' => CarbonImmutable::now()->format('d/m/Y H:i'),
+                'generated_at' => $this->generatedAt(),
             ],
             'header' => $this->buildHeader($emission, $monthStart, $monthEnd),
             'characteristics' => $this->buildCharacteristics($emission),
@@ -289,10 +317,7 @@ class EmissionMonthlyReportService
             'expenses_history' => $this->buildExpensesHistory($emission, $monthEnd),
             'delinquency' => $this->buildDelinquency($receivable),
             'receivables' => $this->buildReceivablesSummary($receivable),
-            'units' => $this->buildUnits(
-                $salesPositions->get($monthStart->format('Y-m')),
-                $emission->automationCovers($monthStart),
-            ),
+            'units' => $this->buildUnits($emission, $salesPositions->get($monthStart->format('Y-m'))),
             'units_history' => $this->buildUnitsHistory($unitsHistoryCompetences, $salesPositions),
             'negotiations' => $negotiationsData,
             'negotiations_history' => $this->buildNegotiationsHistory($emission, $monthEnd),
@@ -302,6 +327,15 @@ class EmissionMonthlyReportService
             'construction_history' => $this->buildConstructionHistory($emission, $monthStart, $constructions),
             'notes' => $this->buildNotes($emission, $monthStart, $monthEnd),
         ];
+    }
+
+    /**
+     * O instante da geração, no horário de Brasília: o rodapé é lido por quem
+     * recebe o PDF, e o relógio da aplicação está em UTC.
+     */
+    private function generatedAt(): string
+    {
+        return BusinessTime::at(CarbonImmutable::now())->format('d/m/Y H:i');
     }
 
     public function fileName(Emission $emission, CarbonInterface $referenceMonth): string
@@ -352,7 +386,7 @@ class EmissionMonthlyReportService
         return [
             'meta' => [
                 'period_label' => $this->monthLabel($start).' a '.$this->monthLabel($last),
-                'generated_at' => CarbonImmutable::now()->format('d/m/Y H:i'),
+                'generated_at' => $this->generatedAt(),
             ],
             'emission' => [
                 'name' => $header['name'] ?? self::NOT_INFORMED,
@@ -678,7 +712,7 @@ class EmissionMonthlyReportService
      *
      * @return array<string, mixed>
      */
-    private function buildUnits(?EmissionSalesPosition $position, bool $automationCoversMonth): array
+    private function buildUnits(Emission $emission, ?EmissionSalesPosition $position): array
     {
         if ($position === null || ! $position->hasData()) {
             return ['has_data' => false, 'empty_message' => self::NO_DATA];
@@ -695,7 +729,10 @@ class EmissionMonthlyReportService
             ],
             'composition' => $this->unitsComposition($position),
             'coverage' => $position->coverage(),
-            'coverage_summary' => $this->unitsCoverageSummary($position, $automationCoversMonth),
+            'coverage_summary' => $this->unitsCoverageSummary(
+                $position,
+                $this->publicationGapClassifier->classify($emission, $position),
+            ),
         ];
     }
 
@@ -705,19 +742,25 @@ class EmissionMonthlyReportService
      * O painel soma os empreendimentos com a última posição conhecida de cada
      * um. Sem esta legenda, uma soma parcial (empreendimento sem quadro) ou
      * transportada (quadro de competência anterior) sai no relatório como se
-     * fosse a posição completa da competência. Na competência coberta pela
-     * automação, a posição incompleta é a que ainda aguarda publicação.
+     * fosse a posição completa da competência.
+     *
+     * Quando o motivo é o ciclo mensal, ele vem nomeado
+     * ({@see SalesBoardPublicationGapClassifier}): a competência produzida pela
+     * automação que ainda aguarda publicação, e a que a Gestão cancelou --
+     * esta sem o motivo, que é interno, porque o relatório vai para fora.
      *
      * @return array{
      *     label: string,
      *     complete: bool,
      *     awaiting_publication: bool,
+     *     awaiting: list<string>,
+     *     cancelled: list<string>,
      *     constructions: list<array{name: string, month: string, status: string}>,
      *     carried_forward: list<array{name: string, month: string}>,
      *     missing: list<string>
      * }
      */
-    private function unitsCoverageSummary(EmissionSalesPosition $position, bool $automationCoversMonth): array
+    private function unitsCoverageSummary(EmissionSalesPosition $position, SalesBoardPublicationGaps $gaps): array
     {
         $complete = $position->isFullyCovered() && ! $position->hasCarryForward();
         $name = fn (ConstructionSalesPosition $construction): string => filled($construction->constructionName)
@@ -732,7 +775,12 @@ class EmissionMonthlyReportService
                 $position->constructionsExpected === 1 ? 'empreendimento' : 'empreendimentos',
             ),
             'complete' => $complete,
-            'awaiting_publication' => $automationCoversMonth && ! $complete,
+            'awaiting_publication' => $gaps->awaitingPublication !== [],
+            'awaiting' => array_map($name, $gaps->awaitingPublication),
+            'cancelled' => array_map(
+                fn (array $cancelled): string => $name($cancelled['position']),
+                $gaps->cancelled,
+            ),
             'constructions' => array_map(
                 fn (ConstructionSalesPosition $construction): array => [
                     'name' => $name($construction),
@@ -782,12 +830,23 @@ class EmissionMonthlyReportService
     }
 
     /**
-     * Negociações do mês derivadas automaticamente dos contratos.
+     * Negociações do mês, no modo de contratos.
      *
-     * Fonte única: contracts.sale_date e contracts.cancellation_date.
-     * Venda = sale_date dentro do mês; Distrato = cancellation_date dentro do mês.
-     * Escopo estrito à emissão via construction -> emission.
-     * A fonte (contratos vs legado) é explícita via Emission::usesContractNegotiations().
+     * Por empreendimento, a fonte é a competência: com o Quadro publicado,
+     * valem os movimentos congelados da publicação vigente -- vendas, distratos
+     * e quitações, com os fatos de competências anteriores rotulados e a
+     * revisão de venda publicada à parte, fora da contagem --; sem publicação,
+     * os contratos (`sale_date` e `cancellation_date` dentro do mês), sem o que
+     * já foi publicado em outra competência: prévia sujeita a alteração quando
+     * a competência é da automação e ainda vai ser publicada, e só "contratos"
+     * no Quadro legado, que nunca terá publicação ({@see CompetenceNegotiationEvents}).
+     * A competência cancelada cujos fatos a seguinte publicou aponta essa
+     * competência. O contrato de permuta não é venda nem distrato, como no
+     * Quadro. Escopo estrito à emissão via construction -> emission. A fonte
+     * (contratos vs legado) é explícita via Emission::usesContractNegotiations().
+     *
+     * As colunas "Competência do fato" e "Situação" só fazem sentido quando há
+     * publicação ou prévia; no Quadro legado o bloco sai como sempre saiu.
      *
      * @return array<string, mixed>
      */
@@ -795,17 +854,31 @@ class EmissionMonthlyReportService
     {
         // Explicit source-of-truth: no partial-data inference via exists()
         if ($emission->usesContractNegotiations()) {
-            $events = $this->contractNegotiationEvents->forMonth($emission, $monthStart, $monthEnd);
+            $events = $this->competenceNegotiationEvents->forMonth($emission, $monthStart, $monthEnd);
 
             $sales = $events['sales'];
+            $lateSales = $events['late_sales'];
             $cancellations = $events['cancellations'];
+            $lateCancellations = $events['late_cancellations'];
+            $settlements = $events['settlements'];
+            $revisions = $events['revisions'];
+            $anyPublished = in_array(CompetenceNegotiationEvents::SOURCE_PUBLISHED, $events['sources'], true);
+            $withSituation = array_intersect($events['sources'], [
+                CompetenceNegotiationEvents::SOURCE_PUBLISHED,
+                CompetenceNegotiationEvents::SOURCE_PREVIEW,
+                CompetenceNegotiationEvents::SOURCE_ABSORBED,
+            ]) !== [];
+            $note = $this->negotiationsNote($events['sources'], $events['absorbed']);
 
-            $hasData = $sales->isNotEmpty() || $cancellations->isNotEmpty();
+            $hasData = $sales->isNotEmpty() || $lateSales->isNotEmpty() || $cancellations->isNotEmpty()
+                || $lateCancellations->isNotEmpty() || $settlements->isNotEmpty() || $revisions->isNotEmpty();
 
             if (! $hasData) {
                 return [
                     'has_data' => false,
-                    'empty_message' => 'Não houve negociações no período.',
+                    'empty_message' => $events['absorbed'] === []
+                        ? 'Não houve negociações no período.'
+                        : 'Nenhuma negociação a listar nesta competência.',
                     'rows' => [],
                     'sales_count' => 0,
                     'cancellations_count' => 0,
@@ -814,26 +887,57 @@ class EmissionMonthlyReportService
                     'transactions' => [],
                     'vendas' => [],
                     'distratos' => [],
+                    'quitacoes' => [],
+                    'revisoes' => [],
+                    'late' => ['sales' => 0, 'cancellations' => 0],
+                    'sources' => $events['sources'],
+                    'absorbed' => $events['absorbed'],
+                    'with_situation' => $withSituation,
                     'source' => 'contracts',
+                    'note' => $note,
                 ];
             }
+
+            $allSales = $sales->merge($lateSales)->sortBy(fn (array $row): string => (string) ($row['date']?->format('Y-m-d') ?? '9999'))->values();
+            $allCancellations = $cancellations->merge($lateCancellations)->sortBy(fn (array $row): string => (string) ($row['date']?->format('Y-m-d') ?? '9999'))->values();
+
+            $rows = [['label' => 'Vendas (mês)', 'value' => $this->integer($sales->count())]];
+
+            if ($anyPublished) {
+                $rows[] = ['label' => 'Vendas de competências anteriores', 'value' => $this->integer($lateSales->count())];
+            }
+
+            $rows[] = ['label' => 'Distratos (mês)', 'value' => $this->integer($cancellations->count())];
+
+            if ($anyPublished) {
+                $rows[] = ['label' => 'Distratos de competências anteriores', 'value' => $this->integer($lateCancellations->count())];
+                $rows[] = ['label' => 'Quitações (mês)', 'value' => $this->integer($settlements->count())];
+            }
+
+            $rows[] = [
+                'label' => 'Saldo líquido de unidades',
+                'value' => $this->integer(($sales->count() + $lateSales->count()) - ($cancellations->count() + $lateCancellations->count())),
+            ];
 
             return [
                 'has_data' => true,
                 'empty_message' => '',
-                'rows' => [
-                    ['label' => 'Vendas (mês)', 'value' => $this->integer($sales->count())],
-                    ['label' => 'Distratos (mês)', 'value' => $this->integer($cancellations->count())],
-                    ['label' => 'Saldo líquido de unidades', 'value' => $this->integer($sales->count() - $cancellations->count())],
-                ],
+                'rows' => $rows,
                 'sales_count' => $sales->count(),
                 'cancellations_count' => $cancellations->count(),
-                'sales' => $sales->all(),
-                'cancellations' => $cancellations->all(),
-                'vendas' => $sales->all(),
-                'distratos' => $cancellations->all(),
-                'transactions' => collect($sales->all())->merge(collect($cancellations->all()))->sortBy('date')->values()->all(),
+                'sales' => $allSales->all(),
+                'cancellations' => $allCancellations->all(),
+                'vendas' => $allSales->all(),
+                'distratos' => $allCancellations->all(),
+                'quitacoes' => $settlements->all(),
+                'revisoes' => $revisions->all(),
+                'late' => ['sales' => $lateSales->count(), 'cancellations' => $lateCancellations->count()],
+                'transactions' => $allSales->merge($allCancellations)->sortBy(fn (array $row): string => (string) ($row['date']?->format('Y-m-d') ?? '9999'))->values()->all(),
+                'sources' => $events['sources'],
+                'absorbed' => $events['absorbed'],
+                'with_situation' => $withSituation,
                 'source' => 'contracts',
+                'note' => $note,
             ];
         }
 
@@ -841,6 +945,69 @@ class EmissionMonthlyReportService
         $negotiation = $this->latestNegotiation($emission, $monthStart, $monthEnd);
 
         return array_merge($this->buildNegotiationsFromManual($negotiation), ['source' => 'legacy']);
+    }
+
+    /**
+     * A nota do bloco de negociações: o que é posição publicada, o que é
+     * prévia lida dos contratos, o que vem dos contratos de uma competência
+     * sem ciclo mensal (Quadro legado) e para onde foram os fatos de uma
+     * competência cancelada pela Gestão.
+     *
+     * "Prévia" só para a competência que a automação ainda vai publicar: a do
+     * Quadro legado nunca terá publicação, e chamá-la de prévia prometeria ao
+     * investidor uma versão definitiva que não vem. Texto externo, sem
+     * instrução interna.
+     *
+     * @param  array<string, string>  $sources  empreendimento => fonte
+     * @param  array<string, string>  $absorbed  empreendimento => competência que publicou os fatos (`m/Y`)
+     */
+    private function negotiationsNote(array $sources, array $absorbed): string
+    {
+        $has = static fn (string $source): bool => in_array($source, $sources, true);
+
+        $note = match (true) {
+            $has(CompetenceNegotiationEvents::SOURCE_PUBLISHED) && $has(CompetenceNegotiationEvents::SOURCE_PREVIEW) => 'Empreendimentos com o Quadro de Vendas publicado: movimentos da posição publicada, inclusive os fatos de competências anteriores publicados no mês. Demais empreendimentos: prévia sujeita a alteração, lida dos contratos (Data da Venda e Data do Distrato dentro da competência).',
+            $has(CompetenceNegotiationEvents::SOURCE_PUBLISHED) && $has(CompetenceNegotiationEvents::SOURCE_CONTRACTS) => 'Empreendimentos com o Quadro de Vendas publicado: movimentos da posição publicada, inclusive os fatos de competências anteriores publicados no mês. Demais empreendimentos: contratos da emissão (Data da Venda e Data do Distrato dentro da competência).',
+            $has(CompetenceNegotiationEvents::SOURCE_PUBLISHED) => 'Fonte: movimentos da posição publicada no Quadro de Vendas, inclusive os fatos de competências anteriores publicados no mês. Revisões de venda já publicada aparecem à parte e não contam como venda.',
+            $has(CompetenceNegotiationEvents::SOURCE_PREVIEW) => 'Fonte: contratos da emissão — Data da Venda e Data do Distrato dentro da competência. Prévia sujeita a alteração: a competência ainda não tem Quadro de Vendas publicado.',
+            $has(CompetenceNegotiationEvents::SOURCE_ABSORBED) => '',
+            default => 'Fonte: contratos da emissão — Data da Venda e Data do Distrato dentro da competência.',
+        };
+
+        if ($absorbed === []) {
+            return $note;
+        }
+
+        $byCompetence = collect($absorbed)
+            ->groupBy(fn (string $competence): string => $competence, preserveKeys: true)
+            ->map(fn (Collection $group, string $competence): string => count($sources) === 1
+                ? $competence
+                : sprintf('%s (%s)', $competence, $group->keys()->implode(', ')))
+            ->values()
+            ->all();
+
+        $absorbedNote = sprintf(
+            'Competência cancelada pela Gestão: os fatos deste mês foram publicados em %s, como fatos de competência sem posição. Os lançados depois dessa publicação aparecem aqui como prévia sujeita a alteração.',
+            self::humanList($byCompetence),
+        );
+
+        return trim($note.' '.$absorbedNote);
+    }
+
+    /**
+     * "a", "a e b", "a, b e c".
+     *
+     * @param  list<string>  $items
+     */
+    private static function humanList(array $items): string
+    {
+        if (count($items) <= 1) {
+            return (string) ($items[0] ?? '');
+        }
+
+        $last = array_pop($items);
+
+        return implode(', ', $items).' e '.$last;
     }
 
     /**
@@ -1140,54 +1307,27 @@ class EmissionMonthlyReportService
         // Explicit source-of-truth: contracts only when emission is migrated
         $usesContracts = $emission->usesContractNegotiations();
 
+        /**
+         * Cada competência conta pela fonte dela: a publicada pelos movimentos
+         * congelados da publicação vigente -- os fatos de competências
+         * anteriores contam na competência em que foram publicados --, a não
+         * publicada pelos contratos, sem os de permuta.
+         */
         if ($usesContracts) {
-            $start = $monthEnd->copy()->subMonthsNoOverflow($limit - 1)->startOfMonth();
-            $end = $monthEnd->copy()->endOfMonth();
+            $allRows = $this->competenceNegotiationEvents->historyCounts($emission, $monthEnd, $limit);
 
-            $contracts = Contract::query()
-                ->forEmission($emission->id)
-                ->where(function ($query) use ($start, $end): void {
-                    $query->where(function ($q) use ($start, $end): void {
-                        $q->whereDate('sale_date', '>=', $start->toDateString())
-                            ->whereDate('sale_date', '<=', $end->toDateString());
-                    })->orWhere(function ($q) use ($start, $end): void {
-                        $q->whereDate('cancellation_date', '>=', $start->toDateString())
-                            ->whereDate('cancellation_date', '<=', $end->toDateString());
-                    });
-                })
-                ->get(['sale_date', 'cancellation_date']);
-
-            $months = collect();
-            $cursor = $start->copy();
-            while ($cursor->lte($monthEnd)) {
-                $months->push($cursor->format('Y-m'));
-                $cursor = $cursor->addMonthNoOverflow();
-            }
-
-            $allRows = $months->map(function (string $ym) use ($contracts): array {
-                $sales = $contracts->filter(fn (Contract $c): bool => $c->sale_date?->format('Y-m') === $ym)->count();
-                $cancellations = $contracts->filter(fn (Contract $c): bool => $c->cancellation_date?->format('Y-m') === $ym)->count();
-
-                return [
-                    'competencia' => CarbonImmutable::parse($ym.'-01')->format('m/Y'),
-                    'sales' => $this->integer($sales),
-                    'cancellations' => $this->integer($cancellations),
-                    'net' => $this->integer($sales - $cancellations),
-                    '_has' => $sales > 0 || $cancellations > 0,
-                ];
-            })->all();
-
-            $hasMovementMonths = collect($allRows)->filter(fn (array $row): bool => $row['_has'])->count();
+            $hasMovementMonths = collect($allRows)->filter(fn (array $row): bool => $row['has'])->count();
             $rows = array_map(fn (array $row): array => [
                 'competencia' => $row['competencia'],
-                'sales' => $row['sales'],
-                'cancellations' => $row['cancellations'],
-                'net' => $row['net'],
+                'sales' => $this->integer($row['sales']),
+                'cancellations' => $this->integer($row['cancellations']),
+                'net' => $this->integer($row['net']),
             ], $allRows);
 
             return [
                 'has_data' => $hasMovementMonths >= 2,
                 'rows' => $rows,
+                'includes_late' => collect($allRows)->contains(fn (array $row): bool => $row['late'] > 0),
             ];
         }
 

@@ -7,7 +7,9 @@ use App\Concerns\MoneyFormatter;
 use App\Enums\ContractInstallmentStatus;
 use App\Filament\Resources\ContractInstallments\ContractInstallmentResource;
 use App\Filament\Resources\ContractInstallments\Schemas\ContractInstallmentForm;
+use App\Filament\Support\GuardsRelationManagerAccess;
 use App\Models\ContractInstallment;
+use App\Support\SalesBoards\SourceEntryCompetenceNotice;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -33,6 +35,7 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
  */
 class ContractInstallmentsRelationManager extends RelationManager
 {
+    use GuardsRelationManagerAccess;
     use ImportsContractInstallments;
 
     protected static string $relationship = 'installments';
@@ -44,6 +47,12 @@ class ContractInstallmentsRelationManager extends RelationManager
     protected static ?string $modelLabel = 'Parcela';
 
     protected static ?string $pluralModelLabel = 'Parcelas';
+
+    /**
+     * O aviso de competência já registrada da edição em curso, apurado contra
+     * a parcela como estava antes de salvar. Vive só durante o salvamento.
+     */
+    private ?string $registeredCompetenceNotice = null;
 
     /**
      * The panel turns relation managers read-only on resource view pages by
@@ -99,6 +108,19 @@ class ContractInstallmentsRelationManager extends RelationManager
                     ->sortable()
                     ->summarize(self::moneySum('paid_value', 'Total recebido')),
 
+                /**
+                 * The discount registered with each receipt. The saldo beside it
+                 * already discounts it -- it comes from the model accessor.
+                 */
+                TextColumn::make('discount_value')
+                    ->label('Desconto')
+                    ->formatStateUsing(fn (mixed $state): string => 'R$ '.MoneyFormatter::formatCurrencyForDisplay($state))
+                    ->placeholder('—')
+                    ->alignEnd()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->summarize(self::moneySum('discount_value', 'Total de descontos')),
+
                 TextColumn::make('outstanding_value')
                     ->label('Saldo')
                     ->state(fn (ContractInstallment $record): float => $record->outstanding_value)
@@ -150,14 +172,25 @@ class ContractInstallmentsRelationManager extends RelationManager
             ->headerActions([
                 $this->installmentTemplateAction(),
 
-                $this->installmentImportAction((int) $this->getOwnerRecord()->getKey())
-                    ->visible(fn (): bool => ContractInstallmentResource::canCreate()),
+                $this->installmentImportAction((int) $this->getOwnerRecord()->getKey()),
 
+                /**
+                 * O pagamento ou o cancelamento com data em competência já
+                 * registrada no Quadro de Vendas: o formulário avisa antes, e a
+                 * notificação persistente repete depois de salvar.
+                 */
                 CreateAction::make()
                     ->label('Nova Parcela')
                     ->icon('heroicon-o-plus')
                     ->modalHeading('Nova Parcela')
-                    ->visible(fn (): bool => ContractInstallmentResource::canCreate()),
+                    ->visible(fn (): bool => ContractInstallmentResource::canCreate())
+                    ->after(function (ContractInstallment $record): void {
+                        SourceEntryCompetenceNotice::notify(SourceEntryCompetenceNotice::forInstallment(
+                            $this->getOwnerRecord()->construction_id,
+                            $record->payment_date,
+                            $record->cancellation_date,
+                        ));
+                    }),
             ])
             ->actions([
                 ActionGroup::make([
@@ -165,7 +198,22 @@ class ContractInstallmentsRelationManager extends RelationManager
                         ->label('Editar')
                         ->icon('heroicon-o-pencil-square')
                         ->modalHeading('Editar Parcela')
-                        ->visible(fn (ContractInstallment $record): bool => ContractInstallmentResource::canEdit($record)),
+                        ->visible(fn (ContractInstallment $record): bool => ContractInstallmentResource::canEdit($record))
+                        ->mutateDataUsing(function (ContractInstallment $record, array $data): array {
+                            $this->registeredCompetenceNotice = SourceEntryCompetenceNotice::forInstallment(
+                                $this->getOwnerRecord()->construction_id,
+                                array_key_exists('payment_date', $data) ? $data['payment_date'] : $record->payment_date,
+                                array_key_exists('cancellation_date', $data) ? $data['cancellation_date'] : $record->cancellation_date,
+                                $record,
+                            );
+
+                            return $data;
+                        })
+                        ->after(function (): void {
+                            SourceEntryCompetenceNotice::notify($this->registeredCompetenceNotice);
+
+                            $this->registeredCompetenceNotice = null;
+                        }),
 
                     DeleteAction::make()
                         ->label('Excluir')

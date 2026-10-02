@@ -1,18 +1,28 @@
 <?php
 
+use App\DTOs\SalesBoards\SalesBoardBuilderDivergenceInput;
+use App\Enums\SalesBoardBuilderDivergenceType;
+use App\Enums\SalesBoardBuilderReviewSection as SectionEnum;
+use App\Enums\SalesBoardBuilderReviewSectionStatus;
 use App\Enums\SalesBoardManagementReviewStatus;
 use App\Enums\SalesBoardNonconformityDecision;
 use App\Enums\SalesBoardNonconformityOrigin;
 use App\Enums\SalesBoardRolloutRecipientRole;
+use App\Enums\SalesBoardUnitClassification;
+use App\Filament\Resources\Activities\ActivityResource;
 use App\Models\Client;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\ConstructionUnitExchange;
+use App\Models\ConstructionUnitRetirement;
 use App\Models\Contract;
 use App\Models\ContractInstallment;
 use App\Models\Emission;
 use App\Models\SalesBoard;
+use App\Models\SalesBoardBuilderDivergence;
 use App\Models\SalesBoardBuilderReview;
+use App\Models\SalesBoardBuilderReviewAttachment;
+use App\Models\SalesBoardBuilderReviewSection;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardHistory;
 use App\Models\SalesBoardManagementNonconformity;
@@ -22,6 +32,7 @@ use App\Models\SalesBoardRolloutHomologation;
 use App\Models\SalesBoardRolloutHomologationConstruction;
 use App\Models\SalesBoardRolloutRecipient;
 use App\Models\User;
+use App\Services\SalesBoards\SalesBoardBuilderReviewEditor;
 use App\Services\SalesBoards\SalesBoardRolloutHomologationService;
 use App\Services\SalesBoards\SalesBoardRolloutRecipientDirectory;
 use Illuminate\Database\Eloquent\Builder;
@@ -31,6 +42,8 @@ use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Permission\Models\Role;
+use Tests\Support\SalesBoards\BuilderReviewFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 use Tests\Support\SalesBoards\RolloutFixture;
 
@@ -112,6 +125,9 @@ it('finds every audited Sales Board model by scanning the models folder', functi
         SalesBoardHistory::class,
         SalesBoardCycle::class,
         SalesBoardBuilderReview::class,
+        SalesBoardBuilderReviewSection::class,
+        SalesBoardBuilderDivergence::class,
+        SalesBoardBuilderReviewAttachment::class,
         SalesBoardManagementReview::class,
         SalesBoardManagementNonconformity::class,
         SalesBoardPublication::class,
@@ -129,6 +145,7 @@ it('files every Sales Board source under its own protected log', function (strin
     'ContractInstallment' => [ContractInstallment::class, 'contract_installments'],
     'ConstructionUnit' => [ConstructionUnit::class, 'construction_units'],
     'ConstructionUnitExchange' => [ConstructionUnitExchange::class, 'construction_unit_exchanges'],
+    'ConstructionUnitRetirement' => [ConstructionUnitRetirement::class, 'construction_unit_retirements'],
     'Construction' => [Construction::class, 'constructions'],
     'Emission' => [Emission::class, 'emissions'],
 ]);
@@ -253,6 +270,80 @@ it('keeps who deleted a legacy board, and the versions the cascade took along, p
         ->and((float) data_get($versions->first()->attribute_changes, 'attributes.stock_value'))->toBe(1000000.0);
 });
 
+// ── Validação da construtora ──────────────────────────────────────────────────
+
+it('keeps who declared and who removed a builder divergence, and what it said, past a year', function () {
+    $scenario = BuilderReviewFixture::generatedCycle();
+    $review = BuilderReviewFixture::open($scenario['cycle']);
+    $operator = GovernanceFixture::operator();
+    $reviewer = BuilderReviewFixture::reviewer($operator);
+    $this->actingAs($operator);
+
+    $divergence = BuilderReviewFixture::declare($review, SectionEnum::PositionFinanced, new SalesBoardBuilderDivergenceInput(
+        type: SalesBoardBuilderDivergenceType::StockMismatch,
+        reason: 'A unidade foi distratada em junho.',
+        lineId: BuilderReviewFixture::lineFor($review, $scenario['units']['financed'])->id,
+        declaredClassification: SalesBoardUnitClassification::Stock,
+    ), $reviewer);
+
+    app(SalesBoardBuilderReviewEditor::class)->removeDivergence($divergence, $reviewer);
+
+    // A remoção é física: a linha some, e o que ela dizia sobrevive só na trilha.
+    expect(SalesBoardBuilderDivergence::query()->whereKey($divergence->id)->exists())->toBeFalse();
+
+    salesBoardAuditPurgeDisposableWindow();
+
+    $trail = salesBoardAuditTrailOf($divergence);
+    $removal = $trail->last();
+
+    expect($trail->pluck('event')->all())->toBe(['created', 'deleted'])
+        ->and($trail->pluck('log_name')->unique()->values()->all())->toBe(['sales_board'])
+        ->and($trail->pluck('causer_id')->unique()->values()->all())->toBe([$operator->id])
+        ->and(data_get($trail->first()->attribute_changes, 'attributes.reason'))->toBe('A unidade foi distratada em junho.')
+        ->and(data_get($removal->attribute_changes, 'old.reason'))->toBe('A unidade foi distratada em junho.')
+        ->and(data_get($removal->attribute_changes, 'old.type'))->toBe(SalesBoardBuilderDivergenceType::StockMismatch->value)
+        ->and(data_get($removal->attribute_changes, 'old.declared_classification'))->toBe(SalesBoardUnitClassification::Stock->value)
+        ->and((int) data_get($removal->attribute_changes, 'old.sales_board_builder_review_id'))->toBe($review->id)
+        ->and((int) data_get($removal->attribute_changes, 'old.sales_board_cycle_line_id'))->toBe($divergence->sales_board_cycle_line_id)
+        ->and($removal->created_at)->not->toBeNull();
+});
+
+it('keeps who confirmed and who reopened a builder review section, past a year', function () {
+    $scenario = BuilderReviewFixture::generatedCycle();
+    $review = BuilderReviewFixture::open($scenario['cycle']);
+    $operator = GovernanceFixture::operator();
+    $reviewer = BuilderReviewFixture::reviewer($operator);
+    $this->actingAs($operator);
+
+    $section = BuilderReviewFixture::section($review, SectionEnum::PositionStock);
+    $editor = app(SalesBoardBuilderReviewEditor::class);
+
+    $editor->confirmSection($section, $reviewer, 'Estoque confere com o controle da construtora.');
+    $editor->reopenSection($section->fresh(), $reviewer);
+
+    salesBoardAuditPurgeDisposableWindow();
+
+    $trail = salesBoardAuditTrailOf($section);
+
+    // A criação das sete seções não entra: elas nascem com a abertura da
+    // validação, que já fica na trilha da própria validação.
+    expect($trail->pluck('event')->all())->toBe(['updated', 'updated'])
+        ->and($trail->pluck('log_name')->unique()->values()->all())->toBe(['sales_board'])
+        ->and($trail->pluck('causer_id')->unique()->values()->all())->toBe([$operator->id])
+        ->and(data_get($trail->first()->attribute_changes, 'old.status'))->toBe(SalesBoardBuilderReviewSectionStatus::Pending->value)
+        ->and(data_get($trail->first()->attribute_changes, 'attributes.status'))->toBe(SalesBoardBuilderReviewSectionStatus::Confirmed->value)
+        ->and(data_get($trail->first()->attribute_changes, 'attributes.comment'))->toBe('Estoque confere com o controle da construtora.')
+        ->and(data_get($trail->first()->attribute_changes, 'attributes.confirmed_at'))->not->toBeNull()
+        ->and(data_get($trail->last()->attribute_changes, 'old.status'))->toBe(SalesBoardBuilderReviewSectionStatus::Confirmed->value)
+        ->and(data_get($trail->last()->attribute_changes, 'attributes.status'))->toBe(SalesBoardBuilderReviewSectionStatus::Pending->value)
+        ->and(data_get($trail->last()->attribute_changes, 'attributes.confirmed_at'))->toBeNull();
+});
+
+it('names the builder review sections and divergences in Portuguese on the audit screen', function () {
+    expect(ActivityResource::friendlySubjectType(SalesBoardBuilderReviewSection::class))->toBe('Seção da Validação da Construtora')
+        ->and(ActivityResource::friendlySubjectType(SalesBoardBuilderDivergence::class))->toBe('Divergência da Validação da Construtora');
+});
+
 // ── Rollout ───────────────────────────────────────────────────────────────────
 
 it('keeps who attested the impacts and who rejected a rollout homologation, and why', function () {
@@ -302,7 +393,7 @@ it('keeps an accepted difference that a reassessment discarded', function () {
         'block' => '01', 'unit' => '888',
         'base_value' => '400000.00', 'base_value_reference_date' => '2026-01-01',
     ]);
-    $service->reassess($homologation);
+    $service->reassess($homologation, $operator);
 
     expect($row->fresh()->accepted_difference)->toBeFalse()
         ->and($row->fresh()->difference_reason)->toBeNull();
@@ -341,7 +432,7 @@ it('keeps an accepted difference whose construction left the Emission', function
         ->where('id', $scenario['constructions'][0]->id)
         ->update(['emission_id' => Emission::factory()->create(['status' => 'active'])->id]);
 
-    $service->reassess($homologation);
+    $service->reassess($homologation, $operator);
 
     expect($row->fresh())->toBeNull();
 
@@ -368,7 +459,7 @@ it('records who added and who removed a rollout recipient', function () {
     $directory = app(SalesBoardRolloutRecipientDirectory::class);
 
     $recipient = $directory->add($scenario['emission'], SalesBoardRolloutRecipientRole::Management, $recipientUser, $operator);
-    $directory->remove($recipient);
+    $directory->remove($recipient, $operator);
 
     salesBoardAuditPurgeDisposableWindow();
 
@@ -417,12 +508,14 @@ it('leaves no Sales Board source trail in the disposable bucket', function () {
     $contract = Contract::factory()->forUnit($unit)->create();
     ContractInstallment::factory()->for($contract)->create();
     ConstructionUnitExchange::factory()->forUnit(ConstructionUnit::factory()->create(['construction_id' => $construction->getKey()]))->create();
+    ConstructionUnitRetirement::factory()->forUnit(ConstructionUnit::factory()->create(['construction_id' => $construction->getKey()]))->create();
 
     $sources = [
         Emission::class => 'emissions',
         Construction::class => 'constructions',
         ConstructionUnit::class => 'construction_units',
         ConstructionUnitExchange::class => 'construction_unit_exchanges',
+        ConstructionUnitRetirement::class => 'construction_unit_retirements',
         Contract::class => 'contracts',
         ContractInstallment::class => 'contract_installments',
     ];

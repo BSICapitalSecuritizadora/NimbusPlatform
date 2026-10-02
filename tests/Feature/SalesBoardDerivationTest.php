@@ -6,10 +6,12 @@ use App\Enums\ResolvedUnitValueSource;
 use App\Enums\SalesBoardIssueCode;
 use App\Enums\SalesBoardUnitClassification;
 use App\Enums\SalesPriceConformityStatus;
+use App\Models\ConstructionUnitExchange;
 use App\Models\ConstructionUnitValue;
 use App\Models\SalesDiscountPolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\Support\SalesBoards\DerivationFixture;
 
 uses(RefreshDatabase::class);
@@ -362,4 +364,117 @@ it('reads "future" in the business calendar, not in UTC', function () {
     $position = DerivationFixture::derive($construction, '2026-08-01');
 
     expect(DerivationFixture::issueCodes($position))->toContain(SalesBoardIssueCode::FutureSaleDate->value);
+});
+
+describe('regras de apuração', function () {
+    it('settles a contract paid with a registered discount and reports the settlement of the month', function () {
+        $construction = DerivationFixture::activeConstruction();
+        $unit = DerivationFixture::unit($construction, '101');
+        $contract = DerivationFixture::contract($unit, '2026-01-10', '600000.00');
+        DerivationFixture::installment($contract, '001', '2026-02-10', '300000.00', '2026-02-10', '300000.00');
+        DerivationFixture::installment($contract, '002', '2026-07-15', '300000.00', '2026-07-15', '297000.00')
+            ->forceFill(['discount_value' => '3000.00'])
+            ->save();
+
+        $position = DerivationFixture::derive($construction);
+        $line = DerivationFixture::lineFor($position, $unit);
+
+        expect($line->classification)->toBe(SalesBoardUnitClassification::Settled)
+            ->and($line->settlementInstallmentsPaid)->toBe(2)
+            ->and($position->movements->settlementsCount())->toBe(1)
+            ->and($position->movements->settlements[0]->contractId)->toBe($contract->id)
+            ->and(DerivationFixture::issueCodes($position))->not->toContain(SalesBoardIssueCode::UnderpaidInstallments->value);
+    });
+
+    it('warns without blocking when underpaid installments are all that keep a contract financed', function () {
+        $construction = DerivationFixture::activeConstruction();
+        $unit = DerivationFixture::unit($construction, '101');
+        $contract = DerivationFixture::contract($unit, '2026-01-10', '600000.00');
+        DerivationFixture::installment($contract, '001', '2026-02-10', '300000.00', '2026-02-10', '300000.00');
+        DerivationFixture::installment($contract, '002', '2026-03-10', '300000.00', '2026-03-10', '297000.00');
+
+        $position = DerivationFixture::derive($construction);
+        $warning = collect($position->issues)->firstWhere('code', SalesBoardIssueCode::UnderpaidInstallments);
+
+        expect(DerivationFixture::lineFor($position, $unit)->classification)->toBe(SalesBoardUnitClassification::Financed)
+            ->and($warning)->not->toBeNull()
+            ->and($warning->isBlocker())->toBeFalse()
+            ->and($warning->contractId)->toBe($contract->id)
+            ->and($warning->message)->toContain('1 parcela(s) paga(s) abaixo do previsto')
+            ->and($warning->message)->toContain('R$ 3.000,00')
+            ->and($position->isComplete())->toBeTrue();
+
+        // O par: com outra parcela ainda sem pagamento, o contrato está em aberto
+        // por outro motivo, e o aviso seria ruído.
+        DerivationFixture::installment($contract, '003', '2026-12-10', '300000.00');
+
+        expect(DerivationFixture::issueCodes(DerivationFixture::derive($construction)))
+            ->not->toContain(SalesBoardIssueCode::UnderpaidInstallments->value);
+    });
+
+    it('blocks a contract marked as distratado without the distrato date', function () {
+        $construction = DerivationFixture::activeConstruction();
+        $unit = DerivationFixture::unit($construction, '101');
+        $contract = DerivationFixture::contract($unit, '2026-01-10', '600000.00');
+        DerivationFixture::installment($contract, '001', '2026-12-10', '600000.00');
+
+        // Dado legado: o model e a importação exigem a data, a linha antiga não.
+        DB::table('contracts')->where('id', $contract->id)->update(['status' => ContractStatus::Cancelled->value, 'cancellation_date' => null]);
+
+        $position = DerivationFixture::derive($construction);
+        $line = DerivationFixture::lineFor($position, $unit);
+        $issue = collect($position->issues)->firstWhere('code', SalesBoardIssueCode::CancelledContractWithoutDate);
+
+        expect($line->classification)->toBe(SalesBoardUnitClassification::Undetermined)
+            ->and($line->contractId)->toBe($contract->id)
+            ->and($issue->message)->toBe(sprintf('O contrato %s está distratado, mas não tem a data do distrato: o Quadro não sabe desde quando a unidade está livre.', $contract->code))
+            ->and($issue->isBlocker())->toBeTrue()
+            ->and($position->isComplete())->toBeFalse();
+    });
+
+    it('treats a zero exchange value as missing', function (string $kind) {
+        $construction = DerivationFixture::activeConstruction();
+        $zero = DerivationFixture::unit($construction, '101');
+        $valued = DerivationFixture::unit($construction, '102');
+
+        $factory = $kind === 'extraordinária'
+            ? ConstructionUnitExchange::factory()->extraordinary()
+            : ConstructionUnitExchange::factory();
+
+        $factory->forUnit($zero)->effectiveFrom('2026-02-01')->worth('0.00')->create();
+        $factory->forUnit($valued)->effectiveFrom('2026-02-01')->worth('450000.00')->create();
+
+        $position = DerivationFixture::derive($construction);
+        $issues = collect($position->issues)->where('code', SalesBoardIssueCode::ExchangeValueMissing);
+
+        expect(DerivationFixture::lineFor($position, $zero)->classification)->toBe(SalesBoardUnitClassification::Exchanged)
+            ->and(DerivationFixture::lineFor($position, $zero)->exchangeValueCents)->toBeNull()
+            ->and(DerivationFixture::lineFor($position, $valued)->exchangeValueCents)->toBe(45_000_000)
+            ->and($issues)->toHaveCount(1)
+            ->and($issues->first()->constructionUnitId)->toBe($zero->id)
+            ->and($position->exchangedUnits)->toBe(2)
+            ->and($position->exchangedValueCents)->toBeNull()
+            ->and($position->isComplete())->toBeFalse();
+    })->with(['inicial', 'extraordinária']);
+
+    it('warns about a payment dated after today, reading today in the business calendar', function () {
+        // 01:00 UTC do dia 26 ainda é dia 25 em São Paulo.
+        $this->travelTo(CarbonImmutable::parse('2026-09-26 01:00:00', 'UTC'));
+
+        $construction = DerivationFixture::activeConstruction();
+        $future = DerivationFixture::contract(DerivationFixture::unit($construction, '101'), '2026-01-10', '600000.00');
+        DerivationFixture::installment($future, '001', '2026-09-26', '600000.00', '2026-09-26', '600000.00');
+
+        $today = DerivationFixture::contract(DerivationFixture::unit($construction, '102'), '2026-01-10', '600000.00');
+        DerivationFixture::installment($today, '001', '2026-09-25', '600000.00', '2026-09-25', '600000.00');
+
+        $position = DerivationFixture::derive($construction, '2026-08-01');
+        $warnings = collect($position->issues)->where('code', SalesBoardIssueCode::PaymentDateInFuture);
+
+        expect($warnings)->toHaveCount(1)
+            ->and($warnings->first()->contractId)->toBe($future->id)
+            ->and($warnings->first()->message)->toContain('26/09/2026')
+            ->and($warnings->first()->isBlocker())->toBeFalse()
+            ->and($position->hasBlockingIssue())->toBeFalse();
+    });
 });

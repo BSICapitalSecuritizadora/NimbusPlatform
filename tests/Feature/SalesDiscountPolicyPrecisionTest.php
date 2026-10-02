@@ -47,7 +47,7 @@ function precisionTestRegister(Construction $construction, mixed $percent): Sale
             'reason' => 'Aprovação comercial',
         ],
         null,
-        null,
+        auth()->user(),
     );
 }
 

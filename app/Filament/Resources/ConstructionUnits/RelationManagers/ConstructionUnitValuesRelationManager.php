@@ -5,10 +5,13 @@ namespace App\Filament\Resources\ConstructionUnits\RelationManagers;
 use App\Concerns\MoneyFormatter;
 use App\Enums\UnitValueSource;
 use App\Filament\Resources\ConstructionUnits\Pages\ViewConstructionUnit;
+use App\Filament\Support\GuardsRelationManagerAccess;
 use App\Models\ConstructionUnit;
 use App\Models\ConstructionUnitValue;
+use App\Support\BusinessTime;
 use App\Support\Dates\InclusiveDateBound;
 use App\Support\Money\IntegerMoney;
+use App\Support\SalesBoards\SourceEntryCompetenceNotice;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -17,6 +20,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Callout;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
 use Filament\Tables\Columns\TextColumn;
@@ -32,6 +37,8 @@ use Filament\Tables\Table;
  */
 class ConstructionUnitValuesRelationManager extends RelationManager
 {
+    use GuardsRelationManagerAccess;
+
     protected static string $relationship = 'valueHistories';
 
     protected static ?string $title = 'Histórico de Valores';
@@ -105,7 +112,7 @@ class ConstructionUnitValuesRelationManager extends RelationManager
 
                 TextColumn::make('created_at')
                     ->label('Registrado em')
-                    ->dateTime('d/m/Y H:i')
+                    ->dateTime('d/m/Y H:i', BusinessTime::timezone())
                     ->sortable()
                     ->toggleable(),
             ])
@@ -128,7 +135,7 @@ class ConstructionUnitValuesRelationManager extends RelationManager
                             ->state($record->createdBy?->name ?? 'Não identificado'),
                         TextEntry::make('registered_at')
                             ->label('Data do registro')
-                            ->state($record->created_at?->format('d/m/Y H:i') ?? '—'),
+                            ->state($record->created_at === null ? '—' : BusinessTime::at($record->created_at)->format('d/m/Y H:i')),
                         TextEntry::make('effective_from')
                             ->label('Vigência')
                             ->state($record->effective_from?->format('d/m/Y') ?? '—'),
@@ -191,10 +198,22 @@ class ConstructionUnitValuesRelationManager extends RelationManager
                     ->native(false)
                     ->displayFormat('d/m/Y')
                     ->default(now())
+                    ->live(onBlur: true)
                     ->helperText('Data a partir da qual o novo valor passa a valer. Datas futuras são permitidas e não afetam consultas anteriores.')
                     ->validationMessages([
                         'required' => 'Informe a vigência do novo valor.',
                     ]),
+
+                /**
+                 * A vigência em competência já registrada no Quadro de Vendas:
+                 * a posição registrada não muda, e o valor novo entra na próxima
+                 * competência. Só avisa.
+                 */
+                Callout::make('Vigência em competência já registrada')
+                    ->warning()
+                    ->description(fn (Get $get): ?string => $this->registeredCompetenceNotice($get('effective_from')))
+                    ->visible(fn (Get $get): bool => $this->registeredCompetenceNotice($get('effective_from')) !== null)
+                    ->columnSpanFull(),
 
                 Textarea::make('reason')
                     ->label('Motivo')
@@ -228,7 +247,21 @@ class ConstructionUnitValuesRelationManager extends RelationManager
                         CarbonImmutable::parse($data['effective_from'])->format('d/m/Y'),
                     ))
                     ->send();
+
+                SourceEntryCompetenceNotice::notify($this->registeredCompetenceNotice($data['effective_from']));
             });
+    }
+
+    /**
+     * O aviso da vigência em competência já registrada, para o empreendimento
+     * da unidade.
+     */
+    protected function registeredCompetenceNotice(mixed $effectiveFrom): ?string
+    {
+        /** @var ConstructionUnit $unit */
+        $unit = $this->getOwnerRecord();
+
+        return SourceEntryCompetenceNotice::forUnitValue($unit->construction_id, $effectiveFrom);
     }
 
     private static function normalizeValue(mixed $state): ?string

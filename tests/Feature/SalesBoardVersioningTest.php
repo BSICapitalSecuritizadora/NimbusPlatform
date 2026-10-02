@@ -105,10 +105,13 @@ it('scopes the competence rule to each construction of the operation', function 
         'construction_id' => $constructionA->id,
         'reference_month' => '2026-08-01',
     ]);
+    // A fixed starting stock: the factory draws 0-50, and drawing 5 would turn
+    // the update below into a no-op that never reaches the observer.
     $boardB = SalesBoard::factory()->create([
         'emission_id' => $emission->id,
         'construction_id' => $constructionB->id,
         'reference_month' => '2026-08-01',
+        'stock_units' => 30,
     ]);
 
     $emission->update(['status' => 'active']);

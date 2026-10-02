@@ -27,6 +27,9 @@ use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\SalesBoards\AutomationFixture;
+use Tests\Support\SalesBoards\BuilderReviewFixture;
+use Tests\Support\SalesBoards\CycleFixture;
+use Tests\Support\SalesBoards\ExtemporaneousFixture;
 use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 use Tests\Support\SalesBoards\RolloutFixture;
@@ -107,6 +110,33 @@ it('refuses to cancel an approved competence', function () {
     expect($scenario['cycle']->fresh()->status)->toBe(SalesBoardCycleStatus::Approved);
 });
 
+/**
+ * Publicação, e não status: a competência em retificação voltou a "Gerado",
+ * mas continua com a posição publicada -- não é cancelada, e a tela não oferece
+ * o cancelamento. O caminho de volta é "Desistir da retificação".
+ */
+it('refuses to cancel a competence with a published position, even while it is under rectification', function () {
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    $this->seed(RolesAndPermissionsSeeder::class);
+
+    $scenario = ExtemporaneousFixture::rectifiableJuly();
+    ExtemporaneousFixture::rectify($scenario['july']);
+    $openRound = BuilderReviewFixture::open($scenario['july']->fresh());
+
+    expect(fn () => cancelCompetence($scenario['july']))
+        ->toThrow(SalesBoardCycleCancellationException::class, 'Competência publicada não é cancelada')
+        ->and($scenario['july']->fresh()->status)->toBe(SalesBoardCycleStatus::BuilderReview)
+        ->and($scenario['july']->fresh()->isUnderRectification())->toBeTrue()
+        // Nada foi substituído pela tentativa.
+        ->and($openRound->fresh()->status)->toBe(SalesBoardBuilderReviewStatus::Draft);
+
+    $this->actingAs(makeAdminUser());
+
+    Livewire::test(ViewSalesBoardCycle::class, ['record' => $scenario['july']->getKey()])
+        ->assertActionHidden('cancelCompetence')
+        ->assertActionVisible('abandonRectification');
+});
+
 it('refuses to cancel twice', function () {
     $scenario = ManagementReviewFixture::submittedCycle();
     cancelCompetence($scenario['cycle']);
@@ -134,7 +164,7 @@ it('closes the automation target and the discovery does not reopen it', function
     $scenario = RolloutFixture::emission(1);
     RolloutFixture::legacyBoard($scenario['constructions'][0]);
 
-    $opener = User::factory()->create();
+    $opener = GovernanceFixture::operator();
     $approver = GovernanceFixture::approver();
     $homologation = RolloutFixture::open($scenario['emission'], $opener);
     RolloutFixture::recipients($scenario['emission'], $opener);
@@ -169,6 +199,39 @@ it('closes the automation target and the discovery does not reopen it', function
 
     expect($target->fresh()->status)->toBe(SalesBoardAutomationTargetStatus::Closed)
         ->and(SalesBoardAutomationAttempt::query()->count())->toBe($attempts)
+        ->and(SalesBoardCycle::query()->count())->toBe(1);
+});
+
+it('closes a target discovered after its competence was cancelled before the due date', function () {
+    AutomationFixture::disable();
+    Notification::fake();
+
+    $scenario = RolloutFixture::emission(1);
+    RolloutFixture::legacyBoard($scenario['constructions'][0]);
+    RolloutFixture::activate($scenario['emission'], RolloutFixture::approvedHomologation($scenario['emission'], GovernanceFixture::operator()));
+    RolloutFixture::enableGlobalAutomation();
+
+    // Congelada à mão em 05/09 e cancelada pela Gestão antes do dia 13: o
+    // cancelamento não tinha alvo nenhum para encerrar.
+    $this->travelTo(CarbonImmutable::parse('2026-09-05 13:00:00'));
+    CycleFixture::generate($scenario['constructions'][0], '2026-08-01', GovernanceFixture::operator());
+
+    $canceller = GovernanceFixture::approver();
+    cancelCompetence(SalesBoardCycle::query()->sole(), $canceller);
+
+    expect(SalesBoardAutomationTarget::query()->count())->toBe(0);
+
+    $this->travelTo(CarbonImmutable::parse('2026-09-13 13:00:00'));
+    app(SalesBoardAutomationService::class)->run(asOf: CarbonImmutable::parse('2026-09-13'));
+
+    $target = SalesBoardAutomationTarget::query()->sole();
+
+    expect($target->status)->toBe(SalesBoardAutomationTargetStatus::Closed)
+        ->and($target->closure_reason)->toBe(SalesBoardAutomationClosureReason::CompetenceCancelled)
+        ->and($target->closure_message)->toBe('Competência cancelada pela Gestão: '.CANCELLATION_REASON)
+        ->and($target->closed_by_user_id)->toBe($canceller->id)
+        ->and($target->satisfied_via)->toBeNull()
+        ->and($target->sales_board_cycle_id)->toBe(SalesBoardCycle::query()->sole()->id)
         ->and(SalesBoardCycle::query()->count())->toBe(1);
 });
 

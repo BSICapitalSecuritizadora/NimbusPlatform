@@ -17,13 +17,13 @@ use App\Models\SalesBoardCycleBaseline;
 use App\Models\SalesBoardCycleLine;
 use App\Models\SalesBoardCycleMovement;
 use App\Models\SalesBoardHistory;
-use App\Models\User;
 use App\Support\Money\IntegerMoney;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\SalesBoards\CycleFixture;
 use Tests\Support\SalesBoards\DerivationFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 
 uses(RefreshDatabase::class);
 
@@ -246,7 +246,8 @@ it('never publishes to sales_boards nor to sales_board_histories', function () {
 
 it('records the actor that generated the cycle', function () {
     [$construction] = CycleFixture::readyConstruction(1);
-    $actor = User::factory()->create();
+    // Quem congela precisa da permissão de criar: o serviço recusa o ator sem ela.
+    $actor = GovernanceFixture::operator();
 
     CycleFixture::generate($construction, actor: $actor);
 

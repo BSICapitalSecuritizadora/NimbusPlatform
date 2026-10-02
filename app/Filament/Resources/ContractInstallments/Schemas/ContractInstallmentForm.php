@@ -7,16 +7,23 @@ use App\Models\Construction;
 use App\Models\Contract;
 use App\Models\ContractInstallment;
 use App\Models\Emission;
+use App\Support\BusinessTime;
+use App\Support\Dates\SpreadsheetDate;
+use App\Support\Money\IntegerMoney;
+use App\Support\SalesBoards\SourceEntryCompetenceNotice;
 use Closure;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
 use Illuminate\Database\Eloquent\Builder;
+use Livewire\Component;
+use WeakMap;
 
 class ContractInstallmentForm
 {
@@ -34,6 +41,21 @@ class ContractInstallmentForm
      * bounded once the base holds thousands of sales.
      */
     private const CONTRACT_SEARCH_LIMIT = 50;
+
+    /**
+     * The floor of the payment and cancellation dates: the year floor of the
+     * spreadsheet imports ({@see SpreadsheetDate::MINIMUM_YEAR}), which the
+     * Sales Board also enforces when it derives a position.
+     */
+    private const MINIMUM_DATE = SpreadsheetDate::MINIMUM_YEAR.'-01-01';
+
+    /**
+     * O aviso de competência calculado em cada componente, pela combinação de
+     * campos que o produziu. O mapa fraco morre com a instância do componente.
+     *
+     * @var WeakMap<Component, array<string, string|null>>|null
+     */
+    private static ?WeakMap $registeredCompetenceNotices = null;
 
     /**
      * @param  int|null  $contractId  set when the form is opened from inside a
@@ -69,12 +91,13 @@ class ContractInstallmentForm
             ]);
 
         $components[] = Section::make('Recebimento')
-            ->description('Preenchidos apenas quando a parcela for recebida. Data e valor andam juntos.')
+            ->description('Preenchidos apenas quando a parcela for recebida. Data e valor andam juntos; o desconto, quando houver, é registrado com eles.')
             ->columnSpanFull()
             ->columns(2)
             ->schema([
                 self::paymentDateField(),
                 self::paidValueField(),
+                self::discountValueField(),
             ]);
 
         $components[] = Section::make('Cancelamento')
@@ -83,9 +106,54 @@ class ContractInstallmentForm
             ->columns(2)
             ->schema([
                 self::cancellationDateField(),
+                self::registeredCompetenceCallout($contractId),
             ]);
 
         return $schema->components($components);
+    }
+
+    /**
+     * O aviso de competência já registrada para o pagamento e o cancelamento da
+     * parcela -- os dois decidem a quitação. O empreendimento vem do contrato.
+     * Não bloqueia; depois de salvar, a tela repete o aviso numa notificação
+     * persistente.
+     */
+    private static function registeredCompetenceCallout(?int $contractId): Callout
+    {
+        return Callout::make(fn (Get $get, Component $livewire, ?ContractInstallment $record = null): string => str_contains((string) self::registeredCompetenceNotice($get, $livewire, $record, $contractId), 'registrada manualmente')
+            ? 'Data em competência já registrada'
+            : 'Data em competência já publicada')
+            ->warning()
+            ->description(fn (Get $get, Component $livewire, ?ContractInstallment $record = null): ?string => self::registeredCompetenceNotice($get, $livewire, $record, $contractId))
+            ->visible(fn (Get $get, Component $livewire, ?ContractInstallment $record = null): bool => self::registeredCompetenceNotice($get, $livewire, $record, $contractId) !== null)
+            ->columnSpanFull();
+    }
+
+    /**
+     * O aviso do estado atual do formulário, lembrado na instância do
+     * componente pelo estado dos campos que o produzem.
+     */
+    public static function registeredCompetenceNotice(Get $get, Component $livewire, ?ContractInstallment $record = null, ?int $contractId = null): ?string
+    {
+        $resolvedContractId = $contractId ?? $get('contract_id') ?? $record?->contract_id;
+        $arguments = [$resolvedContractId, $get('payment_date'), $get('cancellation_date'), $record?->getKey()];
+        $key = md5(serialize($arguments));
+
+        self::$registeredCompetenceNotices ??= new WeakMap;
+        $memo = self::$registeredCompetenceNotices[$livewire] ?? [];
+
+        if (! array_key_exists($key, $memo)) {
+            $memo = [$key => SourceEntryCompetenceNotice::forInstallment(
+                blank($resolvedContractId) ? null : Contract::query()->whereKey($resolvedContractId)->value('construction_id'),
+                $arguments[1],
+                $arguments[2],
+                $record?->exists ? $record : null,
+            )];
+
+            self::$registeredCompetenceNotices[$livewire] = $memo;
+        }
+
+        return $memo[$key];
     }
 
     private static function emissionField(): Select
@@ -270,9 +338,19 @@ class ContractInstallmentForm
             ->displayFormat('d/m/Y')
             ->live(onBlur: true)
             ->required(fn (Get $get): bool => self::hasReceipt($get('paid_value')))
+            /**
+             * A receipt is a fact: it is recorded after it happens, in the
+             * business calendar -- the same rule the spreadsheet import applies.
+             * And no receipt of this portfolio is older than 1990: a year like
+             * 0026 is a lost digit, which the Sales Board refuses to publish.
+             */
+            ->minDate(self::MINIMUM_DATE)
+            ->maxDate(fn (): string => BusinessTime::dateString())
             ->helperText('Deixe em branco enquanto a parcela não for recebida.')
             ->validationMessages([
                 'required' => 'Informe a data do pagamento junto com o valor pago.',
+                'after_or_equal' => 'A data do pagamento não pode ser anterior a 01/01/1990: confira o ano.',
+                'before_or_equal' => 'A data do pagamento não pode ser futura: um recebimento só é registrado depois de acontecer.',
             ]);
     }
 
@@ -295,13 +373,63 @@ class ContractInstallmentForm
             ]);
     }
 
+    /**
+     * The discount given on the receipt -- pontualidade, antecipação, a
+     * settlement with a discount. It only exists together with the payment, it
+     * is positive and it never goes above the expected value.
+     *
+     * The cross-field checks are a closure rule on purpose: they only matter
+     * when a discount was filled, and a non-implicit rule is skipped exactly
+     * when the field is empty.
+     */
+    private static function discountValueField(): TextInput
+    {
+        return self::moneyField('discount_value', 'Desconto concedido')
+            /**
+             * `numeric` makes `min` compare the amount itself: without it the
+             * rule measures the length of the value, and a zero would pass.
+             */
+            ->rule('numeric')
+            ->minValue(0.01)
+            ->placeholder('500,00')
+            ->live(onBlur: true)
+            ->rule(static fn (Get $get): Closure => static function (string $attribute, mixed $value, Closure $fail) use ($get): void {
+                $discount = IntegerMoney::cents($value);
+
+                if (($discount === null) || ($discount <= 0)) {
+                    return;
+                }
+
+                if (blank($get('payment_date')) || ! self::hasReceipt($get('paid_value'))) {
+                    $fail('Registre o desconto junto com o pagamento da parcela.');
+
+                    return;
+                }
+
+                $expected = IntegerMoney::cents(self::normalizeCurrency($get('expected_value')));
+
+                if (($expected !== null) && ($discount > $expected)) {
+                    $fail('O desconto não pode superar o valor previsto.');
+                }
+            })
+            ->helperText('Desconto dado na baixa (pontualidade, antecipação). A parcela conta como paga quando pago + desconto cobre o previsto.')
+            ->validationMessages([
+                'min' => 'O desconto deve ser maior que zero.',
+            ]);
+    }
+
     private static function cancellationDateField(): DatePicker
     {
         return DatePicker::make('cancellation_date')
             ->label('Data de Cancelamento')
             ->native(false)
             ->displayFormat('d/m/Y')
+            ->live(onBlur: true)
+            ->minDate(self::MINIMUM_DATE)
             ->helperText('A parcela deixa de ser considerada a receber, vencida ou inadimplente, e continua visível no histórico.')
+            ->validationMessages([
+                'after_or_equal' => 'A data de cancelamento não pode ser anterior a 01/01/1990: confira o ano.',
+            ])
             ->columnSpanFull();
     }
 

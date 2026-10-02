@@ -40,6 +40,7 @@ class SalesBoardAutomationRun extends Model
         'alerts_deduped',
         'alerts_failed',
         'alerts_without_recipient',
+        'duration_ms',
         'instance_key',
         'failure_message',
     ];
@@ -71,6 +72,7 @@ class SalesBoardAutomationRun extends Model
             'alerts_deduped' => 'integer',
             'alerts_failed' => 'integer',
             'alerts_without_recipient' => 'integer',
+            'duration_ms' => 'integer',
         ];
     }
 
@@ -79,13 +81,44 @@ class SalesBoardAutomationRun extends Model
         return $this->hasMany(SalesBoardAutomationAttempt::class, 'sales_board_automation_run_id');
     }
 
+    /**
+     * Quanto a execução durou, em milissegundos -- ou `null`, se não se sabe.
+     *
+     * Vem da coluna gravada pelo orquestrador com `hrtime()`, e não da
+     * diferença entre `started_at` e `finished_at`: esses timestamps não
+     * guardam fração de segundo, e a diferença transformava 0,75 s em zero e
+     * 1,96 s em um segundo. A execução dada como interrompida e as linhas
+     * anteriores à coluna ficam `null` -- duração desconhecida, nunca zero.
+     */
     public function durationMs(): ?int
     {
-        if ($this->finished_at === null) {
-            return null;
+        return $this->duration_ms === null ? null : (int) $this->duration_ms;
+    }
+
+    /**
+     * A duração como a tela a mostra: "0,8 s", "2 min 05 s" ou "—".
+     */
+    public function durationLabel(): string
+    {
+        $milliseconds = $this->durationMs();
+
+        if ($milliseconds === null) {
+            return '—';
         }
 
-        return (int) round($this->started_at->diffInMilliseconds($this->finished_at));
+        if ($milliseconds < 60_000) {
+            $seconds = $milliseconds / 1000;
+
+            return ($seconds < 10 ? number_format($seconds, 1, ',', '') : (string) intdiv($milliseconds, 1000)).' s';
+        }
+
+        $totalSeconds = intdiv($milliseconds, 1000);
+
+        if ($totalSeconds < 3600) {
+            return sprintf('%d min %02d s', intdiv($totalSeconds, 60), $totalSeconds % 60);
+        }
+
+        return sprintf('%d h %02d min', intdiv($totalSeconds, 3600), intdiv($totalSeconds % 3600, 60));
     }
 
     public function latestDueMonthLabel(): string

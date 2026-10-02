@@ -26,6 +26,13 @@ use Spatie\Activitylog\Support\LogOptions;
  * Status, saldo and days overdue are all derived: see
  * {@see ContractInstallmentStatus} for why none of them is a column.
  *
+ * Paga quer dizer uma coisa só, em toda a plataforma -- aqui, no SQL de saldo
+ * das tabelas, no resumo do contrato e na quitação do Quadro de Vendas: o pago
+ * mais o desconto registrado (`discount_value`, "Desconto concedido") cobrem o
+ * previsto. O desconto só existe na baixa: é o abatimento dado junto com o
+ * pagamento (pontualidade, antecipação). Pagamento abaixo do previsto sem
+ * desconto registrado é recebimento parcial, e a parcela continua devendo.
+ *
  * Soft deleted, and that is a different thing from cancelled. A cancelled
  * installment left the contractual flow and stays on screen; a deleted one was
  * created by mistake and leaves the operation, freeing its number for a new
@@ -37,6 +44,13 @@ class ContractInstallment extends Model
     use HasFactory, LogsActivity, SoftDeletes;
 
     /**
+     * What covers the expected value, in SQL: the receipt plus the discount
+     * registered with it. The same sum as {@see self::outstandingCents()}, so a
+     * filter and a badge never disagree about the same row.
+     */
+    public const COVERED_SQL = '(COALESCE(paid_value, 0) + COALESCE(discount_value, 0))';
+
+    /**
      * @var list<string>
      */
     protected $fillable = [
@@ -46,6 +60,7 @@ class ContractInstallment extends Model
         'expected_value',
         'payment_date',
         'paid_value',
+        'discount_value',
         'cancellation_date',
     ];
 
@@ -57,13 +72,15 @@ class ContractInstallment extends Model
             'cancellation_date' => 'date',
             'expected_value' => 'decimal:2',
             'paid_value' => 'decimal:2',
+            'discount_value' => 'decimal:2',
         ];
     }
 
     /**
      * Every fillable attribute is a financial fact worth a trail: vencimento,
-     * valor previsto, data e valor do pagamento, cancelamento. No personal data
-     * passes through here -- the buyer lives on the contract.
+     * valor previsto, data e valor do pagamento, desconto concedido,
+     * cancelamento. No personal data passes through here -- the buyer lives on
+     * the contract.
      *
      * The trail goes to `contract_installments`, a protected log: a payment
      * recorded, edited or deleted moves a unit between financed and paid on the
@@ -97,6 +114,20 @@ class ContractInstallment extends Model
     public function contract(): BelongsTo
     {
         return $this->belongsTo(Contract::class);
+    }
+
+    /**
+     * A importação que criou o registro em lote, quando foi o caso.
+     *
+     * Fora de `$fillable` e da trilha de propósito: é carimbada só pelo insert
+     * em lote da importação e nunca muda depois. Registro criado à mão, ou antes
+     * da coluna existir, não tem importação.
+     *
+     * @return BelongsTo<ImportRun, $this>
+     */
+    public function importRun(): BelongsTo
+    {
+        return $this->belongsTo(ImportRun::class, 'import_run_id');
     }
 
     protected function number(): Attribute
@@ -158,7 +189,8 @@ class ContractInstallment extends Model
     /**
      * What the installment still owes, floored at zero: a receipt carrying
      * juros, multa or correção lands above the expected value, and a negative
-     * saldo would then poison every sum built on top of it.
+     * saldo would then poison every sum built on top of it. The registered
+     * discount counts as covered: it was forgiven on the receipt.
      */
     public function getOutstandingValueAttribute(): float
     {
@@ -227,15 +259,16 @@ class ContractInstallment extends Model
 
     /**
      * Installments that still owe money: not cancelled, and not yet covered by
-     * what was received. The comparison runs on the DECIMAL columns themselves,
-     * so it is exact -- no float rounding sneaks into an inadimplência query.
+     * what was received plus the discount registered with it. The comparison
+     * runs on the DECIMAL columns themselves, so it is exact -- no float
+     * rounding sneaks into an inadimplência query.
      *
      * @param  Builder<ContractInstallment>  $query
      */
     public function scopeOutstanding(Builder $query): void
     {
         $query->whereNull('cancellation_date')
-            ->whereRaw('COALESCE(paid_value, 0) < expected_value');
+            ->whereRaw(self::COVERED_SQL.' < expected_value');
     }
 
     /**
@@ -252,7 +285,7 @@ class ContractInstallment extends Model
             ContractInstallmentStatus::Cancelled => $query->whereNotNull('cancellation_date'),
 
             ContractInstallmentStatus::Paid => $query->whereNull('cancellation_date')
-                ->whereRaw('COALESCE(paid_value, 0) >= expected_value'),
+                ->whereRaw(self::COVERED_SQL.' >= expected_value'),
 
             ContractInstallmentStatus::Overdue => $query->outstanding()
                 ->where('due_date', '<', $today),
@@ -313,9 +346,17 @@ class ContractInstallment extends Model
         return self::toCents($this->paid_value);
     }
 
+    /**
+     * The discount registered with the receipt, in cents; zero without one.
+     */
+    public function discountCents(): int
+    {
+        return self::toCents($this->discount_value);
+    }
+
     private function outstandingCents(): int
     {
-        return max(0, $this->expectedCents() - $this->paidCents());
+        return max(0, $this->expectedCents() - $this->paidCents() - $this->discountCents());
     }
 
     private static function toCents(mixed $value): int

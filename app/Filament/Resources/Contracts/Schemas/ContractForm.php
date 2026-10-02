@@ -14,17 +14,23 @@ use App\Support\BusinessTime;
 use App\Support\Contracts\ContractOccupancyOverlap;
 use App\Support\Contracts\ContractOccupancyPeriod;
 use App\Support\Contracts\ContractOccupancyTimeline;
+use App\Support\Dates\SpreadsheetDate;
+use App\Support\SalesBoards\SourceEntryCompetenceNotice;
+use App\Support\SalesBoards\UnitRetirementTimeline;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
 use Illuminate\Database\Eloquent\Builder;
+use Livewire\Component;
+use WeakMap;
 
 class ContractForm
 {
@@ -40,6 +46,15 @@ class ContractForm
      * thousands, so the query is always bounded.
      */
     private const CLIENT_SEARCH_LIMIT = 50;
+
+    /**
+     * O aviso de competência calculado em cada componente, pela combinação de
+     * campos que o produziu. O mapa fraco morre com a instância do componente,
+     * sem sobreviver à requisição.
+     *
+     * @var WeakMap<Component, array<string, string|null>>|null
+     */
+    private static ?WeakMap $registeredCompetenceNotices = null;
 
     public static function configure(Schema $schema): Schema
     {
@@ -65,8 +80,62 @@ class ContractForm
                     self::saleDateField(),
                     self::saleValueField(),
                     self::cancellationDateField(),
+                    self::registeredCompetenceCallout(),
                 ]),
         ]);
+    }
+
+    /**
+     * O aviso de competência já registrada, logo abaixo dos campos que o
+     * provocam: a data da venda, o valor de uma venda já gravada e a data do
+     * distrato. Não bloqueia -- o fato atrasado tem caminho governado --, e
+     * depois de salvar a página repete o aviso numa notificação persistente.
+     */
+    private static function registeredCompetenceCallout(): Callout
+    {
+        return Callout::make(fn (Get $get, Component $livewire, ?Contract $record = null): string => str_contains((string) self::registeredCompetenceNotice($get, $livewire, $record), 'registrada manualmente')
+            ? 'Data em competência já registrada'
+            : 'Data em competência já publicada')
+            ->warning()
+            ->description(fn (Get $get, Component $livewire, ?Contract $record = null): ?string => self::registeredCompetenceNotice($get, $livewire, $record))
+            ->visible(fn (Get $get, Component $livewire, ?Contract $record = null): bool => self::registeredCompetenceNotice($get, $livewire, $record) !== null)
+            ->columnSpanFull();
+    }
+
+    /**
+     * O aviso do estado atual do formulário.
+     *
+     * O título, a descrição e a visibilidade perguntam a mesma coisa na mesma
+     * renderização, e a resposta fica lembrada na instância do componente --
+     * que morre com a requisição --, pelo estado dos campos que a produzem.
+     */
+    public static function registeredCompetenceNotice(Get $get, Component $livewire, ?Contract $record = null): ?string
+    {
+        $arguments = [
+            $get('construction_id'),
+            $get('sale_date'),
+            $get('sale_value'),
+            self::requiresCancellationDate($get) ? $get('cancellation_date') : null,
+            $record?->getKey(),
+        ];
+
+        $key = md5(serialize($arguments));
+        self::$registeredCompetenceNotices ??= new WeakMap;
+        $memo = self::$registeredCompetenceNotices[$livewire] ?? [];
+
+        if (! array_key_exists($key, $memo)) {
+            $memo = [$key => SourceEntryCompetenceNotice::forContract(
+                $arguments[0],
+                $arguments[1],
+                $arguments[2],
+                $arguments[3],
+                $record?->exists ? $record : null,
+            )];
+
+            self::$registeredCompetenceNotices[$livewire] = $memo;
+        }
+
+        return $memo[$key];
     }
 
     private static function emissionField(): Select
@@ -137,10 +206,20 @@ class ContractForm
                     fn (Builder $query, mixed $constructionId): Builder => $query->where('construction_id', $constructionId),
                     fn (Builder $query): Builder => $query->whereRaw('1 = 0'),
                 )
+                ->with('openRetirement:id,construction_unit_id,retired_on')
                 ->orderBy('block')
                 ->orderBy('unit')
                 ->get()
-                ->mapWithKeys(fn (ConstructionUnit $unit): array => [$unit->id => $unit->display_name])
+                /**
+                 * A unidade baixada continua na lista -- os contratos antigos
+                 * dela continuam editáveis --, marcada para ninguém vendê-la
+                 * sem saber.
+                 */
+                ->mapWithKeys(fn (ConstructionUnit $unit): array => [
+                    $unit->id => $unit->display_name.($unit->openRetirement === null
+                        ? ''
+                        : ' · baixada desde '.$unit->openRetirement->retired_on->format('d/m/Y')),
+                ])
                 ->all())
             ->searchable()
             ->required()
@@ -260,6 +339,7 @@ class ContractForm
             ->required()
             ->native(false)
             ->displayFormat('d/m/Y')
+            ->live(onBlur: true)
             /**
              * Today in the business calendar, the bound the spreadsheet import
              * applies too. The UTC day runs ahead of São Paulo from 21:00 on,
@@ -268,9 +348,19 @@ class ContractForm
              */
             ->maxDate(static fn (): string => BusinessTime::dateString())
             /**
+             * No sale of this portfolio is older than 1990: a year like 0026 is a
+             * lost digit. The floor of the spreadsheet imports, which the Sales
+             * Board also refuses to publish.
+             */
+            ->minDate(SpreadsheetDate::MINIMUM_YEAR.'-01-01')
+            /**
              * The sale cannot begin while the unit is still held by the contract
              * before it. Reported here when this contract is the one starting
              * too early; the mirror case lands on the distrato date instead.
+             *
+             * Nem pode o contrato ocupar a unidade num período em que ela está
+             * baixada: ali a unidade não compõe o Quadro, e a venda sumiria do
+             * número.
              */
             ->rule(static fn (Get $get, ?Contract $record = null): Closure => static function (
                 string $attribute,
@@ -281,11 +371,16 @@ class ContractForm
 
                 if (($overlap !== null) && $overlap->later->isSubject) {
                     $fail($overlap->describe(self::unitLabel($get)));
+
+                    return;
                 }
+
+                self::failWhenUnitIsRetired($get, $value, $get('cancellation_date'), $fail);
             })
             ->validationMessages([
                 'required' => 'Informe a data da venda.',
                 'before_or_equal' => 'A data da venda não pode ser futura.',
+                'after_or_equal' => 'Data da venda anterior a 1990: confira o ano.',
             ]);
     }
 
@@ -294,6 +389,7 @@ class ContractForm
         return TextInput::make('sale_value')
             ->label('Valor da Venda')
             ->required()
+            ->live(onBlur: true)
             ->prefix('R$')
             ->inputMode('decimal')
             ->mask(RawJs::make(<<<'JS'
@@ -318,6 +414,7 @@ class ContractForm
             ->label('Data do Distrato')
             ->native(false)
             ->displayFormat('d/m/Y')
+            ->live(onBlur: true)
             ->visible(fn (Get $get): bool => self::requiresCancellationDate($get))
             ->required(fn (Get $get): bool => self::requiresCancellationDate($get))
             ->afterOrEqual('sale_date')
@@ -394,6 +491,41 @@ class ContractForm
             ...Contract::occupancyPeriodsFor($unitId, $record?->getKey()),
             $subject,
         ])->firstOverlap();
+    }
+
+    /**
+     * O período `[venda, distrato)` do contrato que o formulário vai gravar não
+     * pode cruzar um período de baixa da unidade. A regra é a mesma da
+     * importação de contratos e da permuta ({@see UnitRetirementTimeline}), com
+     * a mesma frase.
+     */
+    private static function failWhenUnitIsRetired(Get $get, mixed $saleDate, mixed $cancellationDate, Closure $fail): void
+    {
+        $unitId = $get('construction_unit_id');
+        $status = ContractStatus::tryFrom((string) $get('status'));
+
+        if (blank($unitId) || ($status === null) || blank($saleDate)) {
+            return;
+        }
+
+        $period = ContractOccupancyPeriod::fromValues(
+            code: (string) $get('code'),
+            clientName: null,
+            saleDate: $saleDate,
+            cancellationDate: $cancellationDate,
+            status: $status,
+        );
+
+        if ($period === null) {
+            return;
+        }
+
+        $conflict = UnitRetirementTimeline::forUnits([(int) $unitId])
+            ->conflictWith((int) $unitId, $period->startsOn, $period->endsOn);
+
+        if ($conflict !== null) {
+            $fail($conflict->describe(self::unitLabel($get)));
+        }
     }
 
     private static function unitLabel(Get $get): string

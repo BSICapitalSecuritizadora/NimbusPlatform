@@ -8,6 +8,7 @@ use App\Models\Measurement;
 use App\Models\MeasurementFinancialRule;
 use App\Models\MeasurementPayment;
 use App\Services\Security\ClamAvFileScanner;
+use App\Support\Uploads\LocalUploadedFile;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -158,7 +159,18 @@ class MeasurementPaymentFinancialService
     private function storeSupport(UploadedFile $file): array
     {
         $scanner = app(ClamAvFileScanner::class);
-        if ($scanner->isEnabled() && $scanner->scan($file->getRealPath() ?: null) !== ClamAvFileScanner::RESULT_CLEAN) {
+        /**
+         * A varredura lê o arquivo por um caminho local -- uma cópia, quando o
+         * envio temporário está num disco remoto. Arquivo ilegível nunca passa.
+         */
+        $scanResult = $scanner->isEnabled()
+            ? rescue(
+                fn (): string => LocalUploadedFile::using($file, fn (string $path): string => $scanner->scan($path)),
+                ClamAvFileScanner::RESULT_UNAVAILABLE,
+                report: false,
+            )
+            : ClamAvFileScanner::RESULT_CLEAN;
+        if ($scanResult !== ClamAvFileScanner::RESULT_CLEAN) {
             throw ValidationException::withMessages(['financial_support' => 'O documento não passou na verificação de segurança ou o antivírus está indisponível.']);
         }
         $stored = $this->storage->storePrivateFile($file, 'measurements/financial-support');

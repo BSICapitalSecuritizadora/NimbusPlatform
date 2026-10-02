@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\DTOs\SalesBoards;
 
 use App\DTOs\BaseDTO;
+use App\Enums\SalesBoardMovementTiming;
 use App\Support\Money\IntegerMoney;
 use Carbon\CarbonImmutable;
 
 /**
- * Um distrato ocorrido na competência.
+ * Um distrato ocorrido na competência -- ou, com `timing`, um distrato de
+ * competência anterior que a competência recebeu (extemporâneo ou de
+ * competência sem posição).
  */
 readonly class SalesBoardCancellationMovement extends BaseDTO
 {
@@ -22,6 +25,7 @@ readonly class SalesBoardCancellationMovement extends BaseDTO
         public ?CarbonImmutable $saleDate,
         public ?int $saleValueCents,
         public CarbonImmutable $cancellationDate,
+        public ?SalesBoardMovementTiming $timing = null,
     ) {}
 
     /**
@@ -38,6 +42,7 @@ readonly class SalesBoardCancellationMovement extends BaseDTO
             'sale_date' => $this->saleDate?->toDateString(),
             'sale_value' => $this->saleValueCents === null ? null : IntegerMoney::format($this->saleValueCents),
             'cancellation_date' => $this->cancellationDate->toDateString(),
+            'timing' => $this->timing?->value,
         ];
     }
 }

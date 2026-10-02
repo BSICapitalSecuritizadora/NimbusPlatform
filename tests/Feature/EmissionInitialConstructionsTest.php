@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Emissions\CreateInitialConstructions;
+use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Emissions\Pages\CreateEmission;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Filament\Resources\Emissions\Schemas\EmissionConstructionsStep;
@@ -10,6 +11,7 @@ use App\Models\Emission;
 use App\Models\ExpenseServiceProvider;
 use App\Models\ExpenseServiceProviderType;
 use App\Models\SalesBoard;
+use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Testing\TestAction;
 use Filament\Schemas\Components\Wizard;
@@ -565,6 +567,56 @@ it('keeps later sales board updates and their history working', function () {
     expect($salesBoard->refresh()->stock_units)->toBe(42)
         ->and($salesBoard->valueHistories()->count())->toBe(2)
         ->and($salesBoard->valueHistories()->first()->stock_units)->toBe(10);
+});
+
+/**
+ * @param  list<string>  $permissions
+ */
+function emissionWizardUser(array $permissions): User
+{
+    $user = User::factory()->withTwoFactor()->create(['email' => fake()->unique()->safeEmail()]);
+    $user->givePermissionTo($permissions);
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    return $user->fresh();
+}
+
+it('requires sales-boards.create to open the emission wizard', function () {
+    // O assistente grava o Quadro de Vendas inicial de cada obra, e uma obra
+    // nunca nasce sem ele: quem não pode criar Quadro não cadastra Emissão.
+    $this->actingAs(emissionWizardUser(['emissions.view', 'emissions.create']));
+
+    expect(EmissionResource::canCreate())->toBeFalse();
+
+    $this->get(EmissionResource::getUrl('create'))->assertForbidden();
+
+    Livewire::test(CreateEmission::class)->assertForbidden();
+
+    expect(Emission::query()->count())->toBe(0);
+});
+
+it('opens the emission wizard to whoever can create emissions and sales boards', function () {
+    $this->actingAs(emissionWizardUser(['emissions.view', 'emissions.create', 'sales-boards.create']));
+
+    expect(EmissionResource::canCreate())->toBeTrue();
+
+    $this->get(EmissionResource::getUrl('create'))->assertOk();
+
+    $measurementCompany = makeMeasurementCompany();
+
+    Livewire::test(CreateEmission::class)
+        ->fillForm([
+            'name' => 'Emissão Pelo Assistente',
+            'type' => 'CRI',
+            'status' => 'draft',
+            EmissionConstructionsStep::STATE_PATH => [
+                emissionConstructionState($measurementCompany->id),
+            ],
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(Emission::query()->where('name', 'Emissão Pelo Assistente')->sole()->salesBoards()->count())->toBe(1);
 });
 
 function emissionWizard(string $operation): Wizard

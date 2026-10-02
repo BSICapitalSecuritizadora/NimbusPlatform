@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\DTOs\SalesBoards\SalesBoardChainStructure;
 use App\Enums\SalesBoardStaleImpact;
 use App\Support\Money\IntegerMoney;
+use App\Support\SalesBoards\SalesBoardFrozenWarnings;
 use Database\Factories\SalesBoardCycleBaselineFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -54,6 +56,9 @@ class SalesBoardCycleBaseline extends Model
         'exchanged_value',
         'undetermined_units',
         'is_complete',
+        'warnings',
+        'previous_competence_baseline_id',
+        'absorbed_cancelled_months',
         'source_fingerprint',
         'snapshot_fingerprint',
         'computed_at',
@@ -101,6 +106,8 @@ class SalesBoardCycleBaseline extends Model
             'exchanged_value' => 'decimal:2',
             'undetermined_units' => 'integer',
             'is_complete' => 'boolean',
+            'warnings' => 'array',
+            'absorbed_cancelled_months' => 'array',
             'computed_at' => 'immutable_datetime',
             'is_stale' => 'boolean',
             'stale_impact' => SalesBoardStaleImpact::class,
@@ -120,6 +127,39 @@ class SalesBoardCycleBaseline extends Model
     }
 
     /**
+     * A versão da competência anterior contra a qual os movimentos
+     * extemporâneos desta versão foram apurados: a da publicação vigente dela
+     * naquele momento, ou a versão vigente se ela ainda não tinha sido
+     * publicada.
+     *
+     * Metadado de auditoria, gravado só na criação e fora do fingerprint -- a
+     * coluna fica fora de {@see self::STALE_MUTABLE_FIELDS}. `null` quando a
+     * versão é anterior a este registro ou não havia competência anterior.
+     */
+    public function previousCompetenceBaseline(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'previous_competence_baseline_id');
+    }
+
+    /**
+     * As competências canceladas cujos fatos esta versão absorveu (`Y-m`, do
+     * mês mais recente para o mais antigo): com âncora, as puladas entre ela e
+     * esta competência; sem âncora, as que esta competência absorve.
+     *
+     * Com {@see self::previousCompetenceBaseline()}, é a estrutura da cadeia da
+     * versão ({@see SalesBoardChainStructure}). `null` quando a versão foi
+     * congelada antes de a cadeia ser registrada -- "não registrada" é
+     * diferente de "nenhuma absorvida". Gravada só na criação: a coluna fica
+     * fora de {@see self::STALE_MUTABLE_FIELDS} e dos fingerprints.
+     *
+     * @return list<string>|null
+     */
+    public function absorbedCancelledMonths(): ?array
+    {
+        return $this->absorbed_cancelled_months === null ? null : array_values($this->absorbed_cancelled_months);
+    }
+
+    /**
      * As unidades congeladas, na ordem em que a derivação as compôs.
      */
     public function lines(): HasMany
@@ -135,6 +175,23 @@ class SalesBoardCycleBaseline extends Model
         return $this->hasMany(SalesBoardCycleMovement::class)
             ->orderBy('movement_type')
             ->orderBy('contract_id');
+    }
+
+    /**
+     * Os avisos que a apuração registrou nesta versão, na forma de
+     * {@see SalesBoardFrozenWarnings::fromPosition()}.
+     *
+     * `null` quando a versão foi congelada antes de os avisos passarem a ser
+     * registrados -- "não registrados" é diferente de "nenhum aviso", e a tela
+     * diz qual dos dois. Gravados só na criação: a coluna fica fora de
+     * {@see self::STALE_MUTABLE_FIELDS}, e o guard de imutabilidade a protege
+     * como o resto da apuração.
+     *
+     * @return list<array<string, mixed>>|null
+     */
+    public function frozenWarnings(): ?array
+    {
+        return $this->warnings === null ? null : array_values($this->warnings);
     }
 
     public function isCurrent(): bool

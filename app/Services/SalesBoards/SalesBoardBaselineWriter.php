@@ -14,18 +14,29 @@ use App\Models\SalesBoardCycleLine;
 use App\Models\SalesBoardCycleMovement;
 use App\Models\User;
 use App\Support\Money\IntegerMoney;
+use App\Support\SalesBoards\SalesBoardFrozenWarnings;
 use Carbon\CarbonImmutable;
 
 /**
  * Grava uma versão congelada: o cabeçalho, as linhas e os movimentos.
  *
- * Um lugar só porque geração e recálculo escrevem exatamente a mesma coisa -- a
- * diferença entre elas é quando e por quê, não o que. Duas rotinas de escrita
- * acabariam divergindo num campo, e o campo seria descoberto meses depois numa
- * versão que ninguém consegue mais reproduzir.
+ * Um lugar só porque geração, recálculo e abertura da retificação escrevem
+ * exatamente a mesma coisa -- a diferença entre elas é quando e por quê, não o
+ * que. A versão também registra contra qual versão da competência anterior os
+ * extemporâneos foram apurados (`previous_competence_baseline_id`) e quais
+ * competências canceladas ela absorveu (`absorbed_cancelled_months`) -- a
+ * estrutura da cadeia, fora do fingerprint --, e cada movimento o seu
+ * `timing`. Duas rotinas de escrita acabariam divergindo num campo, e o campo
+ * seria descoberto meses depois numa versão que ninguém consegue mais
+ * reproduzir.
  *
  * Não decide nada. Não classifica, não soma, não avalia conformidade: recebe o
  * que a derivação apurou e persiste fielmente. Toda a aritmética já aconteceu.
+ * Os avisos da apuração ({@see SalesBoardFrozenWarnings::fromPosition()}) também
+ * chegam prontos e são gravados como vieram, ao lado da versão: são o registro do
+ * que o Nimbus sinalizou quando a posição foi congelada, e não decidem nada.
+ * Todo chamador passa a lista -- a vazia quando não há aviso --, porque uma
+ * versão nova gravada sem ela ficaria "não registrada" para sempre.
  *
  * Quem chama é responsável pela transação. A escrita é inútil pela metade: um
  * ciclo sem versão, ou uma versão com parte das unidades, seria pior que
@@ -39,6 +50,9 @@ class SalesBoardBaselineWriter
      */
     private const CHUNK = 500;
 
+    /**
+     * @param  list<array<string, mixed>>  $frozenWarnings  os avisos da posição, de {@see SalesBoardFrozenWarnings::fromPosition()}
+     */
     public function write(
         SalesBoardCycle $cycle,
         int $version,
@@ -46,6 +60,7 @@ class SalesBoardBaselineWriter
         string $sourceFingerprint,
         ?User $actor,
         ?string $reason,
+        array $frozenWarnings,
     ): SalesBoardCycleBaseline {
         $snapshot = $comparable->snapshot;
         $now = CarbonImmutable::now();
@@ -64,6 +79,9 @@ class SalesBoardBaselineWriter
             'exchanged_value' => $this->decimal($snapshot->exchangedValueCents),
             'undetermined_units' => $snapshot->undeterminedUnits,
             'is_complete' => $snapshot->isComplete,
+            'warnings' => array_values($frozenWarnings),
+            'previous_competence_baseline_id' => $snapshot->previousCompetenceBaselineId,
+            'absorbed_cancelled_months' => $snapshot->absorbedCancelledMonths,
             'source_fingerprint' => $sourceFingerprint,
             'snapshot_fingerprint' => $snapshot->fingerprint(),
             'computed_at' => $now,
@@ -125,6 +143,7 @@ class SalesBoardBaselineWriter
             fn (SalesBoardSnapshotMovement $movement): array => [
                 'sales_board_cycle_baseline_id' => $baseline->getKey(),
                 'movement_type' => $movement->type->value,
+                'timing' => $movement->timing?->value,
                 'construction_unit_id' => $movement->constructionUnitId,
                 'block' => $movement->block,
                 'unit' => $movement->unit,

@@ -6,14 +6,20 @@ use App\Actions\Contracts\ContractSpreadsheetColumns;
 use App\Actions\Contracts\ContractSpreadsheetTemplate;
 use App\Actions\Contracts\ImportContractsFromSpreadsheet;
 use App\Enums\ContractStatus;
+use App\Enums\ImportRowWarningCode;
 use App\Enums\ReconciliationOutcome;
+use App\Enums\SalesBoardIssueCode;
+use App\Enums\SalesBoardUnitClassification;
 use App\Exceptions\ContractImportConcurrencyException;
 use App\Filament\Resources\Contracts\Pages\ListContracts;
 use App\Models\Client;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
+use App\Models\ConstructionUnitExchange;
+use App\Models\ConstructionUnitValue;
 use App\Models\Contract;
 use App\Models\Emission;
+use App\Models\ImportRun;
 use App\Models\SalesBoard;
 use Carbon\CarbonImmutable;
 use Database\Factories\ClientFactory;
@@ -21,12 +27,12 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
 use Spatie\SimpleExcel\SimpleExcelReader;
 use Spatie\SimpleExcel\SimpleExcelWriter;
+use Tests\Support\SalesBoards\DerivationFixture;
 
 uses(RefreshDatabase::class);
 
@@ -515,15 +521,13 @@ it('imports contracts through the listing wizard', function () {
     contractImportScenario();
 
     $path = contractSpreadsheet([contractRow()]);
-    $storedPath = 'imports/contracts/'.basename($path);
-    Storage::disk('local')->put($storedPath, file_get_contents($path));
 
     Livewire::test(ListContracts::class)
         ->assertActionExists('downloadTemplate')
         ->assertActionHasLabel('downloadTemplate', 'Baixar Modelo')
         ->assertActionExists('importContracts')
         ->assertActionHasLabel('importContracts', 'Importar Contratos')
-        ->callAction(TestAction::make('importContracts'), ['file' => ['upload' => $storedPath]])
+        ->callAction(TestAction::make('importContracts'), ['file' => spreadsheetUpload($path)])
         ->assertHasNoActionErrors();
 
     expect(Contract::query()->count())->toBe(1)
@@ -536,11 +540,9 @@ it('imports nothing when the wizard receives an inconsistent spreadsheet', funct
     contractImportScenario();
 
     $path = contractSpreadsheet([contractRow(['document' => ClientFactory::validCnpj()])]);
-    $storedPath = 'imports/contracts/'.basename($path);
-    Storage::disk('local')->put($storedPath, file_get_contents($path));
 
     Livewire::test(ListContracts::class)
-        ->callAction(TestAction::make('importContracts'), ['file' => ['upload' => $storedPath]]);
+        ->callAction(TestAction::make('importContracts'), ['file' => spreadsheetUpload($path)]);
 
     expect(Contract::query()->count())->toBe(0);
 });
@@ -1343,11 +1345,9 @@ describe('leitura estrita da carga inicial', function () {
         contractImportScenario();
 
         $path = contractSpreadsheet([contractRow(['sale_value' => 85.37 * 4523.1])]);
-        $storedPath = 'imports/contracts/'.basename($path);
-        Storage::disk('local')->put($storedPath, file_get_contents($path));
 
         $component = Livewire::test(ListContracts::class)->instance();
-        $preview = (fn (): string => $this->renderPreview($storedPath)->toHtml())->call($component);
+        $preview = (fn (): string => $this->renderPreview(temporaryUploadWithContent('planilha.xlsx', file_get_contents($path)))->toHtml())->call($component);
 
         expect($preview)
             ->toContain('<th style="text-align:left;padding:.25rem .5rem;">Data da venda</th>')
@@ -1411,15 +1411,14 @@ describe('competência já registrada no Quadro de Vendas', function () {
         SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create(['reference_month' => '2024-03-01']);
 
         $path = contractSpreadsheet([contractRow()]);
-        $storedPath = 'imports/contracts/'.basename($path);
-        Storage::disk('local')->put($storedPath, file_get_contents($path));
 
         $component = Livewire::test(ListContracts::class)->instance();
-        $preview = (fn (): string => $this->renderPreview($storedPath)->toHtml())->call($component);
+        $preview = (fn (): string => $this->renderPreview(temporaryUploadWithContent('planilha.xlsx', file_get_contents($path)))->toHtml())->call($component);
 
         expect($preview)
             ->toContain('Alteram competência já registrada no Quadro de Vendas: <b>1</b>')
-            ->toContain('Altera fato da competência 03/2024, já registrada no Quadro de Vendas.');
+            // O ⚑ traz o aviso da linha: o quadro de 03/2024 foi registrado à mão.
+            ->toContain('Altera fato da competência 03/2024, registrada manualmente no Quadro de Vendas: revise o quadro dessa competência em “Nova Atualização”, informando o motivo.');
     });
 });
 
@@ -1437,4 +1436,563 @@ it('resolves the development inside the emission of the row and refuses homonyms
 
     expect(analyzeContractSpreadsheet([contractRow()])->rows[0]['message'])
         ->toBe('Há mais de um empreendimento com este nome nesta emissão. Diferencie os nomes antes de importar.');
+});
+
+describe('ordem da conferência', function () {
+    /**
+     * Com um comparador de um argumento, a ordenação não ordenava nada: com mais
+     * de cinquenta linhas, a atualização crítica da última linha ficava fora da
+     * tabela. Os bloqueantes vêm primeiro, depois o que pede atenção.
+     */
+    it('puts the errors and the critical update of the last line among the rows shown', function () {
+        [, $construction, $unit305, , $client] = contractImportScenario();
+
+        Contract::factory()->forUnit($unit305)->forClient($client)->create([
+            'code' => 'CVC-00123', 'sale_date' => '2024-03-10', 'sale_value' => 850000.00,
+        ]);
+
+        $rows = [];
+
+        foreach (range(1, 59) as $index) {
+            ConstructionUnit::factory()->forConstruction($construction)->create(['block' => '02', 'unit' => (string) $index]);
+
+            $rows[] = contractRow(['block' => '02', 'unit' => (string) $index, 'code' => 'CVC-'.(1000 + $index)]);
+
+            if ($index === 30) {
+                $rows[] = contractRow(['block' => '02', 'unit' => '999', 'code' => 'CVC-ERRO']);
+            }
+        }
+
+        // Line 62: the sale value read a thousand times over.
+        $rows[] = contractRow(['sale_value' => '850000000.00']);
+
+        $analysis = analyzeContractSpreadsheet($rows);
+        $shown = $analysis->previewRows()->take(50);
+
+        expect($analysis->previewRows())->toHaveCount(61)
+            ->and($shown->first()['outcome'])->toBe(ReconciliationOutcome::Error)
+            ->and($shown->first()['line'])->toBe(32)
+            ->and($shown->get(1)['outcome'])->toBe(ReconciliationOutcome::CriticalUpdate)
+            ->and($shown->get(1)['line'])->toBe(62)
+            ->and($shown->slice(2)->pluck('outcome')->unique()->values()->all())->toBe([ReconciliationOutcome::New])
+            ->and($shown->slice(2)->pluck('line')->all())->toBe(collect($shown->slice(2)->pluck('line')->all())->sort()->values()->all());
+    });
+
+    /**
+     * Sessenta contratos reenviados iguais, cada um com o aviso de venda a mais
+     * do dobro da tabela, antes da atualização crítica da linha 62: o aviso
+     * fica acima das atualizações comuns, mas nunca acima da alteração crítica.
+     */
+    it('keeps a critical update among the rows shown when sixty unchanged rows with a warning come before it', function () {
+        [, $construction, $unit305, , $client] = contractImportScenario();
+
+        Contract::factory()->forUnit($unit305)->forClient($client)->create([
+            'code' => 'CVC-00123', 'sale_date' => '2024-03-10', 'sale_value' => 850000.00,
+        ]);
+
+        $rows = [];
+
+        foreach (range(1, 60) as $index) {
+            $unit = ConstructionUnit::factory()->forConstruction($construction)
+                ->withBaseValue('400000.00', '2024-01-01')
+                ->create(['block' => '02', 'unit' => (string) $index]);
+
+            Contract::factory()->forUnit($unit)->forClient($client)->create([
+                'code' => 'CVC-'.(2000 + $index), 'sale_date' => '2024-03-10', 'sale_value' => 850000.00,
+            ]);
+
+            $rows[] = contractRow(['block' => '02', 'unit' => (string) $index, 'code' => 'CVC-'.(2000 + $index)]);
+        }
+
+        // Line 62: the sale value moved -- a critical update.
+        $rows[] = contractRow(['sale_value' => '900000.00']);
+
+        $analysis = analyzeContractSpreadsheet($rows);
+        $shown = $analysis->previewRows()->take(50);
+
+        expect($analysis->unchangedCount())->toBe(60)
+            ->and($analysis->warningsByCode())->toBe([ImportRowWarningCode::SaleValueOffTable->value => 60])
+            ->and($analysis->criticalUpdateCount())->toBe(1)
+            ->and($shown->first()['line'])->toBe(62)
+            ->and($shown->first()['outcome'])->toBe(ReconciliationOutcome::CriticalUpdate);
+    });
+});
+
+describe('contratos cadastrados ausentes da planilha', function () {
+    it('warns about the live contracts of the developments in the file that it leaves out, and distratos none', function () {
+        [, $construction, $unit305, $unit402, $client] = contractImportScenario();
+
+        $settledUnit = ConstructionUnit::factory()->forConstruction($construction)->create(['block' => '01', 'unit' => '501']);
+        $exchangedUnit = ConstructionUnit::factory()->forConstruction($construction)->create(['block' => '01', 'unit' => '502']);
+        $cancelledUnit = ConstructionUnit::factory()->forConstruction($construction)->create(['block' => '01', 'unit' => '503']);
+
+        $active = Contract::factory()->forUnit($unit402)->forClient($client)->create(['code' => 'CVC-00402']);
+        $settled = Contract::factory()->forUnit($settledUnit)->forClient($client)->settled()->create(['code' => 'CVC-00501']);
+        $exchanged = Contract::factory()->forUnit($exchangedUnit)->forClient($client)->exchanged()->create(['code' => 'CVC-00502']);
+        Contract::factory()->forUnit($cancelledUnit)->forClient($client)->cancelled()->create(['code' => 'CVC-00503']);
+
+        // Another development of the emission, absent from the file as a whole.
+        [, $elsewhere] = unitEmissionAndConstruction('CRI Outra', 'Outro Empreendimento', 'active');
+        Contract::factory()
+            ->forUnit(ConstructionUnit::factory()->forConstruction($elsewhere)->create())
+            ->forClient($client)
+            ->create(['code' => 'OUT-1']);
+
+        $analysis = analyzeContractSpreadsheet([contractRow()]);
+
+        expect($analysis->absentContractCount())->toBe(3)
+            ->and($analysis->absentContracts()->pluck('code')->all())->toBe(['CVC-00402', 'CVC-00501', 'CVC-00502'])
+            ->and($analysis->absentContracts()->pluck('status')->all())->toBe(['Ativo', 'Quitado', 'Permutado'])
+            ->and($analysis->canImport())->toBeTrue();
+
+        $this->actingAs(makeAdminUser());
+
+        $path = contractSpreadsheet([contractRow()]);
+        $component = Livewire::test(ListContracts::class)->instance();
+        $preview = (fn (): string => $this->renderPreview(temporaryUploadWithContent('planilha.xlsx', file_get_contents($path)))->toHtml())->call($component);
+
+        expect($preview)
+            ->toContain('3 contrato(s) cadastrado(s) destes empreendimentos não vieram na planilha. Nada muda neles; se algum foi distratado, inclua-o com o status Distratado e a data do distrato.')
+            ->toContain('Contratos cadastrados que não vieram na planilha');
+
+        app(ImportContractsFromSpreadsheet::class)->handle(analyzeContractSpreadsheet([contractRow()]));
+
+        expect($active->refresh()->status)->toBe(ContractStatus::Active)
+            ->and($settled->refresh()->status)->toBe(ContractStatus::Settled)
+            ->and($exchanged->refresh()->status)->toBe(ContractStatus::Exchanged);
+    });
+
+    it('enters the absent contracts into the digest', function () {
+        [, $construction, , $unit402, $client] = contractImportScenario();
+
+        $before = analyzeContractSpreadsheet([contractRow()])->digest();
+
+        Contract::factory()->forUnit($unit402)->forClient($client)->create(['code' => 'CVC-00402']);
+
+        expect(analyzeContractSpreadsheet([contractRow()])->digest())->not->toBe($before)
+            ->and($construction->id)->toBeGreaterThan(0);
+    });
+});
+
+describe('conferência como contrato', function () {
+    it('refuses to confirm when a contract was edited after the conference, then writes on the second confirmation', function () {
+        $this->actingAs(makeAdminUser());
+
+        [, , $unit305, , $client] = contractImportScenario();
+
+        $existing = Contract::factory()->forUnit($unit305)->forClient($client)->create([
+            'code' => 'CVC-00123', 'sale_date' => '2024-03-10', 'sale_value' => 850000.00,
+        ]);
+
+        $path = contractSpreadsheet([
+            contractRow(),
+            contractRow(['unit' => '402', 'code' => 'CVC-00402']),
+        ]);
+
+        $component = Livewire::test(ListContracts::class)
+            ->mountAction(TestAction::make('importContracts'))
+            ->fillForm(['file' => spreadsheetUpload($path)])
+            ->goToNextWizardStep();
+
+        $existing->update(['sale_value' => 900000.00]);
+
+        $component->callMountedAction();
+
+        $notifications = collect(session()->get('filament.claimed_notifications') ?? session()->get('filament.notifications') ?? []);
+
+        expect(Contract::query()->count())->toBe(1)
+            ->and(ImportRun::query()->count())->toBe(0)
+            ->and($notifications->pluck('title')->all())->toContain('Conferência desatualizada.');
+
+        $component->callMountedAction()->assertHasNoActionErrors();
+
+        expect(Contract::query()->count())->toBe(2)
+            ->and((float) $existing->refresh()->sale_value)->toBe(850000.00);
+    });
+
+    /**
+     * O cache que lê mas recusa gravar nunca guardaria o digest do que o
+     * operador viu: o Confirmar segue sem a guarda, como com o cache fora, em
+     * vez de responder "Conferência refeita." a cada clique.
+     */
+    it('goes ahead without the guard when the cache reads but refuses writes', function () {
+        $this->actingAs(makeAdminUser());
+
+        contractImportScenario();
+
+        $refused = useCacheThatRefusesWrites();
+
+        $component = Livewire::test(ListContracts::class)
+            ->mountAction(TestAction::make('importContracts'))
+            ->fillForm(['file' => spreadsheetUpload(contractSpreadsheet([contractRow()]))])
+            ->goToNextWizardStep();
+
+        $component->callMountedAction()->assertHasNoActionErrors();
+
+        $titles = collect(session()->get('filament.claimed_notifications') ?? session()->get('filament.notifications') ?? [])->pluck('title')->all();
+
+        expect(Contract::query()->where('code', 'CVC-00123')->count())->toBe(1)
+            ->and(ImportRun::query()->sole()->records_created)->toBe(1)
+            ->and($titles)->toContain('Posição processada com sucesso.')
+            ->and($titles)->not->toContain('Conferência refeita.')
+            ->and($refused['put'])->toBeGreaterThan(0);
+    });
+
+    it('stamps import_run_id only on the contracts the wizard created', function () {
+        $this->actingAs(makeAdminUser());
+
+        [, , $unit305, , $client] = contractImportScenario();
+
+        $existing = Contract::factory()->forUnit($unit305)->forClient($client)->create([
+            'code' => 'CVC-00123', 'sale_date' => '2024-03-10', 'sale_value' => 800000.00,
+        ]);
+
+        Livewire::test(ListContracts::class)
+            ->callAction(TestAction::make('importContracts'), ['file' => spreadsheetUpload(contractSpreadsheet([
+                contractRow(),
+                contractRow(['unit' => '402', 'code' => 'CVC-00402']),
+            ]))])
+            ->assertHasNoActionErrors();
+
+        $run = ImportRun::query()->sole();
+
+        expect(Contract::query()->where('code', 'CVC-00402')->sole()->import_run_id)->toBe($run->id)
+            ->and($existing->refresh()->import_run_id)->toBeNull()
+            ->and((float) $existing->sale_value)->toBe(850000.00)
+            ->and($run->records_created)->toBe(1)
+            ->and($run->records_updated)->toBe(1);
+    });
+});
+
+describe('plausibilidade do valor da venda', function () {
+    it('refuses a sale an order of magnitude away from the table value and warns at twice or half', function (string $case) {
+        [, $construction] = contractImportScenario();
+
+        ConstructionUnit::query()->where('construction_id', $construction->id)->where('unit', '305')
+            ->update(['base_value' => '800000.00', 'base_value_reference_date' => '2024-01-01']);
+
+        [$value, $outcome, $warning] = match ($case) {
+            'dez vezes' => [8000000.00, ReconciliationOutcome::Error, null],
+            'um décimo' => [80000.00, ReconciliationOutcome::Error, null],
+            'o dobro' => [1600000.00, ReconciliationOutcome::New, ImportRowWarningCode::SaleValueOffTable->value],
+            'a metade' => [400000.00, ReconciliationOutcome::New, ImportRowWarningCode::SaleValueOffTable->value],
+            'pouco abaixo do dobro' => [1599999.99, ReconciliationOutcome::New, null],
+        };
+
+        $row = analyzeContractSpreadsheet([contractRow(['sale_value' => $value])])->collect()->first();
+
+        expect($row['outcome'])->toBe($outcome)
+            ->and(collect($row['warnings'])->pluck('code')->first())->toBe($warning);
+
+        if ($outcome === ReconciliationOutcome::Error) {
+            expect($row['message'])->toContain('valor de tabela da unidade em 10/03/2024 (R$ 800.000,00): um dos dois foi lido errado.');
+        }
+    })->with(['dez vezes', 'um décimo', 'o dobro', 'a metade', 'pouco abaixo do dobro']);
+
+    it('reads a sale value written as text with a comma as a decimal, and warns', function () {
+        contractImportScenario();
+
+        $row = analyzeContractSpreadsheet([contractRow(['sale_value' => '850.000'])])->collect()->first();
+
+        expect($row['sale_value'])->toBe(850000.00)
+            ->and($row['warnings'][0]['message'])
+            ->toBe("Valor da venda '850.000' lido como R$ 850.000,00 (ponto como separador de milhar). Se o valor é R$ 850,00, escreva 850,00 ou use célula numérica.");
+    });
+});
+
+/**
+ * A escala da venda contra a tabela vale onde a derivação a mede e só para o que
+ * a linha grava: a importação nunca é mais permissiva que um bloqueador da
+ * derivação, mas também não recusa o arquivo mensal por dado que a derivação
+ * nunca mede, nem por venda que a linha não grava.
+ */
+describe('escala da venda como a derivação a mede', function () {
+    /**
+     * Unidade 01/305 com tabela de R$ 500.000,00 desde 01/01/2024, permuta
+     * registrada desde 10/03/2024 e o contrato de permuta de R$ 30.000,00 --
+     * cerca de 1/17 da tabela -- já cadastrado.
+     *
+     * @return array{construction: Construction, unit: ConstructionUnit, contract: Contract, exchange: ConstructionUnitExchange}
+     */
+    function exchangeAtSeventeenthScenario(): array
+    {
+        [, $construction, $unit305, $unit402, $client] = contractImportScenario();
+
+        $unit305->forceFill(['base_value' => '500000.00', 'base_value_reference_date' => '2024-01-01'])->save();
+        $unit402->forceFill(['base_value' => '500000.00', 'base_value_reference_date' => '2024-01-01'])->save();
+
+        $contract = Contract::factory()->forUnit($unit305)->forClient($client)->exchanged()->create([
+            'code' => 'PERM-305', 'sale_date' => '2024-03-10', 'sale_value' => 30000.00,
+        ]);
+
+        $exchange = ConstructionUnitExchange::factory()->forUnit($unit305)->forContract($contract)->effectiveFrom('2024-03-10')->create();
+
+        return ['construction' => $construction, 'unit' => $unit305, 'contract' => $contract, 'exchange' => $exchange];
+    }
+
+    it('never refuses the exchange contract, which has no table price, sent unchanged, corrected or new', function () {
+        exchangeAtSeventeenthScenario();
+
+        $unchanged = analyzeContractSpreadsheet([
+            contractRow(['code' => 'PERM-305', 'sale_value' => '30000.00', 'status' => 'Permutado']),
+            // Um contrato de permuta novo na outra unidade, também a 1/17.
+            contractRow(['unit' => '402', 'code' => 'PERM-402', 'sale_value' => '30000.00', 'status' => 'Permutado']),
+        ]);
+        $corrected = analyzeContractSpreadsheet([contractRow(['code' => 'PERM-305', 'sale_value' => '31000.00', 'status' => 'Permutado'])]);
+
+        expect($unchanged->canImport())->toBeTrue()
+            ->and($unchanged->collect()->pluck('outcome')->all())->toBe([ReconciliationOutcome::Unchanged, ReconciliationOutcome::New])
+            ->and($unchanged->collect()->pluck('warnings')->flatten(1)->all())->toBe([])
+            ->and($corrected->canImport())->toBeTrue()
+            ->and($corrected->collect()->sole()['outcome'])->toBe(ReconciliationOutcome::CriticalUpdate);
+    });
+
+    /**
+     * A derivação também não mede a permuta contra a tabela: o arquivo que a
+     * importação aceita não trava o Quadro.
+     */
+    it('agrees with the derivation, which never measures the exchange contract against the table', function () {
+        [, $construction] = unitEmissionAndConstruction(status: 'active');
+        $unit = ConstructionUnit::factory()->forConstruction($construction)->withBaseValue('500000.00', '2024-01-01')->create(['block' => '01', 'unit' => '305']);
+        $client = Client::factory()->create(['name' => 'João da Silva', 'document' => '52998224725']);
+
+        $contract = Contract::factory()->forUnit($unit)->forClient($client)->exchanged()->create([
+            'code' => 'PERM-305', 'sale_date' => '2024-03-10', 'sale_value' => 30000.00,
+        ]);
+        ConstructionUnitExchange::factory()->forUnit($unit)->forContract($contract)->effectiveFrom('2024-03-10')->create();
+
+        $import = analyzeContractSpreadsheet([contractRow(['code' => 'PERM-305', 'sale_value' => '30000.00', 'status' => 'Permutado'])]);
+        $position = DerivationFixture::derive($construction, '2026-07-01');
+
+        expect($import->canImport())->toBeTrue()
+            ->and(DerivationFixture::lineFor($position, $unit)->classification)->toBe(SalesBoardUnitClassification::Exchanged)
+            ->and(collect($position->issues)->contains(fn ($issue): bool => $issue->code === SalesBoardIssueCode::SaleValueOutOfScale))->toBeFalse();
+    });
+
+    it('never refuses the exchange contract the management cancelled when it ended the exchange', function () {
+        ['contract' => $contract, 'exchange' => $exchange] = exchangeAtSeventeenthScenario();
+
+        $exchange->update(['ended_on' => '2026-08-15']);
+        $contract->update(['status' => ContractStatus::Cancelled, 'cancellation_date' => '2026-08-15']);
+
+        $sameDistrato = analyzeContractSpreadsheet([contractRow([
+            'code' => 'PERM-305', 'sale_value' => '30000.00', 'status' => 'Distratado', 'cancellation_date' => '15/08/2026',
+        ])]);
+        $correctedValue = analyzeContractSpreadsheet([contractRow([
+            'code' => 'PERM-305', 'sale_value' => '31000.00', 'status' => 'Distratado', 'cancellation_date' => '15/08/2026',
+        ])]);
+
+        expect($sameDistrato->canImport())->toBeTrue()
+            ->and($sameDistrato->collect()->sole()['outcome'])->toBe(ReconciliationOutcome::Unchanged)
+            ->and($correctedValue->canImport())->toBeTrue()
+            ->and($correctedValue->collect()->sole()['outcome'])->toBe(ReconciliationOutcome::CriticalUpdate);
+    });
+
+    /**
+     * O ativo e o quitado continuam medidos: a linha que grava a venda fora de
+     * escala é recusada; a que não grava a venda -- reenviada igual, ou só
+     * quitada -- avisa, porque a venda já está cadastrada assim e a derivação já
+     * a bloqueia.
+     */
+    it('refuses only the rows that write a sale out of scale, and warns about the one already on record', function (string $case) {
+        [, , $unit305, $unit402, $client] = contractImportScenario();
+
+        $unit305->forceFill(['base_value' => '500000.00', 'base_value_reference_date' => '2024-01-01'])->save();
+        $unit402->forceFill(['base_value' => '500000.00', 'base_value_reference_date' => '2024-01-01'])->save();
+
+        Contract::factory()->forUnit($unit305)->forClient($client)->create([
+            'code' => 'CVC-00123', 'sale_date' => '2024-03-10', 'sale_value' => 50000.00,
+        ]);
+
+        [$row, $outcome] = match ($case) {
+            'reenviada igual' => [contractRow(['sale_value' => '50000.00']), ReconciliationOutcome::Unchanged],
+            'quitada' => [contractRow(['sale_value' => '50000.00', 'status' => 'Quitado']), ReconciliationOutcome::Update],
+            'valor alterado' => [contractRow(['sale_value' => '40000.00']), ReconciliationOutcome::Error],
+            'contrato novo' => [contractRow(['unit' => '402', 'code' => 'CVC-00402', 'sale_value' => '50000.00']), ReconciliationOutcome::Error],
+        };
+
+        $analysis = analyzeContractSpreadsheet([$row]);
+        $classified = $analysis->collect()->sole();
+
+        expect($classified['outcome'])->toBe($outcome);
+
+        if ($outcome === ReconciliationOutcome::Error) {
+            expect($analysis->canImport())->toBeFalse()
+                ->and($classified['message'])->toContain('do valor de tabela da unidade em 10/03/2024 (R$ 500.000,00): um dos dois foi lido errado.');
+
+            return;
+        }
+
+        expect($analysis->canImport())->toBeTrue()
+            ->and(collect($classified['warnings'])->pluck('code')->all())->toBe([ImportRowWarningCode::SaleValueOffTable->value])
+            ->and($classified['warnings'][0]['message'])->toContain('A venda já está cadastrada assim: nada é recusado por esta linha, mas o Quadro de Vendas bloqueia a obra enquanto um dos dois não for corrigido.');
+    })->with(['reenviada igual', 'quitada', 'valor alterado', 'contrato novo']);
+
+    it('measures nothing on a distrato that does not write the sale', function () {
+        [, , $unit305, , $client] = contractImportScenario();
+
+        $unit305->forceFill(['base_value' => '500000.00', 'base_value_reference_date' => '2024-01-01'])->save();
+
+        Contract::factory()->forUnit($unit305)->forClient($client)->create([
+            'code' => 'CVC-00123', 'sale_date' => '2024-03-10', 'sale_value' => 50000.00,
+            'status' => ContractStatus::Cancelled, 'cancellation_date' => '2025-02-10',
+        ]);
+
+        $analysis = analyzeContractSpreadsheet([contractRow([
+            'sale_value' => '50000.00', 'status' => 'Distratado', 'cancellation_date' => '10/02/2025',
+        ])]);
+
+        expect($analysis->canImport())->toBeTrue()
+            ->and($analysis->collect()->sole()['outcome'])->toBe(ReconciliationOutcome::Unchanged)
+            ->and($analysis->collect()->sole()['warnings'])->toBe([]);
+    });
+
+    /**
+     * Sem tabela na data da venda, a derivação mede a venda contra a tabela da
+     * data da posição. A importação mede igual: antes, a venda anterior à
+     * primeira tabela da unidade entrava sem aviso e a obra travava na apuração
+     * seguinte.
+     */
+    it('measures a sale with no table on its day against the table of the position, as the derivation does', function (string $case) {
+        $this->travelTo('2026-09-20 12:00:00');
+
+        [, , $unit305] = contractImportScenario();
+
+        match ($case) {
+            'valor base posterior à venda' => $unit305->forceFill(['base_value' => '480000.00', 'base_value_reference_date' => '2026-06-01'])->save(),
+            'histórico posterior à venda' => ConstructionUnitValue::factory()->forUnit($unit305)->effectiveFrom('2026-06-01')->worth('480000.00')->create(),
+            'zero na data da venda' => (function () use ($unit305): void {
+                $unit305->forceFill(['base_value' => '0.00', 'base_value_reference_date' => '2026-01-01'])->save();
+                ConstructionUnitValue::factory()->forUnit($unit305)->effectiveFrom('2026-06-01')->worth('480000.00')->create();
+            })(),
+        };
+
+        $verdict = fn (string $saleValue, string $status = 'Ativo', string $cancellation = '') => analyzeContractSpreadsheet([
+            contractRow(['sale_date' => '15/02/2026', 'sale_value' => $saleValue, 'status' => $status, 'cancellation_date' => $cancellation]),
+        ])->collect()->sole();
+
+        $tenTimes = $verdict('4800000.00');
+        $tenth = $verdict('48000.00');
+        $justInside = $verdict('4799999.99');
+        $distrato = $verdict('4800000.00', 'Distratado', '10/03/2026');
+
+        expect($tenTimes['outcome'])->toBe(ReconciliationOutcome::Error)
+            ->and($tenTimes['message'])->toBe('Valor da venda (R$ 4.800.000,00) é cerca de 10 vezes o valor de tabela da unidade em 31/08/2026 (R$ 480.000,00), a referência do Quadro de Vendas quando não há tabela na data da venda: um dos dois foi lido errado. Confira a planilha e o valor da unidade.')
+            ->and($tenth['outcome'])->toBe(ReconciliationOutcome::Error)
+            // Dentro da escala, nem o aviso de duas vezes: a derivação só o dá contra a tabela da data da venda.
+            ->and($justInside['outcome'])->toBe(ReconciliationOutcome::New)
+            ->and($justInside['warnings'])->toBe([])
+            // O distrato não ocupa a unidade: a derivação não o mede pela posição.
+            ->and($distrato['outcome'])->toBe(ReconciliationOutcome::New);
+    })->with(['valor base posterior à venda', 'histórico posterior à venda', 'zero na data da venda']);
+
+    /**
+     * A mesma venda, nos dois lados: a importação erra exatamente onde a
+     * derivação bloqueia, e aceita exatamente onde ela não bloqueia.
+     */
+    it('agrees with the derivation when the reference is the one of the position', function () {
+        $this->travelTo('2026-09-20 12:00:00');
+
+        [, $construction] = unitEmissionAndConstruction(status: 'active');
+        $unit305 = ConstructionUnit::factory()->forConstruction($construction)->create(['block' => '01', 'unit' => '305']);
+        $unit402 = ConstructionUnit::factory()->forConstruction($construction)->create(['block' => '01', 'unit' => '402']);
+        Client::factory()->create(['name' => 'João da Silva', 'document' => '52998224725']);
+
+        foreach ([$unit305, $unit402] as $unit) {
+            ConstructionUnitValue::factory()->forUnit($unit)->effectiveFrom('2026-06-01')->worth('480000.00')->create();
+        }
+
+        $import = analyzeContractSpreadsheet([
+            contractRow(['code' => 'DEZ', 'sale_date' => '15/02/2026', 'sale_value' => '4800000.00']),
+            contractRow(['unit' => '402', 'code' => 'QUASE', 'sale_date' => '15/02/2026', 'sale_value' => '4799999.99']),
+        ])->collect()->keyBy('code');
+
+        // As mesmas vendas gravadas por fora da importação, como estariam antes da correção.
+        foreach ([[$unit305, 'DEZ', '4800000.00'], [$unit402, 'QUASE', '4799999.99']] as [$unit, $code, $value]) {
+            $contract = DerivationFixture::contract($unit, '2026-02-15', $value);
+            $contract->forceFill(['code' => $code])->save();
+            DerivationFixture::installment($contract, '001', '2026-12-10', '100000.00');
+        }
+
+        $blocked = collect(DerivationFixture::derive($construction, '2026-07-01')->issues)
+            ->filter(fn ($issue): bool => $issue->code === SalesBoardIssueCode::SaleValueOutOfScale)
+            ->map(fn ($issue): string => (string) $issue->contractCode)
+            ->values()
+            ->all();
+
+        expect($import['DEZ']['outcome'])->toBe(ReconciliationOutcome::Error)
+            ->and($import['QUASE']['outcome'])->toBe(ReconciliationOutcome::New)
+            ->and($blocked)->toBe(['DEZ']);
+    });
+});
+
+describe('possível duplicidade entre empreendimentos', function () {
+    it('warns about a new contract that repeats code, unit and buyer of another development of the emission', function (string $case) {
+        [$emission, , , , $client] = contractImportScenario();
+
+        $wrongDevelopment = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Conviva Piratininga']);
+        $buyer = $case === 'mesmo comprador' ? $client : Client::factory()->create(['document' => '11144477735']);
+
+        Contract::factory()
+            ->forUnit(ConstructionUnit::factory()->forConstruction($wrongDevelopment)->create(['block' => '01', 'unit' => '305']))
+            ->forClient($buyer)
+            ->create(['code' => 'CVC-00123']);
+
+        $row = analyzeContractSpreadsheet([contractRow()])->collect()->first();
+
+        expect($row['outcome'])->toBe(ReconciliationOutcome::New);
+
+        if ($case === 'mesmo comprador') {
+            expect($row['warnings'])->toBe([[
+                'code' => ImportRowWarningCode::PossibleDuplicateAcrossConstructions->value,
+                'message' => 'Já existe o contrato CVC-00123 no empreendimento Conviva Piratininga desta Emissão, na mesma unidade e com o mesmo comprador. Confira se não é o mesmo contrato gravado no empreendimento errado.',
+            ]]);
+
+            return;
+        }
+
+        expect($row['warnings'])->toBe([]);
+    })->with(['mesmo comprador', 'outro comprador']);
+});
+
+/**
+ * O distrato que a Gestão grava ao encerrar a permuta não se desfaz pela
+ * reimportação. O arquivo mensal ainda pode trazer o contrato como permutado;
+ * aceitar a volta faria o contrato ocupar de novo a unidade sem permuta, e a
+ * obra inteira bloquearia na apuração seguinte. Só a Gestão devolve a permuta.
+ */
+it('refuses to undo the distrato the management recorded when it ended the exchange', function (string $exchange) {
+    [, , $unit305] = contractImportScenario();
+
+    app(ImportContractsFromSpreadsheet::class)->handle(analyzeContractSpreadsheet([contractRow(['status' => 'Permutado'])]));
+    $contract = Contract::query()->sole();
+
+    $factory = ConstructionUnitExchange::factory()->forUnit($unit305)->effectiveFrom('2024-03-10')->endedOn('2026-08-15');
+    ($exchange === 'com contrato' ? $factory->forContract($contract) : $factory)->create();
+
+    $contract->update(['status' => ContractStatus::Cancelled, 'cancellation_date' => '2026-08-15']);
+
+    $analysis = analyzeContractSpreadsheet([contractRow(['status' => 'Permutado'])]);
+    $row = $analysis->collect()->first();
+
+    expect($analysis->conflictCount())->toBe(1)
+        ->and($analysis->canImport())->toBeFalse()
+        ->and($row['outcome'])->toBe(ReconciliationOutcome::Conflict)
+        ->and($row['message'])->toContain('Distratado pela Gestão no encerramento da permuta em 15/08/2026: para voltar a ocupar a unidade, a Gestão registra nova permuta.');
+})->with(['com contrato', 'sem contrato']);
+
+it('still reads a distrato that did not come from an exchange ending as a critical return', function () {
+    [, , $unit305] = contractImportScenario();
+
+    app(ImportContractsFromSpreadsheet::class)->handle(analyzeContractSpreadsheet([contractRow(['status' => 'Permutado'])]));
+    $contract = Contract::query()->sole();
+
+    // A permuta terminou em outro dia: o distrato não é o do encerramento.
+    ConstructionUnitExchange::factory()->forUnit($unit305)->forContract($contract)->effectiveFrom('2024-03-10')->endedOn('2026-08-01')->create();
+    $contract->update(['status' => ContractStatus::Cancelled, 'cancellation_date' => '2026-08-15']);
+
+    $analysis = analyzeContractSpreadsheet([contractRow(['status' => 'Permutado'])]);
+
+    expect($analysis->conflictCount())->toBe(0)
+        ->and($analysis->criticalUpdateCount())->toBe(1);
 });

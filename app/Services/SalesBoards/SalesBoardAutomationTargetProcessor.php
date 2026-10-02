@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Services\SalesBoards;
 
 use App\Enums\SalesBoardAutomationAttemptOutcome;
+use App\Enums\SalesBoardAutomationClosureReason;
 use App\Enums\SalesBoardAutomationRunStatus;
 use App\Enums\SalesBoardAutomationTargetStatus;
+use App\Enums\SalesBoardCycleStatus;
 use App\Enums\SalesBoardGenerationOutcome;
 use App\Models\Construction;
 use App\Models\SalesBoardAutomationAttempt;
@@ -52,6 +54,17 @@ class SalesBoardAutomationTargetProcessor
      * O código da tentativa que um processo morto deixou pela metade.
      */
     public const INTERRUPTED_CODE = 'TentativaInterrompida';
+
+    /**
+     * O código da tentativa que encontrou a competência cancelada pela Gestão.
+     */
+    public const CANCELLED_COMPETENCE_CODE = 'competencia_cancelada';
+
+    /**
+     * O código da tentativa que encontrou uma competência posterior já
+     * publicada.
+     */
+    public const LATER_PUBLISHED_CODE = 'competencia_posterior_publicada';
 
     public function __construct(
         private readonly SalesBoardGenerationService $generationService,
@@ -103,14 +116,16 @@ class SalesBoardAutomationTargetProcessor
             $existing = $this->existingCycleFor($locked);
 
             if ($existing instanceof SalesBoardCycle) {
-                return $this->satisfy(
-                    $run,
-                    $locked,
-                    $existing,
-                    SalesBoardAutomationAttemptOutcome::Existing,
-                    $attemptNumber,
-                    $startedAt,
-                );
+                return $existing->status === SalesBoardCycleStatus::Cancelled
+                    ? $this->closeForCancelledCompetence($run, $locked, $existing, $attemptNumber, $startedAt)
+                    : $this->satisfy(
+                        $run,
+                        $locked,
+                        $existing,
+                        SalesBoardAutomationAttemptOutcome::Existing,
+                        $attemptNumber,
+                        $startedAt,
+                    );
             }
 
             $construction = Construction::query()->find($locked->construction_id);
@@ -154,23 +169,27 @@ class SalesBoardAutomationTargetProcessor
                     $attemptNumber,
                     $startedAt,
                 ),
-                SalesBoardGenerationOutcome::AlreadyExists => $this->satisfy(
-                    $run,
-                    $locked,
-                    $result->cycle,
-                    SalesBoardAutomationAttemptOutcome::Existing,
-                    $attemptNumber,
-                    $startedAt,
-                ),
-                SalesBoardGenerationOutcome::Blocked => $this->block(
-                    $run,
-                    $locked,
-                    $attemptNumber,
-                    $startedAt,
-                    $now,
-                    $result->readiness?->blockingIssueCounts() ?? [],
-                    (string) $result->blockedReason,
-                ),
+                SalesBoardGenerationOutcome::AlreadyExists => $result->cycle?->status === SalesBoardCycleStatus::Cancelled
+                    ? $this->closeForCancelledCompetence($run, $locked, $result->cycle, $attemptNumber, $startedAt)
+                    : $this->satisfy(
+                        $run,
+                        $locked,
+                        $result->cycle,
+                        SalesBoardAutomationAttemptOutcome::Existing,
+                        $attemptNumber,
+                        $startedAt,
+                    ),
+                SalesBoardGenerationOutcome::Blocked => $result->isBehindLaterPublication()
+                    ? $this->closeForLaterPublication($run, $locked, $attemptNumber, $startedAt, (string) $result->blockedReason)
+                    : $this->block(
+                        $run,
+                        $locked,
+                        $attemptNumber,
+                        $startedAt,
+                        $now,
+                        $result->readiness?->blockingIssueCounts() ?? [],
+                        (string) $result->blockedReason,
+                    ),
             };
         });
     }
@@ -321,10 +340,12 @@ class SalesBoardAutomationTargetProcessor
     /**
      * O ciclo da competência, se já houver um.
      *
-     * Qualquer ciclo serve, inclusive cancelado: a competência já tem
-     * identidade, e a unique de `sales_board_cycles` recusaria outro. Gerar
-     * "outro ciclo porque aquele foi cancelado" é decisão de governança que
-     * ninguém tomou, e a automação não é o lugar de tomá-la.
+     * Qualquer ciclo conta, inclusive cancelado: a competência já tem
+     * identidade, e a unique de `sales_board_cycles` recusaria outro. O ciclo em
+     * andamento satisfaz o alvo; o cancelado o **encerra**
+     * ({@see self::closeForCancelledCompetence()}) -- a Gestão encerrou a
+     * competência, e a volta é a reabertura do mesmo ciclo por ela, não um
+     * ciclo novo gerado pela automação.
      */
     private function existingCycleFor(SalesBoardAutomationTarget $target): ?SalesBoardCycle
     {
@@ -366,6 +387,115 @@ class SalesBoardAutomationTargetProcessor
         $this->openBuilderReviewIfRequested($target, $cycle);
 
         return $attempt;
+    }
+
+    /**
+     * Encerra o alvo cuja competência a Gestão cancelou.
+     *
+     * Acontece quando o cancelamento veio antes de o alvo existir -- um ciclo
+     * congelado à mão e cancelado antes do dia 13. O cancelamento só alcança os
+     * alvos que já existem; sem isto o alvo nascia pendente e terminava
+     * "satisfeito (já existente)" apontando para o ciclo cancelado, como se a
+     * competência tivesse sido atendida.
+     *
+     * O encerramento é o mesmo que o cancelamento produziria: motivo
+     * `CompetenceCancelled`, a mensagem com o motivo do ciclo e quem cancelou.
+     * A tentativa já reservada fica registrada como ignorada, apontando o ciclo,
+     * e a validação da construtora nunca é aberta -- não há o que validar numa
+     * competência encerrada. Só a reabertura da competência pela Gestão devolve
+     * o alvo.
+     */
+    private function closeForCancelledCompetence(
+        SalesBoardAutomationRun $run,
+        SalesBoardAutomationTarget $target,
+        SalesBoardCycle $cycle,
+        int $attemptNumber,
+        CarbonImmutable $startedAt,
+    ): SalesBoardAutomationAttempt {
+        $reason = trim((string) $cycle->cancellation_reason);
+
+        $target->forceFill([
+            'status' => SalesBoardAutomationTargetStatus::Closed,
+            'closure_reason' => SalesBoardAutomationClosureReason::CompetenceCancelled,
+            'closure_message' => mb_substr(
+                $reason === '' ? 'Competência cancelada pela Gestão.' : 'Competência cancelada pela Gestão: '.$reason,
+                0,
+                2000,
+            ),
+            'closed_at' => CarbonImmutable::now(),
+            'closed_by_user_id' => $cycle->cancelled_by_user_id,
+            'sales_board_cycle_id' => $cycle->getKey(),
+            'attempt_count' => $attemptNumber,
+            'consecutive_failure_count' => 0,
+            'in_flight_run_id' => null,
+            'first_attempt_at' => $target->first_attempt_at ?? $startedAt,
+            'last_attempt_at' => $startedAt,
+            'next_attempt_at' => null,
+            'last_outcome_at' => CarbonImmutable::now(),
+            'last_blocker_codes' => null,
+            'last_blocker_message' => null,
+            'last_error_code' => null,
+            'last_error_message' => null,
+        ])->save();
+
+        return $this->recordAttempt(
+            $run,
+            $target,
+            $attemptNumber,
+            SalesBoardAutomationAttemptOutcome::Skipped,
+            $startedAt,
+            $cycle,
+            self::CANCELLED_COMPETENCE_CODE,
+            'A competência foi cancelada pela Gestão; a automação não gera outro ciclo para o mesmo mês.',
+        );
+    }
+
+    /**
+     * Encerra o alvo cuja competência ficou para trás de uma competência
+     * posterior do empreendimento já publicada.
+     *
+     * A geração recusa a competência para sempre -- a publicação posterior
+     * reflete os fatos dela, e nunca é desfeita --, então tentar de novo a cada
+     * dia só produziria alertas que ninguém resolve. O motivo é próprio e a
+     * descoberta não o desfaz. A tentativa fica registrada como ignorada, com a
+     * explicação da geração, e nenhum ciclo é criado.
+     */
+    private function closeForLaterPublication(
+        SalesBoardAutomationRun $run,
+        SalesBoardAutomationTarget $target,
+        int $attemptNumber,
+        CarbonImmutable $startedAt,
+        string $message,
+    ): SalesBoardAutomationAttempt {
+        $target->forceFill([
+            'status' => SalesBoardAutomationTargetStatus::Closed,
+            'closure_reason' => SalesBoardAutomationClosureReason::LaterCompetencePublished,
+            'closure_message' => mb_substr($message, 0, 2000),
+            'closed_at' => CarbonImmutable::now(),
+            'closed_by_user_id' => null,
+            'attempt_count' => $attemptNumber,
+            'consecutive_failure_count' => 0,
+            'in_flight_run_id' => null,
+            'first_attempt_at' => $target->first_attempt_at ?? $startedAt,
+            'last_attempt_at' => $startedAt,
+            'next_attempt_at' => null,
+            'last_outcome_at' => CarbonImmutable::now(),
+            'last_blocker_codes' => null,
+            'last_blocker_message' => null,
+            'last_error_code' => null,
+            'last_error_message' => null,
+        ])->save();
+
+        return $this->recordAttempt(
+            $run,
+            $target,
+            $attemptNumber,
+            SalesBoardAutomationAttemptOutcome::Skipped,
+            $startedAt,
+            null,
+            self::LATER_PUBLISHED_CODE,
+            $message,
+        );
     }
 
     /**

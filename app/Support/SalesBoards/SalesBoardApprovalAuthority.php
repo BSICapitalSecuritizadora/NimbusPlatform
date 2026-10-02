@@ -6,8 +6,10 @@ namespace App\Support\SalesBoards;
 
 use App\Actions\Emissions\HomologatePuCurve;
 use App\Enums\AccessPermission;
+use App\Enums\SalesBoardRectificationStatus;
 use App\Exceptions\SalesBoardMakerCheckerException;
 use App\Models\SalesBoardBuilderReview;
+use App\Models\SalesBoardCycleRectification;
 use App\Models\SalesBoardManagementReview;
 use App\Models\SalesBoardRolloutHomologation;
 use App\Models\User;
@@ -25,9 +27,15 @@ use Illuminate\Auth\Access\AuthorizationException;
  *    ativar a automação e retornar ao legado exigem `sales-boards.approve`.
  *    `sales-boards.update` continua sendo de quem opera a competência;
  * 2. **maker/checker.** Quem enviou a validação da construtora não aprova a
- *    publicação daquela rodada, e quem abriu a homologação não a aprova nem
- *    ativa a automação com base nela. Super admin é isento, exatamente como no
- *    PU ({@see HomologatePuCurve}).
+ *    publicação daquela rodada, quem abriu a retificação de uma competência
+ *    publicada não aprova a publicação dela, e quem abriu a homologação não a
+ *    aprova nem ativa a automação com base nela. O super-admin é isento por papel: é a
+ *    regra que o dono decidiu em 25/09/2026, quando a do PU era a mesma. O PU
+ *    mudou em 28/09 (a460348) -- a auto-homologação passou a ser só do
+ *    responsável da área, com validação e justificativa
+ *    ({@see HomologatePuCurve}) --, e o Quadro não acompanha essa mudança sem
+ *    uma decisão do dono. Para a auditoria não depender de comparar colunas,
+ *    a Análise e o Rollout mostram quando a mesma pessoa preparou e concluiu.
  *
  * Os autores são relidos do banco pela chave, e não da instância recebida: a
  * tela de rollout carrega a homologação com só algumas colunas, e confiar num
@@ -70,8 +78,22 @@ final class SalesBoardApprovalAuthority
             ->whereKey($review->sales_board_builder_review_id)
             ->value('submitted_by_user_id');
 
-        return self::isMaker($approver, $submitterId)
-            ? SalesBoardMakerCheckerException::approverSubmittedBuilderReview()
+        if (self::isMaker($approver, $submitterId)) {
+            return SalesBoardMakerCheckerException::approverSubmittedBuilderReview();
+        }
+
+        /**
+         * A análise de uma competência em retificação publica a posição
+         * retificada: quem pediu a retificação não a aprova. A regra se soma à
+         * de quem enviou a validação.
+         */
+        $requesterId = SalesBoardCycleRectification::query()
+            ->where('sales_board_cycle_id', $review->sales_board_cycle_id)
+            ->where('status', SalesBoardRectificationStatus::Open->value)
+            ->value('requested_by_user_id');
+
+        return self::isMaker($approver, $requesterId)
+            ? SalesBoardMakerCheckerException::approverRequestedRectification()
             : null;
     }
 

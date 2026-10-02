@@ -79,6 +79,68 @@ it('emits parseable json with no decoration', function () {
         ->and($payload['duration_ms'])->toBeInt();
 });
 
+it('records the run duration in milliseconds independently of the second-precision timestamps', function () {
+    // Relógio parado: início e fim gravam o mesmo segundo, e a diferença entre
+    // eles daria zero. A duração vem do relógio monotônico.
+    $this->freezeSecond();
+
+    $construction = AutomationFixture::readyConstruction();
+    AutomationFixture::enable([$construction]);
+
+    Artisan::call('sales-boards:automation-run', ['--json' => true, '--as-of' => '2026-09-13']);
+    $payload = json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR);
+
+    $run = SalesBoardAutomationRun::query()->sole();
+
+    expect($run->started_at->equalTo($run->finished_at))->toBeTrue()
+        ->and($run->duration_ms)->toBeInt()->toBeGreaterThan(0)
+        ->and($payload['duration_ms'])->toBe($run->duration_ms);
+});
+
+it('keeps the duration unknown for a run given up as interrupted', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-09-13 13:00:00'));
+
+    $dead = SalesBoardAutomationRun::factory()->running(now()->subHours(4))->create();
+
+    $construction = AutomationFixture::readyConstruction();
+    AutomationFixture::enable([$construction]);
+
+    AutomationFixture::run();
+
+    $dead->refresh();
+
+    expect($dead->status)->toBe(SalesBoardAutomationRunStatus::Interrupted)
+        ->and($dead->finished_at)->not->toBeNull()
+        ->and($dead->duration_ms)->toBeNull()
+        ->and($dead->toSummaryArray()['duration_ms'])->toBeNull()
+        ->and($dead->durationLabel())->toBe('—');
+});
+
+it('refuses an ambiguous --as-of before writing anything', function (string $raw) {
+    $construction = AutomationFixture::readyConstruction();
+    AutomationFixture::enable([$construction]);
+
+    $this->artisan('sales-boards:automation-run', ['--as-of' => $raw])
+        ->expectsOutputToContain('Data inválida em --as-of. Use aaaa-mm-dd (data de negócio).')
+        ->assertExitCode(1);
+
+    expect(SalesBoardAutomationRun::query()->count())->toBe(0)
+        ->and(SalesBoardCycle::query()->count())->toBe(0);
+})->with(['now', 'last month', '13/09/2026', '2026-9-13', '2026-02-30']);
+
+it('refuses an unreadable --as-of before the production refusal', function () {
+    $construction = AutomationFixture::readyConstruction();
+    AutomationFixture::enable([$construction]);
+
+    app()->detectEnvironment(fn (): string => 'production');
+
+    $this->artisan('sales-boards:automation-run', ['--as-of' => 'last month', '--dry-run' => true])
+        ->expectsOutputToContain('Data inválida em --as-of')
+        ->assertExitCode(1);
+
+    expect(SalesBoardAutomationRun::query()->count())->toBe(0);
+});
+
 it('lists the previewed targets in json on a dry run', function () {
     $construction = AutomationFixture::readyConstruction();
     AutomationFixture::enable([$construction]);

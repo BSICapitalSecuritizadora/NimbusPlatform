@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\SalesBoardRolloutComparisonStatus;
 use App\Enums\SalesBoardRolloutHomologationStatus;
+use App\Support\SalesBoards\SalesBoardFrozenWarnings;
 use Database\Factories\SalesBoardRolloutHomologationConstructionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -49,6 +50,7 @@ class SalesBoardRolloutHomologationConstruction extends Model
         'is_ready',
         'blocker_codes',
         'blocker_message',
+        'warnings',
         'source_fingerprint',
         'snapshot_fingerprint',
         'comparison_status',
@@ -130,6 +132,7 @@ class SalesBoardRolloutHomologationConstruction extends Model
         return [
             'is_ready' => 'boolean',
             'blocker_codes' => 'array',
+            'warnings' => 'array',
             'comparison_status' => SalesBoardRolloutComparisonStatus::class,
             'legacy_position' => 'array',
             'derived_position' => 'array',
@@ -210,6 +213,21 @@ class SalesBoardRolloutHomologationConstruction extends Model
      * tão homologável quanto uma coincidência; o que não é homologável é uma
      * diferença que ninguém olhou.
      */
+    /**
+     * Os avisos da apuração do empreendimento na competência de comparação, na
+     * forma de {@see SalesBoardFrozenWarnings::fromPosition()}.
+     *
+     * Retrato derivado como as posições: gravado a cada avaliação, fora da
+     * trilha (`logOnly`), do resumo da avaliação e do aceite. `null` quando a
+     * linha foi avaliada antes de os avisos passarem a ser registrados.
+     *
+     * @return list<array<string, mixed>>|null
+     */
+    public function frozenWarnings(): ?array
+    {
+        return $this->warnings === null ? null : array_values($this->warnings);
+    }
+
     public function isHomologable(): bool
     {
         return $this->is_ready && ! $this->requiresAcknowledgement();

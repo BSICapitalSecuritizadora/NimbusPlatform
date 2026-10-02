@@ -3,12 +3,14 @@
 use App\Actions\Receivables\ImportReceivablesFromSpreadsheet;
 use App\Filament\Resources\Receivables\Pages\CreateReceivable;
 use App\Filament\Resources\Receivables\Pages\ListReceivables;
+use App\Filament\Resources\Receivables\ReceivableResource;
 use App\Models\Emission;
 use App\Models\Receivable;
 use App\Models\User;
 use App\Rules\ReceivablesSpreadsheetFile;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Action as FilamentAction;
+use Filament\Actions\Testing\TestAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
@@ -113,27 +115,50 @@ it('normalizes reference months from DateTime instances', function () {
         ->toBe('2026-03-01');
 });
 
-it('resolves uploaded spreadsheets from stored paths and uploaded files', function () {
+it('resolves only the spreadsheet the field stored, never a path the client sends', function () {
     $this->actingAs(makeReceivableAdminUser());
 
-    $spreadsheetPath = storeReceivableSummarySpreadsheet(makeSummaryRows());
+    Storage::disk('local')->makeDirectory('imports/receivables');
+    Storage::disk('local')->put('imports/receivables/resumo.xlsx', 'conteúdo');
+    $absolutePath = Storage::disk('local')->path('imports/receivables/resumo.xlsx');
 
     $component = Livewire::test(ListReceivables::class)->instance();
     $method = new ReflectionMethod($component, 'resolveUploadedSpreadsheetPath');
     $method->setAccessible(true);
 
-    $uploadedFile = new UploadedFile(
-        Storage::disk('local')->path($spreadsheetPath),
-        'receivables-summary.xlsx',
-        null,
-        null,
-        true,
-    );
+    expect($method->invoke($component, 'imports/receivables/resumo.xlsx'))->toBe($absolutePath);
 
-    expect($method->invoke($component, $spreadsheetPath))
-        ->toBe(Storage::disk('local')->path($spreadsheetPath))
-        ->and($method->invoke($component, $uploadedFile))
-        ->toBe($uploadedFile->getRealPath());
+    foreach ([
+        'caminho absoluto' => $absolutePath,
+        'fora do diretório' => 'imports/testing/resumo.xlsx',
+        'travessia' => 'imports/receivables/../testing/resumo.xlsx',
+        'inexistente' => 'imports/receivables/outra.xlsx',
+    ] as $case => $file) {
+        expect(fn () => $method->invoke($component, $file))
+            ->toThrow(ValidationException::class, 'Não foi possível localizar o arquivo enviado.', $case);
+    }
+});
+
+it('reads an uploaded spreadsheet through a local copy when the temporary disk has no local path', function () {
+    $this->actingAs(makeReceivableAdminUser());
+
+    useRemoteLikeTemporaryUploadDisk();
+
+    $spreadsheetPath = storeReceivableSummarySpreadsheet(makeSummaryRows());
+    $upload = temporaryUploadWithContent('resumo.xlsx', Storage::disk('local')->get($spreadsheetPath));
+
+    expect(is_file($upload->getRealPath()))->toBeFalse();
+
+    $validator = validator(['file' => $upload], ['file' => [new ReceivablesSpreadsheetFile]]);
+
+    $component = Livewire::test(ListReceivables::class)->instance();
+    $method = new ReflectionMethod($component, 'withUploadedSpreadsheet');
+    $method->setAccessible(true);
+
+    $read = $method->invoke($component, $upload, fn (string $path): string => (string) file_get_contents($path));
+
+    expect($validator->passes())->toBeTrue()
+        ->and($read)->toBe(Storage::disk('local')->get($spreadsheetPath));
 });
 
 it('shows a persistent notification with the import validation message', function () {
@@ -271,6 +296,51 @@ it('filters receivable summaries by emission', function () {
         ->filterTable('emission_id', $selectedEmission->id)
         ->assertCanSeeTableRecords([$selectedReceivable])
         ->assertCanNotSeeTableRecords([$otherReceivable]);
+});
+
+/**
+ * Importar a planilha cria o resumo da competência ou reescreve o que já existe,
+ * e o resumo vai para o relatório mensal do investidor: exige criar e editar,
+ * como nas importações de contratos e parcelas. A regra vale no servidor --
+ * ação oculta não monta nem executa, e o mount forjado não abre nada.
+ */
+it('hides the receivables import from a profile that cannot both create and update, and ignores the forged mount', function (string $profile) {
+    $permissions = match ($profile) {
+        'só ver' => ['receivables.view'],
+        'ver e cadastrar' => ['receivables.view', 'receivables.create'],
+        'ver e editar' => ['receivables.view', 'receivables.update'],
+    };
+
+    $this->actingAs(receivableImportProfile($permissions));
+
+    expect(ReceivableResource::canImport())->toBeFalse();
+
+    Livewire::test(ListReceivables::class)
+        ->assertActionHidden('import')
+        ->call('mountAction', 'import')
+        ->assertSet('mountedActions', [])
+        ->call('callMountedAction');
+
+    expect(Receivable::query()->count())->toBe(0);
+})->with(['só ver', 'ver e cadastrar', 'ver e editar']);
+
+it('offers the receivables import to whoever can create and update summaries, and writes the summary', function () {
+    $this->actingAs(receivableImportProfile(['receivables.view', 'receivables.create', 'receivables.update']));
+
+    $emission = Emission::factory()->create(['name' => 'CRI Importacao Autorizada', 'status' => 'active']);
+    $spreadsheetPath = storeReceivableSummarySpreadsheet(makeSummaryRows());
+
+    expect(ReceivableResource::canImport())->toBeTrue();
+
+    Livewire::test(ListReceivables::class)
+        ->assertActionVisible('import')
+        ->callAction(TestAction::make('import'), [
+            'emission_id' => $emission->id,
+            'file' => spreadsheetUpload(Storage::disk('local')->path($spreadsheetPath), 'resumo.xlsx'),
+        ])
+        ->assertHasNoActionErrors();
+
+    expect(Receivable::query()->where('emission_id', $emission->id)->sole()->active_contracts_count)->toBe(131);
 });
 
 it('imports a receivable summary from the resumo sheet only and binds it to the selected emission', function () {
@@ -684,6 +754,22 @@ function makeReceivableSummaryFormData(int $emissionId, array $overrides = []): 
         'portfolio_duration_years' => '1,399974',
         'portfolio_duration_months' => '16,799698',
     ], $overrides);
+}
+
+/**
+ * Um perfil montado só com as permissões dadas -- a tela de Papéis e as
+ * permissões individuais do usuário permitem combinações que nenhum papel
+ * semeado tem.
+ *
+ * @param  list<string>  $permissions
+ */
+function receivableImportProfile(array $permissions): User
+{
+    $user = User::factory()->withTwoFactor()->create(['email' => fake()->unique()->safeEmail()]);
+    $user->givePermissionTo($permissions);
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    return $user->fresh();
 }
 
 function makeReceivableAdminUser(): User

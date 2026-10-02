@@ -50,6 +50,43 @@ final class SalesBoardAutomationConfig
     public const DEFAULT_STALE_RUN_MINUTES = 180;
 
     /**
+     * O SLA padrão dos lembretes, em dias civis corridos (e em falhas
+     * consecutivas, no caso da falha técnica).
+     *
+     * Decidido no pacote de conclusão do Quadro, por delegação do dono:
+     *
+     * - **bloqueio no mesmo dia (0)**: o retry de um bloqueio é de 24 horas, e
+     *   avisar no primeiro dia é o único jeito de o cadastro ser corrigido antes
+     *   da tentativa seguinte -- com 1 dia a competência perderia um dia todo
+     *   mês;
+     * - **falha técnica a partir de 3 seguidas**: uma falha isolada costuma ser
+     *   transitória e o backoff cuida dela;
+     * - **pronta para a construtora no mesmo dia (0)**: a posição apurada não
+     *   pode esperar ninguém lembrar de enviá-la;
+     * - **validação 5/10 e análise 3/7** (lembrete/escalação): cabem no ciclo
+     *   mensal, com a geração no dia 13 e a publicação até o fim do mês.
+     *
+     * A deduplicação diária por pessoa e canal continua valendo, e cada valor é
+     * sobrescrevível por variável de ambiente.
+     *
+     * @var array<string, int>
+     */
+    public const DEFAULT_REMINDERS = [
+        'blocked_after_days' => 0,
+        'failed_after_attempts' => 3,
+        'ready_for_builder_after_days' => 0,
+        'builder_review_after_days' => 5,
+        'builder_review_escalation_after_days' => 10,
+        'management_review_after_days' => 3,
+        'management_review_escalation_after_days' => 7,
+    ];
+
+    /**
+     * O valor que desliga um lembrete pela variável de ambiente.
+     */
+    public const REMINDER_OFF = 'off';
+
+    /**
      * Ligado só quando o valor diz inequivocamente que é: `true`, `1`, `yes`,
      * `on` (sem diferenciar caixa). Qualquer outra coisa -- ausente, vazio,
      * `off`, `2`, `banana` -- é desligado.
@@ -89,6 +126,59 @@ final class SalesBoardAutomationConfig
         }
 
         $parsed = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+
+        return $parsed === false ? null : $parsed;
+    }
+
+    /**
+     * Um limiar de lembrete lido do ambiente, com o padrão documentado.
+     *
+     * Omissão e valor inválido são coisas diferentes, e é essa a regra inteira:
+     *
+     * - **ausente**, vazio, só espaços ou o literal `null` (que o `env()` já
+     *   entrega como `null`): ninguém escolheu nada, e vale o padrão;
+     * - **`off`** (sem diferenciar caixa nem espaços) ou `false`: alguém
+     *   desligou o lembrete de propósito;
+     * - **inteiro não negativo**: o valor, com zero valendo "no mesmo dia";
+     * - **qualquer outra coisa** -- texto, negativo, decimal, `true` --:
+     *   desligado. Falha fechado: como bloqueio e "pronta para a construtora"
+     *   têm padrão zero, devolver o padrão para um valor ilegível poderia
+     *   transformar um erro de digitação em "avisar agora". Desligado, a tela
+     *   "Automação do Quadro" mostra o item como desligado, e é por ela que o
+     *   valor ilegível aparece.
+     *
+     * Lançar exceção aqui derrubaria o `config:cache` do startup -- e com ele o
+     * site -- por um erro de digitação numa App Setting.
+     */
+    public static function reminderSetting(mixed $value, int $default): ?int
+    {
+        if ($value === null) {
+            return $default;
+        }
+
+        if ($value === false) {
+            return null;
+        }
+
+        if (is_int($value)) {
+            return $value >= 0 ? $value : null;
+        }
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        if ($trimmed === '') {
+            return $default;
+        }
+
+        if (strtolower($trimmed) === self::REMINDER_OFF) {
+            return null;
+        }
+
+        $parsed = filter_var($trimmed, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
 
         return $parsed === false ? null : $parsed;
     }
@@ -192,9 +282,10 @@ final class SalesBoardAutomationConfig
     /**
      * Todos os lembretes de prazo estão desligados?
      *
-     * É o estado padrão -- o projeto não tem SLA definido --, e a tela precisa
-     * dizer isso: responsáveis cadastrados sem nenhum aviso ligado dão a
-     * impressão de um monitoramento que não existe.
+     * Só acontece quando alguém desligou os sete -- ou deixou os sete
+     * ilegíveis --, porque cada um tem padrão. A tela precisa dizer isso:
+     * responsáveis cadastrados sem nenhum aviso ligado dão a impressão de um
+     * monitoramento que não existe.
      */
     public static function allRemindersOff(): bool
     {

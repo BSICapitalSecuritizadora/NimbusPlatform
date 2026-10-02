@@ -1962,15 +1962,19 @@
 /* ── Filter & Form Select Dropdown Panel / Popover Floating Context ── */
 .fi-dropdown-panel {
     z-index: 9999 !important;
-}
-
-.dark .fi-dropdown-panel,
-.fi-dropdown-panel {
-    background: #091b23 !important;
-    border: 1px solid rgba(183, 131, 47, 0.25) !important;
-    box-shadow: 0 20px 45px rgba(4, 14, 19, 0.8), 0 6px 18px rgba(4, 14, 19, 0.5) !important;
+    background: var(--surface-card) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: 0 12px 32px rgba(9, 27, 35, 0.10), 0 4px 12px rgba(9, 27, 35, 0.05) !important;
     border-radius: 12px !important;
     overflow: hidden !important;
+}
+
+.dark .fi-dropdown-panel {
+    background: var(--surface-card) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid rgba(183, 131, 47, 0.25) !important;
+    box-shadow: 0 20px 45px rgba(4, 14, 19, 0.8), 0 6px 18px rgba(4, 14, 19, 0.5) !important;
 }
 
 /* ── Proteção contra Spinners Fantasmas (Ocultar wire:loading quando inativo) ── */
@@ -2072,16 +2076,19 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     margin: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-    background: #091b23 !important;
+    background: var(--surface-card) !important;
     width: 100% !important;
     height: auto !important;
     overflow: hidden !important;
     box-sizing: border-box !important;
 }
 
+.dark .fi-ta-filters {
+    background: #091b23 !important;
+}
+
 /* Cabeçalho do Painel de Filtros (Fixo, Linha Única, Alinhamento Exato de 20px) */
 .fi-ta-filters-header,
-.dark .fi-ta-filters-header,
 .fi-dropdown-panel .fi-ta-filters-header {
     display: flex !important;
     flex-direction: row !important;
@@ -2090,8 +2097,8 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     justify-content: space-between !important;
     padding: 1rem 1.25rem !important;
     margin: 0 !important;
-    background: #06151c !important;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.14) !important;
+    background: var(--surface-ground) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
     position: sticky !important;
     top: 0 !important;
     z-index: 20 !important;
@@ -2101,9 +2108,14 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     gap: 1rem !important;
 }
 
-.fi-ta-filters-heading,
-.dark .fi-ta-filters-heading {
-    color: #fbfaf8 !important;
+.dark .fi-ta-filters-header,
+.dark .fi-dropdown-panel .fi-ta-filters-header {
+    background: #06151c !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.14) !important;
+}
+
+.fi-ta-filters-heading {
+    color: var(--text-primary) !important;
     font-size: 0.9375rem !important;
     font-weight: 700 !important;
     letter-spacing: -0.01em !important;
@@ -2115,6 +2127,10 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     white-space: nowrap !important;
     flex-shrink: 0 !important;
     line-height: 1.2 !important;
+}
+
+.dark .fi-ta-filters-heading {
+    color: #fbfaf8 !important;
 }
 
 /* Wrapper da ação Limpar Filtros no Cabeçalho */
@@ -2133,7 +2149,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 .fi-ta-filters-header a {
     font-size: 0.8125rem !important;
     font-weight: 500 !important;
-    color: #d8a94f !important;
+    color: var(--accent) !important;
     background: transparent !important;
     border: none !important;
     border-radius: 6px !important;
@@ -2159,9 +2175,22 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 .fi-ta-filters-header .fi-link:hover,
 .fi-ta-filters-header button:hover,
 .fi-ta-filters-header a:hover {
+    color: var(--accent-hover) !important;
+    background: var(--accent-subtle) !important;
+    text-decoration: none !important;
+}
+
+.dark .fi-ta-filters-header .fi-link,
+.dark .fi-ta-filters-header button,
+.dark .fi-ta-filters-header a {
+    color: #d8a94f !important;
+}
+
+.dark .fi-ta-filters-header .fi-link:hover,
+.dark .fi-ta-filters-header button:hover,
+.dark .fi-ta-filters-header a:hover {
     color: #ffffff !important;
     background: rgba(183, 131, 47, 0.15) !important;
-    text-decoration: none !important;
 }
 
 .fi-ta-filters-header .fi-loading-indicator,
@@ -2247,7 +2276,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 .fi-ta-filters .fi-fo-field-wrp-label,
 .fi-ta-filters label:not(.fi-checkbox-label) span,
 .fi-ta-filters label:not(.fi-checkbox-label) {
-    color: rgba(251, 250, 248, 0.88) !important;
+    color: var(--text-primary) !important;
     font-size: 0.8125rem !important;
     font-weight: 600 !important;
     letter-spacing: normal !important;
@@ -2258,10 +2287,18 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     line-height: 1.25 !important;
 }
 
+.dark .fi-ta-filters .fi-fo-field-label-content,
+.dark .fi-ta-filters .fi-fo-field-label,
+.dark .fi-ta-filters .fi-fo-field-wrp-label,
+.dark .fi-ta-filters label:not(.fi-checkbox-label) span,
+.dark .fi-ta-filters label:not(.fi-checkbox-label) {
+    color: rgba(251, 250, 248, 0.88) !important;
+}
+
 /* Container Único dos Campos (40px de Altura, 100% da Largura Útil ~400px) */
 .fi-ta-filters .fi-input-wrp {
-    background: #06151c !important;
-    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    background: var(--surface-ground) !important;
+    border: 1px solid var(--border-subtle) !important;
     border-radius: 8px !important;
     height: 2.5rem !important;
     min-height: 2.5rem !important;
@@ -2273,7 +2310,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     display: flex !important;
     align-items: center !important;
     position: relative !important;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25) !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05) !important;
     transition: border-color 150ms ease, box-shadow 150ms ease !important;
     padding: 0 !important;
     margin: 0 !important;
@@ -2281,10 +2318,28 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 }
 
 .fi-ta-filters .fi-input-wrp:hover {
-    border-color: rgba(148, 163, 184, 0.38) !important;
+    border-color: var(--border-strong) !important;
 }
 
 .fi-ta-filters .fi-input-wrp:focus-within {
+    background: var(--surface-card) !important;
+    border-color: var(--accent) !important;
+    box-shadow:
+        inset 0 1px 2px rgba(0, 0, 0, 0.05),
+        0 0 0 2px var(--accent-subtle) !important;
+}
+
+.dark .fi-ta-filters .fi-input-wrp {
+    background: #06151c !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25) !important;
+}
+
+.dark .fi-ta-filters .fi-input-wrp:hover {
+    border-color: rgba(148, 163, 184, 0.38) !important;
+}
+
+.dark .fi-ta-filters .fi-input-wrp:focus-within {
     background: #06151c !important;
     border-color: #b7832f !important;
     box-shadow:
@@ -2305,7 +2360,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     outline: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
-    color: #fbfaf8 !important;
+    color: var(--text-primary) !important;
     font-size: 0.8125rem !important;
     font-weight: 400 !important;
     padding-block: 0 !important;
@@ -2315,7 +2370,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     appearance: none !important;
     -webkit-appearance: none !important;
     -moz-appearance: none !important;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
     background-position: right 0.75rem center !important;
     background-repeat: no-repeat !important;
     background-size: 1.25rem 1.25rem !important;
@@ -2327,9 +2382,20 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 }
 
 .fi-ta-filters select option {
+    background: var(--surface-card) !important;
+    color: var(--text-primary) !important;
+    padding: 0.625rem 0.875rem !important;
+}
+
+.dark .fi-ta-filters select.fi-select-input,
+.dark .fi-ta-filters select {
+    color: #fbfaf8 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+}
+
+.dark .fi-ta-filters select option {
     background: #091b23 !important;
     color: #fbfaf8 !important;
-    padding: 0.625rem 0.875rem !important;
 }
 
 /* ── Selects Múltiplos e Customizados nos Filtros (Expansão Flexível & Badges) ── */
@@ -2369,7 +2435,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     outline: none !important;
     box-shadow: none !important;
     border-radius: 7px !important;
-    color: #fbfaf8 !important;
+    color: var(--text-primary) !important;
     font-size: 0.8125rem !important;
     font-weight: 400 !important;
     padding-block: 0.3125rem !important;
@@ -2380,10 +2446,15 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     align-items: center !important;
     text-align: left !important;
     box-sizing: border-box !important;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
     background-position: right 0.75rem center !important;
     background-repeat: no-repeat !important;
     background-size: 1.25rem 1.25rem !important;
+}
+
+.dark .fi-ta-filters .fi-select-input-btn {
+    color: #fbfaf8 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
 }
 
 .fi-ta-filters .fi-select-input-value-ctn {
@@ -2415,9 +2486,9 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     display: inline-flex !important;
     align-items: center !important;
     gap: 0.3125rem !important;
-    background: #12313b !important;
-    border: 1px solid rgba(183, 131, 47, 0.4) !important;
-    color: #fbfaf8 !important;
+    background: var(--surface-ground) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: var(--text-primary) !important;
     font-size: 0.75rem !important;
     font-weight: 500 !important;
     border-radius: 6px !important;
@@ -2429,8 +2500,8 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 }
 
 .fi-ta-filters .fi-select-input-value-badges-ctn .fi-badge:hover {
-    border-color: #b7832f !important;
-    background: #163c48 !important;
+    border-color: var(--accent) !important;
+    background: var(--accent-subtle) !important;
 }
 
 .fi-ta-filters .fi-select-input-value-badges-ctn .fi-badge .fi-badge-label-ctn,
@@ -2440,7 +2511,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
-    color: #fbfaf8 !important;
+    color: var(--text-primary) !important;
     font-size: 0.75rem !important;
 }
 
@@ -2453,7 +2524,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     margin: 0 !important;
     background: transparent !important;
     border: none !important;
-    color: rgba(251, 250, 248, 0.6) !important;
+    color: var(--text-muted) !important;
     cursor: pointer !important;
     transition: color 120ms ease !important;
 }
@@ -2469,17 +2540,42 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     height: 0.75rem !important;
 }
 
+.dark .fi-ta-filters .fi-select-input-value-badges-ctn .fi-badge {
+    background: #12313b !important;
+    border: 1px solid rgba(183, 131, 47, 0.4) !important;
+    color: #fbfaf8 !important;
+}
+
+.dark .fi-ta-filters .fi-select-input-value-badges-ctn .fi-badge:hover {
+    border-color: #b7832f !important;
+    background: #163c48 !important;
+}
+
+.dark .fi-ta-filters .fi-select-input-value-badges-ctn .fi-badge .fi-badge-label-ctn,
+.dark .fi-ta-filters .fi-select-input-value-badges-ctn .fi-badge .fi-badge-label {
+    color: #fbfaf8 !important;
+}
+
+.dark .fi-ta-filters .fi-select-input-value-badges-ctn .fi-badge .fi-badge-delete-btn,
+.dark .fi-ta-filters .fi-select-input-value-badges-ctn .fi-badge button {
+    color: rgba(251, 250, 248, 0.6) !important;
+}
+
 .fi-ta-filters .fi-select-input-placeholder {
-    color: rgba(251, 250, 248, 0.45) !important;
+    color: var(--text-muted) !important;
     font-size: 0.8125rem !important;
     font-weight: 400 !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
+}
+
+.dark .fi-ta-filters .fi-select-input-placeholder {
+    color: rgba(251, 250, 248, 0.45) !important;
 }
 
 .fi-ta-filters .fi-select-input-value-label {
-    color: #fbfaf8 !important;
+    color: var(--text-primary) !important;
     font-size: 0.8125rem !important;
     font-weight: 400 !important;
     white-space: nowrap !important;
@@ -2487,8 +2583,12 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     text-overflow: ellipsis !important;
 }
 
+.dark .fi-ta-filters .fi-select-input-value-label {
+    color: #fbfaf8 !important;
+}
+
 .fi-ta-filters .fi-select-input-value-remove-btn {
-    color: #94a3b8 !important;
+    color: var(--text-muted) !important;
     cursor: pointer !important;
     transition: color 120ms ease !important;
 }
@@ -2497,21 +2597,8 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     color: #ef4444 !important;
 }
 
-/* ── Separador e Título de Seção: Período de Recebimento ── */
-.fi-ta-filters .fi-sc-grid:has(.fi-fo-date-time-picker)::before,
-.fi-ta-filters .fi-sc-grid:has([x-data*="dateTimePickerFormComponent"])::before,
-.fi-ta-filters [id="created_at"]::before {
-    content: "Período de recebimento";
-    display: block;
-    font-size: 0.6875rem;
-    font-weight: 700;
-    color: #d8a94f;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-bottom: 0.625rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid rgba(148, 163, 184, 0.12);
-    width: 100%;
+.dark .fi-ta-filters .fi-select-input-value-remove-btn {
+    color: #94a3b8 !important;
 }
 
 /* ── Grid de 2 Colunas para Filtro de Datas (Recebida de / Recebida até) ── */
@@ -2552,12 +2639,19 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     min-width: 0 !important;
     height: 2.5rem !important;
     position: relative !important;
-    background: #06151c !important;
-    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    background: var(--surface-ground) !important;
+    border: 1px solid var(--border-subtle) !important;
     border-radius: 8px !important;
     overflow: visible !important;
     box-sizing: border-box !important;
     margin: 0 !important;
+}
+
+.dark .fi-ta-filters .fi-input-wrp.fi-fo-date-time-picker,
+.dark .fi-ta-filters .fi-input-wrp:has(.fi-fo-date-time-picker-display-text-input),
+.dark .fi-ta-filters .fi-input-wrp:has([x-data*="dateTimePickerFormComponent"]) {
+    background: #06151c !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
 }
 
 .fi-ta-filters .fi-fo-date-time-picker,
@@ -2605,7 +2699,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     border: none !important;
     outline: none !important;
     box-shadow: none !important;
-    color: #fbfaf8 !important;
+    color: var(--text-primary) !important;
     font-size: 0.8125rem !important;
     font-weight: 400 !important;
     line-height: 2.5rem !important;
@@ -2614,7 +2708,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     padding-inline-end: 2.25rem !important;
     cursor: pointer !important;
     box-sizing: border-box !important;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='%2394a3b8'%3e%3cpath stroke-linecap='round' stroke-linejoin='round' d='M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5'/%3e%3c/svg%3e") !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='%2364748b'%3e%3cpath stroke-linecap='round' stroke-linejoin='round' d='M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5'/%3e%3c/svg%3e") !important;
     background-position: right 0.75rem center !important;
     background-repeat: no-repeat !important;
     background-size: 1.125rem 1.125rem !important;
@@ -2622,11 +2716,22 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     pointer-events: none !important;
 }
 
+.dark .fi-ta-filters input.fi-fo-date-time-picker-display-text-input,
+.dark .fi-ta-filters .fi-fo-date-time-picker-trigger input {
+    color: #fbfaf8 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='%2394a3b8'%3e%3cpath stroke-linecap='round' stroke-linejoin='round' d='M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5'/%3e%3c/svg%3e") !important;
+}
+
 .fi-ta-filters input.fi-fo-date-time-picker-display-text-input::placeholder,
 .fi-ta-filters .fi-fo-date-time-picker-trigger input::placeholder {
-    color: rgba(251, 250, 248, 0.45) !important;
+    color: var(--text-muted) !important;
     font-size: 0.8125rem !important;
     font-weight: 400 !important;
+}
+
+.dark .fi-ta-filters input.fi-fo-date-time-picker-display-text-input::placeholder,
+.dark .fi-ta-filters .fi-fo-date-time-picker-trigger input::placeholder {
+    color: rgba(251, 250, 248, 0.45) !important;
 }
 
 .fi-ta-filters .fi-input-wrp.fi-fo-date-time-picker .fi-input-wrp-suffix,
@@ -2636,17 +2741,24 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 
 /* ── Calendário e Seletor de Data/Hora (BSI Capital Admin) ── */
 .fi-fo-date-time-picker-panel {
-    background: #091b23 !important;
-    border: 1px solid rgba(183, 131, 47, 0.28) !important;
-    box-shadow: 0 16px 36px rgba(4, 14, 19, 0.85), 0 4px 14px rgba(0, 0, 0, 0.55) !important;
+    background: var(--surface-card) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: 0 12px 32px rgba(9, 27, 35, 0.12), 0 4px 12px rgba(9, 27, 35, 0.06) !important;
     border-radius: 12px !important;
     z-index: 10000 !important;
-    color: #fbfaf8 !important;
+    color: var(--text-primary) !important;
     padding: 0.875rem !important;
     font-size: 0.8125rem !important;
     min-width: 270px !important;
     max-width: min(340px, calc(100vw - 2rem)) !important;
     box-sizing: border-box !important;
+}
+
+.dark .fi-fo-date-time-picker-panel {
+    background: #091b23 !important;
+    border: 1px solid rgba(183, 131, 47, 0.28) !important;
+    box-shadow: 0 16px 36px rgba(4, 14, 19, 0.85), 0 4px 14px rgba(0, 0, 0, 0.55) !important;
+    color: #fbfaf8 !important;
 }
 
 .fi-ta-filters .fi-fo-date-time-picker-panel {
@@ -2661,14 +2773,18 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     gap: 0.5rem !important;
     margin-bottom: 0.75rem !important;
     padding-bottom: 0.5rem !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+.dark .fi-fo-date-time-picker-panel-header {
     border-bottom: 1px solid rgba(183, 131, 47, 0.15) !important;
 }
 
 .fi-fo-date-time-picker-panel-header select,
 .fi-fo-date-time-picker-panel-header input {
-    background: #06151c !important;
-    border: 1px solid rgba(183, 131, 47, 0.25) !important;
-    color: #fbfaf8 !important;
+    background: var(--surface-ground) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: var(--text-primary) !important;
     border-radius: 6px !important;
     font-size: 0.8125rem !important;
     font-weight: 500 !important;
@@ -2700,8 +2816,21 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 
 .fi-fo-date-time-picker-panel-header select:focus,
 .fi-fo-date-time-picker-panel-header input:focus {
-    border-color: #b7832f !important;
+    border-color: var(--accent) !important;
     outline: none !important;
+    box-shadow: 0 0 0 2px var(--accent-subtle) !important;
+}
+
+.dark .fi-fo-date-time-picker-panel-header select,
+.dark .fi-fo-date-time-picker-panel-header input {
+    background: #06151c !important;
+    border: 1px solid rgba(183, 131, 47, 0.25) !important;
+    color: #fbfaf8 !important;
+}
+
+.dark .fi-fo-date-time-picker-panel-header select:focus,
+.dark .fi-fo-date-time-picker-panel-header input:focus {
+    border-color: #b7832f !important;
     box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.25) !important;
 }
 
@@ -2719,9 +2848,9 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     width: 30px !important;
     height: 30px !important;
     border-radius: 6px !important;
-    background: rgba(255, 255, 255, 0.04) !important;
-    border: 1px solid rgba(183, 131, 47, 0.2) !important;
-    color: rgba(251, 250, 248, 0.75) !important;
+    background: var(--surface-ground) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: var(--text-secondary) !important;
     cursor: pointer !important;
     padding: 0 !important;
     transition: all 140ms ease !important;
@@ -2733,13 +2862,29 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 }
 
 .fi-fo-date-time-picker-nav-btn:hover {
+    background: var(--surface-highlight) !important;
+    border-color: var(--accent) !important;
+    color: var(--accent) !important;
+}
+
+.fi-fo-date-time-picker-nav-btn:focus {
+    outline: none !important;
+    box-shadow: 0 0 0 2px var(--accent-subtle) !important;
+}
+
+.dark .fi-fo-date-time-picker-nav-btn {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(183, 131, 47, 0.2) !important;
+    color: rgba(251, 250, 248, 0.75) !important;
+}
+
+.dark .fi-fo-date-time-picker-nav-btn:hover {
     background: rgba(183, 131, 47, 0.2) !important;
     border-color: rgba(183, 131, 47, 0.55) !important;
     color: #d8a94f !important;
 }
 
-.fi-fo-date-time-picker-nav-btn:focus {
-    outline: none !important;
+.dark .fi-fo-date-time-picker-nav-btn:focus {
     box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.25) !important;
 }
 
@@ -2753,12 +2898,16 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 }
 
 .fi-fo-date-time-picker-calendar-header-day {
-    color: rgba(251, 250, 248, 0.45) !important;
+    color: var(--text-muted) !important;
     font-weight: 600 !important;
     font-size: 0.6875rem !important;
     text-transform: uppercase !important;
     letter-spacing: 0.05em !important;
     padding: 0.25rem 0 !important;
+}
+
+.dark .fi-fo-date-time-picker-calendar-header-day {
+    color: rgba(251, 250, 248, 0.45) !important;
 }
 
 /* Grade de Dias do Mês */
@@ -2777,7 +2926,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     width: 30px !important;
     margin: 0 auto !important;
     border-radius: 6px !important;
-    color: #fbfaf8 !important;
+    color: var(--text-primary) !important;
     font-size: 0.8125rem !important;
     font-weight: 400 !important;
     background: transparent !important;
@@ -2787,6 +2936,16 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 }
 
 .fi-fo-date-time-picker-calendar-day:hover {
+    background: var(--surface-highlight) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+
+.dark .fi-fo-date-time-picker-calendar-day {
+    color: #fbfaf8 !important;
+}
+
+.dark .fi-fo-date-time-picker-calendar-day:hover {
     background: #0d252e !important;
     color: #ffffff !important;
     border: 1px solid rgba(183, 131, 47, 0.35) !important;
@@ -2794,16 +2953,28 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 
 /* Dia Atual */
 .fi-fo-date-time-picker-calendar-day-today {
+    border: 1px solid var(--accent) !important;
+    color: var(--accent) !important;
+    font-weight: 600 !important;
+}
+
+.dark .fi-fo-date-time-picker-calendar-day-today {
     border: 1px solid rgba(183, 131, 47, 0.65) !important;
     color: #d8a94f !important;
-    font-weight: 600 !important;
 }
 
 /* Dia Selecionado */
 .fi-fo-date-time-picker-calendar-day.fi-selected {
+    background: var(--accent) !important;
+    color: var(--accent-foreground) !important;
+    font-weight: 700 !important;
+    border: 1px solid var(--accent) !important;
+    box-shadow: 0 2px 8px rgba(160, 110, 40, 0.3) !important;
+}
+
+.dark .fi-fo-date-time-picker-calendar-day.fi-selected {
     background: #b7832f !important;
     color: #06151c !important;
-    font-weight: 700 !important;
     border: 1px solid #d8a94f !important;
     box-shadow: 0 2px 8px rgba(183, 131, 47, 0.4) !important;
 }
@@ -2821,13 +2992,17 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     gap: 0.375rem !important;
     padding: 0.625rem 0 0.375rem !important;
     margin-top: 0.375rem !important;
+    border-top: 1px solid var(--border-subtle) !important;
+}
+
+.dark .fi-fo-date-time-picker-time-inputs {
     border-top: 1px solid rgba(183, 131, 47, 0.15) !important;
 }
 
 .fi-fo-date-time-picker-time-inputs input {
-    background: #06151c !important;
-    border: 1px solid rgba(183, 131, 47, 0.25) !important;
-    color: #fbfaf8 !important;
+    background: var(--surface-ground) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: var(--text-primary) !important;
     border-radius: 6px !important;
     font-size: 0.875rem !important;
     font-weight: 500 !important;
@@ -2848,16 +3023,31 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 }
 
 .fi-fo-date-time-picker-time-inputs input:focus {
-    border-color: #b7832f !important;
+    border-color: var(--accent) !important;
     outline: none !important;
+    box-shadow: 0 0 0 2px var(--accent-subtle) !important;
+}
+
+.dark .fi-fo-date-time-picker-time-inputs input {
+    background: #06151c !important;
+    border: 1px solid rgba(183, 131, 47, 0.25) !important;
+    color: #fbfaf8 !important;
+}
+
+.dark .fi-fo-date-time-picker-time-inputs input:focus {
+    border-color: #b7832f !important;
     box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.25) !important;
 }
 
 .fi-fo-date-time-picker-time-input-separator {
-    color: rgba(183, 131, 47, 0.75) !important;
+    color: var(--accent) !important;
     font-weight: 700 !important;
     font-size: 0.875rem !important;
     user-select: none !important;
+}
+
+.dark .fi-fo-date-time-picker-time-input-separator {
+    color: rgba(183, 131, 47, 0.75) !important;
 }
 
 /* Rodapé do Painel: Ações "Limpar" e "Hoje" */
@@ -2867,6 +3057,10 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     justify-content: space-between !important;
     padding-top: 0.625rem !important;
     margin-top: 0.375rem !important;
+    border-top: 1px solid var(--border-subtle) !important;
+}
+
+.dark .fi-fo-date-time-picker-panel-footer {
     border-top: 1px solid rgba(183, 131, 47, 0.15) !important;
 }
 
@@ -2883,12 +3077,24 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 .fi-fo-date-time-picker-footer-btn-clear {
     padding: 0.35rem 0.75rem !important;
     font-weight: 500 !important;
+    color: var(--text-secondary) !important;
+    background: transparent !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+
+.fi-fo-date-time-picker-footer-btn-clear:hover {
+    background: var(--surface-ground) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--accent) !important;
+}
+
+.dark .fi-fo-date-time-picker-footer-btn-clear {
     color: rgba(251, 250, 248, 0.6) !important;
     background: transparent !important;
     border: 1px solid rgba(148, 163, 184, 0.18) !important;
 }
 
-.fi-fo-date-time-picker-footer-btn-clear:hover {
+.dark .fi-fo-date-time-picker-footer-btn-clear:hover {
     background: rgba(255, 255, 255, 0.06) !important;
     color: #fbfaf8 !important;
     border-color: rgba(183, 131, 47, 0.35) !important;
@@ -2897,12 +3103,24 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 .fi-fo-date-time-picker-footer-btn-today {
     padding: 0.35rem 0.875rem !important;
     font-weight: 600 !important;
+    color: var(--accent) !important;
+    background: var(--accent-subtle) !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+
+.fi-fo-date-time-picker-footer-btn-today:hover {
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+    color: var(--accent-foreground) !important;
+}
+
+.dark .fi-fo-date-time-picker-footer-btn-today {
     color: #d8a94f !important;
     background: rgba(183, 131, 47, 0.12) !important;
     border: 1px solid rgba(183, 131, 47, 0.35) !important;
 }
 
-.fi-fo-date-time-picker-footer-btn-today:hover {
+.dark .fi-fo-date-time-picker-footer-btn-today:hover {
     background: rgba(183, 131, 47, 0.25) !important;
     border-color: #b7832f !important;
     color: #f0c568 !important;
@@ -2916,8 +3134,8 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 
 .fi-ta-filters-actions-ctn {
     padding: 0.75rem 1.25rem !important;
-    border-top: 1px solid rgba(148, 163, 184, 0.12) !important;
-    background: #06151c !important;
+    border-top: 1px solid var(--border-subtle) !important;
+    background: var(--surface-ground) !important;
     display: flex !important;
     align-items: center !important;
     justify-content: flex-end !important;
@@ -2930,13 +3148,18 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     margin: 0 !important;
 }
 
+.dark .fi-ta-filters-actions-ctn {
+    border-top: 1px solid rgba(148, 163, 184, 0.12) !important;
+    background: #06151c !important;
+}
+
 .fi-ta-filters-actions-ctn .fi-btn,
 .fi-ta-filters-actions-ctn button {
-    background: #b7832f !important;
-    color: #06151c !important;
+    background: var(--accent) !important;
+    color: var(--accent-foreground) !important;
     font-weight: 600 !important;
     font-size: 0.8125rem !important;
-    border: 1px solid #d8a94f !important;
+    border: 1px solid var(--accent) !important;
     border-radius: 8px !important;
     padding: 0.4375rem 1.25rem !important;
     height: 2.375rem !important;
@@ -2949,7 +3172,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     justify-content: center !important;
     gap: 0.375rem !important;
     white-space: nowrap !important;
-    box-shadow: 0 1px 4px rgba(183, 131, 47, 0.2) !important;
+    box-shadow: 0 1px 4px rgba(160, 110, 40, 0.2) !important;
     cursor: pointer !important;
     transition: all 150ms ease-out !important;
     margin: 0 !important;
@@ -2957,6 +3180,21 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 
 .fi-ta-filters-actions-ctn .fi-btn:hover,
 .fi-ta-filters-actions-ctn button:hover {
+    background: var(--accent-hover) !important;
+    border-color: var(--accent-hover) !important;
+    color: var(--accent-foreground) !important;
+}
+
+.dark .fi-ta-filters-actions-ctn .fi-btn,
+.dark .fi-ta-filters-actions-ctn button {
+    background: #b7832f !important;
+    color: #06151c !important;
+    border: 1px solid #d8a94f !important;
+    box-shadow: 0 1px 4px rgba(183, 131, 47, 0.2) !important;
+}
+
+.dark .fi-ta-filters-actions-ctn .fi-btn:hover,
+.dark .fi-ta-filters-actions-ctn button:hover {
     background: #c9933b !important;
     border-color: #f3d48d !important;
     color: #06151c !important;
@@ -2972,16 +3210,19 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     margin: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-    background: #091b23 !important;
+    background: var(--surface-card) !important;
     width: 100% !important;
     height: auto !important;
     overflow: hidden !important;
     box-sizing: border-box !important;
 }
 
+.dark .fi-ta-col-manager {
+    background: #091b23 !important;
+}
+
 /* Cabeçalho de Colunas (Fixo, Linha Única, Título e Redefinir) */
-.fi-ta-col-manager-header,
-.dark .fi-ta-col-manager-header {
+.fi-ta-col-manager-header {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
@@ -2989,8 +3230,8 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     justify-content: space-between !important;
     padding: 1.125rem 1.25rem !important;
     margin: 0 !important;
-    background: #06151c !important;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.14) !important;
+    background: var(--surface-ground) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
     position: sticky !important;
     top: 0 !important;
     z-index: 20 !important;
@@ -3000,9 +3241,13 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     gap: 0.75rem !important;
 }
 
-.fi-ta-col-manager-heading,
-.dark .fi-ta-col-manager-heading {
-    color: #fbfaf8 !important;
+.dark .fi-ta-col-manager-header {
+    background: #06151c !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.14) !important;
+}
+
+.fi-ta-col-manager-heading {
+    color: var(--text-primary) !important;
     font-size: 0.9375rem !important;
     font-weight: 700 !important;
     letter-spacing: -0.01em !important;
@@ -3011,6 +3256,10 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     align-items: center !important;
     white-space: nowrap !important;
     flex-shrink: 0 !important;
+}
+
+.dark .fi-ta-col-manager-heading {
+    color: #fbfaf8 !important;
 }
 
 /* Wrapper da ação Redefinir no Cabeçalho */
@@ -3028,7 +3277,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 .fi-ta-col-manager-header a {
     font-size: 0.8125rem !important;
     font-weight: 500 !important;
-    color: #d8a94f !important;
+    color: var(--accent) !important;
     background: transparent !important;
     border: none !important;
     border-radius: 6px !important;
@@ -3053,6 +3302,20 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 .fi-ta-col-manager-header .fi-link:hover,
 .fi-ta-col-manager-header button:hover,
 .fi-ta-col-manager-header a:hover {
+    color: var(--accent-hover) !important;
+    background: var(--accent-subtle) !important;
+    text-decoration: none !important;
+}
+
+.dark .fi-ta-col-manager-header .fi-link,
+.dark .fi-ta-col-manager-header button,
+.dark .fi-ta-col-manager-header a {
+    color: #d8a94f !important;
+}
+
+.dark .fi-ta-col-manager-header .fi-link:hover,
+.dark .fi-ta-col-manager-header button:hover,
+.dark .fi-ta-col-manager-header a:hover {
     color: #ffffff !important;
     background: rgba(183, 131, 47, 0.15) !important;
     text-decoration: none !important;
@@ -3106,6 +3369,10 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 }
 
 .fi-ta-col-manager-item:hover {
+    background-color: var(--surface-highlight) !important;
+}
+
+.dark .fi-ta-col-manager-item:hover {
     background-color: rgba(18, 49, 59, 0.65) !important;
 }
 
@@ -3116,7 +3383,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     gap: 0.75rem !important;
     width: 100% !important;
     cursor: pointer !important;
-    color: #fbfaf8 !important;
+    color: var(--text-primary) !important;
     font-size: 0.8125rem !important;
     font-weight: 500 !important;
     line-height: 1.2 !important;
@@ -3124,6 +3391,10 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     margin: 0 !important;
+}
+
+.dark .fi-ta-col-manager-label {
+    color: #fbfaf8 !important;
 }
 
 /* Padronização dos Checkboxes em Dourado / Dark-Teal */
@@ -3134,8 +3405,8 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     min-width: 1.125rem !important;
     min-height: 1.125rem !important;
     border-radius: 4px !important;
-    border: 1.5px solid rgba(148, 163, 184, 0.35) !important;
-    background-color: #06151c !important;
+    border: 1.5px solid var(--border-strong) !important;
+    background-color: var(--surface-ground) !important;
     cursor: pointer !important;
     margin: 0 !important;
     appearance: none !important;
@@ -3147,13 +3418,13 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 }
 
 .fi-ta-col-manager-item input[type="checkbox"]:hover {
-    border-color: rgba(183, 131, 47, 0.6) !important;
+    border-color: var(--accent) !important;
 }
 
 .fi-ta-col-manager-item input[type="checkbox"]:checked {
-    background-color: #b7832f !important;
-    border-color: #d8a94f !important;
-    background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='%2306151c' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e") !important;
+    background-color: var(--accent) !important;
+    border-color: var(--accent) !important;
+    background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='%23ffffff' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e") !important;
     background-size: 100% 100% !important;
     background-position: center !important;
     background-repeat: no-repeat !important;
@@ -3161,18 +3432,46 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 
 .fi-ta-col-manager-item input[type="checkbox"]:focus-visible {
     outline: none !important;
+    box-shadow: 0 0 0 2px var(--accent-subtle) !important;
+}
+
+.dark .fi-ta-col-manager-item input[type="checkbox"].fi-checkbox-input,
+.dark .fi-ta-col-manager-item input[type="checkbox"] {
+    border: 1.5px solid rgba(148, 163, 184, 0.35) !important;
+    background-color: #06151c !important;
+}
+
+.dark .fi-ta-col-manager-item input[type="checkbox"]:hover {
+    border-color: rgba(183, 131, 47, 0.6) !important;
+}
+
+.dark .fi-ta-col-manager-item input[type="checkbox"]:checked {
+    background-color: #b7832f !important;
+    border-color: #d8a94f !important;
+    background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='%2306151c' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e") !important;
+}
+
+.dark .fi-ta-col-manager-item input[type="checkbox"]:focus-visible {
     box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.3) !important;
 }
 
 /* Handle de Reordenação */
 .fi-ta-col-manager-reorder-handle {
-    color: rgba(148, 163, 184, 0.45) !important;
+    color: var(--text-muted) !important;
     padding: 0.25rem !important;
     border-radius: 4px !important;
     transition: color 150ms ease !important;
 }
 
 .fi-ta-col-manager-reorder-handle:hover {
+    color: var(--accent) !important;
+}
+
+.dark .fi-ta-col-manager-reorder-handle {
+    color: rgba(148, 163, 184, 0.45) !important;
+}
+
+.dark .fi-ta-col-manager-reorder-handle:hover {
     color: #d8a94f !important;
 }
 
@@ -3199,15 +3498,22 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     max-height: min(23.5rem, 44vh) !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
-    background: #06151c !important;
-    border: 1px solid rgba(183, 131, 47, 0.28) !important;
-    box-shadow: 0 16px 36px rgba(4, 14, 19, 0.85), 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+    background: var(--surface-card) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: 0 12px 32px rgba(9, 27, 35, 0.12), 0 4px 12px rgba(9, 27, 35, 0.06) !important;
     border-radius: 12px !important;
     box-sizing: border-box !important;
     margin-top: 0 !important;
     padding: 0 !important;
     scrollbar-width: thin !important;
     scrollbar-color: rgba(183, 131, 47, 0.35) transparent !important;
+}
+
+.dark .fi-dropdown-panel:has(.fi-select-input-options-ctn),
+.dark .fi-select-input .fi-dropdown-panel {
+    background: #06151c !important;
+    border: 1px solid rgba(183, 131, 47, 0.28) !important;
+    box-shadow: 0 16px 36px rgba(4, 14, 19, 0.85), 0 4px 12px rgba(0, 0, 0, 0.5) !important;
 }
 
 /* ── Recorte de medições: painel do select acompanha a largura do trigger ──
@@ -3370,10 +3676,27 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     line-height: 1.4 !important;
     border-radius: 8px !important;
     cursor: pointer !important;
-    color: #fbfaf8 !important;
+    color: var(--text-primary) !important;
     transition: background-color 0.15s ease, color 0.15s ease !important;
     white-space: normal !important;
     word-break: break-word !important;
+}
+
+.fi-dropdown-panel .fi-select-input-option:hover,
+.fi-dropdown-panel .fi-dropdown-list-item:hover,
+.fi-dropdown-panel .fi-select-input-option:focus,
+.fi-dropdown-panel .fi-dropdown-list-item:focus {
+    background: var(--surface-highlight) !important;
+    color: var(--text-primary) !important;
+}
+
+.fi-dropdown-panel .fi-select-input-option.fi-selected,
+.fi-dropdown-panel .fi-dropdown-list-item.fi-selected,
+.fi-dropdown-panel [aria-selected="true"] {
+    background: var(--accent-subtle) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: var(--accent) !important;
+    font-weight: 600 !important;
 }
 
 .dark .fi-dropdown-panel .fi-select-input-option,
@@ -3384,18 +3707,14 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 .dark .fi-dropdown-panel .fi-select-input-option:hover,
 .dark .fi-dropdown-panel .fi-dropdown-list-item:hover,
 .dark .fi-dropdown-panel .fi-select-input-option:focus,
-.dark .fi-dropdown-panel .fi-dropdown-list-item:focus,
-.fi-dropdown-panel .fi-select-input-option:hover,
-.fi-dropdown-panel .fi-dropdown-list-item:hover {
+.dark .fi-dropdown-panel .fi-dropdown-list-item:focus {
     background: #12313b !important;
     color: #ffffff !important;
 }
 
 .dark .fi-dropdown-panel .fi-select-input-option.fi-selected,
 .dark .fi-dropdown-panel .fi-dropdown-list-item.fi-selected,
-.dark .fi-dropdown-panel [aria-selected="true"],
-.fi-dropdown-panel .fi-select-input-option.fi-selected,
-.fi-dropdown-panel .fi-dropdown-list-item.fi-selected {
+.dark .fi-dropdown-panel [aria-selected="true"] {
     background: #12313b !important;
     border: 1px solid rgba(183, 131, 47, 0.35) !important;
     color: #d4af37 !important;
@@ -3408,29 +3727,40 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     position: sticky !important;
     top: 0 !important;
     z-index: 10 !important;
-    background: #06151c !important;
-    border-bottom: 1px solid rgba(183, 131, 47, 0.18) !important;
+    background: var(--surface-ground) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
     border-top-left-radius: inherit !important;
     border-top-right-radius: inherit !important;
 }
 
 .dark .fi-dropdown-panel .fi-select-input-search-ctn {
     background: #06151c !important;
+    border-bottom: 1px solid rgba(183, 131, 47, 0.18) !important;
 }
 
-.dark .fi-dropdown-panel .fi-select-input-search-ctn .fi-input,
 .fi-dropdown-panel .fi-select-input-search-ctn .fi-input {
-    background: #091b23 !important;
-    border: 1px solid rgba(183, 131, 47, 0.25) !important;
-    color: #fbfaf8 !important;
+    background: var(--surface-card) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: var(--text-primary) !important;
     border-radius: 8px !important;
     font-size: 0.8125rem !important;
     padding: 0.375rem 0.625rem !important;
     width: 100% !important;
 }
 
-.dark .fi-dropdown-panel .fi-select-input-search-ctn .fi-input:focus,
 .fi-dropdown-panel .fi-select-input-search-ctn .fi-input:focus {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 2px var(--accent-subtle) !important;
+    outline: none !important;
+}
+
+.dark .fi-dropdown-panel .fi-select-input-search-ctn .fi-input {
+    background: #091b23 !important;
+    border: 1px solid rgba(183, 131, 47, 0.25) !important;
+    color: #fbfaf8 !important;
+}
+
+.dark .fi-dropdown-panel .fi-select-input-search-ctn .fi-input:focus {
     border-color: #b7832f !important;
     box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.2) !important;
     outline: none !important;
@@ -3529,27 +3859,34 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     overflow-wrap: anywhere !important;
 }
 
-/* ── Native Select Dropdown Color-Scheme & Option Theming ── */
+/* ── Native Select Dropdown Color-Scheme & Option Theming ──
+   A regra global cuida só do layout. Cor do texto, `color-scheme` e as cores
+   das opções valem apenas no modo escuro: no claro, o texto branco sumia no
+   fundo claro dos modais. Os contêineres escuros do tema claro (filtros da
+   tabela, agrupamento, widget de propostas) têm regra própria. */
 select.fi-select-input {
-    color-scheme: dark !important;
     background-color: transparent !important;
     border-radius: inherit !important;
     border: none !important;
     outline: none !important;
     box-shadow: none !important;
     --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+.dark select.fi-select-input {
+    color-scheme: dark !important;
     color: #fbfaf8 !important;
 }
 
-select.fi-select-input option,
-select.fi-select-input optgroup {
+.dark select.fi-select-input option,
+.dark select.fi-select-input optgroup {
     color-scheme: dark !important;
     background-color: #091b23 !important;
     color: #fbfaf8 !important;
 }
 
-select.fi-select-input option:checked,
-select.fi-select-input option[selected] {
+.dark select.fi-select-input option:checked,
+.dark select.fi-select-input option[selected] {
     background-color: #12313b !important;
     color: #d4af37 !important;
 }
@@ -5130,7 +5467,8 @@ html:not(.dark) .bsi-construction-units-list-page tr.fi-ta-row:hover {
     text-shadow: 0 0 12px rgba(183, 131, 47, 0.35);
 }
 
-/* Protagonismo e clareza do Bloco */
+/* Protagonismo e clareza do Bloco. O texto claro é só do modo escuro: no claro
+   ele sumia sobre a linha clara (1:1). */
 .bsi-construction-units-list-page .fi-ta-cell-block .fi-badge {
     font-weight: 600 !important;
     font-size: 0.8125rem !important;
@@ -5139,6 +5477,10 @@ html:not(.dark) .bsi-construction-units-list-page tr.fi-ta-row:hover {
     border-radius: 6px !important;
     border: 1px solid rgba(148, 163, 184, 0.25) !important;
     background: rgba(148, 163, 184, 0.1) !important;
+    color: var(--gray-700) !important;
+}
+
+.dark .bsi-construction-units-list-page .fi-ta-cell-block .fi-badge {
     color: rgba(251, 250, 248, 0.9) !important;
 }
 
@@ -8600,6 +8942,8 @@ html:not(.dark) .fi-activity-card:hover {
     box-shadow: 0 8px 24px rgba(4, 14, 19, 0.3) !important;
 }
 
+/* O cabeçalho é escuro nos dois temas (gradiente acima): o título é claro
+   sem qualificador de tema -- no claro ele herdava o texto escuro e sumia. */
 .bsi-construction-form-page .fi-header-heading,
 .bsi-operation-form-page .fi-header-heading,
 .bsi-measurement-form-page .fi-header-heading,
@@ -8608,6 +8952,7 @@ html:not(.dark) .fi-activity-card:hover {
     font-weight: 700 !important;
     line-height: 1.2 !important;
     letter-spacing: -0.015em !important;
+    color: #fbfaf8 !important;
 }
 
 .bsi-construction-form-page .fi-header-subheading,
@@ -11994,8 +12339,7 @@ html:not(.dark) .fi-activity-card:hover {
 }
 
 /* 9. Barra de busca fixa no topo do painel aberto */
-.bsi-service-provider-form-page .fi-dropdown-panel .fi-select-input-search-ctn,
-.fi-dropdown-panel .fi-select-input-search-ctn {
+.bsi-service-provider-form-page .fi-dropdown-panel .fi-select-input-search-ctn {
     position: sticky !important;
     top: 0 !important;
     z-index: 10 !important;
@@ -12006,8 +12350,7 @@ html:not(.dark) .fi-activity-card:hover {
     border-top-right-radius: 12px !important;
 }
 
-.bsi-service-provider-form-page .fi-dropdown-panel .fi-select-input-search-ctn .fi-input,
-.fi-dropdown-panel .fi-select-input-search-ctn .fi-input {
+.bsi-service-provider-form-page .fi-dropdown-panel .fi-select-input-search-ctn .fi-input {
     background: #091b23 !important;
     border: 1px solid rgba(148, 163, 184, 0.22) !important;
     border-radius: 8px !important;
@@ -12022,13 +12365,11 @@ html:not(.dark) .fi-activity-card:hover {
     transition: border-color 150ms ease, box-shadow 150ms ease !important;
 }
 
-.bsi-service-provider-form-page .fi-dropdown-panel .fi-select-input-search-ctn .fi-input::placeholder,
-.fi-dropdown-panel .fi-select-input-search-ctn .fi-input::placeholder {
+.bsi-service-provider-form-page .fi-dropdown-panel .fi-select-input-search-ctn .fi-input::placeholder {
     color: rgba(251, 250, 248, 0.48) !important;
 }
 
-.bsi-service-provider-form-page .fi-dropdown-panel .fi-select-input-search-ctn .fi-input:focus,
-.fi-dropdown-panel .fi-select-input-search-ctn .fi-input:focus {
+.bsi-service-provider-form-page .fi-dropdown-panel .fi-select-input-search-ctn .fi-input:focus {
     border-color: #b7832f !important;
     box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.2) !important;
     outline: none !important;
@@ -14281,6 +14622,15 @@ html:not(.dark) .fi-activity-card:hover {
     font-size: 0.875rem !important;
     color: #fbfaf8 !important;
     padding-inline: 0.75rem !important;
+}
+
+/* O seletor de data não nativo mostra a data num input próprio, sem `.fi-input`:
+   sem esta regra ele ficava com o cinza-escuro do Filament sobre o petróleo no
+   tema claro (2,5:1). O fundo do campo é petróleo nos dois temas, e a cor
+   também. */
+.bsi-cockpit-page .fi-sc-wizard input.fi-fo-date-time-picker-display-text-input,
+.dark .bsi-cockpit-page .fi-sc-wizard input.fi-fo-date-time-picker-display-text-input {
+    color: #fbfaf8 !important;
 }
 
 /* ── Textareas & Long-Form Legal Blocks in Wizard ── */

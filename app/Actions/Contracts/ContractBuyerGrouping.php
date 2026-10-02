@@ -109,6 +109,7 @@ class ContractBuyerGrouping
         $lines = array_map(fn (array $row): int => $row['line'], $group);
 
         $leader['lines'] = $lines;
+        $leader['warnings'] = $this->warningsOf($group);
 
         if (count($group) > 1) {
             $divergence = $this->firstDivergence($group);
@@ -160,6 +161,26 @@ class ContractBuyerGrouping
             ...$leader,
             'outcome' => $this->worstOutcome($leader['outcome'], $comparison->severity()),
         ], $notes);
+    }
+
+    /**
+     * The warnings of every line of the contract, each one once: the lines repeat
+     * the same contractual data, so they repeat its warnings too.
+     *
+     * @param  list<array<string, mixed>>  $group
+     * @return list<array{code: string, message: string}>
+     */
+    private function warningsOf(array $group): array
+    {
+        $warnings = [];
+
+        foreach ($group as $row) {
+            foreach ($row['warnings'] ?? [] as $warning) {
+                $warnings[$warning['code'].'|'.$warning['message']] = $warning;
+            }
+        }
+
+        return array_values($warnings);
     }
 
     /**

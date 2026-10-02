@@ -4,10 +4,12 @@ namespace App\Filament\Resources\Receivables\Schemas;
 
 use App\Concerns\MoneyFormatter;
 use App\DTOs\SalesBoards\EmissionSalesPosition;
+use App\DTOs\SalesBoards\SalesBoardPublicationGaps;
 use App\Models\Receivable;
 use App\Models\SalesBoard;
 use App\Models\SalesBoardPublication;
 use App\Services\SalesBoards\SalesBoardPositionReader;
+use App\Services\SalesBoards\SalesBoardPublicationGapClassifier;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ViewEntry;
 use Filament\Schemas\Components\Section;
@@ -232,7 +234,12 @@ class ReceivableInfolist
     }
 
     /**
-     * @return array{position: EmissionSalesPosition|null, automatedSalesBoardIds: list<int>, automationCoversMonth: bool}
+     * O empreendimento sem o quadro publicado da competência vem explicado
+     * pelo ciclo mensal ({@see SalesBoardPublicationGapClassifier}): aguardando
+     * publicação, ou cancelada pela Gestão -- esta com data e motivo, porque a
+     * tela é interna.
+     *
+     * @return array{position: EmissionSalesPosition|null, automatedSalesBoardIds: list<int>, publicationGaps: SalesBoardPublicationGaps}
      */
     protected static function salesStockViewData(Receivable $record): array
     {
@@ -245,12 +252,20 @@ class ReceivableInfolist
             'position' => $position,
             'automatedSalesBoardIds' => $salesBoardIds === []
                 ? []
+                /**
+                 * Distintos: a retificação aprovada encadeia outra publicação
+                 * ao mesmo quadro, e o quadro continua sendo um só.
+                 */
                 : SalesBoardPublication::query()
                     ->whereIn('sales_board_id', $salesBoardIds)
+                    ->distinct()
                     ->pluck('sales_board_id')
                     ->map(fn (mixed $salesBoardId): int => (int) $salesBoardId)
+                    ->values()
                     ->all(),
-            'automationCoversMonth' => ($position !== null) && (bool) $record->emission?->automationCovers($position->positionDate),
+            'publicationGaps' => (($position !== null) && ($record->emission !== null))
+                ? app(SalesBoardPublicationGapClassifier::class)->classify($record->emission, $position)
+                : SalesBoardPublicationGaps::none(),
         ];
     }
 

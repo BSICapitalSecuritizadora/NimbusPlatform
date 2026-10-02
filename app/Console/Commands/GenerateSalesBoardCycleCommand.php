@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\DTOs\SalesBoards\SalesBoardGenerationResult;
+use App\Enums\SalesBoardCycleStatus;
 use App\Models\Construction;
 use App\Models\Emission;
 use App\Services\SalesBoards\SalesBoardGenerationService;
@@ -15,10 +16,12 @@ use Illuminate\Support\Collection;
 /**
  * Congela manualmente a competência de um empreendimento ou de uma emissão.
  *
- * Manual de propósito. Não há agendamento aqui e este comando não é registrado
- * em nenhum schedule: a automação do fechamento mensal depende de decisões --
- * até quando gerar uma emissão liquidada, o que notificar -- que ainda não foram
- * tomadas, e agendar antes delas produziria ciclos que ninguém pediu.
+ * Manual de propósito: o agendamento mensal é da automação
+ * (`sales-boards:automation-run`), e este comando é o caminho humano. Por isso
+ * ele funciona com o interruptor global desligado, e também para Emissão
+ * liquidada -- a parada por liquidação é da automação, não do congelamento
+ * manual, e é por aqui que se fecha a última competência de uma operação
+ * encerrada.
  *
  * Com `--emission`, cada empreendimento continua tendo o seu próprio ciclo e a
  * sua própria transação. Se A e C estão prontos e B não, A e C são gerados e B é
@@ -123,7 +126,9 @@ class GenerateSalesBoardCycleCommand extends Command
                 (string) $result->cycle?->getKey(),
                 (string) ($result->baseline?->versionLabel() ?? '—'),
             ));
-            $this->line('  Refazer a posição é recálculo, que é ação própria e exige motivo.');
+            $this->line($result->cycle?->status === SalesBoardCycleStatus::Cancelled
+                ? '  A competência foi cancelada; a volta é “Reabrir competência” na tela do ciclo (Gestão).'
+                : '  Refazer a posição é recálculo, que é ação própria e exige motivo.');
 
             return;
         }

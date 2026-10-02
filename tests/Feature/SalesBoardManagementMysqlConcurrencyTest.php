@@ -132,7 +132,7 @@ function managementTask(array $instruction): Closure
 
 it('never opens two management reviews for the same cycle', function () {
     $scenario = ManagementReviewFixture::submittedCycleWithNonConformSale();
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::operator();
 
     $results = Concurrency::driver('process')->run([
         managementTask(['action' => 'open', 'cycle_id' => $scenario['cycle']->id, 'actor_id' => $actor->id]),
@@ -186,6 +186,8 @@ it('never publishes two boards for the same cycle', function () {
 it('never publishes a baseline other than the approved one when a recalculation races it', function () {
     $scenario = ManagementReviewFixture::submittedCycle();
     $actor = GovernanceFixture::approver();
+    // Quem recalcula opera a competência: o serviço recusa o recálculo da Gestão sem essa permissão.
+    $operator = GovernanceFixture::operator();
     $review = ManagementReviewFixture::open($scenario['cycle'], $actor);
 
     // A fonte muda: o recálculo concorrente vai produzir uma V2 material.
@@ -198,7 +200,7 @@ it('never publishes a baseline other than the approved one when a recalculation 
         managementTask([
             'action' => 'recalculate',
             'cycle_id' => $scenario['cycle']->id,
-            'actor_id' => $actor->id,
+            'actor_id' => $operator->id,
             'lock_marker' => $marker,
             'hold_after_lock_ms' => 400,
         ]),
@@ -226,6 +228,8 @@ it('never publishes a baseline other than the approved one when a recalculation 
 it('refuses a recalculation that races an approval and loses', function () {
     $scenario = ManagementReviewFixture::submittedCycle();
     $actor = GovernanceFixture::approver();
+    // Quem recalcula opera a competência: o serviço recusa o recálculo da Gestão sem essa permissão.
+    $operator = GovernanceFixture::operator();
     $review = ManagementReviewFixture::open($scenario['cycle'], $actor);
 
     $scenario['contracts']['financed']->update(['sale_value' => '910000.00']);
@@ -244,7 +248,7 @@ it('refuses a recalculation that races an approval and loses', function () {
         managementTask([
             'action' => 'recalculate',
             'cycle_id' => $scenario['cycle']->id,
-            'actor_id' => $actor->id,
+            'actor_id' => $operator->id,
             'wait_for_marker' => $marker,
         ]),
     ]);

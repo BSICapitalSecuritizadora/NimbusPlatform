@@ -17,6 +17,7 @@ use App\Listeners\LogNotificationListener;
 use App\Mail\Transport\MicrosoftGraphTransport;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
+use App\Models\ConstructionUnitRetirement;
 use App\Models\Contract;
 use App\Models\ContractInstallment;
 use App\Models\Document;
@@ -30,6 +31,7 @@ use App\Models\SalesBoard;
 use App\Models\Vacancy;
 use App\Policies\ConstructionPolicy;
 use App\Policies\ConstructionUnitPolicy;
+use App\Policies\ConstructionUnitRetirementPolicy;
 use App\Policies\ContractInstallmentPolicy;
 use App\Policies\ContractPolicy;
 use App\Policies\DocumentPolicy;
@@ -44,6 +46,7 @@ use App\Policies\VacancyPolicy;
 use App\Services\ConstructionProgressProvider;
 use App\Services\MeasurementPlanProgressProvider;
 use App\Support\ActivityLog\LogBatch;
+use App\Support\Imports\ImportConferenceStore;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
@@ -91,6 +94,12 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(IndexRateProvider::class, IndexRateService::class);
 
         $this->app->scoped(LogBatch::class);
+
+        /**
+         * Scoped pelo mesmo motivo do LogBatch: o memo da conferência vale para
+         * uma requisição, e uma requisição nunca herda o que outra calculou.
+         */
+        $this->app->scoped(ImportConferenceStore::class);
     }
 
     /**
@@ -113,6 +122,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Emission::class, EmissionPolicy::class);
         Gate::policy(Construction::class, ConstructionPolicy::class);
         Gate::policy(ConstructionUnit::class, ConstructionUnitPolicy::class);
+        Gate::policy(ConstructionUnitRetirement::class, ConstructionUnitRetirementPolicy::class);
         Gate::policy(Contract::class, ContractPolicy::class);
         Gate::policy(ContractInstallment::class, ContractInstallmentPolicy::class);
         Gate::policy(SalesBoard::class, SalesBoardPolicy::class);

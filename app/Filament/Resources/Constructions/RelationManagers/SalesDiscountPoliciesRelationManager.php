@@ -5,12 +5,14 @@ namespace App\Filament\Resources\Constructions\RelationManagers;
 use App\DTOs\SalesBoards\SalesDiscountPolicyPeriodAssessment;
 use App\Enums\SalesDiscountPolicyPosition;
 use App\Exceptions\SalesDiscountPolicyPeriodException;
+use App\Filament\Support\GuardsRelationManagerAccess;
 use App\Models\Construction;
 use App\Models\SalesDiscountPolicy;
 use App\Models\User;
 use App\Services\SalesBoards\SalesDiscountPolicyRegistrar;
 use App\Services\SalesBoards\SalesDiscountPolicyResolver;
 use App\Support\BusinessTime;
+use App\Support\SalesBoards\SalesBoardApprovalAuthority;
 use App\Support\SalesBoards\SalesDiscountPolicyTimeline;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -34,6 +36,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\View\PanelsRenderHook;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -52,12 +55,20 @@ use Throwable;
  * pede uma segunda confirmação, sobre as competências alcançadas, e é recusado
  * quando alcança competência já publicada.
  *
+ * Segregação: a política que rejulga venda já registrada -- retroativa, ou
+ * começando hoje com venda feita hoje -- é da Gestão (`sales-boards.approve`).
+ * Quem opera o cadastro comercial registra a política que vale daqui para a
+ * frente; para a outra, a tela avisa antes de gravar e sugere começar amanhã, e
+ * o registrador recusa de novo no servidor.
+ *
  * Acima da tabela, um aviso quando a cobertura de política da obra termina em
  * até {@see self::EXPIRY_WARNING_DAYS} dias ou já terminou: sem política, uma
  * venda bloqueia a competência inteira, e é melhor saber antes.
  */
 class SalesDiscountPoliciesRelationManager extends RelationManager
 {
+    use GuardsRelationManagerAccess;
+
     protected static string $relationship = 'salesDiscountPolicies';
 
     protected static ?string $title = 'Política Comercial de Desconto';
@@ -209,7 +220,7 @@ class SalesDiscountPoliciesRelationManager extends RelationManager
 
                 TextColumn::make('created_at')
                     ->label('Registrada em')
-                    ->dateTime('d/m/Y H:i')
+                    ->dateTime('d/m/Y H:i', BusinessTime::timezone())
                     ->sortable()
                     ->extraHeaderAttributes(['class' => 'bsi-col-registered-at'])
                     ->extraCellAttributes(['class' => 'bsi-col-registered-at tabular-nums'])
@@ -235,7 +246,7 @@ class SalesDiscountPoliciesRelationManager extends RelationManager
                             ->state($record->createdBy?->name ?? 'Não identificado'),
                         TextEntry::make('registered_at')
                             ->label('Data do registro')
-                            ->state($record->created_at?->format('d/m/Y H:i') ?? '—'),
+                            ->state($record->created_at === null ? '—' : BusinessTime::at($record->created_at)->format('d/m/Y H:i')),
                         TextEntry::make('effective_from')
                             ->label('Vigência')
                             ->state(self::describePeriod($record).' ('.self::describeDuration($record).')'),
@@ -324,6 +335,23 @@ class SalesDiscountPoliciesRelationManager extends RelationManager
                                 if ($approvedMessage !== null) {
                                     $fail($approvedMessage);
                                 }
+                            })
+                            /**
+                             * A política que rejulga venda já registrada é da
+                             * Gestão. Para quem não tem a permissão, o erro
+                             * aparece no início -- o campo que decide isso --,
+                             * antes de o formulário inteiro ser preenchido.
+                             */
+                            ->rule(fn (Get $get): Closure => function (string $attribute, mixed $value, Closure $fail) use ($get): void {
+                                $assessment = $this->periodAssessment($get);
+
+                                if (($assessment?->reachesApprovedCompetence() ?? true)
+                                    || ! $assessment->requiresManagementAuthority()
+                                    || $this->holdsManagementAuthority()) {
+                                    return;
+                                }
+
+                                $fail((string) $assessment->managementAuthorityMessage());
                             })
                             ->live()
                             ->afterStateUpdated(function (DatePicker $component, Get $get, Set $set): void {
@@ -420,16 +448,23 @@ class SalesDiscountPoliciesRelationManager extends RelationManager
                  */
                 Hidden::make('confirmed_substitution_id'),
 
+                Callout::make('Somente a Gestão registra esta política')
+                    ->danger()
+                    ->description(fn (Get $get): ?string => $this->periodAssessment($get)?->managementAuthorityMessage())
+                    ->visible(fn (Get $get): bool => $this->requiresManagementAuthorityFor($get)),
+
                 Callout::make('Esta política alcança vendas já feitas')
                     ->warning()
                     ->description(fn (Get $get): ?string => $this->periodAssessment($get)?->retroactivityMessage())
-                    ->visible(fn (Get $get): bool => $this->periodAssessment($get)?->needsRetroactiveConfirmation() ?? false),
+                    ->visible(fn (Get $get): bool => ($this->periodAssessment($get)?->needsRetroactiveConfirmation() ?? false)
+                        && ! $this->requiresManagementAuthorityFor($get)),
 
                 Checkbox::make('confirm_retroactive')
                     ->label('Confirmo que a política alcança essas vendas')
                     ->accepted()
                     ->live()
-                    ->visible(fn (Get $get): bool => $this->periodAssessment($get)?->needsRetroactiveConfirmation() ?? false)
+                    ->visible(fn (Get $get): bool => ($this->periodAssessment($get)?->needsRetroactiveConfirmation() ?? false)
+                        && ! $this->requiresManagementAuthorityFor($get))
                     ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
                         $set('confirmed_retroactive_through', $state ? $this->periodAssessment($get)?->retroactiveThroughDate() : null);
                     })
@@ -477,7 +512,7 @@ class SalesDiscountPoliciesRelationManager extends RelationManager
                             ? (string) $data['confirmed_retroactive_through']
                             : null,
                     );
-                } catch (SalesDiscountPolicyPeriodException $exception) {
+                } catch (SalesDiscountPolicyPeriodException|AuthorizationException $exception) {
                     $withdrew = $this->withdrawConfirmations();
 
                     Notification::make()
@@ -531,6 +566,31 @@ class SalesDiscountPoliciesRelationManager extends RelationManager
             $from,
             $until,
         );
+    }
+
+    /**
+     * Quem está na tela tem a autoridade da Gestão?
+     */
+    protected function holdsManagementAuthority(): bool
+    {
+        $user = auth()->user();
+
+        return SalesBoardApprovalAuthority::holds($user instanceof User ? $user : null);
+    }
+
+    /**
+     * O período digitado rejulga venda já registrada, e quem está na tela não
+     * é da Gestão. Competência publicada alcançada tem recusa própria, que vale
+     * para todos.
+     */
+    protected function requiresManagementAuthorityFor(Get $get): bool
+    {
+        $assessment = $this->periodAssessment($get);
+
+        return ($assessment !== null)
+            && ! $assessment->reachesApprovedCompetence()
+            && $assessment->requiresManagementAuthority()
+            && ! $this->holdsManagementAuthority();
     }
 
     /**

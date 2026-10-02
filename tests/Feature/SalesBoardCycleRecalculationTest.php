@@ -13,11 +13,11 @@ use App\Models\ContractInstallment;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleBaseline;
 use App\Models\SalesBoardCycleLine;
-use App\Models\User;
 use App\Services\SalesBoards\SalesBoardBaselineDiffService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\SalesBoards\CycleFixture;
 use Tests\Support\SalesBoards\DerivationFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 
 uses(RefreshDatabase::class);
 
@@ -39,7 +39,8 @@ function recalculableCycle(): array
 it('creates a second version and leaves the first untouched', function () {
     $scenario = recalculableCycle();
     $first = CycleFixture::currentBaseline($scenario['cycle']);
-    $actor = User::factory()->create();
+    // Quem recalcula opera a competência: o serviço recusa o ator sem a permissão.
+    $actor = GovernanceFixture::operator();
 
     $scenario['sold']->update(['sale_value' => '610000.00']);
 

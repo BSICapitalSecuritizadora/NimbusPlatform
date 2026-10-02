@@ -25,6 +25,7 @@ use Filament\Actions\Testing\TestAction;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
@@ -50,7 +51,11 @@ afterEach(function (): void {
  */
 function stockGuaranteeEmission(): array
 {
-    $emission = Emission::factory()->create(['issued_quantity' => 1000000]);
+    /**
+     * Em operação: a Emissão liquidada sai da cobrança mensal do selo, e o
+     * status da factory é sorteado.
+     */
+    $emission = Emission::factory()->create(['issued_quantity' => 1000000, 'status' => 'active']);
     $construction = Construction::factory()->create([
         'emission_id' => $emission->id,
         'development_name' => 'Residencial Alfa',
@@ -466,10 +471,11 @@ it('resolves the current competence in the business calendar, not in UTC', funct
         ->ofType(GuaranteeType::QuotaFiduciaryAlienation)
         ->create(['emission_id' => $emission->id, 'legal_status' => GuaranteeLegalStatus::Active]);
 
+    // A aba mostra agosto; o valor manual, como atualizar e fechar, propõe julho.
     competenceGuaranteesTab($emission->fresh())
         ->assertSee('Competência 08/2026')
         ->mountTableAction('inform_value', $guarantee)
-        ->assertTableActionDataSet(['reference_month' => '08/2026']);
+        ->assertTableActionDataSet(['reference_month' => '07/2026']);
 
     competenceGuaranteesTab($emission->fresh())
         ->mountAction(TestAction::make('close_competence')->table())
@@ -483,6 +489,11 @@ it('resolves the current competence in the business calendar, not in UTC', funct
     expect($emission->fresh()->pendingGuaranteeSnapshotReason())->toBe('A competência 07/2026 ainda não foi consolidada.');
 
     app(GuaranteeSnapshotWriter::class)->persist($emission, '2026-07-01', $admin);
+
+    // Atualizada não é consolidada: só o fechamento apaga o selo.
+    expect($emission->fresh()->pendingGuaranteeSnapshotReason())->toBe('A competência 07/2026 foi atualizada, mas ainda não foi fechada.');
+
+    app(GuaranteeSnapshotWriter::class)->close($emission, '2026-07-01', $admin);
 
     expect($emission->fresh()->requiresMonthlyGuaranteeSnapshotUpdate())->toBeFalse();
 });
@@ -508,7 +519,7 @@ it('reopens a closed competence from the tab with a mandatory reason', function 
 
     competenceGuaranteesTab($emission->fresh())
         ->callTableAction('inform_value', $quotas, data: ['reference_month' => '08/2026', 'current_value' => '1.000,00'])
-        ->assertNotified('Não foi possível informar o valor.');
+        ->assertHasTableActionErrors(['reference_month' => 'A competência 08/2026 está fechada. Reabra-a antes de informar o valor.']);
 
     expect($quotas->monthlyPositions()->count())->toBe(0);
 
@@ -530,7 +541,13 @@ it('reopens a closed competence from the tab with a mandatory reason', function 
         ->assertHasNoActionErrors()
         ->assertNotified('Competência 08/2026 reaberta.');
 
-    expect(augustSnapshot($emission)->isClosed())->toBeFalse();
+    $reopened = augustSnapshot($emission);
+
+    expect($reopened->isClosed())->toBeFalse()
+        // A última reabertura fica na própria linha, além da trilha.
+        ->and($reopened->reopened_at->toDateTimeString())->toBe('2026-09-15 10:00:00')
+        ->and($reopened->reopened_by)->toBe($admin->id)
+        ->and($reopened->reopen_reason)->toBe('Correção do estoque do quadro de agosto.');
 
     $reopening = Activity::query()->where('event', GuaranteeSnapshotWriter::EVENT_COMPETENCE_REOPENED)->sole();
 
@@ -685,16 +702,17 @@ it('keeps the carried-forward stock of the current month as a note, not as a pen
         ->toContain('Residencial Alfa (08/2026)');
 });
 
-it('does not count a construction whose first board is later than the competence as a gap', function (): void {
+it('requires the explicit confirmation when a construction has no board up to the competence', function (): void {
     Carbon::setTestNow('2026-09-15 10:00:00');
-    $emission = Emission::factory()->create();
+    $emission = Emission::factory()->create(['status' => 'active']);
     $admin = makeAdminUser();
     $alfa = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Alfa']);
     $beta = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Beta']);
 
     registerAugustBoard($emission, $alfa, stockValue: 4_000_000);
 
-    // O primeiro quadro do Beta é de setembro: em agosto ele ainda não tinha posição.
+    // O primeiro quadro do Beta é de setembro: em agosto a obra já tinha
+    // unidades, e elas ficaram fora do estoque somado.
     SalesBoard::factory()->forEmissionAndConstruction($emission, $beta)->create([
         'reference_month' => '2026-09-01',
         'stock_units' => 5,
@@ -710,17 +728,27 @@ it('does not count a construction whose first board is later than the competence
     $stock = $position->positions->sole();
     $betaEntry = collect($position->salesBoardCoverage->constructions)->firstWhere('construction_id', $beta->id);
 
-    expect($position->hasSalesBoardGaps())->toBeFalse()
-        ->and($stock->value->status)->toBe(GuaranteeValueStatus::Automatic)
+    expect($position->hasSalesBoardGaps())->toBeTrue()
+        ->and($position->salesBoardGapDescriptions())->toBe(['Residencial Beta: sem quadro até a competência'])
+        ->and($stock->value->status)->toBe(GuaranteeValueStatus::Partial)
         ->and($stock->value->amount)->toBe(4_000_000.0)
+        ->and($stock->value->metadata['reason'])->toContain('Residencial Beta: sem quadro até a competência')
         ->and($betaEntry['status'])->toBe(SalesBoardPositionStatus::NotYetPositioned->value)
-        ->and($betaEntry['reference_month_used'])->toBeNull();
+        ->and($betaEntry['reference_month_used'])->toBeNull()
+        ->and(app(GuaranteeAlertBuilder::class)->build($emission->fresh(), $position)->pluck('title'))->toContain('Posição parcial do Quadro de Vendas')
+        ->and(app(EmissionMonthlyReportService::class)->build($emission->fresh(), CarbonImmutable::parse('2026-08-01'))['guarantees']['partial_sales_board_position'])->toBeTrue();
 
-    // Fecha sem pedir confirmação de posição parcial.
-    $snapshot = app(GuaranteeSnapshotWriter::class)->close($emission, '2026-08-01', $admin);
+    expect(fn () => app(GuaranteeSnapshotWriter::class)->close($emission, '2026-08-01', $admin))
+        ->toThrow(ValidationException::class, 'Confirme o fechamento com a posição parcial.');
+
+    expect(augustSnapshot($emission))->toBeNull();
+
+    $snapshot = app(GuaranteeSnapshotWriter::class)->close($emission, '2026-08-01', $admin, $position->salesBoardGapsFingerprint());
 
     expect($snapshot->isClosed())->toBeTrue()
-        ->and($snapshot->hasPartialCoverageConfirmation())->toBeFalse();
+        ->and($snapshot->hasPartialCoverageConfirmation())->toBeTrue()
+        ->and($snapshot->partial_coverage_confirmed_by)->toBe($admin->id)
+        ->and($snapshot->partialCoverageDescriptions())->toBe(['Residencial Beta: sem quadro até a competência']);
 
     // Um quadro retroativo do Beta para agosto ainda desatualiza a competência.
     SalesBoard::factory()->forEmissionAndConstruction($emission, $beta)->create(['reference_month' => '2026-08-01']);
@@ -763,4 +791,304 @@ it('shows the outdated and confirmation instants in the business timezone', func
         ->assertDontSee('16/09/2026 13:00')
         // Confirmada às 23:30 de 15/09 em Brasília, não no dia 16 do UTC.
         ->assertSeeInOrder(['Posição parcial confirmada', 'em 15/09/2026']);
+});
+
+it('marks a competence recorded without sales board coverage when a board of the emission is registered later', function (): void {
+    Carbon::setTestNow('2026-09-15 10:00:00');
+    [$emission, $construction] = stockGuaranteeEmission();
+    $admin = makeAdminUser();
+
+    app(GuaranteeSnapshotWriter::class)->persist($emission, '2026-08-01', $admin);
+
+    // Apuração gravada antes de a origem do quadro passar a ser registrada:
+    // a garantia de estoque usou algum quadro, mas não se sabe qual.
+    DB::table('guarantee_snapshots')->where('emission_id', $emission->id)->update(['sales_board_coverage' => null]);
+
+    expect(augustSnapshot($emission)->hasUnrecordedSalesBoardCoverage())->toBeTrue();
+
+    $augustBoard = registerAugustBoard($emission, $construction);
+
+    $snapshot = augustSnapshot($emission);
+    $outdated = Activity::query()->where('event', GuaranteeSnapshotWriter::EVENT_COMPETENCE_OUTDATED)->sole();
+
+    expect($snapshot->isSalesBoardOutdated())->toBeTrue()
+        ->and($outdated->log_name)->toBe(GuaranteeSnapshotWriter::LOG_NAME)
+        ->and($outdated->subject_id)->toBe($snapshot->id)
+        ->and($outdated->properties['source'])->toBe('sales_board')
+        ->and($outdated->properties['sales_board_id'])->toBe($augustBoard->id)
+        ->and($outdated->properties['construction_id'])->toBe($construction->id)
+        ->and($outdated->properties['board_reference_month'])->toBe('2026-08-01')
+        ->and($outdated->properties['closed'])->toBeFalse();
+});
+
+it('leaves alone a competence without coverage whose guarantees never depended on the board', function (): void {
+    Carbon::setTestNow('2026-09-15 10:00:00');
+    $emission = Emission::factory()->create(['status' => 'active']);
+    $construction = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Alfa']);
+    $admin = makeAdminUser();
+
+    SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create([
+        'reference_month' => '2026-07-01',
+        'stock_units' => 20,
+        'stock_value' => 10_000_000,
+    ]);
+
+    // A garantia de estoque existe, mas não compõe a cobertura: o quadro nunca
+    // teve como mudar o número desta competência.
+    Guarantee::factory()
+        ->effectiveBetween()
+        ->ofType(GuaranteeType::Inventory)
+        ->create([
+            'emission_id' => $emission->id,
+            'construction_id' => $construction->id,
+            'legal_status' => GuaranteeLegalStatus::Active,
+            'counts_toward_coverage' => false,
+        ]);
+
+    app(GuaranteeSnapshotWriter::class)->persist($emission, '2026-08-01', $admin);
+
+    expect(augustSnapshot($emission)->sales_board_coverage)->toBeNull()
+        ->and(augustSnapshot($emission)->hasUnrecordedSalesBoardCoverage())->toBeFalse();
+
+    registerAugustBoard($emission, $construction);
+
+    expect(augustSnapshot($emission)->isSalesBoardOutdated())->toBeFalse()
+        ->and(Activity::query()->where('event', GuaranteeSnapshotWriter::EVENT_COMPETENCE_OUTDATED)->exists())->toBeFalse();
+});
+
+it('keeps the pending badge until the expected competence is closed', function (): void {
+    Carbon::setTestNow('2026-09-15 10:00:00');
+    [$emission, $construction] = stockGuaranteeEmission();
+    registerAugustBoard($emission, $construction);
+    $admin = makeAdminUser();
+
+    expect(GuaranteesRelationManager::getBadge($emission->fresh(), EditEmission::class))->toBe('Pendente')
+        ->and(GuaranteesRelationManager::getBadgeTooltip($emission->fresh(), EditEmission::class))
+        ->toBe('A competência 08/2026 ainda não foi consolidada.');
+
+    app(GuaranteeSnapshotWriter::class)->persist($emission, '2026-08-01', $admin);
+
+    // Atualizar grava a apuração, mas não congela o número: o relatório ainda
+    // não a trata como consolidada, e o selo também não.
+    expect(GuaranteesRelationManager::getBadge($emission->fresh(), EditEmission::class))->toBe('Pendente')
+        ->and(GuaranteesRelationManager::getBadgeTooltip($emission->fresh(), EditEmission::class))
+        ->toBe('A competência 08/2026 foi atualizada, mas ainda não foi fechada.')
+        ->and(app(EmissionMonthlyReportService::class)->build($emission->fresh(), CarbonImmutable::parse('2026-08-01'))['guarantees']['consolidated'])
+        ->toBeFalse();
+
+    app(GuaranteeSnapshotWriter::class)->close($emission, '2026-08-01', $admin);
+
+    expect(GuaranteesRelationManager::getBadge($emission->fresh(), EditEmission::class))->toBeNull()
+        ->and(GuaranteesRelationManager::getBadgeTooltip($emission->fresh(), EditEmission::class))->toBeNull();
+});
+
+it('flags a reopened competence until it is closed again and keeps the last reopening on the snapshot', function (): void {
+    pinUtcApplicationTimezone();
+    Carbon::setTestNow('2026-09-15 10:00:00');
+    [$emission, $construction] = stockGuaranteeEmission();
+    registerAugustBoard($emission, $construction);
+    $admin = makeAdminUser();
+    $writer = app(GuaranteeSnapshotWriter::class);
+
+    $writer->close($emission, '2026-08-01', $admin);
+
+    // 13:00 UTC = 10:00 em Brasília.
+    Carbon::setTestNow('2026-09-16 13:00:00');
+    $writer->reopen($emission, '2026-08-01', $admin, 'Correção do estoque de agosto.');
+
+    $reopenedAlert = app(GuaranteeAlertBuilder::class)
+        ->build($emission->fresh(), app(EmissionGuaranteeCoverageEngine::class)->buildPosition($emission->fresh()))
+        ->firstWhere('title', 'Competência reaberta e não fechada');
+
+    expect(GuaranteesRelationManager::getBadge($emission->fresh(), EditEmission::class))->toBe('Pendente')
+        ->and(GuaranteesRelationManager::getBadgeTooltip($emission->fresh(), EditEmission::class))
+        ->toBe('Competência reaberta e ainda não fechada: 08/2026.')
+        ->and($reopenedAlert['severity'])->toBe(GuaranteeAlertBuilder::SEVERITY_WARNING)
+        ->and($reopenedAlert['description'])->toBe(
+            'A competência 08/2026 foi reaberta em 16/09/2026 10:00 por '.$admin->name
+                .' (motivo: Correção do estoque de agosto.) e ainda não foi fechada de novo. '
+                .'Atualize e feche a competência para que o número volte a ser o consolidado.',
+        );
+
+    $this->actingAs($admin);
+
+    competenceGuaranteesTab($emission->fresh())
+        ->assertSee('Reaberta em 16/09/2026 por '.$admin->name)
+        ->assertSee('Competência reaberta e não fechada');
+
+    Carbon::setTestNow('2026-09-17 13:00:00');
+    $writer->close($emission, '2026-08-01', $admin);
+
+    $snapshot = augustSnapshot($emission);
+
+    expect($snapshot->isClosed())->toBeTrue()
+        ->and($snapshot->reopened_at->toDateTimeString())->toBe('2026-09-16 13:00:00')
+        ->and($snapshot->reopened_by)->toBe($admin->id)
+        ->and($snapshot->reopen_reason)->toBe('Correção do estoque de agosto.')
+        ->and(GuaranteesRelationManager::getBadge($emission->fresh(), EditEmission::class))->toBeNull();
+
+    competenceGuaranteesTab($emission->fresh())
+        ->assertSee('Última reabertura em 16/09/2026 por '.$admin->name)
+        ->assertDontSee('Competência reaberta e não fechada');
+});
+
+it('shows no pending badge for an emission without guarantees', function (): void {
+    Carbon::setTestNow('2026-09-15 10:00:00');
+    $emission = Emission::factory()->create(['status' => 'active']);
+
+    expect(GuaranteesRelationManager::getBadge($emission->fresh(), EditEmission::class))->toBeNull()
+        ->and($emission->fresh()->pendingGuaranteeSnapshotReason())->toBeNull();
+
+    // Com uma garantia cadastrada, a mesma competência passa a ser cobrada.
+    Guarantee::factory()
+        ->effectiveBetween()
+        ->ofType(GuaranteeType::QuotaFiduciaryAlienation)
+        ->create(['emission_id' => $emission->id, 'legal_status' => GuaranteeLegalStatus::Active]);
+
+    expect(GuaranteesRelationManager::getBadge($emission->fresh(), EditEmission::class))->toBe('Pendente')
+        ->and($emission->fresh()->pendingGuaranteeSnapshotReason())->toBe('A competência 08/2026 ainda não foi consolidada.');
+});
+
+/**
+ * O item 4 do selo cobra o fechamento do mês anterior enquanto houver o que
+ * consolidar. Uma operação liquidada, ou com todas as garantias encerradas no
+ * fim da competência, não tem: cobrá-la todo mês seria o aviso que nunca apaga.
+ */
+it('stops charging the expected competence once every guarantee was closed by the end of it', function (): void {
+    Carbon::setTestNow('2026-09-15 10:00:00');
+    $emission = Emission::factory()->create(['status' => 'active']);
+
+    $guarantee = Guarantee::factory()
+        ->effectiveBetween()
+        ->ofType(GuaranteeType::QuotaFiduciaryAlienation)
+        ->create(['emission_id' => $emission->id, 'legal_status' => GuaranteeLegalStatus::Active]);
+
+    // Liberada em setembro: em 31/08 ela ainda acompanhava a operação, e agosto continua cobrado.
+    $guarantee->forceFill(['legal_status' => GuaranteeLegalStatus::Released, 'released_at' => '2026-09-10'])->save();
+
+    expect(GuaranteesRelationManager::getBadge($emission->fresh(), EditEmission::class))->toBe('Pendente')
+        ->and($emission->fresh()->pendingGuaranteeSnapshotReason())->toBe('A competência 08/2026 ainda não foi consolidada.');
+
+    // Em outubro a competência esperada é setembro, e em 30/09 nenhuma garantia estava em aberto.
+    Carbon::setTestNow('2026-10-15 10:00:00');
+
+    expect(GuaranteesRelationManager::getBadge($emission->fresh(), EditEmission::class))->toBeNull()
+        ->and($emission->fresh()->pendingGuaranteeSnapshotReason())->toBeNull();
+
+    // Encerrada ou substituída, sem data de liberação, também não cobra; suspensa continua cobrando.
+    $guarantee->forceFill(['legal_status' => GuaranteeLegalStatus::Terminated, 'released_at' => null])->save();
+
+    expect($emission->fresh()->pendingGuaranteeSnapshotReason())->toBeNull();
+
+    $guarantee->forceFill(['legal_status' => GuaranteeLegalStatus::Suspended])->save();
+
+    expect($emission->fresh()->pendingGuaranteeSnapshotReason())->toBe('A competência 09/2026 ainda não foi consolidada.');
+});
+
+it('does not charge the expected competence of a liquidated operation and keeps the other reasons', function (): void {
+    Carbon::setTestNow('2026-09-15 10:00:00');
+    $emission = Emission::factory()->create(['status' => Emission::STATUS_LIQUIDATED]);
+
+    Guarantee::factory()
+        ->effectiveBetween()
+        ->ofType(GuaranteeType::QuotaFiduciaryAlienation)
+        ->create(['emission_id' => $emission->id, 'legal_status' => GuaranteeLegalStatus::Active]);
+
+    expect(GuaranteesRelationManager::getBadge($emission->fresh(), EditEmission::class))->toBeNull()
+        ->and($emission->fresh()->pendingGuaranteeSnapshotReason())->toBeNull();
+
+    // Uma marca de desatualização continua pedindo ação, liquidada ou não.
+    GuaranteeSnapshot::factory()->create([
+        'emission_id' => $emission->id,
+        'reference_month' => '2026-07-01',
+        'sales_board_outdated_at' => now(),
+    ]);
+
+    expect(GuaranteesRelationManager::getBadge($emission->fresh(), EditEmission::class))->toBe('Pendente')
+        ->and($emission->fresh()->pendingGuaranteeSnapshotReason())
+        ->toBe('Quadro de Vendas publicado depois da apuração de 07/2026. Atualize a competência (ou reabra, se fechada).');
+});
+
+it('offers the previous business month to inform a manual value and refuses a future or closed competence', function (): void {
+    Carbon::setTestNow('2026-09-15 10:00:00');
+    [$emission, $construction] = stockGuaranteeEmission();
+    registerAugustBoard($emission, $construction);
+    $admin = makeAdminUser();
+    $this->actingAs($admin);
+
+    $quotas = Guarantee::factory()
+        ->effectiveBetween()
+        ->ofType(GuaranteeType::QuotaFiduciaryAlienation)
+        ->create(['emission_id' => $emission->id, 'legal_status' => GuaranteeLegalStatus::Active]);
+
+    competenceGuaranteesTab($emission)
+        ->mountTableAction('inform_value', $quotas)
+        ->assertTableActionDataSet(['reference_month' => '08/2026']);
+
+    competenceGuaranteesTab($emission->fresh())
+        ->callTableAction('inform_value', $quotas, data: ['reference_month' => '10/2026', 'current_value' => '1.000,00'])
+        ->assertHasTableActionErrors(['reference_month' => 'A competência 10/2026 ainda não começou.']);
+
+    app(GuaranteeSnapshotWriter::class)->close($emission, '2026-08-01', $admin);
+
+    competenceGuaranteesTab($emission->fresh())
+        ->callTableAction('inform_value', $quotas, data: ['reference_month' => '08/2026', 'current_value' => '1.000,00'])
+        ->assertHasTableActionErrors(['reference_month' => 'A competência 08/2026 está fechada. Reabra-a antes de informar o valor.']);
+
+    // Agosto fechou com o valor pendente, e continua assim.
+    $august = $quotas->monthlyPositions()->whereDate('reference_month', '2026-08-01')->sole();
+
+    expect($august->value_status)->toBe(GuaranteeValueStatus::Pending)
+        ->and($august->current_value)->toBeNull();
+
+    competenceGuaranteesTab($emission->fresh())
+        ->callTableAction('inform_value', $quotas, data: ['reference_month' => '07/2026', 'current_value' => '1.000,00'])
+        ->assertHasNoTableActionErrors()
+        ->assertNotified('Valor da competência 07/2026 informado.');
+
+    $july = $quotas->monthlyPositions()->whereDate('reference_month', '2026-07-01')->sole();
+
+    expect($july->value_status)->toBe(GuaranteeValueStatus::Manual)
+        ->and((float) $july->current_value)->toBe(1000.0);
+});
+
+it('labels the reopen options with the outdated source', function (): void {
+    Carbon::setTestNow('2026-09-15 10:00:00');
+    [$emission] = stockGuaranteeEmission();
+    $admin = makeAdminUser();
+    $writer = app(GuaranteeSnapshotWriter::class);
+
+    foreach (['2026-05-01', '2026-06-01', '2026-07-01', '2026-08-01'] as $month) {
+        $writer->close(
+            $emission,
+            $month,
+            $admin,
+            app(EmissionGuaranteeCoverageEngine::class)->buildPosition($emission->fresh(), $month)->salesBoardGapsFingerprint(),
+        );
+    }
+
+    $mark = fn (string $month, array $marks) => GuaranteeSnapshot::query()
+        ->where('emission_id', $emission->id)
+        ->whereDate('reference_month', $month)
+        ->sole()
+        ->forceFill($marks)
+        ->save();
+
+    $boardMark = ['sales_board_outdated_at' => now()];
+    $balanceMark = ['outstanding_balance_outdated_at' => now(), 'outstanding_balance_outdated_reason' => 'Curva de PU v7 homologada'];
+
+    $mark('2026-05-01', [...$boardMark, ...$balanceMark]);
+    $mark('2026-06-01', $boardMark);
+    $mark('2026-07-01', $balanceMark);
+
+    $this->actingAs($admin);
+
+    // A sugestão é a competência desatualizada mais recente, por qualquer das fontes.
+    competenceGuaranteesTab($emission->fresh())
+        ->mountAction(TestAction::make('reopen_competence')->table())
+        ->assertSchemaStateSet(['reference_month' => '2026-07-01'])
+        ->assertMountedActionModalSee('05/2026 · desatualizada pelo Quadro de Vendas e pelo saldo devedor')
+        ->assertMountedActionModalSee('06/2026 · desatualizada pelo Quadro de Vendas')
+        ->assertMountedActionModalSee('07/2026 · desatualizada pelo saldo devedor')
+        ->assertMountedActionModalDontSee('08/2026 · desatualizada');
 });

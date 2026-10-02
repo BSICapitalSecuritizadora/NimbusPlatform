@@ -420,3 +420,38 @@
         padding-block: 1rem 0.25rem;
     }
 }
+
+/* ── Automação do Quadro: estado, sinal de vida, política de avisos e avisos ── */
+.bsi-sales-board-automation-page .fi-header-subheading {
+    display: grid;
+    gap: 0.375rem;
+    max-width: 90ch;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.bsi-sales-board-automation-page :is(.bsi-automation-heartbeat, .bsi-automation-policy, .bsi-automation-notice) {
+    padding-left: 0.625rem;
+    border-left: 2px solid rgb(160 110 40 / 0.55);
+}
+
+.bsi-sales-board-automation-page .bsi-automation-heartbeat-stale {
+    border-left-color: currentColor;
+    font-weight: 500;
+}
+
+/* ── Prévia de prontidão: tabela larga rola dentro da seção, nunca a página ── */
+.bsi-sales-board-readiness-page .fi-page-content {
+    min-width: 0;
+}
+
+.bsi-sales-board-readiness-page .bsi-readiness-table th,
+.bsi-sales-board-readiness-page .bsi-readiness-table td {
+    white-space: nowrap;
+}
+
+.bsi-sales-board-readiness-page .bsi-readiness-table td:nth-last-child(-n + 2) {
+    min-width: 16rem;
+    white-space: normal;
+}

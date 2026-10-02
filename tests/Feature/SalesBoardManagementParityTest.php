@@ -12,6 +12,8 @@ use App\Support\Money\IntegerMoney;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Tests\Support\SalesBoards\CycleFixture;
 use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
@@ -74,7 +76,11 @@ it('allows many nonconformities of the same review to leave the other anchor nul
         ->count())->toBe(2);
 });
 
-it('allows a single publication per cycle', function () {
+/**
+ * O ciclo publica de novo só pela retificação, e cada publicação ocupa uma
+ * posição da cadeia: a mesma sequência duas vezes é recusada pelo banco.
+ */
+it('allows a single publication per sequence of the cycle', function () {
     $scenario = ManagementReviewFixture::submittedCycle();
     $review = ManagementReviewFixture::open($scenario['cycle']);
     ManagementReviewFixture::approve($review);
@@ -90,15 +96,29 @@ it('allows a single publication per cycle', function () {
     ]);
 })->throws(UniqueConstraintViolationException::class);
 
-it('allows a single publication per published board', function () {
+/**
+ * A republicação escreve no mesmo quadro: o quadro passa a ter a cadeia de
+ * publicações do ciclo, e cada publicação é substituída por uma só. Gravado pelo
+ * query builder, sem a guarda do model, para provar a trava do banco.
+ */
+it('lets a published board be republished only as the single successor of its publication', function () {
     $scenario = ManagementReviewFixture::submittedCycle();
     $review = ManagementReviewFixture::open($scenario['cycle']);
     ManagementReviewFixture::approve($review);
 
     $publication = SalesBoardPublication::query()->sole();
+    $row = Arr::except($publication->getAttributes(), ['id']);
+    $republish = fn (int $sequence): bool => DB::table('sales_board_publications')->insert([
+        ...$row,
+        'sequence_number' => $sequence,
+        'supersedes_publication_id' => $publication->id,
+    ]);
 
-    SalesBoardPublication::factory()->create(['sales_board_id' => $publication->sales_board_id]);
-})->throws(UniqueConstraintViolationException::class);
+    $republish(2);
+
+    expect(SalesBoardPublication::query()->where('sales_board_id', $publication->sales_board_id)->count())->toBe(2)
+        ->and(fn () => $republish(3))->toThrow(UniqueConstraintViolationException::class);
+});
 
 it('refuses to delete a cycle that has a management review', function () {
     $scenario = ManagementReviewFixture::submittedCycle();

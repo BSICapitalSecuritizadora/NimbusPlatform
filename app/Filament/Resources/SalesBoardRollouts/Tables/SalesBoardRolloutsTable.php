@@ -5,6 +5,7 @@ namespace App\Filament\Resources\SalesBoardRollouts\Tables;
 use App\Enums\SalesBoardRolloutHomologationStatus;
 use App\Enums\SalesBoardSource;
 use App\Filament\Resources\SalesBoardRollouts\Pages\ManageSalesBoardRollout;
+use App\Filament\Resources\SalesBoardRollouts\Pages\PreviewSalesBoardReadiness;
 use App\Models\Emission;
 use App\Services\SalesBoards\DatabaseSalesBoardAutomationEligibilityProvider;
 use App\Support\SalesBoards\SalesBoardAutomationConfig;
@@ -17,10 +18,11 @@ use Filament\Tables\Table;
  * A lista de Emissões e o modo de cada uma.
  *
  * A coluna de situação responde a pergunta operacional inteira numa etiqueta:
- * legado, em homologação, homologada, automatizada -- e, o caso que mais
- * confunde, automatizada **mas suspensa** porque o escopo mudou. Sem essa
- * última, uma Emissão automatizada que parou de produzir competências pareceria
- * apenas um mês silencioso.
+ * legado, em homologação, homologada, homologação substituída, automatizada --
+ * e os dois casos que mais confundem: automatizada **mas suspensa** porque o
+ * escopo mudou, e automatizada **mas encerrada** porque a Emissão foi
+ * liquidada. Sem eles, uma Emissão automatizada que parou de produzir
+ * competências pareceria apenas um mês silencioso.
  */
 class SalesBoardRolloutsTable
 {
@@ -45,9 +47,10 @@ class SalesBoardRolloutsTable
                     ->state(fn (Emission $record): string => self::situation($record))
                     ->color(fn (string $state): string => match ($state) {
                         'Automação suspensa' => 'danger',
+                        'Automação encerrada (Emissão liquidada)' => 'gray',
                         'Automatizada' => 'success',
                         'Homologação aprovada' => 'info',
-                        'Em homologação' => 'warning',
+                        'Em homologação', 'Homologação substituída' => 'warning',
                         default => 'gray',
                     })
                     /**
@@ -57,7 +60,7 @@ class SalesBoardRolloutsTable
                      * consulta a mais por linha.
                      */
                     ->description(fn (Emission $record): ?string => ($record->usesAutomatedSalesBoard() && ! SalesBoardAutomationConfig::enabled())
-                        ? 'Automação global desligada: nada é processado.'
+                        ? 'Automação global desligada: o agendador não gera competências.'
                         : null),
 
                 TextColumn::make('sales_board_automation_start_reference_month')
@@ -87,6 +90,12 @@ class SalesBoardRolloutsTable
                     ->label('Abrir')
                     ->icon('heroicon-o-arrow-right-circle')
                     ->url(fn (Emission $record): string => ManageSalesBoardRollout::getUrl(['record' => $record])),
+
+                Action::make('readinessPreview')
+                    ->label('Prévia')
+                    ->icon('heroicon-o-magnifying-glass')
+                    ->color('gray')
+                    ->url(fn (Emission $record): string => PreviewSalesBoardReadiness::getUrl(['record' => $record])),
             ])
             ->toolbarActions([])
             ->emptyStateHeading('Nenhuma Emissão encontrada')
@@ -99,16 +108,25 @@ class SalesBoardRolloutsTable
     private static function situation(Emission $emission): string
     {
         if ($emission->usesAutomatedSalesBoard()) {
-            return app(DatabaseSalesBoardAutomationEligibilityProvider::class)->hasScopeDrift($emission)
-                ? 'Automação suspensa'
-                : 'Automatizada';
+            return match (true) {
+                $emission->isLiquidated() => 'Automação encerrada (Emissão liquidada)',
+                app(DatabaseSalesBoardAutomationEligibilityProvider::class)->hasScopeDrift($emission) => 'Automação suspensa',
+                default => 'Automatizada',
+            };
         }
 
         $latest = $emission->salesBoardRolloutHomologations()->first();
 
+        /**
+         * A substituição é gravada -- pela ativação recusada, pela conferência
+         * ou por uma tentativa nova --, e a lista a lê como a tela da Emissão:
+         * uma homologação que deixou de valer não pode aparecer como
+         * "aprovada" aqui e como substituída lá dentro.
+         */
         return match ($latest?->status) {
             SalesBoardRolloutHomologationStatus::Draft => 'Em homologação',
             SalesBoardRolloutHomologationStatus::Approved => 'Homologação aprovada',
+            SalesBoardRolloutHomologationStatus::Superseded => 'Homologação substituída',
             default => 'Modo legado',
         };
     }

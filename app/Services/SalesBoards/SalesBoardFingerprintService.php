@@ -10,6 +10,7 @@ use App\Enums\ContractStatus;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\ConstructionUnitExchange;
+use App\Models\ConstructionUnitRetirement;
 use App\Models\ConstructionUnitValue;
 use App\Models\Contract;
 use App\Models\ContractInstallment;
@@ -41,6 +42,9 @@ use Illuminate\Support\Collection;
  * posterior. O custo é um segundo conjunto de leituras, constante no número de
  * empreendimentos.
  *
+ * A baixa de unidade segue o mesmo recorte: entra só a vigente na data da
+ * posição, e só ela acrescenta campos à linha da unidade.
+ *
  * O mesmo recorte vale para os fatos datados de contratos e parcelas. Pagamento
  * e distrato posteriores à data da posição entram como ausentes, e o `status`
  * do contrato entra só no único ponto em que a derivação o consulta -- marcado
@@ -64,8 +68,9 @@ class SalesBoardFingerprintService
     /**
      * Observa vários empreendimentos com um carregamento só.
      *
-     * Seis consultas, como a derivação, e pelo mesmo motivo: uma emissão inteira
-     * não pode custar um punhado de consultas por obra.
+     * Sete consultas -- unidades, baixas, contratos, parcelas, valores, permutas
+     * e políticas --, constantes como as da derivação, e pelo mesmo motivo: uma
+     * emissão inteira não pode custar um punhado de consultas por obra.
      *
      * @param  iterable<Construction>  $constructions
      * @return array<int, SalesBoardSourceObservation> indexado por `construction_id`
@@ -90,6 +95,15 @@ class SalesBoardFingerprintService
             ->get(['id', 'construction_id', 'block', 'unit', 'base_value', 'base_value_reference_date']);
 
         $unitIds = $units->map(fn (ConstructionUnit $unit): int => (int) $unit->getKey())->all();
+
+        $retirementsByUnit = $unitIds === []
+            ? collect()
+            : ConstructionUnitRetirement::query()
+                ->whereIn('construction_unit_id', $unitIds)
+                ->effectiveOn($positionDate)
+                ->orderBy('id')
+                ->get(['id', 'construction_unit_id', 'retired_on'])
+                ->groupBy(fn (ConstructionUnitRetirement $retirement): int => (int) $retirement->construction_unit_id);
 
         $contracts = Contract::query()
             ->whereIn('construction_id', $constructionIds)
@@ -128,6 +142,7 @@ class SalesBoardFingerprintService
             $observations[$constructionId] = $this->observationFor(
                 constructionId: $constructionId,
                 units: $units->filter(fn (ConstructionUnit $unit): bool => (int) $unit->construction_id === $constructionId),
+                retirementsByUnit: $retirementsByUnit,
                 contracts: $contracts->filter(fn (Contract $contract): bool => (int) $contract->construction_id === $constructionId),
                 installmentDigests: $installmentDigests,
                 values: $values,
@@ -150,6 +165,7 @@ class SalesBoardFingerprintService
      * Monta a observação de um empreendimento a partir das fontes já carregadas.
      *
      * @param  Collection<int, ConstructionUnit>  $units
+     * @param  Collection<int, Collection<int, ConstructionUnitRetirement>>  $retirementsByUnit  as vigentes na data da posição
      * @param  Collection<int, Contract>  $contracts
      * @param  array<int, string>  $installmentDigests  indexado por `contract_id`
      * @param  Collection<int, ConstructionUnitValue>  $values
@@ -159,6 +175,7 @@ class SalesBoardFingerprintService
     private function observationFor(
         int $constructionId,
         Collection $units,
+        Collection $retirementsByUnit,
         Collection $contracts,
         array $installmentDigests,
         Collection $values,
@@ -172,13 +189,10 @@ class SalesBoardFingerprintService
 
         $unitRows = [];
         foreach ($units as $unit) {
-            $unitRows[(int) $unit->getKey()] = CanonicalDigest::row([
-                (int) $unit->getKey(),
-                $unit->block,
-                $unit->unit,
-                IntegerMoney::cents($unit->base_value),
-                $unit->base_value_reference_date,
-            ]);
+            $unitRows[(int) $unit->getKey()] = CanonicalDigest::row($this->unitFields(
+                $unit,
+                $retirementsByUnit->get((int) $unit->getKey(), collect()),
+            ));
         }
 
         $valueRows = [];
@@ -272,6 +286,41 @@ class SalesBoardFingerprintService
             unitIdByContract: $unitIdByContract,
             policyRows: $policyRows,
         );
+    }
+
+    /**
+     * Campos da unidade que entram no fingerprint da fonte.
+     *
+     * A baixa vigente na data da posição entra -- o id e a data dela --, e só
+     * quando existe. A unidade sem baixa mantém exatamente os campos de antes, e
+     * com isso o fingerprint de toda versão já congelada continua o mesmo: um
+     * marcador de nulo em todas as unidades marcaria como alterada cada
+     * competência aberta no deploy, sem que nada na fonte tivesse mudado. É o
+     * mesmo raciocínio do fim da política de desconto.
+     *
+     * O motivo e a reativação futura ficam de fora: não decidem a posição, e
+     * entrar com eles daria alarme falso. Uma reativação que alcança a data
+     * devolve a linha ao formato de sempre.
+     *
+     * @param  Collection<int, ConstructionUnitRetirement>  $retirements  as vigentes na data da posição
+     * @return list<mixed>
+     */
+    private function unitFields(ConstructionUnit $unit, Collection $retirements): array
+    {
+        $fields = [
+            (int) $unit->getKey(),
+            $unit->block,
+            $unit->unit,
+            IntegerMoney::cents($unit->base_value),
+            $unit->base_value_reference_date,
+        ];
+
+        foreach ($retirements as $retirement) {
+            $fields[] = (int) $retirement->getKey();
+            $fields[] = $retirement->retired_on;
+        }
+
+        return $fields;
     }
 
     /**
@@ -382,7 +431,7 @@ class SalesBoardFingerprintService
         $schedule = null;
 
         $rows = ContractInstallment::query()
-            ->select(['id', 'contract_id', 'expected_value', 'paid_value', 'payment_date', 'cancellation_date'])
+            ->select(['id', 'contract_id', 'expected_value', 'paid_value', 'discount_value', 'payment_date', 'cancellation_date'])
             ->whereIn('contract_id', $contractIds)
             ->orderBy('contract_id')
             ->orderBy('id')
@@ -414,11 +463,22 @@ class SalesBoardFingerprintService
     /**
      * Os fatos de uma parcela que a derivação usa na data da posição.
      *
-     * Paga em D é `payment_date <= D` com valor suficiente; válida em D é sem
-     * cancelamento ou cancelada depois de D. Um pagamento ou um cancelamento
-     * posterior a D, portanto, responde exatamente como a ausência deles -- e é
-     * assim que entra. O valor pago acompanha a data: sem pagamento até D, ele
-     * não decide nada.
+     * Paga em D é `payment_date <= D` com valor suficiente -- o pago mais o
+     * desconto registrado; válida em D é sem cancelamento ou cancelada depois de
+     * D. Um pagamento ou um cancelamento posterior a D, portanto, responde
+     * exatamente como a ausência deles -- e é assim que entra. O valor pago e o
+     * desconto acompanham a data: sem pagamento até D, eles não decidem nada.
+     *
+     * O desconto só entra quando existe e o pagamento é até D. As parcelas sem
+     * desconto mantêm os mesmos campos de antes, e com isso o fingerprint de
+     * toda versão já congelada continua o mesmo: acrescentar um marcador de nulo
+     * a todas elas marcaria como alterada cada competência, sem que nada na fonte
+     * tivesse mudado.
+     *
+     * A regra do distrato posterior do {@see ContractSettlementResolver} lê um
+     * fato que pode ser posterior à data -- o distrato -- e por isso não entra
+     * aqui: um distrato lançado depois que reescreve uma competência aberta
+     * aparece como mudança da posição (o snapshot), não da fonte.
      *
      * @return list<mixed>
      */
@@ -426,7 +486,7 @@ class SalesBoardFingerprintService
     {
         $paymentDay = $this->dayUpTo($this->rawDay($installment->payment_date), $positionDay);
 
-        return [
+        $fields = [
             (int) $installment->id,
             $contractId,
             IntegerMoney::cents($installment->expected_value),
@@ -434,6 +494,12 @@ class SalesBoardFingerprintService
             $paymentDay,
             $this->dayUpTo($this->rawDay($installment->cancellation_date), $positionDay),
         ];
+
+        if (($paymentDay !== null) && ($installment->discount_value !== null)) {
+            $fields[] = IntegerMoney::cents($installment->discount_value);
+        }
+
+        return $fields;
     }
 
     /**

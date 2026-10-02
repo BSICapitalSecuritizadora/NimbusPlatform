@@ -2,8 +2,10 @@
 
 namespace App\Filament\Resources\SalesBoardCycles\RelationManagers;
 
+use App\Enums\SalesBoardMovementTiming;
 use App\Enums\SalesBoardMovementType;
 use App\Enums\SalesPriceConformityStatus;
+use App\Filament\Support\GuardsRelationManagerAccess;
 use App\Models\SalesBoardCycleMovement;
 use BackedEnum;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -11,6 +13,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * As vendas, quitações e distratos da competência, congelados.
@@ -22,9 +25,14 @@ use Filament\Tables\Table;
  * Na venda, a conformidade vem com a tabela e a política que a produziram --
  * ambas congeladas. Explicar por que aquela venda foi apontada não pode depender
  * de reler uma política que já pode ter sido substituída.
+ *
+ * O "Momento" separa o fato do mês do que a competência recebeu de antes dela:
+ * extemporâneo, revisão de venda publicada ou de competência sem posição.
  */
 class SalesBoardCycleMovementsRelationManager extends RelationManager
 {
+    use GuardsRelationManagerAccess;
+
     protected static string $relationship = 'currentMovements';
 
     protected static ?string $title = 'Movimentações';
@@ -55,6 +63,13 @@ class SalesBoardCycleMovementsRelationManager extends RelationManager
                     ->formatStateUsing(fn (SalesBoardMovementType $state): string => $state->label())
                     ->color(fn (SalesBoardMovementType $state): string => $state->color())
                     ->sortable(),
+
+                TextColumn::make('timing')
+                    ->label('Momento')
+                    ->badge()
+                    ->state(fn (SalesBoardCycleMovement $record): string => $record->timing?->label() ?? 'Do mês')
+                    ->color(fn (SalesBoardCycleMovement $record): string => $record->timing?->color() ?? 'gray')
+                    ->tooltip(fn (SalesBoardCycleMovement $record): ?string => $record->timing?->description()),
 
                 TextColumn::make('contract_code')
                     ->label('Contrato')
@@ -139,6 +154,17 @@ class SalesBoardCycleMovementsRelationManager extends RelationManager
                     ->options(fn (): array => collect(SalesBoardMovementType::cases())
                         ->mapWithKeys(fn (SalesBoardMovementType $case): array => [$case->value => $case->label()])
                         ->all()),
+
+                SelectFilter::make('timing')
+                    ->label('Momento')
+                    ->options(fn (): array => ['no_mes' => 'Do mês', ...collect(SalesBoardMovementTiming::cases())
+                        ->mapWithKeys(fn (SalesBoardMovementTiming $case): array => [$case->value => $case->label()])
+                        ->all()])
+                    ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? null) {
+                        null, '' => $query,
+                        'no_mes' => $query->whereNull('timing'),
+                        default => $query->where('timing', (string) $data['value']),
+                    }),
 
                 SelectFilter::make('conformity_status')
                     ->label('Conformidade')

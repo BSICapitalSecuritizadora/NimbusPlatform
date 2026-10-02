@@ -4,9 +4,11 @@ namespace App\Filament\Resources\SalesBoardCycles\RelationManagers;
 
 use App\DTOs\SalesBoards\SalesBoardComparableSnapshot;
 use App\Enums\SalesBoardStaleImpact;
+use App\Filament\Support\GuardsRelationManagerAccess;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleBaseline;
 use App\Services\SalesBoards\SalesBoardBaselineDiffService;
+use App\Support\BusinessTime;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -31,6 +33,8 @@ use Illuminate\Support\Collection;
  */
 class SalesBoardCycleBaselinesRelationManager extends RelationManager
 {
+    use GuardsRelationManagerAccess;
+
     protected static string $relationship = 'baselines';
 
     protected static ?string $title = 'Versões';
@@ -68,7 +72,7 @@ class SalesBoardCycleBaselinesRelationManager extends RelationManager
 
                 TextColumn::make('computed_at')
                     ->label('Apurada em')
-                    ->dateTime('d/m/Y H:i')
+                    ->dateTime('d/m/Y H:i', BusinessTime::timezone())
                     ->sortable(),
 
                 TextColumn::make('computedBy.name')
@@ -105,8 +109,9 @@ class SalesBoardCycleBaselinesRelationManager extends RelationManager
                     ->badge()
                     ->formatStateUsing(fn (?SalesBoardStaleImpact $state): string => ($state ?? SalesBoardStaleImpact::None)->label())
                     ->color(fn (?SalesBoardStaleImpact $state): string => ($state ?? SalesBoardStaleImpact::None)->color())
-                    ->description(fn (SalesBoardCycleBaseline $record): ?string => $record->stale_detected_at
-                        ?->format('\d\i\v\e\r\g\i\u \e\m d/m/Y')),
+                    ->description(fn (SalesBoardCycleBaseline $record): ?string => $record->stale_detected_at === null
+                        ? null
+                        : BusinessTime::at($record->stale_detected_at)->format('\d\i\v\e\r\g\i\u \e\m d/m/Y')),
 
                 TextColumn::make('snapshot_fingerprint')
                     ->label('Resumo da posição')
@@ -149,7 +154,7 @@ class SalesBoardCycleBaselinesRelationManager extends RelationManager
                     ->label('Comparar com')
                     ->options(fn (SalesBoardCycleBaseline $record): array => $this->otherVersions($record)
                         ->mapWithKeys(fn (SalesBoardCycleBaseline $other): array => [
-                            $other->getKey() => $other->versionLabel().' — '.$other->computed_at?->format('d/m/Y H:i'),
+                            $other->getKey() => $other->versionLabel().' — '.($other->computed_at === null ? '—' : BusinessTime::at($other->computed_at)->format('d/m/Y H:i')),
                         ])
                         ->all())
                     ->live()

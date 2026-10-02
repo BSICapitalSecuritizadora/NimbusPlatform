@@ -4,16 +4,18 @@ use App\Actions\ConstructionUnits\AnalyzeConstructionUnitSpreadsheet;
 use App\Actions\ConstructionUnits\ConstructionUnitSpreadsheetColumns;
 use App\Actions\ConstructionUnits\ConstructionUnitSpreadsheetTemplate;
 use App\Actions\ConstructionUnits\ImportConstructionUnitsFromSpreadsheet;
+use App\Enums\ImportRowWarningCode;
 use App\Filament\Resources\ConstructionUnits\Pages\ListConstructionUnits;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
+use App\Models\ConstructionUnitRetirement;
 use App\Models\ConstructionUnitValue;
 use App\Models\Emission;
+use App\Models\ImportRun;
 use App\Models\SalesBoard;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
@@ -265,6 +267,38 @@ it('validates every row before allowing the import', function () {
     expect($emission->constructionUnits()->count())->toBe(1);
 });
 
+/**
+ * A importação de unidades só cria: nunca baixa por ausência no arquivo, e
+ * nunca reativa. A unidade já cadastrada e baixada continua bloqueando a linha,
+ * com a mensagem que diz onde fica a saída.
+ */
+it('keeps a registered retired unit blocking, pointing to the reactivation, and never retires nor reactivates', function () {
+    [, $construction] = unitEmissionAndConstruction();
+
+    $retired = ConstructionUnit::factory()->forConstruction($construction)->create(['block' => 'Torre A', 'unit' => '901']);
+    ConstructionUnitRetirement::factory()->forUnit($retired)->retiredOn('2026-08-10')->create();
+    $absent = ConstructionUnit::factory()->forConstruction($construction)->create(['block' => '01', 'unit' => '902']);
+
+    $analysis = analyzeUnitSpreadsheet([
+        ['CRI Conviva', 'Conviva Camboinhas', 'Torre A', '901'],
+        ['CRI Conviva', 'Conviva Camboinhas', '01', '903'],
+    ]);
+
+    $row = $analysis->collect()->firstWhere('line', 2);
+
+    expect($row['status'])->toBe(AnalyzeConstructionUnitSpreadsheet::STATUS_ALREADY_REGISTERED)
+        ->and($row['message'])->toBe('A unidade 901 do bloco Torre A já está cadastrada neste empreendimento e está baixada desde 10/08/2026. Para voltar a contá-la, reative-a na aba "Baixas" da unidade; a importação não reativa unidades.')
+        ->and($analysis->canImport())->toBeFalse()
+        ->and(ConstructionUnitRetirement::query()->sole()->isOpen())->toBeTrue()
+        ->and(ConstructionUnitRetirement::query()->where('construction_unit_id', $absent->id)->exists())->toBeFalse();
+
+    $this->actingAs(makeAdminUser());
+
+    Livewire::test(ListConstructionUnits::class)
+        ->mountAction('importUnits')
+        ->assertMountedActionModalSee('Unidades que deixaram de existir não saem por planilha: a Gestão registra a baixa na aba &quot;Baixas&quot; da unidade.', escape: false);
+});
+
 it('refuses to import while a single row is inconsistent', function () {
     [, $construction] = unitEmissionAndConstruction();
 
@@ -297,7 +331,7 @@ it('imports every unit once the spreadsheet is fully valid', function () {
 
     $result = app(ImportConstructionUnitsFromSpreadsheet::class)->handle($analysis);
 
-    expect($result)->toBe(['units' => 4, 'constructions' => 2, 'emissions' => 1])
+    expect($result)->toBe(['units' => 4, 'constructions' => 2, 'emissions' => 1, 'run' => null])
         ->and($camboinhas->units()->count())->toBe(3)
         ->and($piratininga->units()->count())->toBe(1);
 
@@ -344,9 +378,6 @@ it('imports through the list page wizard and records the audit trail', function 
         ['CRI Conviva', 'Conviva Camboinhas', '01', '102'],
     ]);
 
-    $storedPath = 'imports/construction-units/'.basename($path);
-    Storage::disk('local')->put($storedPath, file_get_contents($path));
-
     Livewire::test(ListConstructionUnits::class)
         // Os dois modelos ficam num menu rotulado "Baixar Modelo"; o rótulo de
         // cada item distingue o de cadastro do de atualização de valores.
@@ -355,7 +386,7 @@ it('imports through the list page wizard and records the audit trail', function 
         ->assertActionExists('downloadValueTemplate')
         ->assertActionExists('importUnits')
         ->assertActionHasLabel('importUnits', 'Importar Unidades')
-        ->callAction(TestAction::make('importUnits'), ['file' => ['upload' => $storedPath]])
+        ->callAction(TestAction::make('importUnits'), ['file' => spreadsheetUpload($path)])
         ->assertHasNoActionErrors();
 
     expect($construction->units()->count())->toBe(2);
@@ -378,11 +409,8 @@ it('does not import through the wizard when the spreadsheet has errors', functio
         ['CRI Conviva', 'Não existe', '01', '102'],
     ]);
 
-    $storedPath = 'imports/construction-units/'.basename($path);
-    Storage::disk('local')->put($storedPath, file_get_contents($path));
-
     Livewire::test(ListConstructionUnits::class)
-        ->callAction(TestAction::make('importUnits'), ['file' => ['upload' => $storedPath]]);
+        ->callAction(TestAction::make('importUnits'), ['file' => spreadsheetUpload($path)]);
 
     expect($construction->units()->count())->toBe(0)
         ->and(Activity::query()->where('log_name', 'importacao-unidades')->count())->toBe(0);
@@ -431,11 +459,9 @@ describe('leitura estrita da data de referência', function () {
         $path = unitSpreadsheetWithBaseValue([
             ['CRI Alfa', 'Residencial Alfa', '01', '101', '400.000,00', '01/07/2026 00:00:00'],
         ]);
-        $storedPath = 'imports/construction-units/'.basename($path);
-        Storage::disk('local')->put($storedPath, file_get_contents($path));
 
         $component = Livewire::test(ListConstructionUnits::class)->instance();
-        $preview = (fn (): string => $this->renderPreview($storedPath)->toHtml())->call($component);
+        $preview = (fn (): string => $this->renderPreview(temporaryUploadWithContent('planilha.xlsx', file_get_contents($path)))->toHtml())->call($component);
 
         expect($preview)
             ->toContain('<th style="text-align:right;padding:.25rem .5rem;">Valor base</th>')
@@ -488,11 +514,96 @@ it('flags new units of a development that already has registered Sales Board com
         ->and($analysis->collect()->firstWhere('construction_id', $otherConstruction->id)['registered_competences'])->toBe([]);
 
     $path = unitSpreadsheet([['CRI Conviva', 'Conviva Camboinhas', '01', '101']]);
-    $storedPath = 'imports/construction-units/'.basename($path);
-    Storage::disk('local')->put($storedPath, file_get_contents($path));
 
     $component = Livewire::test(ListConstructionUnits::class)->instance();
-    $preview = (fn (): string => $this->renderPreview($storedPath)->toHtml())->call($component);
+    $preview = (fn (): string => $this->renderPreview(temporaryUploadWithContent('planilha.xlsx', file_get_contents($path)))->toHtml())->call($component);
 
     expect($preview)->toContain('Altera fatos de 2 competências já registradas no Quadro de Vendas (05/2026 a 06/2026).');
+});
+
+describe('ordem e proveniência', function () {
+    it('puts the blocking rows first, then the ones with warnings, each group in the order of the file', function () {
+        $emission = Emission::factory()->active()->create(['name' => 'CRI Alfa']);
+        $construction = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Alfa']);
+
+        ConstructionUnit::factory()->forConstruction($construction)->create(['block' => '01', 'unit' => '104']);
+
+        $analysis = app(AnalyzeConstructionUnitSpreadsheet::class)->handle(unitSpreadsheetWithBaseValue([
+            ['CRI Alfa', 'Residencial Alfa', '01', '101', '', ''],
+            ['CRI Alfa', 'Residencial Alfa', '01', '102', '900.000', '01/01/2026'],
+            ['CRI Alfa', 'Residencial Alfa', '01', '103', '', ''],
+            ['CRI Alfa', 'Residencial Alfa', '01', '104', '', ''],
+        ]));
+
+        expect($analysis->previewRows()->pluck('line')->all())->toBe([5, 3, 2, 4])
+            ->and($analysis->warningCount())->toBe(1);
+    });
+
+    it('records the run of a units file and stamps the units it created', function () {
+        $this->actingAs(makeAdminUser());
+
+        $emission = Emission::factory()->active()->create(['name' => 'CRI Alfa']);
+        $construction = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Alfa']);
+        $manual = ConstructionUnit::factory()->forConstruction($construction)->create(['block' => '09', 'unit' => '901']);
+
+        $path = unitSpreadsheet([
+            ['CRI Alfa', 'Residencial Alfa', '01', '101'],
+            ['CRI Alfa', 'Residencial Alfa', '01', '102'],
+        ]);
+
+        Livewire::test(ListConstructionUnits::class)
+            ->callAction(TestAction::make('importUnits'), ['file' => spreadsheetUpload($path, 'unidades-alfa.xlsx')])
+            ->assertHasNoActionErrors();
+
+        $run = ImportRun::query()->sole();
+
+        expect($run->type)->toBe(ImportRun::TYPE_CONSTRUCTION_UNITS)
+            ->and($run->typeLabel())->toBe('Unidades')
+            ->and($run->file_name)->toBe('unidades-alfa.xlsx')
+            ->and($run->records_created)->toBe(2)
+            ->and(ConstructionUnit::query()->whereIn('unit', ['101', '102'])->pluck('import_run_id')->unique()->all())->toBe([$run->id])
+            ->and($manual->refresh()->import_run_id)->toBeNull()
+            ->and(Activity::query()->where('log_name', 'importacao-unidades')->sole()->properties['arquivo'])->toBe('unidades-alfa.xlsx');
+    });
+});
+
+describe('valor base contra a mediana do empreendimento', function () {
+    /**
+     * Cinco unidades cadastradas a R$ 500.000,00: a mediana existe.
+     */
+    function unitMedianScenario(int $registered = 5): void
+    {
+        $emission = Emission::factory()->active()->create(['name' => 'CRI Alfa']);
+        $construction = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Alfa']);
+
+        foreach (range(1, $registered) as $index) {
+            ConstructionUnit::factory()->forConstruction($construction)->create([
+                'block' => '09', 'unit' => (string) (900 + $index),
+                'base_value' => '500000.00', 'base_value_reference_date' => '2026-01-01',
+            ]);
+        }
+    }
+
+    it('warns beyond five times the median, refuses beyond a hundred, and compares nothing without five values', function (string $case) {
+        unitMedianScenario($case === 'sem mediana' ? 3 : 5);
+
+        [$value, $status, $warning] = match ($case) {
+            'cinco vezes' => ['2.500.000,00', AnalyzeConstructionUnitSpreadsheet::STATUS_VALID, null],
+            'além de cinco vezes' => ['2.500.000,01', AnalyzeConstructionUnitSpreadsheet::STATUS_VALID, ImportRowWarningCode::UnitBaseValueFarFromPeers->value],
+            'um quinto' => ['99.999,99', AnalyzeConstructionUnitSpreadsheet::STATUS_VALID, ImportRowWarningCode::UnitBaseValueFarFromPeers->value],
+            'além de cem vezes' => ['50.000.000,01', AnalyzeConstructionUnitSpreadsheet::STATUS_ERROR, null],
+            'sem mediana' => ['50.000.000,01', AnalyzeConstructionUnitSpreadsheet::STATUS_VALID, null],
+        };
+
+        $row = app(AnalyzeConstructionUnitSpreadsheet::class)->handle(unitSpreadsheetWithBaseValue([
+            ['CRI Alfa', 'Residencial Alfa', '01', '101', $value, '01/01/2026'],
+        ]))->collect()->first();
+
+        expect($row['status'])->toBe($status)
+            ->and(collect($row['warnings'])->pluck('code')->first())->toBe($warning);
+
+        if ($status === AnalyzeConstructionUnitSpreadsheet::STATUS_ERROR) {
+            expect($row['message'])->toContain('mediana das unidades do empreendimento (R$ 500.000,00): confira a leitura do valor.');
+        }
+    })->with(['cinco vezes', 'além de cinco vezes', 'um quinto', 'além de cem vezes', 'sem mediana']);
 });

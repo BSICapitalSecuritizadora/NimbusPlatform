@@ -46,6 +46,16 @@ class ContractInstallmentPolicy
         return $user->can('contract-installments.update') && ! $installment->trashed();
     }
 
+    /**
+     * A importação concilia o cronograma: cadastra as parcelas novas e atualiza
+     * as que mudaram. Criar sozinho não pode reescrever o que já existe, então
+     * importar exige as duas permissões.
+     */
+    public function import(User $user): bool
+    {
+        return $user->can('contract-installments.create') && $user->can('contract-installments.update');
+    }
+
     public function delete(User $user, ContractInstallment $installment): Response
     {
         if ((! $user->can('contract-installments.delete')) || $installment->trashed()) {

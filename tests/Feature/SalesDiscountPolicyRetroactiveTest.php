@@ -7,6 +7,7 @@ use App\Filament\Resources\Constructions\Pages\EditConstruction;
 use App\Filament\Resources\Constructions\RelationManagers\SalesDiscountPoliciesRelationManager;
 use App\Models\Construction;
 use App\Models\SalesBoardCycle;
+use App\Models\SalesBoardPublication;
 use App\Models\SalesDiscountPolicy;
 use App\Services\SalesBoards\SalesDiscountPolicyRegistrar;
 use Carbon\CarbonImmutable;
@@ -83,17 +84,27 @@ function retroactiveTestRegister(
             'reason' => 'Correção comercial',
         ],
         confirmedSubstitutionId: $confirmedSubstitutionId,
-        registeredBy: null,
+        registeredBy: auth()->user(),
         confirmedRetroactiveThrough: $confirmedRetroactiveThrough,
     );
 }
 
+/**
+ * Competência publicada é a que tem publicação, nunca o status Aprovado: o
+ * ciclo aprovado nasce com a publicação dele, como na aprovação de verdade.
+ */
 function retroactiveTestApprovedCycle(Construction $construction, string $month, SalesBoardCycleStatus $status = SalesBoardCycleStatus::Approved): SalesBoardCycle
 {
-    return SalesBoardCycle::factory()
+    $cycle = SalesBoardCycle::factory()
         ->forConstruction($construction)
         ->referenceMonth($month)
         ->create(['status' => $status]);
+
+    if ($status === SalesBoardCycleStatus::Approved) {
+        SalesBoardPublication::factory()->create(['sales_board_cycle_id' => $cycle->id]);
+    }
+
+    return $cycle;
 }
 
 it('no longer tells the user that the period never retroacts', function () {

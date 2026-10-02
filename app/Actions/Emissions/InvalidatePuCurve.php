@@ -5,6 +5,8 @@ namespace App\Actions\Emissions;
 use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Domain\PuCalculator\Services\PuCurveVersionService;
 use App\Domain\PuCalculator\Services\PuPaymentScheduleService;
+use App\Enums\PuSourceChange;
+use App\Events\PuCalculator\EmissionPuSourceChanged;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use InvalidArgumentException;
@@ -31,6 +33,14 @@ class InvalidatePuCurve
         // Se a versão invalidada era a oficial, os pagamentos calculados por ela
         // voltam ao previsto (ou passam para a homologada anterior).
         $this->paymentSchedule->reconcile($emission->fresh(), $requestedByUserId);
+
+        // E o saldo devedor das garantias também volta a outra fonte.
+        EmissionPuSourceChanged::dispatch(
+            (int) $emission->getKey(),
+            PuSourceChange::CurveInvalidated,
+            $version->calculation_version,
+            $requestedByUserId,
+        );
 
         return $version;
     }

@@ -8,6 +8,8 @@ use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Domain\PuCalculator\Services\PuCurveVersionService;
 use App\Domain\PuCalculator\Services\PuPaymentScheduleService;
 use App\Enums\BusinessArea;
+use App\Enums\PuSourceChange;
+use App\Events\PuCalculator\EmissionPuSourceChanged;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use App\Services\AreaResponsibilityService;
@@ -62,6 +64,15 @@ class HomologatePuCurve
         // A versão homologada passa a ser a curva oficial das outras áreas: os
         // pagamentos que ela já calculou substituem o previsto.
         $this->paymentSchedule->reconcile($emission->fresh(), $requestedByUserId);
+
+        // O saldo devedor das garantias passa a vir dela: as competências cujo
+        // saldo gravado mudou ficam marcadas (depois do commit, se houver).
+        EmissionPuSourceChanged::dispatch(
+            (int) $emission->getKey(),
+            PuSourceChange::CurveHomologated,
+            $version->calculation_version,
+            $requestedByUserId,
+        );
 
         return $version;
     }

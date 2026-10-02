@@ -5,13 +5,16 @@ namespace App\Filament\Resources\SalesBoardCycles\RelationManagers;
 use App\Enums\ContractSettlementState;
 use App\Enums\ResolvedUnitValueSource;
 use App\Enums\SalesBoardUnitClassification;
+use App\Filament\Support\GuardsRelationManagerAccess;
 use App\Models\SalesBoardCycleLine;
+use App\Support\SalesBoards\UnitDisplayOrder;
 use BackedEnum;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * As unidades da versão vigente, exatamente como foram congeladas.
@@ -23,9 +26,15 @@ use Filament\Tables\Table;
  *
  * A identificação exibida é a congelada, não a da unidade viva. Se o bloco for
  * renomeado amanhã, esta tela continua mostrando o que a construtora conferiu.
+ *
+ * Bloco e unidade seguem a ordem natural de {@see UnitDisplayOrder} -- "102"
+ * antes de "1001", "Torre 2" antes de "Torre 10" --, a mesma das seções da
+ * Validação da construtora.
  */
 class SalesBoardCycleLinesRelationManager extends RelationManager
 {
+    use GuardsRelationManagerAccess;
+
     protected static string $relationship = 'currentLines';
 
     protected static ?string $title = 'Unidades';
@@ -46,7 +55,7 @@ class SalesBoardCycleLinesRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('unit')
             ->description('A composição da versão vigente, unidade a unidade. Congelada.')
-            ->defaultSort('block')
+            ->defaultSort(fn (Builder $query, string $direction): Builder => UnitDisplayOrder::applyTo($query, $direction))
             ->defaultPaginationPageOption(25)
             ->paginationPageOptions([25, 50, 100])
             ->emptyStateHeading('Nenhuma unidade congelada')
@@ -55,13 +64,13 @@ class SalesBoardCycleLinesRelationManager extends RelationManager
                 TextColumn::make('block')
                     ->label('Bloco')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => UnitDisplayOrder::applyTo($query, $direction)),
 
                 TextColumn::make('unit')
                     ->label('Unidade')
                     ->weight('semibold')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => UnitDisplayOrder::applyTo($query, $direction)),
 
                 TextColumn::make('classification')
                     ->label('Classificação')

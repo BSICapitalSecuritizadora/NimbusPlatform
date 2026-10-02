@@ -26,7 +26,6 @@ use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
@@ -595,11 +594,8 @@ it('puts a buyer change confirmed by an import inside the run batch', function (
 
     $writer->close();
 
-    $storedPath = 'imports/contracts/'.basename($path);
-    Storage::disk('local')->put($storedPath, file_get_contents($path));
-
     Livewire::test(ListContracts::class)
-        ->callAction(TestAction::make('importContracts'), ['file' => ['upload' => $storedPath]])
+        ->callAction(TestAction::make('importContracts'), ['file' => spreadsheetUpload($path)])
         ->assertHasNoActionErrors();
 
     $run = ImportRun::query()->sole();

@@ -14,6 +14,9 @@ use App\Models\Contract;
 use App\Models\ContractInstallment;
 use App\Models\Emission;
 use App\Models\User;
+use App\Support\ActivityLog\ActivityChange;
+use App\Support\ActivityLog\ActivityPresenter;
+use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Database\QueryException;
@@ -818,3 +821,153 @@ it('hides the installments listing from a user without the view permission', fun
 
     $this->get(route('admin.contract-installments.template.download'))->assertForbidden();
 });
+
+describe('desconto concedido', function () {
+    it('settles an installment with a registered discount across status, saldo and filters', function () {
+        freezeInstallmentClock();
+
+        $this->actingAs(makeAdminUser());
+
+        [, , $contract] = installmentScenario();
+
+        $discounted = ContractInstallment::factory()
+            ->forContract($contract)
+            ->dueOn('2026-08-10')
+            ->state(['expected_value' => '10000.00'])
+            ->paidWithDiscount('500.00')
+            ->create(['number' => '001']);
+
+        // O par: o mesmo recebimento a menor, sem desconto registrado, é parcial.
+        $short = ContractInstallment::factory()->forContract($contract)->create([
+            'number' => '002',
+            'due_date' => '2026-08-10',
+            'expected_value' => '10000.00',
+            'payment_date' => '2026-08-10',
+            'paid_value' => '9500.00',
+        ]);
+
+        expect($discounted->paid_value)->toBe('9500.00')
+            ->and($discounted->discount_value)->toBe('500.00')
+            ->and($discounted->status)->toBe(ContractInstallmentStatus::Paid)
+            ->and($discounted->outstanding_value)->toBe(0.0)
+            ->and($discounted->discountCents())->toBe(50_000)
+            ->and($short->status)->toBe(ContractInstallmentStatus::Overdue)
+            ->and($short->outstanding_value)->toBe(500.0)
+            ->and(ContractInstallment::query()->withStatus(ContractInstallmentStatus::Paid)->pluck('id')->all())->toBe([$discounted->id])
+            ->and(ContractInstallment::query()->withStatus(ContractInstallmentStatus::Overdue)->pluck('id')->all())->toBe([$short->id])
+            ->and(ContractInstallment::query()->outstanding()->pluck('id')->all())->toBe([$short->id]);
+
+        Livewire::test(ListContractInstallments::class)
+            ->filterTable('status', ContractInstallmentStatus::Paid->value)
+            ->assertCanSeeTableRecords([$discounted])
+            ->assertCanNotSeeTableRecords([$short])
+            ->filterTable('status', ContractInstallmentStatus::Overdue->value)
+            ->assertCanSeeTableRecords([$short])
+            ->assertCanNotSeeTableRecords([$discounted]);
+
+        // A ordenação pelo saldo, em SQL, desconta o desconto como o accessor:
+        // 0 (com desconto), 300 e 500. Sem o desconto, a de desconto empataria
+        // com a de 500.
+        $closer = ContractInstallment::factory()->forContract($contract)->create([
+            'number' => '003',
+            'due_date' => '2026-08-10',
+            'expected_value' => '10000.00',
+            'payment_date' => '2026-08-10',
+            'paid_value' => '9700.00',
+        ]);
+
+        Livewire::test(ListContractInstallments::class)
+            ->sortTable('outstanding_value')
+            ->assertCanSeeTableRecords([$discounted, $closer, $short], inOrder: true);
+    });
+
+    it('validates the discount: positive, with a payment, not above the expected value', function (string $case) {
+        $this->actingAs(makeAdminUser());
+
+        [, , $contract] = installmentScenario();
+
+        [$overrides, $error] = match ($case) {
+            'sem pagamento' => [['discount_value' => '500,00'], 'Registre o desconto junto com o pagamento da parcela.'],
+            'acima do previsto' => [['payment_date' => '2026-01-10', 'paid_value' => '9.500,00', 'discount_value' => '10.000,01'], 'O desconto não pode superar o valor previsto.'],
+            'zero' => [['payment_date' => '2026-01-10', 'paid_value' => '9.500,00', 'discount_value' => '0,00'], 'O desconto deve ser maior que zero.'],
+        };
+
+        $component = Livewire::test(ContractInstallmentsRelationManager::class, [
+            'ownerRecord' => $contract,
+            'pageClass' => ViewContract::class,
+        ])
+            ->callAction(TestAction::make('create')->table(), fillInstallmentForm($overrides))
+            ->assertHasActionErrors(['discount_value']);
+
+        expect(collect($component->errors()->all()))->toContain($error)
+            ->and(ContractInstallment::query()->count())->toBe(0);
+    })->with(['sem pagamento', 'acima do previsto', 'zero']);
+
+    it('records a discount given with the receipt', function () {
+        $this->actingAs(makeAdminUser());
+
+        [, , $contract] = installmentScenario();
+
+        Livewire::test(ContractInstallmentsRelationManager::class, [
+            'ownerRecord' => $contract,
+            'pageClass' => ViewContract::class,
+        ])
+            ->callAction(TestAction::make('create')->table(), fillInstallmentForm([
+                'payment_date' => '2026-01-10',
+                'paid_value' => '9.500,00',
+                'discount_value' => '500,00',
+            ]))
+            ->assertHasNoActionErrors();
+
+        $installment = ContractInstallment::query()->sole();
+        $trail = Activity::query()->where('subject_type', ContractInstallment::class)->where('subject_id', $installment->id)->sole();
+
+        expect($installment->discount_value)->toBe('500.00')
+            ->and($installment->status)->toBe(ContractInstallmentStatus::Paid)
+            ->and($trail->log_name)->toBe('contract_installments')
+            ->and($trail->attribute_changes['attributes']['discount_value'])->toBe('500.00');
+
+        // A trilha mostra o desconto em reais, com o nome que a tela usa.
+        $installment->update(['discount_value' => '400.00']);
+
+        $change = collect(ActivityPresenter::changesFor(
+            Activity::query()->where('subject_type', ContractInstallment::class)->where('subject_id', $installment->id)->where('event', 'updated')->sole(),
+        ))->keyBy(fn (ActivityChange $change): string => $change->key)['discount_value'];
+
+        expect($change->label)->toBe('Desconto concedido')
+            ->and($change->old)->toBe('R$ 500,00')
+            ->and($change->new)->toBe('R$ 400,00');
+    });
+});
+
+it('refuses a payment dated after today in the business calendar and dates before 1990', function (string $case) {
+    // 01:00 UTC do dia 26 ainda é dia 25 em São Paulo.
+    $this->travelTo(CarbonImmutable::parse('2026-09-26 01:00:00', 'UTC'));
+    $this->actingAs(makeAdminUser());
+
+    [, , $contract] = installmentScenario();
+
+    [$overrides, $field, $error] = match ($case) {
+        'pagamento amanhã' => [['payment_date' => '2026-09-26', 'paid_value' => '10.000,00'], 'payment_date', 'A data do pagamento não pode ser futura: um recebimento só é registrado depois de acontecer.'],
+        'pagamento antes de 1990' => [['payment_date' => '1989-12-31', 'paid_value' => '10.000,00'], 'payment_date', 'A data do pagamento não pode ser anterior a 01/01/1990: confira o ano.'],
+        'cancelamento antes de 1990' => [['cancellation_date' => '1989-12-31'], 'cancellation_date', 'A data de cancelamento não pode ser anterior a 01/01/1990: confira o ano.'],
+    };
+
+    $component = Livewire::test(ContractInstallmentsRelationManager::class, [
+        'ownerRecord' => $contract,
+        'pageClass' => ViewContract::class,
+    ])
+        ->callAction(TestAction::make('create')->table(), fillInstallmentForm($overrides))
+        ->assertHasActionErrors([$field]);
+
+    expect(collect($component->errors()->all()))->toContain($error)
+        ->and(ContractInstallment::query()->count())->toBe(0);
+
+    // O par: hoje, no calendário de negócio, é um recebimento que já aconteceu.
+    Livewire::test(ContractInstallmentsRelationManager::class, [
+        'ownerRecord' => $contract,
+        'pageClass' => ViewContract::class,
+    ])
+        ->callAction(TestAction::make('create')->table(), fillInstallmentForm(['payment_date' => '2026-09-25', 'paid_value' => '10.000,00']))
+        ->assertHasNoActionErrors();
+})->with(['pagamento amanhã', 'pagamento antes de 1990', 'cancelamento antes de 1990']);

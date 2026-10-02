@@ -7,6 +7,8 @@ use App\Actions\Clients\ClientSpreadsheetAnalysis;
 use App\Actions\Clients\ImportClientsFromSpreadsheet;
 use App\Filament\Resources\Clients\ClientResource;
 use App\Models\Client;
+use App\Rules\XlsxSpreadsheetFile;
+use App\Support\Imports\ImportSpreadsheetSource;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
@@ -19,9 +21,8 @@ use Filament\Schemas\Components\Wizard\Step;
 use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Throwable;
 
 class ListClients extends ListRecords
 {
@@ -50,9 +51,12 @@ class ListClients extends ListRecords
     }
 
     /**
-     * @var array{path: string, analysis: ClientSpreadsheetAnalysis}|null
+     * Análises do envio nesta requisição, por checksum. Privada: dura uma
+     * requisição.
+     *
+     * @var array<string, ClientSpreadsheetAnalysis>
      */
-    private ?array $memoizedAnalysis = null;
+    private array $clientAnalyses = [];
 
     protected function getHeaderActions(): array
     {
@@ -127,12 +131,10 @@ class ListClients extends ListRecords
                         FileUpload::make('file')
                             ->label('Planilha de Clientes (.xlsx)')
                             ->disk('local')
-                            ->directory('imports/clients')
-                            ->acceptedFileTypes([
-                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                'text/csv',
-                                'application/csv',
-                            ])
+                            ->storeFiles(false)
+                            ->acceptedFileTypes((array) config('uploads.spreadsheet_import.allowed_mimes', []))
+                            ->rules([new XlsxSpreadsheetFile])
+                            ->validationMessages(['mimetypes' => XlsxSpreadsheetFile::MESSAGE])
                             ->required()
                             ->live()
                             ->helperText('Utilize a planilha padrão. CPF/CNPJ são validados com as mesmas regras do cadastro manual.'),
@@ -147,10 +149,10 @@ class ListClients extends ListRecords
                     ]),
             ])
             ->action(function (array $data): void {
-                $path = $this->resolvePath($data['file'] ?? null);
-                $analysis = $this->analyze($path);
+                $source = ImportSpreadsheetSource::fromState($data['file'] ?? null);
+                $analysis = $source === null ? null : $this->analyze($source);
 
-                if (($analysis === null) || ! $analysis->canImport()) {
+                if (($source === null) || ($analysis === null) || ! $analysis->canImport()) {
                     $notification = Notification::make()
                         ->danger()
                         ->title('Importação não realizada.')
@@ -175,14 +177,34 @@ class ListClients extends ListRecords
                     return;
                 }
 
+                /**
+                 * A planilha de clientes não é arquivada: depois de importada, o
+                 * envio temporário -- com nome, CPF/CNPJ, e-mail e telefone -- é
+                 * apagado, e a trilha guarda só o nome original e o SHA-256.
+                 *
+                 * As outras importações arquivam porque o arquivo pertence a uma
+                 * ImportRun, que o mostra e liga aos registros que criou.
+                 * Clientes não têm ImportRun, e a cópia arquivada ficava em
+                 * imports/clients sem nenhum registro que apontasse para ela e
+                 * sem regra de retenção: dado pessoal guardado para sempre, sem
+                 * dono nem uso. O cadastro dos clientes já guarda o que foi
+                 * importado; o checksum basta para provar, numa auditoria, qual
+                 * arquivo foi este.
+                 */
+                $checksum = $source->checksum();
+
                 $result = app(ImportClientsFromSpreadsheet::class)->handle($analysis);
 
-                // No personal data goes into the log: only counters and the
-                // file name, alongside the causer recorded by the activity log.
+                $source->discard();
+
+                // No personal data goes into the log: only counters, the file
+                // name and its checksum, alongside the causer recorded by the
+                // activity log.
                 activity('importacao-clientes')
                     ->causedBy(auth()->user())
                     ->withProperties([
-                        'arquivo' => basename((string) $path),
+                        'arquivo' => $source->originalName(),
+                        'checksum' => $checksum,
                         'clientes_cadastrados' => $result['clients'],
                         'pessoas_fisicas' => $result['individuals'],
                         'pessoas_juridicas' => $result['companies'],
@@ -205,7 +227,8 @@ class ListClients extends ListRecords
 
     private function renderPreview(mixed $file): Htmlable
     {
-        $analysis = $this->analyze($this->resolvePath($file));
+        $source = ImportSpreadsheetSource::fromState($file);
+        $analysis = $source === null ? null : $this->analyze($source);
 
         if ($analysis === null) {
             return new HtmlString('<p class="fi-color-danger">Não foi possível ler a planilha enviada.</p>');
@@ -313,37 +336,18 @@ class ListClients extends ListRecords
         return ClientResource::getUrl('index', ['tab' => self::TAB_TRASHED]);
     }
 
-    private function analyze(?string $path): ?ClientSpreadsheetAnalysis
+    private function analyze(ImportSpreadsheetSource $source): ?ClientSpreadsheetAnalysis
     {
-        if (blank($path) || ! is_file($path)) {
+        try {
+            $checksum = $source->checksum();
+
+            return $this->clientAnalyses[$checksum] ??= XlsxSpreadsheetFile::isSpreadsheet($source->file())
+                ? $source->read(fn (string $path): ClientSpreadsheetAnalysis => app(AnalyzeClientSpreadsheet::class)->handle($path))
+                : new ClientSpreadsheetAnalysis(fileErrors: [XlsxSpreadsheetFile::MESSAGE]);
+        } catch (Throwable $exception) {
+            report($exception);
+
             return null;
         }
-
-        if (($this->memoizedAnalysis['path'] ?? null) === $path) {
-            return $this->memoizedAnalysis['analysis'];
-        }
-
-        $analysis = app(AnalyzeClientSpreadsheet::class)->handle($path);
-
-        $this->memoizedAnalysis = ['path' => $path, 'analysis' => $analysis];
-
-        return $analysis;
-    }
-
-    private function resolvePath(mixed $file): ?string
-    {
-        if (is_array($file)) {
-            $file = collect($file)->first();
-        }
-
-        if ($file instanceof TemporaryUploadedFile) {
-            return $file->getRealPath();
-        }
-
-        if (! is_string($file) || ($file === '')) {
-            return null;
-        }
-
-        return Storage::disk('local')->path($file);
     }
 }

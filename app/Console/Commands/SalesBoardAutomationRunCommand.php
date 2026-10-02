@@ -6,10 +6,12 @@ use App\DTOs\SalesBoards\SalesBoardAutomationTargetCandidate;
 use App\Enums\SalesBoardAutomationRunTrigger;
 use App\Models\SalesBoardAutomationRun;
 use App\Services\SalesBoards\SalesBoardAutomationService;
+use App\Support\SalesBoards\BusinessDateInput;
 use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -117,6 +119,10 @@ class SalesBoardAutomationRunCommand extends Command
     /**
      * A data de negócio forçada, quando houver.
      *
+     * Só `aaaa-mm-dd` ({@see BusinessDateInput}): uma data ilegível é recusada
+     * antes de tudo, inclusive da recusa de produção -- `now`, `last month` e
+     * `07/25` eram aceitos e viravam uma execução de outro dia.
+     *
      * Uma execução **com escrita** e data forçada é recusada em produção: ela
      * geraria competências históricas de verdade a partir de um engano de linha
      * de comando, e a automação não tem como desfazer um ciclo congelado. A
@@ -130,14 +136,20 @@ class SalesBoardAutomationRunCommand extends Command
             return null;
         }
 
+        $asOf = BusinessDateInput::parse($option);
+
+        if ($asOf === null) {
+            throw new RuntimeException('Data inválida em --as-of. Use aaaa-mm-dd (data de negócio).');
+        }
+
         if (! $dryRun && app()->isProduction()) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 'A opção --as-of não é permitida em produção sem --dry-run: '
                     .'ela geraria competências históricas reais a partir de uma data forçada.'
             );
         }
 
-        return CarbonImmutable::parse((string) $option)->startOfDay();
+        return $asOf;
     }
 
     /**
@@ -216,7 +228,7 @@ class SalesBoardAutomationRunCommand extends Command
     private function renderDisabledText(): void
     {
         $this->warn('A automação do Quadro de Vendas está desligada (sales_board.automation.enabled). '
-            .'Nada foi executado nem registrado.');
+            .'Nada foi executado nem registrado. O fluxo humano continua: “Congelar competência” segue disponível.');
     }
 
     private function renderText(SalesBoardAutomationRun $run, bool $dryRun): void

@@ -10,9 +10,11 @@ use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardRolloutRecipient;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Filament\Actions\Action;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\RolloutFixture;
 
 uses(RefreshDatabase::class);
@@ -230,13 +232,83 @@ it('returns to legacy from the screen, saying what is preserved', function () {
     expect($scenario['emission']->fresh()->usesAutomatedSalesBoard())->toBeFalse();
 });
 
+it('disables opening a homologation, with the reason, for an emission in draft', function () {
+    $scenario = RolloutFixture::emission(1);
+    $scenario['emission']->forceFill(['status' => Emission::STATUS_DRAFT])->save();
+
+    $reason = 'A Emissão está em "Em Elaboração": o rollout do Quadro de Vendas só começa depois da elaboração, '
+        .'quando a posição inicial deixa de ser composta. Conclua a elaboração antes de homologar ou ativar.';
+
+    Livewire::test(ManageSalesBoardRollout::class, ['record' => $scenario['emission']->getKey()])
+        ->assertOk()
+        ->assertActionVisible('openHomologation')
+        ->assertActionDisabled('openHomologation')
+        ->assertActionExists('openHomologation', fn (Action $action): bool => $action->getTooltip() === $reason)
+        ->assertSee('O rollout do Quadro não se aplica a esta Emissão agora.')
+        ->mountAction('openHomologation')
+        ->assertActionNotMounted('openHomologation');
+
+    expect($scenario['emission']->salesBoardRolloutHomologations()->count())->toBe(0);
+});
+
+it('disables the activation with the same reason when the emission went back to draft', function () {
+    $scenario = RolloutFixture::emission(1);
+    RolloutFixture::legacyBoard($scenario['constructions'][0]);
+    RolloutFixture::approvedHomologation($scenario['emission'], GovernanceFixture::operator());
+
+    $scenario['emission']->forceFill(['status' => Emission::STATUS_DRAFT])->save();
+
+    Livewire::test(ManageSalesBoardRollout::class, ['record' => $scenario['emission']->getKey()])
+        ->assertOk()
+        ->assertActionVisible('activate')
+        ->assertActionDisabled('activate')
+        ->assertActionExists('activate', fn (Action $action): bool => str_starts_with(
+            (string) $action->getTooltip(),
+            'A Emissão está em "Em Elaboração": o rollout do Quadro de Vendas só começa depois da elaboração',
+        ));
+
+    expect($scenario['emission']->fresh()->usesAutomatedSalesBoard())->toBeFalse();
+});
+
+it('says that the brake of an emission is the return to legacy while the global switch is off', function () {
+    config()->set('sales_board.automation.enabled', false);
+
+    $scenario = RolloutFixture::emission(1);
+    RolloutFixture::legacyBoard($scenario['constructions'][0]);
+    RolloutFixture::activate($scenario['emission'], RolloutFixture::approvedHomologation($scenario['emission'], GovernanceFixture::operator()));
+
+    Livewire::test(ListSalesBoardRollouts::class)
+        ->assertOk()
+        ->assertSee('o agendador não gera competências nem envia lembretes')
+        ->assertSee('“Congelar competência” segue disponível para Emissões ativadas', escape: false)
+        ->assertSee('Para parar uma Emissão, use “Retornar ao modo legado” na tela dela.', escape: false);
+
+    Livewire::test(ManageSalesBoardRollout::class, ['record' => $scenario['emission']->getKey()])
+        ->assertOk()
+        ->assertSee('mas “Congelar competência” continua disponível para esta Emissão', escape: false)
+        ->assertSee('Para interromper a Emissão, use “Retornar ao modo legado”.', escape: false)
+        ->assertSee('O freio de uma Emissão é “Retornar ao modo legado”.', escape: false);
+});
+
+it('links the readiness preview from the list and from the emission screen', function () {
+    $scenario = RolloutFixture::emission(1);
+    $url = SalesBoardRolloutResource::getUrl('readiness', ['record' => $scenario['emission']]);
+
+    Livewire::test(ListSalesBoardRollouts::class)
+        ->assertTableActionHasUrl('readinessPreview', $url, $scenario['emission']);
+
+    Livewire::test(ManageSalesBoardRollout::class, ['record' => $scenario['emission']->getKey()])
+        ->assertActionVisible('readinessPreview')
+        ->assertActionHasUrl('readinessPreview', $url);
+});
+
 it('offers no create, edit or delete on the rollout resource', function () {
     $scenario = RolloutFixture::emission(1);
 
     expect(SalesBoardRolloutResource::canCreate())->toBeFalse()
         ->and(SalesBoardRolloutResource::canEdit($scenario['emission']))->toBeFalse()
         ->and(SalesBoardRolloutResource::canDelete($scenario['emission']))->toBeFalse()
-        ->and(array_keys(SalesBoardRolloutResource::getPages()))->toBe(['index', 'manage']);
+        ->and(array_keys(SalesBoardRolloutResource::getPages()))->toBe(['index', 'manage', 'readiness']);
 });
 
 it('denies the rollout screen to a user without sales board permission', function () {

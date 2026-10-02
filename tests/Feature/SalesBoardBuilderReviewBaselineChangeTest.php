@@ -168,7 +168,7 @@ it('blocks editing while the position has a pending material change', function (
 
     $section = BuilderReviewFixture::section($review, SectionEnum::PositionStock);
 
-    expect(fn () => app(SalesBoardBuilderReviewEditor::class)->confirmSection($section))
+    expect(fn () => app(SalesBoardBuilderReviewEditor::class)->confirmSection($section, BuilderReviewFixture::reviewer()))
         ->toThrow(SalesBoardBuilderReviewException::class, 'alteração material pendente');
 
     // Continua consultável: só a escrita é barrada.

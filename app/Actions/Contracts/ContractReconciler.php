@@ -4,10 +4,13 @@ namespace App\Actions\Contracts;
 
 use App\Enums\ChangeSeverity;
 use App\Enums\ContractStatus;
+use App\Models\ConstructionUnitExchange;
 use App\Models\Contract;
+use App\Services\SalesBoards\ConstructionUnitExchangeService;
 use App\Support\Reconciliation\FieldChange;
 use App\Support\Reconciliation\RecordComparison;
 use App\Support\Reconciliation\ValueComparator;
+use App\Support\SalesBoards\ExchangeContractRecognizer;
 
 /**
  * Holds a spreadsheet row against the contract it matched and says what, if
@@ -21,6 +24,12 @@ use App\Support\Reconciliation\ValueComparator;
  *   allowed, but confirmed deliberately.
  * - A status moving *back* -- distratado returning to ativo, a distrato date
  *   being emptied -- is a retificação too, never a routine update.
+ * - Except the distrato the Gestão recorded when it ended an exchange
+ *   ({@see ConstructionUnitExchangeService::end()}): the monthly file may still
+ *   carry the exchange contract as permutado, and undoing that distrato would put
+ *   the contract back on the unit with no exchange -- blocking the whole
+ *   construction on the Sales Board. That one is refused; only the Gestão gives
+ *   the unit a new exchange.
  * - Buyer and unit are refused outright. Selling the same unit to someone else
  *   is a resale, and a resale is a distrato plus a new contract; rewriting the
  *   buyer on an existing one would erase who actually bought it. Moving a live
@@ -111,6 +120,22 @@ class ContractReconciler
             return null;
         }
 
+        $endingExchange = $this->exchangeEndThatCancelled($contract, $incoming);
+
+        if ($endingExchange !== null) {
+            return new FieldChange(
+                field: 'status',
+                label: 'Status',
+                current: $contract->status?->label(),
+                new: sprintf(
+                    '%s (recusado: Distratado pela Gestão no encerramento da permuta em %s: para voltar a ocupar a unidade, a Gestão registra nova permuta.)',
+                    $incoming->label(),
+                    $endingExchange->ended_on->format('d/m/Y'),
+                ),
+                severity: ChangeSeverity::Blocked,
+            );
+        }
+
         return new FieldChange(
             field: 'status',
             label: 'Status',
@@ -119,6 +144,29 @@ class ContractReconciler
             severity: $this->statusSeverity($contract->status, $incoming),
             value: $incoming->value,
         );
+    }
+
+    /**
+     * The exchange whose ending cancelled the contract, when the file is about
+     * to undo exactly that distrato.
+     *
+     * Read only on that path -- a distratado contract coming back to a status
+     * that holds the unit, which is rare -- so a monthly file pays nothing for
+     * it. The rule is the one the Sales Board applies
+     * ({@see ExchangeContractRecognizer::endingExchangeOf()}).
+     */
+    private function exchangeEndThatCancelled(Contract $contract, ContractStatus $incoming): ?ConstructionUnitExchange
+    {
+        if (($contract->status !== ContractStatus::Cancelled) || ! $incoming->occupiesUnit() || ($contract->cancellation_date === null)) {
+            return null;
+        }
+
+        $exchanges = ConstructionUnitExchange::query()
+            ->where('construction_unit_id', $contract->construction_unit_id)
+            ->whereNotNull('ended_on')
+            ->get();
+
+        return ExchangeContractRecognizer::endingExchangeOf($contract, $exchanges);
     }
 
     /**

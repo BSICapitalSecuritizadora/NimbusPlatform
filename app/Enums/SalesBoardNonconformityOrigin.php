@@ -2,6 +2,9 @@
 
 namespace App\Enums;
 
+use App\Models\SalesBoardCycleMovement;
+use App\Services\SalesBoards\SalesDiscountPolicyRegistrar;
+
 /**
  * De onde veio a pendência que a Gestão precisa decidir.
  *
@@ -17,6 +20,16 @@ namespace App\Enums;
  * "está fora": é ausência de informação. Uma exceção só pode ser concedida
  * contra um limite conhecido -- sem saber qual era o mínimo autorizado, não há o
  * que excepcionar, e a única saída honesta é corrigir a fonte.
+ *
+ * Há uma única exceção a esse princípio, e ela é deliberada:
+ * {@see self::SystemLateSaleWithoutPolicy}. A venda lançada depois da
+ * publicação da competência dela (ou a venda publicada revista), com valor e
+ * referência conhecidos, mas sem política aplicável na data, não tem correção
+ * possível: a política de uma competência publicada não pode mais ser
+ * registrada ({@see SalesDiscountPolicyRegistrar}). Só correção travaria para
+ * sempre a competência seguinte -- e, pela regra de ordem da aprovação, todas as
+ * posteriores. Ali a Gestão pode aprovar a exceção, sempre com motivo, autor,
+ * a permissão de aprovação e o maker/checker da publicação.
  *
  * @see SalesBoardNonconformityDecision::allowedFor()
  */
@@ -46,12 +59,22 @@ enum SalesBoardNonconformityOrigin: string
      */
     case SystemSaleUndetermined = 'venda_indeterminada';
 
+    /**
+     * Venda extemporânea ou revisão de venda publicada, com valor da venda e
+     * referência da unidade conhecidos, sem política de desconto aplicável na
+     * data -- num mês cuja competência já foi publicada, em que a política não
+     * pode mais ser registrada. É o único caso em que a exceção não tem limite
+     * de política conhecido (25 caracteres: cabe em `varchar(30)`).
+     */
+    case SystemLateSaleWithoutPolicy = 'venda_extemp_sem_politica';
+
     public function label(): string
     {
         return match ($this) {
             self::BuilderDeclared => 'Declarada pela construtora',
             self::SystemSaleNonConform => 'Venda fora da política',
             self::SystemSaleUndetermined => 'Conformidade não determinada',
+            self::SystemLateSaleWithoutPolicy => 'Venda extemporânea sem política aplicável',
         };
     }
 
@@ -61,6 +84,7 @@ enum SalesBoardNonconformityOrigin: string
             self::BuilderDeclared => 'warning',
             self::SystemSaleNonConform => 'danger',
             self::SystemSaleUndetermined => 'gray',
+            self::SystemLateSaleWithoutPolicy => 'warning',
         };
     }
 
@@ -91,6 +115,45 @@ enum SalesBoardNonconformityOrigin: string
     }
 
     /**
+     * A origem da pendência de um movimento de venda congelado, escolhida pelo
+     * próprio movimento.
+     *
+     * - fora da política: venda não conforme;
+     * - indeterminada por falta do valor da venda ou da referência da unidade
+     *   (ou referência zerada): venda indeterminada, que só admite correção --
+     *   o valor da unidade não tem guarda de data e pode ser cadastrado;
+     * - indeterminada com valor e referência conhecidos -- falta a política, ou
+     *   ela não alcança a venda --, numa venda extemporânea ou revista cujo mês
+     *   já tem competência publicada: a origem sem política aplicável, que
+     *   admite a exceção. Em mês sem competência publicada a política ainda pode
+     *   ser registrada, e a venda segue indeterminada.
+     *
+     * `null` para venda conforme e para o que não é venda.
+     */
+    public static function forMovement(SalesBoardCycleMovement $movement, bool $saleMonthPublished): ?self
+    {
+        if ($movement->movement_type !== SalesBoardMovementType::Sale) {
+            return null;
+        }
+
+        $status = $movement->conformity_status;
+
+        if ($status !== SalesPriceConformityStatus::Undetermined) {
+            return $status === null ? null : self::forConformity($status);
+        }
+
+        $knownValues = ($movement->sale_value !== null)
+            && ($movement->unit_reference_value !== null)
+            && (bccomp((string) $movement->unit_reference_value, '0', 2) > 0);
+
+        $late = in_array($movement->timing, [SalesBoardMovementTiming::Extemporaneous, SalesBoardMovementTiming::SaleRevision], true);
+
+        return ($knownValues && $late && $saleMonthPublished)
+            ? self::SystemLateSaleWithoutPolicy
+            : self::SystemSaleUndetermined;
+    }
+
+    /**
      * Os status de conformidade que exigem decisão da Gestão.
      *
      * `Conform` não entra: o Nimbus avaliou e a venda respeitou a política.
@@ -112,6 +175,7 @@ enum SalesBoardNonconformityOrigin: string
             self::BuilderDeclared => 'A construtora afirma que o fato congelado não corresponde aos registros dela.',
             self::SystemSaleNonConform => 'A venda foi realizada abaixo do preço mínimo autorizado pela política vigente na data.',
             self::SystemSaleUndetermined => 'O Nimbus não conseguiu determinar a conformidade desta venda: falta o dado contra o qual ela seria avaliada.',
+            self::SystemLateSaleWithoutPolicy => 'Venda de competência já publicada, lançada ou revista depois, sem política de desconto aplicável na data. A política de competência publicada não pode mais ser registrada, então não há limite de política para comparar: a Gestão pode aprovar a exceção, com motivo, ou exigir a correção do valor ou da data da venda.',
         };
     }
 }

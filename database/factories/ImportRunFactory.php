@@ -73,4 +73,45 @@ class ImportRunFactory extends Factory
             'records_critical' => $count,
         ]);
     }
+
+    /**
+     * A units file: it only creates.
+     */
+    public function units(): static
+    {
+        return $this->state(fn (): array => [
+            'type' => ImportRun::TYPE_CONSTRUCTION_UNITS,
+            'file_name' => 'unidades.xlsx',
+            'records_updated' => 0,
+            'records_unchanged' => 0,
+            'records_created' => 100,
+        ]);
+    }
+
+    /**
+     * A values file: what it "creates" are the lines appended to the history.
+     */
+    public function unitValues(): static
+    {
+        return $this->state(fn (): array => [
+            'type' => ImportRun::TYPE_CONSTRUCTION_UNIT_VALUES,
+            'file_name' => 'valores.xlsx',
+            'records_updated' => 0,
+        ]);
+    }
+
+    /**
+     * An installments run that also cancelled the open installments the file
+     * left out, by explicit decision, with the date and the reason chosen.
+     */
+    public function withCancelledAbsences(int $count = 2, string $date = '2026-07-05', string $reason = 'Renegociação com novo cronograma.'): static
+    {
+        return $this->installments()->state(fn (): array => [
+            'records_critical' => 0,
+            'records_absent' => $count,
+            'records_cancelled' => $count,
+            'absence_cancellation_date' => $date,
+            'absence_cancellation_reason' => $reason,
+        ]);
+    }
 }

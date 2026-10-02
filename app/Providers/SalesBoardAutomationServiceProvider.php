@@ -3,11 +3,13 @@
 namespace App\Providers;
 
 use App\Console\Commands\SalesBoardAutomationRunCommand;
+use App\Jobs\RecordQueueHeartbeat;
 use App\Services\SalesBoards\DatabaseSalesBoardAutomationEligibilityProvider;
 use App\Services\SalesBoards\DatabaseSalesBoardAutomationRecipientResolver;
 use App\Services\SalesBoards\SalesBoardAutomationAlertDispatcher;
 use App\Services\SalesBoards\SalesBoardAutomationEligibilityProvider;
 use App\Services\SalesBoards\SalesBoardAutomationRecipientResolver;
+use App\Support\Operations\ProcessHeartbeat;
 use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use App\Support\SalesBoards\SalesBoardWriteContext;
 use Illuminate\Console\Scheduling\Schedule;
@@ -74,8 +76,32 @@ class SalesBoardAutomationServiceProvider extends ServiceProvider
         $this->commands([SalesBoardAutomationRunCommand::class]);
 
         $this->app->booted(function (): void {
-            $this->scheduleAutomation($this->app->make(Schedule::class));
+            $schedule = $this->app->make(Schedule::class);
+
+            $this->scheduleAutomation($schedule);
+            $this->scheduleHeartbeats($schedule);
         });
+    }
+
+    /**
+     * O sinal de vida do agendador e da fila.
+     *
+     * Mora aqui, ao lado do agendamento da automação, porque é a tela
+     * "Automação do Quadro" que o mostra -- e é ela que precisa provar que o
+     * agendador está rodando mesmo com o interruptor desligado, quando nenhuma
+     * execução é registrada. O agendador grava a própria batida a cada minuto;
+     * a da fila sai de um job que ele despacha a cada cinco, e que só um worker
+     * vivo executa ({@see ProcessHeartbeat}).
+     */
+    private function scheduleHeartbeats(Schedule $schedule): void
+    {
+        $schedule->call(static fn () => ProcessHeartbeat::recordScheduler())
+            ->everyMinute()
+            ->name('scheduler-heartbeat');
+
+        $schedule->job(new RecordQueueHeartbeat)
+            ->everyFiveMinutes()
+            ->name('queue-heartbeat');
     }
 
     /**

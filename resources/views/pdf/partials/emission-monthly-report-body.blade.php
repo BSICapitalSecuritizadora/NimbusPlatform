@@ -85,6 +85,65 @@
     @endforeach
 </table>
 
+{{-- ===== Garantias e Cobertura (§48 do escopo) =====
+     Competência fechada: o número consolidado, com as marcas de desatualizada, de
+     posição parcial confirmada e de origem do Quadro não registrada. Sem fechamento:
+     a apuração do mês, rotulada como preliminar. Ausência é dita, não convertida em
+     zero. --}}
+<div class="section-title">Garantias e Cobertura</div>
+@if ($guarantees['has_data'])
+    @unless ($guarantees['consolidated'])
+        <div class="coverage-alert"><strong>Apuração preliminar.</strong> A competência de garantias ainda não foi fechada: os valores abaixo são a apuração com as fontes vigentes na geração deste relatório e podem mudar até o fechamento.</div>
+    @endunless
+    @if ($guarantees['outdated'])
+        <div class="coverage-alert"><strong>Competência desatualizada.</strong> {{ implode(' ', $guarantees['outdated_reasons']) }} O número fechado continua valendo até a competência ser reaberta e apurada de novo.</div>
+    @endif
+    @if ($guarantees['partial_sales_board_position'])
+        <div class="coverage-alert"><strong>Posição parcial do Quadro de Vendas nas garantias de estoque.</strong> {{ implode('; ', $guarantees['sales_board_gaps']) }}.@if ($guarantees['partial_coverage_confirmed']) Fechamento confirmado com a posição parcial.@endif</div>
+    @endif
+    @if ($guarantees['sales_board_coverage_unknown'])
+        <div class="coverage-alert"><strong>Origem do Quadro de Vendas não registrada.</strong> A competência foi fechada antes de o sistema registrar de qual quadro saiu o estoque das garantias: não é possível indicar se a posição era a do próprio mês.</div>
+    @endif
+    <table class="kv">
+        <tr><td class="label">Situação</td><td class="value">{{ $guarantees['status'] }}</td></tr>
+        <tr><td class="label">Saldo devedor (base)</td><td class="value">{{ $guarantees['outstanding_balance'] }}</td></tr>
+        <tr><td class="label">Valor bruto</td><td class="value">{{ $guarantees['gross_value'] }}</td></tr>
+        <tr><td class="label">Valor elegível</td><td class="value">{{ $guarantees['eligible_value'] }}</td></tr>
+        <tr><td class="label">Valor exigido</td><td class="value">{{ $guarantees['required_value'] }}</td></tr>
+        <tr><td class="label">Cobertura</td><td class="value">{{ $guarantees['coverage_ratio'] }} <span style="font-weight:normal;color:#888;font-size:10px;">(mínimo contratual {{ $guarantees['required_ratio'] }})</span></td></tr>
+        <tr><td class="label">Excedente / déficit</td><td class="value">{{ $guarantees['surplus_deficit'] }}</td></tr>
+    </table>
+    @if ($guarantees['items'] !== [])
+        {{-- `overflow-wrap`, e não `word-break: break-word`: o dompdf lê este como "anywhere", a
+             largura mínima da coluna cai para um caractere e "Recebíveis" saía partido. Assim só
+             quebra a palavra que sozinha não cabe na linha. --}}
+        <table class="data">
+            <thead><tr><th>Garantia</th><th>Tipo</th><th>Fonte</th><th class="num">Valor atual</th><th class="num">Elegível</th><th>Situação</th></tr></thead>
+            <tbody>
+                @foreach ($guarantees['items'] as $guaranteeItem)
+                    <tr>
+                        <td style="overflow-wrap: break-word;">{{ $guaranteeItem['name'] }}</td>
+                        <td>{{ $guaranteeItem['type'] }}</td>
+                        <td>{{ $guaranteeItem['source'] }}{{ match ($guaranteeItem['value_status'] ?? null) { 'partial' => ' (parcial)', 'pending' => ' (pendente)', default => '' } }}</td>
+                        <td class="num">{{ $guaranteeItem['current_value'] }}</td>
+                        <td class="num">{{ $guaranteeItem['eligible_value'] }}</td>
+                        <td>{{ $guaranteeItem['status'] }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+    <p class="note">
+        @if ($guarantees['consolidated'])
+            Competência de garantias fechada em {{ $guarantees['closed_at'] }} (horário de Brasília).
+        @else
+            Apuração do mês com as fontes vigentes na geração deste relatório.
+        @endif
+    </p>
+@else
+    <p class="no-data">{{ $guarantees['empty_message'] }}</p>
+@endif
+
 {{-- ===== Contas vinculadas ===== --}}
 <div class="section-title">Contas Vinculadas</div>
 @if ($accounts['has_data'])
@@ -252,7 +311,10 @@
                 Sem quadro de vendas, fora da soma: {{ implode(', ', $units['coverage_summary']['missing']) }}.
             @endif
             @if ($units['coverage_summary']['awaiting_publication'])
-                Competência produzida pelo ciclo mensal automatizado: ainda não publicada para os empreendimentos acima.
+                Competência produzida pelo ciclo mensal automatizado, ainda não publicada para: {{ implode(', ', $units['coverage_summary']['awaiting']) }}.
+            @endif
+            @if ($units['coverage_summary']['cancelled'] !== [])
+                Competência cancelada pela Gestão, sem quadro publicado neste mês: {{ implode(', ', $units['coverage_summary']['cancelled']) }}.
             @endif
         </div>
     @endunless
@@ -324,7 +386,18 @@
     <p class="comp-legend">Composição: dourado = quitadas &middot; azul = financiadas/vendidas &middot; cinza = permutadas &middot; claro = estoque. Variação refere-se ao total de unidades ante o mês anterior. Cobertura: empreendimentos com posição / esperados; * indica ao menos um empreendimento com a última posição conhecida de competência anterior.</p>
 @endif
 
-{{-- ===== Negociações — derivado automaticamente dos contratos (sale_date / cancellation_date) ===== --}}
+{{-- ===== Negociações — movimentos da posição publicada ou, sem publicação, prévia dos contratos ===== --}}
+@php
+    /**
+     * No modo de contratos, quando há publicação ou prévia, cada linha diz a
+     * competência do fato e a situação: publicada, extemporânea (fato de
+     * competência anterior publicado neste mês) ou prévia (competência da
+     * automação ainda sem Quadro publicado). O modo legado e o Quadro legado
+     * em modo de contratos -- que nunca terá publicação -- não têm essas
+     * colunas.
+     */
+    $negotiationsWithSituation = (($negotiations['source'] ?? null) === 'contracts') && ($negotiations['with_situation'] ?? false);
+@endphp
 <div class="section-title">Negociações do Mês</div>
 @if ($negotiations['has_data'])
     <table class="kv">
@@ -333,48 +406,45 @@
         @endforeach
     </table>
 
-    @if (! empty($negotiations['vendas']))
-        <div style="page-break-inside: avoid;">
-        <p class="note"><strong>Vendas no período</strong></p>
-        <table class="data">
-            <thead><tr><th>Tipo</th><th>Contrato</th><th>Empreendimento</th><th>Unidade</th><th>Data</th></tr></thead>
-            <tbody>
-                @foreach ($negotiations['vendas'] as $tx)
+    @foreach ([['vendas', 'Vendas no período'], ['distratos', 'Distratos no período'], ['quitacoes', 'Quitações no período'], ['revisoes', 'Revisões de vendas já publicadas (fora da contagem de vendas)']] as [$negotiationKey, $negotiationTitle])
+        @if (! empty($negotiations[$negotiationKey] ?? []))
+            <div style="page-break-inside: avoid;">
+            <p class="note"><strong>{{ $negotiationTitle }}</strong></p>
+            <table class="data">
+                <thead>
                     <tr>
-                        <td style="word-break: break-word;">{{ $tx['type'] }}</td>
-                        <td style="word-break: break-word;">{{ $tx['code'] }}</td>
-                        <td style="word-break: break-word;">{{ $tx['development'] }}</td>
-                        <td style="word-break: break-word;">{{ $tx['display'] }}</td>
-                        <td>{{ $tx['date_formatted'] }}</td>
+                        <th>Tipo</th><th>Contrato</th><th>Empreendimento</th><th>Unidade</th><th>Data</th>
+                        @if ($negotiationsWithSituation)
+                            <th>Competência do fato</th><th>Situação</th>
+                        @endif
                     </tr>
-                @endforeach
-            </tbody>
-        </table>
-        </div>
-    @endif
-
-    @if (! empty($negotiations['distratos']))
-        <div style="page-break-inside: avoid;">
-        <p class="note"><strong>Distratos no período</strong></p>
-        <table class="data">
-            <thead><tr><th>Tipo</th><th>Contrato</th><th>Empreendimento</th><th>Unidade</th><th>Data</th></tr></thead>
-            <tbody>
-                @foreach ($negotiations['distratos'] as $tx)
-                    <tr>
-                        <td style="word-break: break-word;">{{ $tx['type'] }}</td>
-                        <td style="word-break: break-word;">{{ $tx['code'] }}</td>
-                        <td style="word-break: break-word;">{{ $tx['development'] }}</td>
-                        <td style="word-break: break-word;">{{ $tx['display'] }}</td>
-                        <td>{{ $tx['date_formatted'] }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-        </div>
-    @endif
-    <p class="note">Fonte: contratos da emissão — Data da Venda e Data do Distrato dentro da competência.</p>
+                </thead>
+                <tbody>
+                    @foreach ($negotiations[$negotiationKey] as $tx)
+                        <tr>
+                            <td style="word-break: break-word;">{{ $tx['type'] }}</td>
+                            <td style="word-break: break-word;">{{ $tx['code'] }}</td>
+                            <td style="word-break: break-word;">{{ $tx['development'] }}</td>
+                            <td style="word-break: break-word;">{{ $tx['display'] }}</td>
+                            <td>{{ $tx['date_formatted'] }}</td>
+                            @if ($negotiationsWithSituation)
+                                <td>{{ $tx['competence'] ?? '—' }}</td>
+                                <td style="word-break: break-word;">{{ $tx['situation'] ?? '—' }}</td>
+                            @endif
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            </div>
+        @endif
+    @endforeach
+    <p class="note">{{ $negotiations['note'] ?? 'Fonte: contratos da emissão — Data da Venda e Data do Distrato dentro da competência.' }}</p>
 @else
     <p class="no-data">{{ $negotiations['empty_message'] }}</p>
+    {{-- A competência cancelada cujos fatos a seguinte publicou diz onde eles estão, mesmo sem nada a listar aqui. --}}
+    @if (! empty($negotiations['absorbed'] ?? []))
+        <p class="note">{{ $negotiations['note'] }}</p>
+    @endif
 @endif
 
 {{-- ===== Histórico de negociações (séries mensais) ===== --}}
@@ -395,7 +465,12 @@
             @endforeach
         </tbody>
     </table>
-    <p class="note">Série de quantidades por competência. A base de negociações não possui valor monetário negociado.</p>
+    <p class="note">
+        Série de quantidades por competência. A base de negociações não possui valor monetário negociado.
+        @if ($negotiations_history['includes_late'] ?? false)
+            Inclui fatos de competências anteriores publicados no mês: cada movimento conta na competência em que foi publicado.
+        @endif
+    </p>
 @endif
 
 {{-- Análise do Mês e Evolução da Obra: representações compatíveis com DomPDF

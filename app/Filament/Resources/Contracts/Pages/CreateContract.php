@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Contracts\Pages;
 
 use App\Filament\Resources\Contracts\ContractResource;
 use App\Models\Contract;
+use App\Support\SalesBoards\SourceEntryCompetenceNotice;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
@@ -47,5 +48,23 @@ class CreateContract extends CreateRecord
     protected function getCreatedNotificationTitle(): ?string
     {
         return 'Contrato cadastrado com sucesso.';
+    }
+
+    /**
+     * A venda com data em competência já registrada no Quadro de Vendas: o
+     * formulário avisou antes, e a notificação fica até ser fechada -- quem
+     * salvou precisa saber por onde o fato vai entrar.
+     */
+    protected function afterCreate(): void
+    {
+        /** @var Contract $contract */
+        $contract = $this->getRecord();
+
+        SourceEntryCompetenceNotice::notify(SourceEntryCompetenceNotice::forContract(
+            $contract->construction_id,
+            $contract->sale_date,
+            $contract->sale_value,
+            $contract->cancellation_date,
+        ));
     }
 }

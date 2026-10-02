@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\SalesBoards;
 
+use App\DTOs\SalesBoards\SalesBoardChainStructure;
 use App\DTOs\SalesBoards\SalesBoardComparableSnapshot;
 use App\DTOs\SalesBoards\SalesBoardStaleAssessment;
 use App\Enums\SalesBoardStaleImpact;
@@ -28,10 +29,14 @@ use RuntimeException;
  *   parcela de um contrato já distratado, por exemplo, muda a fonte e não move
  *   nenhum número congelado;
  * - **material**: o snapshot mudaria. Classificação, valor, contrato, movimento
- *   ou conformidade;
+ *   ou conformidade -- ou a cadeia de competências de onde a versão parte
+ *   mudou ({@see SalesBoardChainStructure}): uma competência anterior foi
+ *   reaberta ou cancelada depois dela;
  * - **bloqueante**: a fonte atual nem sequer passa mais na prontidão. Não existe
  *   versão nova possível, e a anterior continua valendo como registro do que foi
- *   apurado quando havia dado para apurar.
+ *   apurado quando havia dado para apurar. Vale mesmo com a fonte idêntica à
+ *   congelada: uma regra de prontidão nova alcança a versão congelada antes
+ *   dela.
  *
  * O único efeito colateral é escrever os metadados de obsolescência na versão
  * vigente. O conteúdo apurado não é tocado -- o model recusaria.
@@ -96,9 +101,30 @@ class SalesBoardStaleDetectionService
         $sourceChanged = $observedSourceFingerprint !== (string) $baseline->source_fingerprint;
         $snapshotChanged = $liveSnapshotFingerprint !== (string) $baseline->snapshot_fingerprint;
 
+        /**
+         * A cadeia é comparada pela estrutura -- o ciclo âncora e os meses
+         * cancelados absorvidos --, nunca pela versão da âncora. Reaberta ou
+         * cancelada uma competência anterior, a janela, os avisos e a ponte
+         * desta passam a partir de outro lugar mesmo sem fato no mês, e só a
+         * estrutura acusa isso. A retificação publicada da anterior troca a
+         * versão da âncora sem mudar a cadeia, e continua julgada pelo
+         * conteúdo.
+         */
+        $chainChange = SalesBoardChainStructure::changeSince($baseline, $position);
+
+        /**
+         * A prontidão vem antes dos fingerprints. Uma regra nova de prontidão
+         * -- um limiar de plausibilidade, um dado antes tolerado que passou a
+         * ser ausência -- precisa alcançar a versão congelada antes dela: com a
+         * fonte idêntica à congelada, "sem alterações" deixaria passar pelos
+         * portões da validação e da aprovação uma posição que o Nimbus hoje
+         * recusaria congelar. Bloqueante segura a competência até a fonte ser
+         * corrigida.
+         */
         $impact = match (true) {
-            ! $sourceChanged && ! $snapshotChanged => SalesBoardStaleImpact::None,
             ! $readiness->isReady() => SalesBoardStaleImpact::Blocking,
+            $chainChange !== null => SalesBoardStaleImpact::Material,
+            ! $sourceChanged && ! $snapshotChanged => SalesBoardStaleImpact::None,
             $snapshotChanged => SalesBoardStaleImpact::Material,
             default => SalesBoardStaleImpact::SourceOnly,
         };
@@ -118,6 +144,7 @@ class SalesBoardStaleDetectionService
             observedSnapshotFingerprint: $readiness->isReady() ? $liveSnapshotFingerprint : null,
             readiness: $readiness,
             diff: $this->diffService->compare($frozen, $live),
+            chainChange: $chainChange,
         );
 
         if ($persist) {

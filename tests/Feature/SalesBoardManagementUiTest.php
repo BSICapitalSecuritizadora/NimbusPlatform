@@ -1,10 +1,14 @@
 <?php
 
+use App\DTOs\SalesBoards\SalesBoardApprovalResult;
+use App\DTOs\SalesBoards\SalesBoardCompetenceBridge;
 use App\Enums\SalesBoardBuilderReviewStatus;
 use App\Enums\SalesBoardCycleStatus;
 use App\Enums\SalesBoardManagementReviewStatus;
 use App\Enums\SalesBoardNonconformityDecision;
 use App\Enums\SalesBoardNonconformityOrigin;
+use App\Enums\SalesBoardStaleImpact;
+use App\Exceptions\SalesBoardManagementReviewException;
 use App\Filament\Resources\SalesBoardCycles\Pages\BuilderReviewWorkspace;
 use App\Filament\Resources\SalesBoardCycles\Pages\ManagementReviewWorkspace;
 use App\Filament\Resources\SalesBoardCycles\Pages\ViewSalesBoardCycle;
@@ -16,11 +20,15 @@ use App\Models\SalesBoardManagementNonconformity;
 use App\Models\SalesBoardManagementReview;
 use App\Models\SalesBoardPublication;
 use App\Models\User;
+use App\Services\SalesBoards\SalesBoardManagementApprovalService;
+use App\Services\SalesBoards\SalesBoardManagementReturnService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\SalesBoards\BuilderReviewFixture;
+use Tests\Support\SalesBoards\ExtemporaneousFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 uses(RefreshDatabase::class);
@@ -206,14 +214,27 @@ it('shows an approved round as read only', function () {
     $review = ManagementReviewFixture::open($scenario['cycle']);
     ManagementReviewFixture::approve($review);
 
-    Livewire::test(ManagementReviewWorkspace::class, ['record' => $scenario['cycle']->getKey()])
+    $page = Livewire::test(ManagementReviewWorkspace::class, ['record' => $scenario['cycle']->getKey()])
         ->assertOk()
         ->assertSee('Encerramento desta rodada')
         ->assertSee('Aprovada por')
         // Encerrada é somente leitura: nem aprovar nem devolver seguem oferecidos.
-        ->assertActionHidden('approve')
         ->assertActionHidden('returnToBuilder')
         ->assertDontSee('Editar quadro');
+
+    // "Aprovar e publicar" depende só da permissão (o estado é conferido ao
+    // abrir e no envio): a tela não o imprime, e um clique forjado é recusado
+    // com o motivo, sem publicar de novo.
+    expect(managementUiRendersApproveButton($page->html()))->toBeFalse();
+
+    $page->mountAction('approve');
+
+    expect(managementUiNotificationBody())->toContain('Esta análise não está mais em andamento');
+
+    $page->assertNotified('Não foi possível publicar')
+        ->assertActionNotMounted('approve');
+
+    expect(SalesBoardPublication::query()->count())->toBe(1);
 });
 
 it('never offers a decision action on a finished round', function () {
@@ -326,10 +347,194 @@ it('hides the approval action while an undetermined sale is unresolved', functio
     $scenario = ManagementReviewFixture::submittedCycleWithUndeterminedSale();
     ManagementReviewFixture::open($scenario['cycle']);
 
-    Livewire::test(ManagementReviewWorkspace::class, ['record' => $scenario['cycle']->getKey()])
-        ->assertActionHidden('approve');
+    $page = Livewire::test(ManagementReviewWorkspace::class, ['record' => $scenario['cycle']->getKey()])
+        ->assertSee('Aprovar e publicar indisponível:');
+
+    expect(managementUiRendersApproveButton($page->html()))->toBeFalse();
+
+    // Um clique forjado também não publica: o portão é refeito na execução.
+    $page->callAction('approve', data: ['declaration' => true])
+        ->assertNotified('Não foi possível publicar');
 
     expect(SalesBoard::query()->count())->toBe(0);
+});
+
+/**
+ * O corpo da última notificação enviada, lido da sessão antes de
+ * `assertNotified()` -- que só compara o título e esvazia a sessão.
+ */
+function managementUiNotificationBody(): string
+{
+    $notifications = session()->get('filament.claimed_notifications') ?? session()->get('filament.notifications') ?? [];
+
+    return (string) (collect($notifications)->last()['body'] ?? '');
+}
+
+/**
+ * O botão "Aprovar e publicar" está impresso na página? O Blade só o imprime
+ * com o portão aberto; a ação continua resolvível para quem decide.
+ */
+function managementUiRendersApproveButton(string $html): bool
+{
+    return preg_match('/wire:click="mountAction\((?:\'|&#0?39;)approve(?:\'|&#0?39;)[,)]/', $html) === 1;
+}
+
+/**
+ * O portão fecha com o modal de aprovação aberto. O Filament reavalia a
+ * visibilidade da ação no envio, e a visibilidade ligada ao portão descartava o
+ * clique calado: o modal ficava aberto, sem aviso, e o motivo só aparecia ao
+ * recarregar. A ação depende só da permissão e da situação da análise, e o
+ * portão refeito na execução diz o que falhou.
+ */
+it('says why nothing was published when the source changes with the approval modal open', function () {
+    $scenario = ManagementReviewFixture::submittedCycle();
+    ManagementReviewFixture::open($scenario['cycle']);
+
+    $page = Livewire::test(ManagementReviewWorkspace::class, ['record' => $scenario['cycle']->getKey()])
+        ->assertSee('Pronto para publicação');
+
+    expect(managementUiRendersApproveButton($page->html()))->toBeTrue();
+
+    $page->mountAction('approve')
+        ->setActionData(['declaration' => true]);
+
+    // Com o modal aberto, alguém corrige o valor da venda do mês na fonte.
+    $scenario['contracts']['soldInMonth']->update(['sale_value' => '499999.00']);
+
+    $page->callMountedAction();
+
+    expect(managementUiNotificationBody())
+        ->toContain('O portão de publicação fechou depois que a confirmação foi aberta. Nada foi publicado.')
+        ->toContain('Fonte sem alteração material — Alterações materiais');
+
+    $page->assertNotified('Não foi possível publicar')
+        ->assertActionNotMounted('approve')
+        ->assertSee('Publicação bloqueada');
+
+    expect(managementUiRendersApproveButton($page->html()))->toBeFalse()
+        ->and(SalesBoardPublication::query()->count())->toBe(0)
+        ->and(SalesBoard::query()->count())->toBe(0)
+        ->and($scenario['cycle']->fresh()->status)->toBe(SalesBoardCycleStatus::ManagementReview)
+        ->and(SalesBoardManagementReview::sole()->status)->toBe(SalesBoardManagementReviewStatus::Draft);
+});
+
+it('says why nothing was published when the previous competence enters rectification with the approval modal open', function () {
+    $scenario = ExtemporaneousFixture::publishedJuly();
+    $august = ExtemporaneousFixture::generateAugust($scenario['construction']);
+    ExtemporaneousFixture::analysis($august);
+
+    $page = Livewire::test(ManagementReviewWorkspace::class, ['record' => $august->getKey()])
+        ->assertSee('Pronto para publicação')
+        ->mountAction('approve')
+        ->setActionData(['declaration' => true]);
+
+    // Com o modal aberto, outra pessoa da Gestão abre a retificação de julho. A
+    // venda corrigida também muda a fonte de agosto: o aviso lista todos os
+    // itens do portão que falharam, e a retificação aberta está entre eles.
+    $scenario['financed']->forceFill(['sale_value' => '650000.00'])->save();
+    ExtemporaneousFixture::rectify($scenario['july']);
+
+    $page->callMountedAction();
+
+    expect(managementUiNotificationBody())
+        ->toContain('Nada foi publicado.')
+        ->toContain('Competência anterior encerrada — A competência anterior (07/2026) está em retificação');
+
+    $page->assertNotified('Não foi possível publicar')
+        ->assertActionNotMounted('approve');
+
+    expect(SalesBoardPublication::query()->where('sales_board_cycle_id', $august->getKey())->count())->toBe(0)
+        ->and($august->fresh()->status)->toBe(SalesBoardCycleStatus::ManagementReview);
+});
+
+it('does not open the confirmation over a stale page whose gate already closed', function () {
+    $scenario = ManagementReviewFixture::submittedCycle();
+    ManagementReviewFixture::open($scenario['cycle']);
+
+    $page = Livewire::test(ManagementReviewWorkspace::class, ['record' => $scenario['cycle']->getKey()])
+        ->assertSee('Pronto para publicação');
+
+    // A fonte muda com a página aberta, antes do clique em "Aprovar e publicar":
+    // a tela ainda mostra o botão, mas a confirmação não chega a abrir.
+    $scenario['contracts']['soldInMonth']->update(['sale_value' => '499999.00']);
+
+    $page->mountAction('approve');
+
+    expect(managementUiNotificationBody())
+        ->toContain('A publicação não está liberada. Nada foi publicado.')
+        ->toContain('Fonte sem alteração material — Alterações materiais')
+        ->not->toContain('depois que a confirmação foi aberta');
+
+    $page->assertNotified('Não foi possível publicar')
+        ->assertActionNotMounted('approve');
+
+    expect(SalesBoardPublication::query()->count())->toBe(0)
+        ->and($scenario['cycle']->fresh()->status)->toBe(SalesBoardCycleStatus::ManagementReview);
+});
+
+it('says why nothing was published when another person closes the analysis with the approval modal open', function () {
+    $scenario = ManagementReviewFixture::submittedCycle();
+    $review = ManagementReviewFixture::open($scenario['cycle']);
+
+    $page = Livewire::test(ManagementReviewWorkspace::class, ['record' => $scenario['cycle']->getKey()])
+        ->mountAction('approve')
+        ->setActionData(['declaration' => true]);
+
+    // Com o modal aberto, outra pessoa da Gestão devolve a rodada à construtora.
+    app(SalesBoardManagementReturnService::class)->returnToBuilder(
+        $review,
+        GovernanceFixture::approver(),
+        'Precisamos da confirmação do contrato da unidade 102.',
+    );
+
+    $page->callMountedAction();
+
+    expect(managementUiNotificationBody())
+        ->toContain('Esta análise não está mais em andamento');
+
+    $page->assertNotified('Não foi possível publicar')
+        ->assertActionNotMounted('approve');
+
+    expect(SalesBoardPublication::query()->count())->toBe(0)
+        ->and($review->fresh()->status)->toBe(SalesBoardManagementReviewStatus::Returned);
+});
+
+it('still turns a refusal of the approval service into a message once the gate passes', function () {
+    $scenario = ManagementReviewFixture::submittedCycle();
+    ManagementReviewFixture::open($scenario['cycle']);
+
+    /**
+     * O portão da tela passa e a fonte muda no intervalo até a transação: quem
+     * recusa é o serviço, que confere tudo de novo. O portão continua sendo o
+     * do serviço de verdade.
+     */
+    $real = app(SalesBoardManagementApprovalService::class);
+
+    app()->instance(SalesBoardManagementApprovalService::class, new class($real) extends SalesBoardManagementApprovalService
+    {
+        public function __construct(private readonly SalesBoardManagementApprovalService $real) {}
+
+        public function gate(SalesBoardManagementReview $review, ?SalesBoardCompetenceBridge $bridge = null): array
+        {
+            return $this->real->gate($review, $bridge);
+        }
+
+        public function approve(SalesBoardManagementReview $review, ?User $actor, bool $declarationAccepted, ?string $sourceChangeReason = null): SalesBoardApprovalResult
+        {
+            throw SalesBoardManagementReviewException::staleBlocksApproval(SalesBoardStaleImpact::Material);
+        }
+    });
+
+    $page = Livewire::test(ManagementReviewWorkspace::class, ['record' => $scenario['cycle']->getKey()])
+        ->assertSee('Pronto para publicação')
+        ->callAction('approve', data: ['declaration' => true]);
+
+    expect(managementUiNotificationBody())->toBe('Os dados de origem alteraram materialmente a posição. Recalcule antes da aprovação.');
+
+    $page->assertNotified('Não foi possível concluir');
+
+    expect(SalesBoardPublication::query()->count())->toBe(0)
+        ->and($scenario['cycle']->fresh()->status)->toBe(SalesBoardCycleStatus::ManagementReview);
 });
 
 it('never exposes conformity or policy to the builder workspace', function () {

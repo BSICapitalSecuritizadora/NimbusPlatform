@@ -6,9 +6,11 @@ namespace App\Services\SalesBoards;
 
 use App\Enums\SalesBoardCycleStatus;
 use App\Enums\SalesBoardManagementReviewStatus;
+use App\Enums\SalesBoardMovementTiming;
 use App\Enums\SalesBoardMovementType;
 use App\Enums\SalesBoardNonconformityDecision;
 use App\Enums\SalesBoardNonconformityOrigin;
+use App\Enums\SalesPriceConformityStatus;
 use App\Exceptions\SalesBoardManagementReviewException;
 use App\Models\SalesBoardBuilderDivergence;
 use App\Models\SalesBoardBuilderReview;
@@ -18,6 +20,8 @@ use App\Models\SalesBoardCycleMovement;
 use App\Models\SalesBoardManagementNonconformity;
 use App\Models\SalesBoardManagementReview;
 use App\Models\User;
+use App\Support\SalesBoards\PublishedCompetenceBoundary;
+use App\Support\SalesBoards\SalesBoardAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -41,6 +45,11 @@ use Illuminate\Support\Facades\DB;
  *   vira uma pendência. "Não foi possível avaliar" não é "está conforme", e
  *   deixá-la passar em silêncio seria publicar uma venda que ninguém analisou.
  *
+ * Vale também para a venda de competência anterior -- extemporânea ou revisão
+ * de venda publicada --, com a origem escolhida pelo próprio movimento
+ * ({@see SalesBoardNonconformityOrigin::forMovement()}): a que não tem política
+ * aplicável num mês já publicado ganha a origem que admite a exceção.
+ *
  * A conformidade **não é recalculada**. O que se analisa é o veredito congelado
  * no movimento, apurado em centavos exatos contra a política vigente na data da
  * venda. Reler a política de hoje para reconstruir a decisão de então daria uma
@@ -54,8 +63,17 @@ class SalesBoardManagementReviewOpeningService
         private readonly SalesBoardReviewSupersessionReconciler $reconciler,
     ) {}
 
-    public function open(SalesBoardCycle $cycle, ?User $actor = null): SalesBoardManagementReview
+    public function open(SalesBoardCycle $cycle, ?User $actor): SalesBoardManagementReview
     {
+        /**
+         * Abrir é de quem conduz a competência: quem a opera ou a Gestão, que
+         * precisa abrir a análise que vai decidir. É conferido antes da
+         * reconciliação, que já grava. Não há abertura automática da análise --
+         * ela é sob demanda --, então um ator nulo é recusado como qualquer
+         * outro sem permissão.
+         */
+        SalesBoardAccess::authorizeOperationOrApproval($actor);
+
         /**
          * Antes de decidir qualquer coisa, conclui a substituição que uma versão
          * material nova deixou pendente. Sem isso, uma análise desatualizada
@@ -156,9 +174,14 @@ class SalesBoardManagementReviewOpeningService
         $now = CarbonImmutable::now();
 
         $rows = [];
+        $sales = $this->decidableSales($baseline);
+        $publishedSaleMonths = $this->publishedSaleMonths($review, $sales);
 
-        foreach ($this->decidableSales($baseline) as $movement) {
-            $origin = SalesBoardNonconformityOrigin::forConformity($movement->conformity_status);
+        foreach ($sales as $movement) {
+            $origin = SalesBoardNonconformityOrigin::forMovement(
+                $movement,
+                isset($publishedSaleMonths[$movement->sale_date?->format('Y-m') ?? '']),
+            );
 
             if ($origin === null) {
                 continue;
@@ -216,6 +239,45 @@ class SalesBoardManagementReviewOpeningService
             ->whereIn('conformity_status', SalesBoardNonconformityOrigin::decidableConformityStatuses())
             ->orderBy('id')
             ->get()
+            ->all();
+    }
+
+    /**
+     * Os meses das vendas extemporâneas ou revistas sem conformidade
+     * determinável que já têm competência publicada -- só eles podem ganhar a
+     * origem que admite a exceção. Uma consulta, e só quando existe venda assim.
+     *
+     * @param  list<SalesBoardCycleMovement>  $sales
+     * @return array<string, true> `Y-m` => true
+     */
+    private function publishedSaleMonths(SalesBoardManagementReview $review, array $sales): array
+    {
+        $lateUndetermined = array_values(array_filter(
+            $sales,
+            fn (SalesBoardCycleMovement $movement): bool => ($movement->conformity_status === SalesPriceConformityStatus::Undetermined)
+                && in_array($movement->timing, [SalesBoardMovementTiming::Extemporaneous, SalesBoardMovementTiming::SaleRevision], true)
+                && ($movement->sale_date !== null),
+        ));
+
+        if ($lateUndetermined === []) {
+            return [];
+        }
+
+        $saleMonths = array_map(
+            fn (SalesBoardCycleMovement $movement): CarbonImmutable => CarbonImmutable::parse($movement->sale_date->toDateString())->startOfMonth(),
+            $lateUndetermined,
+        );
+
+        $constructionId = (int) SalesBoardCycle::query()->whereKey($review->sales_board_cycle_id)->value('construction_id');
+
+        $published = PublishedCompetenceBoundary::publishedMonthsBetween(
+            $constructionId,
+            min($saleMonths),
+            max($saleMonths),
+        );
+
+        return collect($published)
+            ->mapWithKeys(fn (CarbonImmutable $month): array => [$month->format('Y-m') => true])
             ->all();
     }
 

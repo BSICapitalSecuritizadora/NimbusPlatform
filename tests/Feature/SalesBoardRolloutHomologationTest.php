@@ -8,7 +8,6 @@ use App\Exceptions\SalesBoardRolloutException;
 use App\Models\ConstructionUnit;
 use App\Models\Emission;
 use App\Models\SalesBoardRolloutHomologation;
-use App\Models\User;
 use App\Services\SalesBoards\SalesBoardRolloutHomologationService;
 use App\Services\SalesBoards\SalesBoardRolloutRecipientDirectory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,7 +28,7 @@ it('starts every emission in legacy mode', function () {
 
 it('opens a homologation with the natural comparison month', function () {
     $scenario = RolloutFixture::emission();
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::operator();
 
     $homologation = RolloutFixture::open($scenario['emission'], $actor);
 
@@ -44,6 +43,55 @@ it('opens a homologation with the natural comparison month', function () {
         ->and($homologation->construction_scope_hash)->not->toBeNull()
         // Homologar não ativa nada.
         ->and($scenario['emission']->fresh()->sales_board_source)->toBe(SalesBoardSource::Legacy);
+});
+
+/**
+ * Em elaboração a posição inicial ainda está sendo composta, e a geração
+ * bloquearia todo dia; liquidada, a operação acabou. O serviço recusa nos três
+ * atos -- abrir, aprovar e ativar --, porque a Emissão pode mudar entre eles.
+ */
+it('refuses to open a homologation for an emission that is in draft or liquidated', function (string $status, string $message) {
+    $scenario = RolloutFixture::emission(1);
+    $scenario['emission']->forceFill(['status' => $status])->save();
+
+    expect(fn () => RolloutFixture::open($scenario['emission']))
+        ->toThrow(SalesBoardRolloutException::class, $message);
+
+    expect(SalesBoardRolloutHomologation::query()->count())->toBe(0);
+})->with([
+    'em elaboração' => ['draft', 'A Emissão está em "Em Elaboração": o rollout do Quadro de Vendas só começa depois da elaboração'],
+    'liquidada' => ['closed', 'A Emissão está "Liquidada": a operação foi encerrada e não há competência mensal a automatizar.'],
+]);
+
+it('refuses to approve once the emission went back to draft', function () {
+    $scenario = RolloutFixture::emission(1);
+    RolloutFixture::legacyBoard($scenario['constructions'][0]);
+
+    $homologation = RolloutFixture::open($scenario['emission']);
+    RolloutFixture::recipients($scenario['emission']);
+    RolloutFixture::reviewImpacts($homologation);
+
+    $scenario['emission']->forceFill(['status' => Emission::STATUS_DRAFT])->save();
+
+    expect(fn () => RolloutFixture::approve($homologation))
+        ->toThrow(SalesBoardRolloutException::class, 'Em Elaboração');
+
+    expect($homologation->fresh()->status)->toBe(SalesBoardRolloutHomologationStatus::Draft);
+});
+
+it('lists the emission status in the gate', function () {
+    $scenario = RolloutFixture::emission(1);
+    RolloutFixture::legacyBoard($scenario['constructions'][0]);
+    $homologation = RolloutFixture::open($scenario['emission']);
+
+    $scenario['emission']->forceFill(['status' => Emission::STATUS_LIQUIDATED])->save();
+
+    $gate = app(SalesBoardRolloutHomologationService::class)->gate($homologation->fresh(), $scenario['emission']->fresh());
+    $check = collect($gate['checks'])->firstWhere('label', 'Emissão em operação (fora de elaboração e não liquidada)');
+
+    expect($gate['ready'])->toBeFalse()
+        ->and($check['passed'])->toBeFalse()
+        ->and($check['detail'])->toBe('Situação atual: Liquidada');
 });
 
 it('refuses a second open homologation for the same emission', function () {
@@ -146,7 +194,7 @@ it('accepts a difference with a reason, and then allows approval', function () {
     RolloutFixture::legacyBoard($scenario['constructions'][1]);
 
     $homologation = RolloutFixture::open($scenario['emission']);
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::operator();
     $service = app(SalesBoardRolloutHomologationService::class);
 
     $row = $homologation->constructions->firstWhere('construction_id', $scenario['constructions'][0]->id);
@@ -178,7 +226,7 @@ it('refuses to accept a difference without a usable reason', function (string $r
     $row = $homologation->constructions->firstWhere('construction_id', $scenario['constructions'][0]->id);
 
     expect(fn () => app(SalesBoardRolloutHomologationService::class)
-        ->acceptDifference($row, $reason, User::factory()->create()))
+        ->acceptDifference($row, $reason, GovernanceFixture::operator()))
         ->toThrow(SalesBoardRolloutException::class, 'pelo menos 10 caracteres');
 })->with(['', ' ', 'ok', '.', '-']);
 
@@ -229,7 +277,7 @@ it('blocks approval until both recipient roles are covered', function () {
         $scenario['emission'],
         SalesBoardRolloutRecipientRole::Operational,
         RolloutFixture::operationalUser(),
-        null,
+        GovernanceFixture::operator(),
     );
 
     expect(fn () => RolloutFixture::approve($homologation))
@@ -291,7 +339,7 @@ it('invalidates an acceptance when the underlying difference changes', function 
     $service = app(SalesBoardRolloutHomologationService::class);
     $row = $homologation->constructions->firstWhere('construction_id', $scenario['constructions'][0]->id);
 
-    $service->acceptDifference($row, 'Diferença entendida na primeira revisão.', User::factory()->create());
+    $service->acceptDifference($row, 'Diferença entendida na primeira revisão.', GovernanceFixture::operator());
 
     expect($row->fresh()->accepted_difference)->toBeTrue();
 
@@ -302,7 +350,7 @@ it('invalidates an acceptance when the underlying difference changes', function 
         'base_value' => '400000.00', 'base_value_reference_date' => '2026-01-01',
     ]);
 
-    $service->reassess($homologation);
+    $service->reassess($homologation, GovernanceFixture::operator());
 
     expect($row->fresh()->accepted_difference)->toBeFalse()
         ->and($row->fresh()->difference_reason)->toBeNull()
@@ -318,10 +366,10 @@ it('keeps an acceptance when nothing material changed', function () {
     $service = app(SalesBoardRolloutHomologationService::class);
     $row = $homologation->constructions->firstWhere('construction_id', $scenario['constructions'][0]->id);
 
-    $service->acceptDifference($row, 'Diferença entendida e registrada.', User::factory()->create());
+    $service->acceptDifference($row, 'Diferença entendida e registrada.', GovernanceFixture::operator());
     $hashBefore = $homologation->fresh()->assessment_hash;
 
-    $service->reassess($homologation);
+    $service->reassess($homologation, GovernanceFixture::operator());
 
     expect($row->fresh()->accepted_difference)->toBeTrue()
         ->and($row->fresh()->difference_reason)->toBe('Diferença entendida e registrada.')
@@ -349,7 +397,7 @@ it('freezes an approved homologation', function () {
 it('records a rejection with its reason', function () {
     $scenario = RolloutFixture::emission();
     $homologation = RolloutFixture::open($scenario['emission']);
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::operator();
 
     $rejected = app(SalesBoardRolloutHomologationService::class)
         ->reject($homologation, $actor, 'Cadastro de unidades ainda incompleto na carteira.');

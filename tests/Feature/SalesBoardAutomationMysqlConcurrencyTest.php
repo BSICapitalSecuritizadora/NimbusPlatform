@@ -11,7 +11,6 @@ use App\Models\SalesBoardAutomationTarget;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleBaseline;
 use App\Models\SalesDiscountPolicy;
-use App\Models\User;
 use App\Services\SalesBoards\SalesBoardAutomationEligibilityProvider;
 use App\Services\SalesBoards\SalesBoardAutomationService;
 use App\Services\SalesBoards\SalesBoardGenerationService;
@@ -23,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Tests\Support\CommittedRowsSweeper;
 use Tests\Support\SalesBoards\AutomationFixture;
 use Tests\Support\SalesBoards\ConfiguredSalesBoardAutomationEligibilityProvider;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\RolloutFixture;
 
 /**
@@ -111,7 +111,7 @@ function automationRaceActivatedEmission(): array
         RolloutFixture::legacyBoard($construction);
     }
 
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::operator();
     $homologation = RolloutFixture::approvedHomologation($scenario['emission'], $actor);
     RolloutFixture::activate($scenario['emission'], $homologation);
 

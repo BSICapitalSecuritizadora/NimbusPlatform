@@ -363,7 +363,7 @@ it('refuses to delete a frozen unit with a reason instead of a constraint error'
     expect(ConstructionUnit::query()->whereKey($frozen->id)->exists())->toBeTrue()
         ->and(ConstructionUnit::query()->whereKey($free->id)->exists())->toBeFalse()
         ->and(ConstructionUnitResource::getDeleteAuthorizationResponse($frozen)->message())
-        ->toBe('A unidade não pode ser excluída: já compõe a posição congelada de um ciclo do Quadro de Vendas.');
+        ->toBe('A unidade não pode ser excluída: já compõe a posição congelada de um ciclo do Quadro de Vendas. Para que ela deixe de compor o Quadro de Vendas, registre a baixa na aba "Baixas" da unidade.');
 })->with(['super-admin', 'admin']);
 
 it('authorizes the construction bulk deletion by emissions.delete', function (string $profile, bool $allowed) {

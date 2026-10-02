@@ -12,11 +12,27 @@ use RuntimeException;
  *
  * São situações previsíveis -- período invertido, limite fora da faixa ou com
  * mais de duas casas, política escondida por outra, competência publicada
- * alcançada, substituição ou alcance retroativo não confirmados ou que mudaram
- * enquanto o formulário estava aberto -- e não defeitos. Viram mensagem para quem está na tela, não log de erro.
+ * alcançada, venda já registrada rejulgada por quem não é da Gestão,
+ * substituição ou alcance retroativo não confirmados ou que mudaram enquanto o
+ * formulário estava aberto -- e não defeitos. Viram mensagem para quem está na
+ * tela, não log de erro.
  */
 class SalesDiscountPolicyPeriodException extends RuntimeException implements ShouldntReport
 {
+    public static function actorRequired(): self
+    {
+        return new self('Não foi possível identificar quem está registrando a política.');
+    }
+
+    /**
+     * A política rejulga venda já registrada e quem registra não tem a
+     * autoridade da Gestão.
+     */
+    public static function requiresManagementAuthority(SalesDiscountPolicyPeriodAssessment $assessment): self
+    {
+        return new self((string) $assessment->managementAuthorityMessage());
+    }
+
     public static function endsBeforeItStarts(): self
     {
         return new self('O fim da vigência precisa ser igual ou posterior ao início.');

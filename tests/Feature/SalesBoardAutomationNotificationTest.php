@@ -5,6 +5,8 @@ use App\Filament\Resources\SalesBoardAutomationTargets\SalesBoardAutomationTarge
 use App\Models\SalesBoardAutomationAlert;
 use App\Models\User;
 use App\Notifications\SalesBoardAutomationNotification;
+use App\Support\BusinessTime;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\ChannelManager;
@@ -28,6 +30,8 @@ beforeEach(function () {
 });
 
 it('goes through the queue instead of sending mail inside the scheduled command', function () {
+    // Limiar zero compara instantes gravados em segundos: o relógio fica parado.
+    $this->freezeSecond();
     Queue::fake();
 
     $construction = AutomationFixture::blockedConstruction();
@@ -46,6 +50,8 @@ it('goes through the queue instead of sending mail inside the scheduled command'
 });
 
 it('shows up in the panel bell and links to the automation screen', function () {
+    $this->freezeSecond();
+
     $construction = AutomationFixture::blockedConstruction();
     AutomationFixture::enable([$construction]);
     $recipient = User::factory()->create();
@@ -120,6 +126,14 @@ function deliveredAutomationEmails(): int
 }
 
 it('redelivers only the channel whose delivery failed', function (string $failingChannel, string $deliveredChannel) {
+    /**
+     * A janela de reenvio é o dia de negócio. O teste anda duas horas no
+     * relógio: rodando depois das 22h, ele cruzaria a meia-noite de Brasília e
+     * cairia numa janela nova, que é outro comportamento. O relógio parte das
+     * 10h do dia de hoje.
+     */
+    $this->travelTo(BusinessTime::toApplication(BusinessTime::at(CarbonImmutable::now())->setTime(10, 0)));
+    $this->freezeSecond();
     Queue::fake();
 
     $construction = AutomationFixture::blockedConstruction();

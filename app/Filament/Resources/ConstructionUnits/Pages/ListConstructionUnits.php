@@ -9,9 +9,16 @@ use App\Actions\ConstructionUnitValues\AnalyzeUnitValueSpreadsheet;
 use App\Actions\ConstructionUnitValues\ImportUnitValuesFromSpreadsheet;
 use App\Actions\ConstructionUnitValues\UnitValueSpreadsheetAnalysis;
 use App\Filament\Resources\ConstructionUnits\ConstructionUnitResource;
+use App\Filament\Resources\ImportRuns\ImportRunResource;
+use App\Models\ImportRun;
+use App\Rules\XlsxSpreadsheetFile;
 use App\Services\SalesBoards\RegisteredCompetenceIndex;
+use App\Support\ActivityLog\LogBatch;
 use App\Support\Dates\SpreadsheetDate;
+use App\Support\Imports\ImportRunDraft;
+use App\Support\Imports\ImportSpreadsheetSource;
 use App\Support\Money\IntegerMoney;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
@@ -24,9 +31,8 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Throwable;
 
 class ListConstructionUnits extends ListRecords
 {
@@ -49,17 +55,18 @@ class ListConstructionUnits extends ListRecords
     }
 
     /**
-     * Memoized analysis, so moving through the wizard does not re-read the file
-     * on every render.
+     * Análises do envio nesta requisição, por checksum: a conferência e o
+     * Confirmar de uma mesma requisição leem a planilha uma vez só. Privadas,
+     * então duram uma requisição.
      *
-     * @var array{path: string, analysis: ConstructionUnitSpreadsheetAnalysis}|null
+     * @var array<string, ConstructionUnitSpreadsheetAnalysis>
      */
-    private ?array $memoizedAnalysis = null;
+    private array $unitAnalyses = [];
 
     /**
-     * @var array{path: string, analysis: UnitValueSpreadsheetAnalysis}|null
+     * @var array<string, UnitValueSpreadsheetAnalysis>
      */
-    private ?array $memoizedValueAnalysis = null;
+    private array $valueAnalyses = [];
 
     protected function getHeaderActions(): array
     {
@@ -111,15 +118,13 @@ class ListConstructionUnits extends ListRecords
                         FileUpload::make('file')
                             ->label('Planilha de Unidades (.xlsx)')
                             ->disk('local')
-                            ->directory('imports/construction-units')
-                            ->acceptedFileTypes([
-                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                'text/csv',
-                                'application/csv',
-                            ])
+                            ->storeFiles(false)
+                            ->acceptedFileTypes((array) config('uploads.spreadsheet_import.allowed_mimes', []))
+                            ->rules([new XlsxSpreadsheetFile])
+                            ->validationMessages(['mimetypes' => XlsxSpreadsheetFile::MESSAGE])
                             ->required()
                             ->live()
-                            ->helperText('Utilize a planilha padrão. Emissões e empreendimentos precisam já existir no sistema.'),
+                            ->helperText('Utilize a planilha padrão. Emissões e empreendimentos precisam já existir no sistema. Unidades que deixaram de existir não saem por planilha: a Gestão registra a baixa na aba "Baixas" da unidade.'),
                     ]),
 
                 Step::make('Conferência')
@@ -131,9 +136,10 @@ class ListConstructionUnits extends ListRecords
                     ]),
             ])
             ->action(function (array $data): void {
-                $analysis = $this->analyze($this->resolvePath($data['file'] ?? null));
+                $source = ImportSpreadsheetSource::fromState($data['file'] ?? null);
+                $analysis = $source === null ? null : $this->analyze($source);
 
-                if (($analysis === null) || ! $analysis->canImport()) {
+                if (($source === null) || ($analysis === null) || ! $analysis->canImport()) {
                     Notification::make()
                         ->danger()
                         ->title('Importação não realizada.')
@@ -144,30 +150,101 @@ class ListConstructionUnits extends ListRecords
                     return;
                 }
 
-                $result = app(ImportConstructionUnitsFromSpreadsheet::class)->handle($analysis);
+                /**
+                 * A importação vira um registro próprio, como a de contratos e a
+                 * de parcelas: arquivo arquivado, quem, quando e o que criou --
+                 * as unidades criadas apontam para ele.
+                 */
+                $result = $this->runArchived($source, 'imports/construction-units', function (string $archivedPath) use ($analysis, $source): array {
+                    $result = app(ImportConstructionUnitsFromSpreadsheet::class)->handle(
+                        $analysis,
+                        self::draftFor(ImportRun::TYPE_CONSTRUCTION_UNITS, $source, $archivedPath),
+                    );
 
-                activity('importacao-unidades')
-                    ->causedBy(auth()->user())
-                    ->withProperties([
-                        'arquivo' => basename((string) $this->resolvePath($data['file'] ?? null)),
-                        'unidades_cadastradas' => $result['units'],
-                        'empreendimentos_envolvidos' => $result['constructions'],
-                        'emissoes_envolvidas' => $result['emissions'],
-                    ])
-                    ->log('Importação de unidades concluída.');
+                    activity('importacao-unidades')
+                        ->causedBy(auth()->user())
+                        ->withProperties([
+                            'arquivo' => $source->originalName(),
+                            'importacao_id' => $result['run']?->getKey(),
+                            'unidades_cadastradas' => $result['units'],
+                            'empreendimentos_envolvidos' => $result['constructions'],
+                            'emissoes_envolvidas' => $result['emissions'],
+                        ])
+                        ->log('Importação de unidades concluída.');
 
-                Notification::make()
-                    ->success()
-                    ->title('Importação concluída com sucesso.')
-                    ->body(sprintf(
+                    return $result;
+                });
+
+                $this->notifyCompleted(
+                    'Importação concluída com sucesso.',
+                    sprintf(
                         '%d unidades cadastradas. Emissões envolvidas: %d. Empreendimentos envolvidos: %d.',
                         $result['units'],
                         $result['emissions'],
                         $result['constructions'],
-                    ))
-                    ->persistent()
-                    ->send();
+                    ),
+                    $result['run'],
+                );
             });
+    }
+
+    /**
+     * Arquiva a planilha confirmada, roda a importação num batch da trilha e
+     * descarta o envio temporário. Se a importação falhar, a planilha arquivada
+     * não fica para trás sem registro que aponte para ela.
+     *
+     * @template TResult
+     *
+     * @param  Closure(string): TResult  $import
+     * @return TResult
+     */
+    private function runArchived(ImportSpreadsheetSource $source, string $directory, Closure $import): mixed
+    {
+        $archivedPath = $source->archive($directory);
+
+        try {
+            $result = app(LogBatch::class)->withinBatch(fn (): mixed => $import($archivedPath));
+        } catch (Throwable $exception) {
+            ImportSpreadsheetSource::forgetArchive($archivedPath);
+
+            throw $exception;
+        }
+
+        $source->discard();
+
+        return $result;
+    }
+
+    private static function draftFor(string $type, ImportSpreadsheetSource $source, string $archivedPath): ImportRunDraft
+    {
+        $userId = auth()->id();
+
+        return new ImportRunDraft(
+            type: $type,
+            fileName: $source->originalName(),
+            checksum: $source->checksum(),
+            filePath: $archivedPath,
+            userId: $userId === null ? null : (int) $userId,
+        );
+    }
+
+    private function notifyCompleted(string $title, string $body, ?ImportRun $run): void
+    {
+        $notification = Notification::make()
+            ->success()
+            ->title($title)
+            ->body($body)
+            ->persistent();
+
+        if (($run !== null) && ImportRunResource::canViewAny()) {
+            $notification->actions([
+                Action::make('viewImportRun')
+                    ->label('Ver detalhes da importação')
+                    ->url(ImportRunResource::getUrl('view', ['record' => $run])),
+            ]);
+        }
+
+        $notification->send();
     }
 
     /**
@@ -194,12 +271,10 @@ class ListConstructionUnits extends ListRecords
                         FileUpload::make('file')
                             ->label('Planilha de Valores (.xlsx)')
                             ->disk('local')
-                            ->directory('imports/construction-unit-values')
-                            ->acceptedFileTypes([
-                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                'text/csv',
-                                'application/csv',
-                            ])
+                            ->storeFiles(false)
+                            ->acceptedFileTypes((array) config('uploads.spreadsheet_import.allowed_mimes', []))
+                            ->rules([new XlsxSpreadsheetFile])
+                            ->validationMessages(['mimetypes' => XlsxSpreadsheetFile::MESSAGE])
                             ->required()
                             ->live()
                             ->helperText('As unidades precisam já estar cadastradas. Esta planilha não cria unidades.'),
@@ -221,10 +296,10 @@ class ListConstructionUnits extends ListRecords
                     ]),
             ])
             ->action(function (array $data): void {
-                $path = $this->resolvePath($data['file'] ?? null);
-                $analysis = $this->analyzeValues($path);
+                $source = ImportSpreadsheetSource::fromState($data['file'] ?? null);
+                $analysis = $source === null ? null : $this->analyzeValues($source);
 
-                if (($analysis === null) || ! $analysis->canImport()) {
+                if (($source === null) || ($analysis === null) || ! $analysis->canImport()) {
                     Notification::make()
                         ->danger()
                         ->title('Atualização não realizada.')
@@ -235,37 +310,43 @@ class ListConstructionUnits extends ListRecords
                     return;
                 }
 
-                $result = app(ImportUnitValuesFromSpreadsheet::class)->handle(
-                    $analysis,
-                    batchReason: filled($data['batch_reason'] ?? null) ? trim((string) $data['batch_reason']) : null,
-                );
+                $result = $this->runArchived($source, 'imports/construction-unit-values', function (string $archivedPath) use ($analysis, $source, $data): array {
+                    $result = app(ImportUnitValuesFromSpreadsheet::class)->handle(
+                        $analysis,
+                        batchReason: filled($data['batch_reason'] ?? null) ? trim((string) $data['batch_reason']) : null,
+                        draft: self::draftFor(ImportRun::TYPE_CONSTRUCTION_UNIT_VALUES, $source, $archivedPath),
+                    );
 
-                activity('atualizacao-valores-unidades')
-                    ->causedBy(auth()->user())
-                    ->withProperties([
-                        'arquivo' => basename((string) $path),
-                        'valores_registrados' => $result['created'],
-                        'linhas_sem_alteracao' => $result['unchanged'],
-                        'unidades_envolvidas' => $result['units'],
-                    ])
-                    ->log('Atualização de valores das unidades concluída.');
+                    activity('atualizacao-valores-unidades')
+                        ->causedBy(auth()->user())
+                        ->withProperties([
+                            'arquivo' => $source->originalName(),
+                            'importacao_id' => $result['run']?->getKey(),
+                            'valores_registrados' => $result['created'],
+                            'linhas_sem_alteracao' => $result['unchanged'],
+                            'unidades_envolvidas' => $result['units'],
+                        ])
+                        ->log('Atualização de valores das unidades concluída.');
 
-                Notification::make()
-                    ->success()
-                    ->title($result['created'] > 0 ? 'Valores atualizados.' : 'Nenhuma alteração a registrar.')
-                    ->body(sprintf(
+                    return $result;
+                });
+
+                $this->notifyCompleted(
+                    $result['created'] > 0 ? 'Valores atualizados.' : 'Nenhuma alteração a registrar.',
+                    sprintf(
                         '%d atualizações registradas. %d linhas já estavam com o valor vigente.',
                         $result['created'],
                         $result['unchanged'],
-                    ))
-                    ->persistent()
-                    ->send();
+                    ),
+                    $result['run'],
+                );
             });
     }
 
     private function renderValuePreview(mixed $file): Htmlable
     {
-        $analysis = $this->analyzeValues($this->resolvePath($file));
+        $source = ImportSpreadsheetSource::fromState($file);
+        $analysis = $source === null ? null : $this->analyzeValues($source);
 
         if ($analysis === null) {
             return new HtmlString('<p class="fi-color-danger">Não foi possível ler a planilha enviada.</p>');
@@ -285,6 +366,14 @@ class ListConstructionUnits extends ListRecords
             'Duplicadas na planilha: <b>'.$analysis->duplicatedInFileCount().'</b>',
         ];
 
+        if ($analysis->informativeDivergenceCount() > 0) {
+            $lines[] = 'Divergências informativas: <b>'.$analysis->informativeDivergenceCount().'</b>';
+        }
+
+        if ($analysis->warningCount() > 0) {
+            $lines[] = 'Com aviso: <b>'.$analysis->warningCount().'</b>';
+        }
+
         if ($analysis->registeredCompetenceCount() > 0) {
             $lines[] = 'Alcançam competência já registrada no Quadro de Vendas: <b>'.$analysis->registeredCompetenceCount().'</b>';
         }
@@ -293,11 +382,17 @@ class ListConstructionUnits extends ListRecords
             ? '<p class="fi-color-success"><b>Planilha pronta para atualização.</b></p>'
             : '<p class="fi-color-danger"><b>Corrija as inconsistências antes de confirmar.</b></p>';
 
+        if ($analysis->informativeDivergenceCount() > 0) {
+            $verdict .= '<p class="fi-color-warning"><b>'.$analysis->informativeDivergenceCount().' linha(s) trazem um valor que já vigora desde uma data registrada com dia e mês trocados ou anterior a 1990. Nada será gravado por elas: confira a instrução de cada uma.</b></p>';
+        }
+
+        $verdict .= $this->renderWarningVerdict($analysis->warningCount());
         $verdict .= $this->renderRegisteredCompetenceVerdict($analysis->registeredCompetenceCount());
 
         $rows = $analysis->previewRows();
         $renderedRows = $rows->take(self::PREVIEW_LIMIT)->map(function (array $row): string {
             $message = filled($row['message'] ?? null) ? ' — '.e((string) $row['message']) : '';
+            $message .= $this->renderWarningNotes($row);
             $message .= $this->renderRegisteredCompetenceNote($row);
 
             /**
@@ -316,6 +411,7 @@ class ListConstructionUnits extends ListRecords
                 .'<td style="padding:.25rem .5rem;">'.e((string) $row['block']).'</td>'
                 .'<td style="padding:.25rem .5rem;">'.e((string) $row['unit']).'</td>'
                 .'<td style="padding:.25rem .5rem;">'.e($this->formatPreviewValue($row['current_value_cents'] ?? null)).'</td>'
+                .'<td style="padding:.25rem .5rem;">'.e(SpreadsheetDate::display($row['current_effective_from'] ?? null)).'</td>'
                 .'<td style="padding:.25rem .5rem;">'.e($this->formatPreviewValue($row['value_cents'] ?? null)).'</td>'
                 .'<td style="padding:.25rem .5rem;">'.e($effectiveFrom).'</td>'
                 .'<td style="padding:.25rem .5rem;">'.e($row['outcome']->label()).$message.'</td>'
@@ -323,7 +419,7 @@ class ListConstructionUnits extends ListRecords
         })->implode('');
 
         $omitted = $rows->count() > self::PREVIEW_LIMIT
-            ? '<p>Exibindo as primeiras '.self::PREVIEW_LIMIT.' de '.$rows->count().' linhas.</p>'
+            ? '<p>Exibindo as primeiras '.self::PREVIEW_LIMIT.' de '.$rows->count().' linhas, em ordem de prioridade: bloqueantes, avisos, divergências e competências registradas, atualizações, novos e sem alteração.</p>'
             : '';
 
         $table = '<div style="overflow-x:auto;"><table style="width:100%;font-size:.875rem;">'
@@ -333,6 +429,7 @@ class ListConstructionUnits extends ListRecords
             .'<th style="text-align:left;padding:.25rem .5rem;">Bloco</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Unidade</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Valor vigente</th>'
+            .'<th style="text-align:left;padding:.25rem .5rem;">Vigência registrada</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Novo valor</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Vigência</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Situação</th>'
@@ -358,7 +455,34 @@ class ListConstructionUnits extends ListRecords
             return '';
         }
 
-        return '<p class="fi-color-warning"><b>'.$count.' linha(s) alcançam competências já registradas no Quadro de Vendas (marcadas com ⚑). A posição registrada não muda sozinha: depois de confirmar, verifique essas competências no Quadro de Vendas.</b></p>';
+        return '<p class="fi-color-warning"><b>'.$count.' linha(s) alcançam competências já registradas no Quadro de Vendas (marcadas com ⚑). A posição registrada não muda sozinha: na competência publicada pelo ciclo, o valor novo entra na próxima competência; na registrada manualmente, revise o quadro dela.</b></p>';
+    }
+
+    /**
+     * Nunca bloqueia: um valor lido de forma duvidosa, ou longe do esperado, é
+     * gravado como lido -- mas quem confirma vê antes.
+     */
+    private function renderWarningVerdict(int $count): string
+    {
+        if ($count === 0) {
+            return '';
+        }
+
+        return '<p class="fi-color-warning"><b>'.$count.' linha(s) têm aviso (marcadas com ⚠). Confira os valores antes de confirmar.</b></p>';
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function renderWarningNotes(array $row): string
+    {
+        $notes = '';
+
+        foreach ($row['warnings'] ?? [] as $warning) {
+            $notes .= '<br><span class="fi-color-warning">⚠ '.e((string) ($warning['message'] ?? '')).'</span>';
+        }
+
+        return $notes;
     }
 
     /**
@@ -366,31 +490,31 @@ class ListConstructionUnits extends ListRecords
      */
     private function renderRegisteredCompetenceNote(array $row): string
     {
-        $warning = RegisteredCompetenceIndex::describe($row['registered_competences'] ?? []);
+        $warning = $row['registered_competence_notice']
+            ?? RegisteredCompetenceIndex::describe($row['registered_competences'] ?? []);
 
         return $warning === null ? '' : '<br><span class="fi-color-warning">⚑ '.e($warning).'</span>';
     }
 
-    private function analyzeValues(?string $path): ?UnitValueSpreadsheetAnalysis
+    private function analyzeValues(ImportSpreadsheetSource $source): ?UnitValueSpreadsheetAnalysis
     {
-        if (blank($path) || ! is_file($path)) {
+        try {
+            $checksum = $source->checksum();
+
+            return $this->valueAnalyses[$checksum] ??= XlsxSpreadsheetFile::isSpreadsheet($source->file())
+                ? $source->read(fn (string $path): UnitValueSpreadsheetAnalysis => app(AnalyzeUnitValueSpreadsheet::class)->handle($path))
+                : new UnitValueSpreadsheetAnalysis(fileErrors: [XlsxSpreadsheetFile::MESSAGE]);
+        } catch (Throwable $exception) {
+            report($exception);
+
             return null;
         }
-
-        if (($this->memoizedValueAnalysis['path'] ?? null) === $path) {
-            return $this->memoizedValueAnalysis['analysis'];
-        }
-
-        $analysis = app(AnalyzeUnitValueSpreadsheet::class)->handle($path);
-
-        $this->memoizedValueAnalysis = ['path' => $path, 'analysis' => $analysis];
-
-        return $analysis;
     }
 
     private function renderPreview(mixed $file): Htmlable
     {
-        $analysis = $this->analyze($this->resolvePath($file));
+        $source = ImportSpreadsheetSource::fromState($file);
+        $analysis = $source === null ? null : $this->analyze($source);
 
         if ($analysis === null) {
             return new HtmlString('<p class="fi-color-danger">Não foi possível ler a planilha enviada.</p>');
@@ -415,6 +539,10 @@ class ListConstructionUnits extends ListRecords
             'Duplicadas na planilha: <b>'.$analysis->duplicatedInFileCount().'</b>',
         ];
 
+        if ($analysis->warningCount() > 0) {
+            $lines[] = 'Com aviso: <b>'.$analysis->warningCount().'</b>';
+        }
+
         if ($analysis->registeredCompetenceCount() > 0) {
             $lines[] = 'Em empreendimento com competência já registrada no Quadro de Vendas: <b>'.$analysis->registeredCompetenceCount().'</b>';
         }
@@ -427,6 +555,7 @@ class ListConstructionUnits extends ListRecords
             ? '<p class="fi-color-success"><b>Planilha pronta para importação.</b></p>'
             : '<p class="fi-color-danger"><b>Corrija as inconsistências antes de confirmar. A importação só é liberada quando todas as linhas estiverem válidas.</b></p>';
 
+        $verdict .= $this->renderWarningVerdict($analysis->warningCount());
         $verdict .= $this->renderRegisteredCompetenceVerdict($analysis->registeredCompetenceCount());
 
         return '<div class="fi-ta-text-item-label">'.implode(' &nbsp;·&nbsp; ', $lines).'</div>'.$verdict;
@@ -438,6 +567,7 @@ class ListConstructionUnits extends ListRecords
         $renderedRows = $rows->take(self::PREVIEW_LIMIT)->map(function (array $row): string {
             $status = ConstructionUnitSpreadsheetAnalysis::statusLabel($row['status']);
             $message = filled($row['message'] ?? null) ? ' — '.e((string) $row['message']) : '';
+            $message .= $this->renderWarningNotes($row);
             $message .= $this->renderRegisteredCompetenceNote($row);
 
             return '<tr>'
@@ -457,7 +587,7 @@ class ListConstructionUnits extends ListRecords
         })->implode('');
 
         $omitted = $rows->count() > self::PREVIEW_LIMIT
-            ? '<p>Exibindo as primeiras '.self::PREVIEW_LIMIT.' de '.$rows->count().' linhas.</p>'
+            ? '<p>Exibindo as primeiras '.self::PREVIEW_LIMIT.' de '.$rows->count().' linhas, em ordem de prioridade: bloqueantes, avisos e competências registradas, e as demais válidas.</p>'
             : '';
 
         return '<div style="overflow-x:auto;"><table style="width:100%;font-size:.875rem;">'
@@ -473,41 +603,18 @@ class ListConstructionUnits extends ListRecords
             .'</tr></thead><tbody>'.$renderedRows.'</tbody></table></div>'.$omitted;
     }
 
-    private function analyze(?string $path): ?ConstructionUnitSpreadsheetAnalysis
+    private function analyze(ImportSpreadsheetSource $source): ?ConstructionUnitSpreadsheetAnalysis
     {
-        if (blank($path) || ! is_file($path)) {
+        try {
+            $checksum = $source->checksum();
+
+            return $this->unitAnalyses[$checksum] ??= XlsxSpreadsheetFile::isSpreadsheet($source->file())
+                ? $source->read(fn (string $path): ConstructionUnitSpreadsheetAnalysis => app(AnalyzeConstructionUnitSpreadsheet::class)->handle($path))
+                : new ConstructionUnitSpreadsheetAnalysis(fileErrors: [XlsxSpreadsheetFile::MESSAGE]);
+        } catch (Throwable $exception) {
+            report($exception);
+
             return null;
         }
-
-        if (($this->memoizedAnalysis['path'] ?? null) === $path) {
-            return $this->memoizedAnalysis['analysis'];
-        }
-
-        $analysis = app(AnalyzeConstructionUnitSpreadsheet::class)->handle($path);
-
-        $this->memoizedAnalysis = ['path' => $path, 'analysis' => $analysis];
-
-        return $analysis;
-    }
-
-    /**
-     * The upload state is a temporary file while the wizard is open and a stored
-     * path once the step is dehydrated.
-     */
-    private function resolvePath(mixed $file): ?string
-    {
-        if (is_array($file)) {
-            $file = collect($file)->first();
-        }
-
-        if ($file instanceof TemporaryUploadedFile) {
-            return $file->getRealPath();
-        }
-
-        if (! is_string($file) || ($file === '')) {
-            return null;
-        }
-
-        return Storage::disk('local')->path($file);
     }
 }

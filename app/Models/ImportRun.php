@@ -26,6 +26,17 @@ class ImportRun extends Model
     public const TYPE_CONTRACT_INSTALLMENTS = 'contract-installments';
 
     /**
+     * Cadastro de unidades: só cria, nunca atualiza.
+     */
+    public const TYPE_CONSTRUCTION_UNITS = 'construction-units';
+
+    /**
+     * Tabela de valores das unidades: só acrescenta linhas ao histórico. Os
+     * "criados" de uma execução destas são as linhas acrescentadas.
+     */
+    public const TYPE_CONSTRUCTION_UNIT_VALUES = 'construction-unit-values';
+
+    /**
      * The run wrote something and none of it was flagged as critical.
      */
     public const RESULT_COMPLETED = 'concluida';
@@ -49,6 +60,7 @@ class ImportRun extends Model
         'type',
         'file_name',
         'checksum',
+        'file_path',
         'batch_uuid',
         'user_id',
         'contract_id',
@@ -57,6 +69,11 @@ class ImportRun extends Model
         'records_updated',
         'records_unchanged',
         'records_critical',
+        'records_warned',
+        'records_absent',
+        'records_cancelled',
+        'absence_cancellation_date',
+        'absence_cancellation_reason',
     ];
 
     protected function casts(): array
@@ -67,6 +84,10 @@ class ImportRun extends Model
             'records_updated' => 'integer',
             'records_unchanged' => 'integer',
             'records_critical' => 'integer',
+            'records_warned' => 'integer',
+            'records_absent' => 'integer',
+            'records_cancelled' => 'integer',
+            'absence_cancellation_date' => 'date',
         ];
     }
 
@@ -111,13 +132,61 @@ class ImportRun extends Model
         return filled($this->batch_uuid);
     }
 
-    public function typeLabel(): string
+    /**
+     * Contratos que esta execução criou em lote. A ligação é a coluna
+     * `import_run_id`, carimbada só no insert -- uma alteração posterior não
+     * muda quem criou o registro, e a criação manual nunca a preenche.
+     *
+     * @return HasMany<Contract, $this>
+     */
+    public function createdContracts(): HasMany
+    {
+        return $this->hasMany(Contract::class, 'import_run_id');
+    }
+
+    /**
+     * @return HasMany<ContractInstallment, $this>
+     */
+    public function createdInstallments(): HasMany
+    {
+        return $this->hasMany(ContractInstallment::class, 'import_run_id');
+    }
+
+    /**
+     * @return HasMany<ConstructionUnit, $this>
+     */
+    public function createdUnits(): HasMany
+    {
+        return $this->hasMany(ConstructionUnit::class, 'import_run_id');
+    }
+
+    /**
+     * Linhas acrescentadas ao histórico de valores das unidades.
+     *
+     * @return HasMany<ConstructionUnitValue, $this>
+     */
+    public function createdUnitValues(): HasMany
+    {
+        return $this->hasMany(ConstructionUnitValue::class, 'import_run_id');
+    }
+
+    /**
+     * Quantos registros desta execução continuam ligados a ela, pelo tipo.
+     */
+    public function createdRecordsCount(): int
     {
         return match ($this->type) {
-            self::TYPE_CONTRACTS => 'Contratos',
-            self::TYPE_CONTRACT_INSTALLMENTS => 'Parcelas',
-            default => $this->type,
+            self::TYPE_CONTRACTS => $this->createdContracts()->withTrashed()->count(),
+            self::TYPE_CONTRACT_INSTALLMENTS => $this->createdInstallments()->withTrashed()->count(),
+            self::TYPE_CONSTRUCTION_UNITS => $this->createdUnits()->count(),
+            self::TYPE_CONSTRUCTION_UNIT_VALUES => $this->createdUnitValues()->count(),
+            default => 0,
         };
+    }
+
+    public function typeLabel(): string
+    {
+        return self::typeOptions()[$this->type] ?? $this->type;
     }
 
     /**
@@ -128,16 +197,19 @@ class ImportRun extends Model
         return [
             self::TYPE_CONTRACTS => 'Contratos',
             self::TYPE_CONTRACT_INSTALLMENTS => 'Parcelas',
+            self::TYPE_CONSTRUCTION_UNITS => 'Unidades',
+            self::TYPE_CONSTRUCTION_UNIT_VALUES => 'Valores de unidade',
         ];
     }
 
     /**
      * Whether the run wrote anything. A run that found the position already
      * reconciled is worth recording precisely because it proves nothing moved.
+     * Cancelling the installments the file left out is a write too.
      */
     public function madeChanges(): bool
     {
-        return ($this->records_created + $this->records_updated) > 0;
+        return ($this->records_created + $this->records_updated + (int) $this->records_cancelled) > 0;
     }
 
     /**
@@ -152,7 +224,9 @@ class ImportRun extends Model
     public function result(): string
     {
         return match (true) {
-            $this->records_critical > 0 => self::RESULT_CRITICAL,
+            // Cancelling installments by absence is a decision someone has to
+            // see, exactly like a critical update.
+            ($this->records_critical > 0) || ((int) $this->records_cancelled > 0) => self::RESULT_CRITICAL,
             $this->madeChanges() => self::RESULT_COMPLETED,
             default => self::RESULT_UNCHANGED,
         };
@@ -202,11 +276,12 @@ class ImportRun extends Model
      */
     public function coverageLabel(): string
     {
-        if ($this->contract_id === null) {
-            return 'Carteira completa';
-        }
-
-        return $this->contract?->code ?? 'Contrato indisponível';
+        return match (true) {
+            $this->type === self::TYPE_CONSTRUCTION_UNITS => 'Cadastro de unidades',
+            $this->type === self::TYPE_CONSTRUCTION_UNIT_VALUES => 'Tabela de valores',
+            $this->contract_id === null => 'Carteira completa',
+            default => $this->contract?->code ?? 'Contrato indisponível',
+        };
     }
 
     /**

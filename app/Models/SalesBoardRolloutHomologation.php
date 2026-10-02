@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\SalesBoardRolloutHomologationStatus;
+use App\Enums\SalesBoardRolloutSupersessionReason;
 use Carbon\CarbonImmutable;
 use Database\Factories\SalesBoardRolloutHomologationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,9 +23,12 @@ use Spatie\Activitylog\Support\LogOptions;
  * preserva o que foi revisado antes.
  *
  * A única mudança admitida depois da aprovação é ser marcada como substituída,
- * quando os fatos materiais que ela revisou deixam de ser os atuais, e o
- * registro da ativação -- que não altera nenhuma premissa, apenas anota que
- * aquela homologação foi usada.
+ * quando os fatos materiais que ela revisou deixam de ser os atuais ou uma
+ * tentativa nova toma o lugar dela, e o registro da ativação -- que não altera
+ * nenhuma premissa, apenas anota que aquela homologação foi usada. A
+ * substituição é gravada, com status e motivo, e não um aviso de tela: quem
+ * volta à Emissão amanhã precisa encontrar a homologação já dizendo que não
+ * vale mais.
  */
 class SalesBoardRolloutHomologation extends Model
 {
@@ -222,6 +226,33 @@ class SalesBoardRolloutHomologation extends Model
     public function wasActivated(): bool
     {
         return $this->activated_at !== null;
+    }
+
+    public function isSuperseded(): bool
+    {
+        return $this->status === SalesBoardRolloutHomologationStatus::Superseded;
+    }
+
+    /**
+     * Por que a homologação foi substituída, quando foi -- e quando o motivo
+     * gravado é um dos que o rollout conhece.
+     */
+    public function supersessionReason(): ?SalesBoardRolloutSupersessionReason
+    {
+        return $this->isSuperseded()
+            ? SalesBoardRolloutSupersessionReason::tryFrom((string) $this->superseded_reason)
+            : null;
+    }
+
+    /**
+     * Quem abriu também aprovou? Só o super-admin chega aqui -- a segregação
+     * recusa todos os outros --, e a tela mostra o caso em vez de deixá-lo
+     * inferível apenas comparando colunas.
+     */
+    public function wasApprovedByItsOpener(): bool
+    {
+        return ($this->approved_by_user_id !== null)
+            && ((int) $this->approved_by_user_id === (int) $this->created_by_user_id);
     }
 
     public function guaranteesReviewed(): bool

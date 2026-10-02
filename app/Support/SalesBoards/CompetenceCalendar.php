@@ -25,14 +25,21 @@ use DateTimeInterface;
 final class CompetenceCalendar
 {
     /**
+     * A competência em curso: o mês de negócio de hoje (ou do instante
+     * informado), ainda não encerrado.
+     */
+    public static function currentMonth(?DateTimeInterface $instant = null): CarbonImmutable
+    {
+        return CarbonImmutable::parse(BusinessTime::dateString($instant))->startOfMonth();
+    }
+
+    /**
      * A competência encerrada mais recente: o mês anterior ao mês de negócio de
      * hoje (ou do instante informado).
      */
     public static function lastClosedMonth(?DateTimeInterface $instant = null): CarbonImmutable
     {
-        return CarbonImmutable::parse(BusinessTime::dateString($instant))
-            ->startOfMonth()
-            ->subMonthNoOverflow();
+        return self::currentMonth($instant)->subMonthNoOverflow();
     }
 
     /**

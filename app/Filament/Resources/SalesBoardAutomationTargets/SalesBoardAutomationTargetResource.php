@@ -6,6 +6,7 @@ use App\Filament\Resources\SalesBoardAutomationTargets\Pages\ListSalesBoardAutom
 use App\Filament\Resources\SalesBoardAutomationTargets\Schemas\SalesBoardAutomationTargetInfolist;
 use App\Filament\Resources\SalesBoardAutomationTargets\Tables\SalesBoardAutomationTargetsTable;
 use App\Models\SalesBoardAutomationTarget;
+use App\Support\SalesBoards\SalesBoardAccess;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -28,7 +29,9 @@ use UnitEnum;
  * tem ferramenta própria. Aqui aparece o que o time do Quadro de Vendas precisa
  * para operar -- competência, empreendimento, motivo e próxima tentativa.
  *
- * As permissões são as do Quadro de Vendas, sem inventar nenhuma.
+ * As permissões são as do Quadro de Vendas, sem inventar nenhuma: ver exige
+ * `sales-boards.view` e `emissions.view` ({@see SalesBoardAccess::canView()}),
+ * como todas as telas do módulo.
  */
 class SalesBoardAutomationTargetResource extends Resource
 {
@@ -67,12 +70,12 @@ class SalesBoardAutomationTargetResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->can('sales-boards.view') ?? false;
+        return SalesBoardAccess::canView(auth()->user());
     }
 
     public static function canView(Model $record): bool
     {
-        return auth()->user()?->can('sales-boards.view') ?? false;
+        return SalesBoardAccess::canView(auth()->user());
     }
 
     /**

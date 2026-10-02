@@ -5,6 +5,7 @@ use App\DTOs\SalesBoards\SalesBoardBuilderDivergenceInput;
 use App\DTOs\SalesBoards\SalesBoardBuilderReviewSubmissionSummary;
 use App\Enums\BuilderReviewerType;
 use App\Enums\SalesBoardBuilderDivergenceType;
+use App\Enums\SalesBoardBuilderResponseChannel;
 use App\Enums\SalesBoardBuilderReviewSection as SectionEnum;
 use App\Enums\SalesBoardBuilderReviewSectionStatus;
 use App\Enums\SalesBoardBuilderReviewStatus;
@@ -14,7 +15,6 @@ use App\Enums\SalesBoardUnitClassification;
 use App\Exceptions\SalesBoardBuilderReviewException;
 use App\Models\SalesBoard;
 use App\Models\SalesBoardHistory;
-use App\Models\User;
 use App\Services\SalesBoards\SalesBoardBuilderReviewEditor;
 use App\Services\SalesBoards\SalesBoardBuilderReviewSubmissionService;
 use Carbon\CarbonImmutable;
@@ -22,13 +22,14 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\Support\SalesBoards\BuilderReviewFixture;
 use Tests\Support\SalesBoards\CycleFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 
 uses(RefreshDatabase::class);
 
 it('accepts a review that confirms the whole position', function () {
     $scenario = BuilderReviewFixture::generatedCycle();
     $review = BuilderReviewFixture::open($scenario['cycle']);
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::operator();
 
     BuilderReviewFixture::confirmAll($review);
     $submitted = BuilderReviewFixture::submit($review, $actor, 'Posição conferida integralmente.');
@@ -44,6 +45,15 @@ it('accepts a review that confirms the whole position', function () {
         ->and($submitted->overall_comment)->toBe('Posição conferida integralmente.')
         ->and($submitted->divergences)->toHaveCount(0)
         ->and($submitted->isFullyConfirmed())->toBeTrue()
+        // A resposta da construtora entra com o envio: quem respondeu, o canal,
+        // a data e o arquivo.
+        ->and($submitted->builder_respondent_name)->toBe('Marina Ribeiro')
+        ->and($submitted->builder_respondent_email)->toBe('marina.ribeiro@construtora.example')
+        ->and($submitted->builder_response_channel)->toBe(SalesBoardBuilderResponseChannel::Email)
+        ->and($submitted->builder_response_received_on->toDateString())->toBe($scenario['cycle']->position_date->toDateString())
+        ->and($submitted->hasBuilderResponseEvidence())->toBeTrue()
+        ->and($submitted->attachments)->toHaveCount(1)
+        ->and($submitted->attachments->first()->uploaded_by_user_id)->toBe($actor->id)
         ->and($scenario['cycle']->fresh()->status)->toBe(SalesBoardCycleStatus::ManagementReview);
 });
 
@@ -88,7 +98,7 @@ it('blocks a submission while any section is still pending, naming them', functi
 
     $editor = app(SalesBoardBuilderReviewEditor::class);
     foreach ([SectionEnum::PositionStock, SectionEnum::PositionFinanced] as $section) {
-        $editor->confirmSection(BuilderReviewFixture::section($review, $section));
+        $editor->confirmSection(BuilderReviewFixture::section($review, $section), BuilderReviewFixture::reviewer());
     }
 
     expect(fn () => BuilderReviewFixture::submit($review))
@@ -153,7 +163,7 @@ it('freezes the review, its sections and its divergences after submission', func
         ->toThrow(LogicException::class, 'A submitted builder divergence is immutable.')
         ->and(fn () => $submitted->delete())
         ->toThrow(LogicException::class, 'Builder reviews cannot be deleted.')
-        ->and(fn () => $editor->confirmSection($section))
+        ->and(fn () => $editor->confirmSection($section, BuilderReviewFixture::reviewer()))
         ->toThrow(SalesBoardBuilderReviewException::class, 'já foi enviada');
 });
 

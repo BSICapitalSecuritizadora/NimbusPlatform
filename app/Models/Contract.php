@@ -56,7 +56,7 @@ class Contract extends Model
     ];
 
     /**
-     * @var array{expected: float, paid: float, outstanding: float, difference: float, count: int}|null
+     * @var array{expected: float, paid: float, discount: float, outstanding: float, difference: float, count: int}|null
      */
     private ?array $memoizedInstallmentsSummary = null;
 
@@ -136,6 +136,20 @@ class Contract extends Model
     }
 
     /**
+     * A importação que criou o contrato em lote, quando foi o caso.
+     *
+     * Fora de `$fillable` e dos atributos logados de propósito: é carimbada só
+     * pelo insert em lote da importação e nunca muda depois. Contrato criado à
+     * mão, ou antes da coluna existir, não tem importação.
+     *
+     * @return BelongsTo<ImportRun, $this>
+     */
+    public function importRun(): BelongsTo
+    {
+        return $this->belongsTo(ImportRun::class, 'import_run_id');
+    }
+
+    /**
      * The payment schedule of the sale. Ordered by due date rather than by
      * number: an installment is identified by text, so "010" would sort before
      * "2" and "ENTRADA" would land wherever the alphabet put it.
@@ -155,12 +169,17 @@ class Contract extends Model
      * part of the contractual flow. Soft deleted ones are excluded by the
      * relation itself.
      *
+     * The discounts registered with the receipts count as covered: the saldo is
+     * what was expected minus what was received and what was forgiven -- the
+     * same rule that makes each installment paid
+     * ({@see ContractInstallment::COVERED_SQL}).
+     *
      * `difference` is a conference indicator, never a rule. A schedule that does
      * not add up to the sale value is routine -- entrada paid before the
      * contract, descontos, reforços, correção, installments not imported yet --
      * so it is shown and nothing is blocked or corrected because of it.
      *
-     * @return array{expected: float, paid: float, outstanding: float, difference: float, count: int}
+     * @return array{expected: float, paid: float, discount: float, outstanding: float, difference: float, count: int}
      */
     public function installmentsSummary(): array
     {
@@ -173,16 +192,19 @@ class Contract extends Model
             ->selectRaw('COUNT(*) as installments_count')
             ->selectRaw('COALESCE(SUM(expected_value), 0) as expected_total')
             ->selectRaw('COALESCE(SUM(paid_value), 0) as paid_total')
+            ->selectRaw('COALESCE(SUM(discount_value), 0) as discount_total')
             ->first();
 
         $expected = round((float) ($totals->expected_total ?? 0), 2);
         $paid = round((float) ($totals->paid_total ?? 0), 2);
+        $discount = round((float) ($totals->discount_total ?? 0), 2);
 
         return $this->memoizedInstallmentsSummary = [
             'count' => (int) ($totals->installments_count ?? 0),
             'expected' => $expected,
             'paid' => $paid,
-            'outstanding' => round(max(0, $expected - $paid), 2),
+            'discount' => $discount,
+            'outstanding' => round(max(0, $expected - $paid - $discount), 2),
             'difference' => round($expected - (float) $this->sale_value, 2),
         ];
     }

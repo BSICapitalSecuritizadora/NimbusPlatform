@@ -2,6 +2,8 @@
 
 namespace App\Actions\Emissions;
 
+use App\Enums\PuSourceChange;
+use App\Events\PuCalculator\EmissionPuSourceChanged;
 use App\Models\Emission;
 use App\Models\PuHistory;
 use Carbon\Carbon;
@@ -71,6 +73,19 @@ class ImportPuHistoriesFromSpreadsheet
 
         if ($latestPuHistory) {
             $emission->update(['current_pu' => $latestPuHistory->unit_value]);
+        }
+
+        // Sem curva homologada, o Histórico é a fonte do saldo devedor das
+        // garantias: as competências cujo saldo gravado mudou ficam marcadas.
+        if ($importedPuHistories > 0) {
+            $causerId = auth()->id();
+
+            EmissionPuSourceChanged::dispatch(
+                (int) $emission->getKey(),
+                PuSourceChange::HistoryImported,
+                null,
+                $causerId === null ? null : (int) $causerId,
+            );
         }
 
         return $importedPuHistories;

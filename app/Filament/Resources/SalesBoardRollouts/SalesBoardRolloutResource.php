@@ -4,8 +4,10 @@ namespace App\Filament\Resources\SalesBoardRollouts;
 
 use App\Filament\Resources\SalesBoardRollouts\Pages\ListSalesBoardRollouts;
 use App\Filament\Resources\SalesBoardRollouts\Pages\ManageSalesBoardRollout;
+use App\Filament\Resources\SalesBoardRollouts\Pages\PreviewSalesBoardReadiness;
 use App\Filament\Resources\SalesBoardRollouts\Tables\SalesBoardRolloutsTable;
 use App\Models\Emission;
+use App\Support\SalesBoards\SalesBoardAccess;
 use App\Support\SalesBoards\SalesBoardApprovalAuthority;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -27,11 +29,14 @@ use UnitEnum;
  *
  * O recurso é somente leitura: o modo não é um campo que se digita. Homologar,
  * aprovar, ativar e retornar são ações de domínio, cada uma com pré-condições
- * próprias.
+ * próprias. A "Prévia de prontidão" deriva a competência escolhida sem gravar
+ * nada, para quem enxerga o rollout.
  *
- * As permissões são as do Quadro de Vendas. Conduzir a homologação é de quem
- * opera (`sales-boards.update`); atestar os impactos, aprovar, ativar e retornar
- * ao legado são da Gestão (`sales-boards.approve`).
+ * As permissões são as do Quadro de Vendas ({@see SalesBoardAccess}). Conduzir
+ * a homologação é de quem opera (`sales-boards.update`); atestar os impactos,
+ * aprovar, ativar e retornar ao legado são da Gestão (`sales-boards.approve`).
+ * Ver exige também `emissions.view`: o registro desta tela é a própria Emissão,
+ * e o Filament a entrega inteira a quem chamar `getRecord()`.
  */
 class SalesBoardRolloutResource extends Resource
 {
@@ -67,12 +72,12 @@ class SalesBoardRolloutResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->can('sales-boards.view') ?? false;
+        return SalesBoardAccess::canView(auth()->user());
     }
 
     public static function canView(Model $record): bool
     {
-        return auth()->user()?->can('sales-boards.view') ?? false;
+        return SalesBoardAccess::canView(auth()->user());
     }
 
     /**
@@ -82,7 +87,7 @@ class SalesBoardRolloutResource extends Resource
      */
     public static function canManageRollout(): bool
     {
-        return auth()->user()?->can('sales-boards.update') ?? false;
+        return SalesBoardAccess::canOperate(auth()->user());
     }
 
     /**
@@ -121,6 +126,7 @@ class SalesBoardRolloutResource extends Resource
         return [
             'index' => ListSalesBoardRollouts::route('/'),
             'manage' => ManageSalesBoardRollout::route('/{record}'),
+            'readiness' => PreviewSalesBoardReadiness::route('/{record}/previa-de-prontidao'),
         ];
     }
 }

@@ -21,15 +21,17 @@ class ListSalesBoardRollouts extends ListRecords
 
     /**
      * O interruptor global aparece no cabeçalho porque ele muda o significado da
-     * lista inteira: com ele desligado, uma Emissão automatizada não produz
-     * nada, e fingir que o scheduler está rodando seria a pior informação
-     * possível nesta tela.
+     * lista inteira: com ele desligado, o agendador não gera competências de
+     * Emissão nenhuma, e fingir que ele está rodando seria a pior informação
+     * possível nesta tela. Fingir o contrário também: o fluxo humano continua,
+     * e o freio de uma Emissão é o retorno ao legado, não o interruptor.
      */
     public function getSubheading(): ?string
     {
         return SalesBoardAutomationConfig::enabled()
             ? 'A automação global está ligada: Emissões automatizadas são processadas a cada hora.'
-            : 'A automação global está desligada. Emissões podem ser homologadas e ativadas, mas nenhuma competência será processada até que ela seja ligada.';
+            : 'A automação global está desligada: o agendador não gera competências nem envia lembretes. O fluxo humano continua — '
+                .'“Congelar competência” segue disponível para Emissões ativadas. Para parar uma Emissão, use “Retornar ao modo legado” na tela dela.';
     }
 
     public function getTabs(): array

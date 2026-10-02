@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\SalesBoards;
 
 use App\Enums\SalesBoardAutomationClosureReason;
+use App\Enums\SalesBoardAutomationSatisfiedVia;
 use App\Enums\SalesBoardAutomationTargetStatus;
 use App\Models\Construction;
 use App\Models\Emission;
@@ -15,6 +16,7 @@ use App\Support\Dates\InclusiveDateBound;
 use App\Support\SalesBoards\SalesBoardAutomationPerimeter;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -85,6 +87,9 @@ class SalesBoardAutomationTargetClosureService
      * Ao contrário dos outros encerramentos, alcança também o alvo satisfeito:
      * o normal é o ciclo já existir, e é justamente ele que está sendo
      * cancelado. Chamado de dentro da transação do cancelamento.
+     *
+     * A descoberta não desfaz este encerramento. Quem o desfaz é a reabertura
+     * da competência pela Gestão ({@see self::reopenForReopenedCycle()}).
      */
     public function closeForCancelledCycle(SalesBoardCycle $cycle, string $message, User $actor): int
     {
@@ -109,11 +114,51 @@ class SalesBoardAutomationTargetClosureService
     }
 
     /**
+     * Devolve à situação de satisfeito o alvo encerrado pelo cancelamento de
+     * uma competência que a Gestão reabriu.
+     *
+     * A competência voltou a ter ciclo em andamento -- o mesmo ciclo --, e a
+     * automação volta a responder por ela como respondia antes do cancelamento:
+     * satisfeita por esse ciclo. `satisfied_via` mantém o que já estava gravado
+     * e, no alvo que nunca chegou a ser satisfeito (o cancelamento veio antes
+     * do dia 13), passa a "já existente", que é como o ciclo chegou a ele.
+     *
+     * As colunas de encerramento ficam como estão: são o registro do último
+     * encerramento, do mesmo jeito que a reabertura pela descoberta as
+     * preserva. Só alvos encerrados por cancelamento são tocados -- um alvo
+     * encerrado por retorno ao legado ou por escopo continua encerrado, porque
+     * a reabertura não muda o perímetro.
+     *
+     * Chamado de dentro da transação da reabertura.
+     */
+    public function reopenForReopenedCycle(SalesBoardCycle $cycle): int
+    {
+        $month = CarbonImmutable::parse($cycle->reference_month->toDateString())->startOfMonth();
+
+        return SalesBoardAutomationTarget::query()
+            ->where('construction_id', $cycle->construction_id)
+            ->whereBetween('reference_month', [$month->toDateString(), InclusiveDateBound::upperBound($month)])
+            ->where('status', SalesBoardAutomationTargetStatus::Closed->value)
+            ->where('closure_reason', SalesBoardAutomationClosureReason::CompetenceCancelled->value)
+            ->update([
+                'status' => SalesBoardAutomationTargetStatus::Satisfied->value,
+                'satisfied_via' => DB::raw(sprintf(
+                    "COALESCE(satisfied_via, '%s')",
+                    SalesBoardAutomationSatisfiedVia::Existing->value,
+                )),
+                'sales_board_cycle_id' => $cycle->getKey(),
+                'next_attempt_at' => null,
+                'last_outcome_at' => CarbonImmutable::now(),
+            ]);
+    }
+
+    /**
      * Encerra os alvos abertos que não pertencem mais ao perímetro.
      *
      * O motivo é apurado por empreendimento, na Emissão de hoje: a suspensão por
      * escopo pede nova homologação, a Emissão fora do modo automatizado pede
-     * outra coisa, e uma mensagem genérica esconderia qual das duas.
+     * outra coisa, a Emissão liquidada não pede nada, e uma mensagem genérica
+     * esconderia qual das três.
      *
      * @return array<string, int> quantos alvos foram encerrados, por motivo
      */
@@ -187,6 +232,11 @@ class SalesBoardAutomationTargetClosureService
             ! $emission->usesAutomatedSalesBoard() => [
                 SalesBoardAutomationClosureReason::OutsidePerimeter,
                 'A Emissão do empreendimento não está no modo automatizado: a competência deixou de ser gerada pela automação.',
+            ],
+            $emission->isLiquidated() => [
+                SalesBoardAutomationClosureReason::EmissionLiquidated,
+                'A Emissão foi liquidada: a automação deixou de gerar competências para ela. '
+                    .'Se a liquidação for desfeita, a competência volta a ser tentada.',
             ],
             ! $emission->automationCovers($referenceMonth) => [
                 SalesBoardAutomationClosureReason::OutsidePerimeter,

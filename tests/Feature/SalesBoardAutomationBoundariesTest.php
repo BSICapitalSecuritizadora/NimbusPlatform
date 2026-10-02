@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\SalesBoardAutomationAttemptOutcome;
+use App\Enums\SalesBoardAutomationClosureReason;
 use App\Enums\SalesBoardAutomationRunStatus;
 use App\Enums\SalesBoardAutomationTargetStatus;
 use App\Enums\SalesBoardBuilderReviewStatus;
@@ -16,11 +17,14 @@ use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleBaseline;
 use App\Models\SalesBoardPublication;
 use App\Models\SalesDiscountPolicy;
+use App\Services\SalesBoards\SalesBoardAutomationTargetProcessor;
 use App\Services\SalesBoards\SalesBoardBuilderReviewOpeningService;
 use App\Services\SalesBoards\SalesBoardGenerationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 use Tests\Support\SalesBoards\AutomationFixture;
 use Tests\Support\SalesBoards\CycleFixture;
+use Tests\Support\SalesBoards\ExtemporaneousFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 uses(RefreshDatabase::class);
@@ -180,7 +184,7 @@ it('never decides or approves a management review', function () {
         ->and(SalesBoard::query()->count())->toBe(0);
 });
 
-it('adopts a cancelled cycle instead of creating a second one', function () {
+it('closes the target of a cancelled cycle instead of adopting it or creating a second one', function () {
     $construction = AutomationFixture::readyConstruction();
     CycleFixture::generate($construction, AutomationFixture::DEFAULT_MONTH);
 
@@ -190,13 +194,87 @@ it('adopts a cancelled cycle instead of creating a second one', function () {
     AutomationFixture::enable([$construction]);
     $run = AutomationFixture::run();
 
-    // A competência já tem identidade: a unique recusaria outro ciclo, e criar
-    // um "porque aquele foi cancelado" é decisão que ninguém tomou.
+    $target = SalesBoardAutomationTarget::query()->sole();
+    $attempt = SalesBoardAutomationAttempt::query()->sole();
+
+    // A competência já tem identidade -- a unique recusaria outro ciclo -- e a
+    // Gestão a encerrou: o alvo é encerrado, e não "satisfeito" pelo ciclo
+    // cancelado, como se a competência tivesse sido atendida.
     expect(SalesBoardCycle::query()->count())->toBe(1)
-        ->and($run->existing_count)->toBe(1)
+        ->and($run->existing_count)->toBe(0)
+        ->and($run->skipped_count)->toBe(1)
         ->and($cycle->fresh()->status)->toBe(SalesBoardCycleStatus::Cancelled)
-        ->and(SalesBoardAutomationTarget::query()->sole()->status)
-        ->toBe(SalesBoardAutomationTargetStatus::Satisfied);
+        ->and($target->status)->toBe(SalesBoardAutomationTargetStatus::Closed)
+        ->and($target->closure_reason)->toBe(SalesBoardAutomationClosureReason::CompetenceCancelled)
+        ->and($target->closure_message)->toBe('Competência cancelada pela Gestão.')
+        ->and($target->satisfied_via)->toBeNull()
+        ->and($target->sales_board_cycle_id)->toBe($cycle->id)
+        ->and($target->next_attempt_at)->toBeNull()
+        ->and($target->in_flight_run_id)->toBeNull()
+        ->and($attempt->outcome)->toBe(SalesBoardAutomationAttemptOutcome::Skipped)
+        ->and($attempt->reason_code)->toBe(SalesBoardAutomationTargetProcessor::CANCELLED_COMPETENCE_CODE)
+        ->and($attempt->sales_board_cycle_id)->toBe($cycle->id);
+
+    // Encerrado por cancelamento, a descoberta não o reabre.
+    AutomationFixture::run('2026-09-14');
+
+    expect($target->fresh()->status)->toBe(SalesBoardAutomationTargetStatus::Closed)
+        ->and(SalesBoardAutomationAttempt::query()->count())->toBe(1);
+});
+
+/**
+ * Uma competência posterior do empreendimento já foi publicada: a geração
+ * recusa a anterior para sempre, e o alvo é encerrado com motivo próprio em
+ * vez de ficar bloqueado, tentando de novo e alertando todo dia.
+ */
+it('closes the target of a competence left behind a later publication instead of retrying it forever', function () {
+    $construction = AutomationFixture::readyConstruction();
+    CycleFixture::automate($construction->emission, '2026-07-01');
+    ExtemporaneousFixture::publish(CycleFixture::generate($construction, AutomationFixture::DEFAULT_MONTH)->cycle);
+
+    AutomationFixture::enable([$construction], '2026-07-01');
+    $run = AutomationFixture::run();
+
+    $target = SalesBoardAutomationTarget::query()->whereDate('reference_month', '2026-07-01')->sole();
+    $attempt = SalesBoardAutomationAttempt::query()->where('sales_board_automation_target_id', $target->id)->sole();
+
+    expect(SalesBoardCycle::query()->whereDate('reference_month', '2026-07-01')->exists())->toBeFalse()
+        ->and($run->skipped_count)->toBe(1)
+        ->and($run->blocked_count)->toBe(0)
+        ->and($target->status)->toBe(SalesBoardAutomationTargetStatus::Closed)
+        ->and($target->closure_reason)->toBe(SalesBoardAutomationClosureReason::LaterCompetencePublished)
+        ->and($target->closure_message)->toStartWith('A competência 07/2026 não pode ser congelada: 08/2026 já foi publicada')
+        ->and($target->next_attempt_at)->toBeNull()
+        ->and($target->in_flight_run_id)->toBeNull()
+        ->and($attempt->outcome)->toBe(SalesBoardAutomationAttemptOutcome::Skipped)
+        ->and($attempt->reason_code)->toBe(SalesBoardAutomationTargetProcessor::LATER_PUBLISHED_CODE);
+
+    // Encerrado, a descoberta não o reabre: nenhuma tentativa nova.
+    AutomationFixture::run('2026-09-14');
+
+    expect($target->fresh()->status)->toBe(SalesBoardAutomationTargetStatus::Closed)
+        ->and(SalesBoardAutomationAttempt::query()->where('sales_board_automation_target_id', $target->id)->count())->toBe(1);
+});
+
+it('never hands a cancelled competence to the builder even when the emission opens reviews automatically', function () {
+    $construction = AutomationFixture::readyConstruction();
+    CycleFixture::generate($construction, AutomationFixture::DEFAULT_MONTH);
+
+    SalesBoardCycle::query()->sole()->forceFill(['status' => SalesBoardCycleStatus::Cancelled])->save();
+
+    AutomationFixture::enable([$construction], autoOpenBuilderReview: true);
+
+    Log::spy();
+
+    AutomationFixture::run();
+
+    expect(SalesBoardBuilderReview::query()->count())->toBe(0)
+        ->and(SalesBoardAutomationTarget::query()->sole()->status)->toBe(SalesBoardAutomationTargetStatus::Closed);
+
+    Log::shouldNotHaveReceived('warning', [
+        'Sales board automation could not hand the cycle to the builder',
+        Mockery::any(),
+    ]);
 });
 
 it('leaves the cycle with the builder when auto open is off', function () {

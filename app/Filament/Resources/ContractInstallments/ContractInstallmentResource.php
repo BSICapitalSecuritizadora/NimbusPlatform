@@ -73,6 +73,15 @@ class ContractInstallmentResource extends Resource
             ]);
     }
 
+    /**
+     * Importar concilia o cronograma -- cadastra e atualiza --, e por isso é
+     * respondido pela ability `import` da policy, que exige criar e editar.
+     */
+    public static function canImport(): bool
+    {
+        return static::getAuthorizationResponse('import')->allowed();
+    }
+
     public static function getPages(): array
     {
         return [

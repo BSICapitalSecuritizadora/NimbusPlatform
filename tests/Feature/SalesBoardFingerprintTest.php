@@ -1,12 +1,18 @@
 <?php
 
 use App\DTOs\SalesBoards\SalesBoardSnapshot;
+use App\DTOs\SalesBoards\SalesBoardSnapshotMovement;
 use App\Enums\ContractStatus;
+use App\Enums\ResolvedUnitValueSource;
+use App\Enums\SalesBoardMovementTiming;
 use App\Enums\SalesBoardMovementType;
 use App\Enums\SalesBoardStaleImpact;
+use App\Enums\SalesBoardUnitClassification;
+use App\Enums\SalesPriceConformityStatus;
 use App\Models\Client;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
+use App\Models\ConstructionUnitRetirement;
 use App\Models\ConstructionUnitValue;
 use App\Models\Contract;
 use App\Models\ContractInstallment;
@@ -210,6 +216,176 @@ it('attributes a source change to the unit that owns it', function () {
         ->and($after->fingerprintForUnit($units[2]->id))->toBe($before->fingerprintForUnit($units[2]->id));
 });
 
+/**
+ * A baixa entra na fonte da competência só quando vale na data da posição, e só
+ * ela acrescenta campos à linha da unidade: a unidade sem baixa gera exatamente
+ * a linha de antes, e o deploy não marca como alterada nenhuma competência
+ * aberta.
+ */
+it('ignores a retirement that only takes effect after the position date', function () {
+    [$construction, $units] = fingerprintScenario();
+    $before = sourceFingerprint($construction);
+    $snapshotBefore = snapshotFingerprint($construction);
+
+    ConstructionUnitRetirement::factory()->forUnit($units[2])->retiredOn('2026-08-05')->create();
+
+    expect(sourceFingerprint($construction))->toBe($before)
+        ->and(snapshotFingerprint($construction))->toBe($snapshotBefore);
+});
+
+it('changes the source fingerprint when a retirement takes effect inside the competência', function () {
+    [$construction, $units] = fingerprintScenario();
+    $before = sourceFingerprint($construction);
+
+    ConstructionUnitRetirement::factory()->forUnit($units[2])->retiredOn('2026-07-10')->create();
+
+    expect(sourceFingerprint($construction))->not->toBe($before);
+});
+
+it('keeps the canonical row of a unit without retirement exactly as it was', function () {
+    [$construction, $units] = fingerprintScenario();
+    $unit = $units[2]->fresh();
+
+    ConstructionUnitRetirement::factory()->forUnit($units[1])->retiredOn('2026-07-10')->create();
+
+    $observation = app(SalesBoardFingerprintService::class)
+        ->observeForConstruction($construction->fresh(), CarbonImmutable::parse('2026-07-01'));
+
+    expect($observation->unitRows[$unit->id])->toBe(CanonicalDigest::row([
+        $unit->id,
+        '01',
+        '103',
+        50_000_000,
+        $unit->base_value_reference_date,
+    ]))
+        ->and($observation->unitRows[$units[1]->id])->not->toBe(CanonicalDigest::row([
+            $units[1]->id,
+            '01',
+            '102',
+            50_000_000,
+            $units[1]->fresh()->base_value_reference_date,
+        ]));
+});
+
+it('gives back exactly the original fingerprint when the retirement is annulled', function () {
+    [$construction, $units] = fingerprintScenario();
+    $before = sourceFingerprint($construction);
+
+    $retirement = ConstructionUnitRetirement::factory()->forUnit($units[2])->retiredOn('2026-07-10')->create();
+    $retired = sourceFingerprint($construction);
+
+    $retirement->forceFill(['reactivated_on' => '2026-07-10', 'reactivation_reason' => 'Baixa registrada por engano.'])->save();
+
+    expect($retired)->not->toBe($before)
+        ->and(sourceFingerprint($construction))->toBe($before);
+});
+
+/**
+ * A venda de julho como o algoritmo anterior a congelava -- e, com `$timing`,
+ * como fato de competência anterior.
+ */
+function fingerprintSaleMovement(?SalesBoardMovementTiming $timing = null): SalesBoardSnapshotMovement
+{
+    return new SalesBoardSnapshotMovement(
+        type: SalesBoardMovementType::Sale,
+        constructionUnitId: 10,
+        block: '01',
+        unit: '101',
+        contractId: 20,
+        contractCode: 'CVC-00900',
+        eventDate: CarbonImmutable::parse('2026-07-18'),
+        saleDate: CarbonImmutable::parse('2026-07-18'),
+        saleValueCents: 48_000_000,
+        cancellationDate: null,
+        settlementInstallmentsTotal: null,
+        unitReferenceValueCents: 50_000_000,
+        unitReferenceValueSource: ResolvedUnitValueSource::Base,
+        unitReferenceEffectiveFrom: CarbonImmutable::parse('2026-01-01'),
+        salesDiscountPolicyId: 30,
+        authorizedDiscountBasisPoints: 1_000,
+        minimumAuthorizedValueCents: 45_000_000,
+        effectiveDiscountBasisPoints: 400,
+        differenceCents: 3_000_000,
+        conformityStatus: SalesPriceConformityStatus::Conform,
+        conformityReason: null,
+        timing: $timing,
+    );
+}
+
+function fingerprintSnapshotWith(SalesBoardSnapshotMovement $movement, ?int $previousCompetenceBaselineId = null): SalesBoardSnapshot
+{
+    return new SalesBoardSnapshot(
+        constructionId: 1,
+        referenceMonth: CarbonImmutable::parse('2026-08-01'),
+        positionDate: CarbonImmutable::parse('2026-08-31'),
+        unitsTotal: 1,
+        stockUnits: 0,
+        stockValueCents: 0,
+        financedUnits: 1,
+        financedValueCents: 48_000_000,
+        settledUnits: 0,
+        settledValueCents: 0,
+        exchangedUnits: 0,
+        exchangedValueCents: 0,
+        undeterminedUnits: 0,
+        isComplete: true,
+        lines: [],
+        movements: [$movement],
+        previousCompetenceBaselineId: $previousCompetenceBaselineId,
+    );
+}
+
+/**
+ * As 21 colunas da linha do movimento, na ordem do algoritmo anterior aos
+ * extemporâneos.
+ *
+ * @return list<mixed>
+ */
+function fingerprintGoldenSaleFields(): array
+{
+    return [
+        SalesBoardMovementType::Sale,
+        20,
+        10,
+        '01',
+        '101',
+        'CVC-00900',
+        CarbonImmutable::parse('2026-07-18'),
+        CarbonImmutable::parse('2026-07-18'),
+        48_000_000,
+        null,
+        null,
+        50_000_000,
+        ResolvedUnitValueSource::Base,
+        CarbonImmutable::parse('2026-01-01'),
+        30,
+        1_000,
+        45_000_000,
+        400,
+        3_000_000,
+        SalesPriceConformityStatus::Conform,
+        null,
+    ];
+}
+
+/**
+ * As versões congeladas antes dos extemporâneos não podem mudar de impressão
+ * digital: a linha do movimento sem timing é a de antes, com as mesmas 21
+ * colunas, na mesma ordem.
+ */
+it('keeps the canonical row of a movement without timing exactly as the algorithm before it', function () {
+    expect(fingerprintSaleMovement()->canonicalRow())->toBe(CanonicalDigest::row(fingerprintGoldenSaleFields()));
+});
+
+it('changes the summary when a movement comes from an earlier competence, but not for the anchor it used', function (string $timing) {
+    $late = fingerprintSaleMovement(SalesBoardMovementTiming::from($timing));
+
+    expect($late->canonicalRow())->toBe(CanonicalDigest::row([...fingerprintGoldenSaleFields(), SalesBoardMovementTiming::from($timing)]))
+        ->and(fingerprintSnapshotWith($late)->fingerprint())->not->toBe(fingerprintSnapshotWith(fingerprintSaleMovement())->fingerprint())
+        // A âncora usada não é posição: fica fora do resumo.
+        ->and(fingerprintSnapshotWith($late, 99)->fingerprint())->toBe(fingerprintSnapshotWith($late)->fingerprint());
+})->with(['extemporaneo', 'revisao_venda', 'competencia_sem_posicao']);
+
 it('refuses to hash a float', function () {
     CanonicalDigest::field(1.5);
 })->throws(InvalidArgumentException::class, 'Fingerprints não aceitam float');
@@ -268,6 +444,8 @@ it('ignores facts dated after the position date', function (Closure $change) {
         ContractInstallment::query()->where('contract_id', $sold->id)->sole()->update(['payment_date' => '2026-08-10', 'paid_value' => '600000.00']);
         ContractInstallment::query()->where('contract_id', $sold->id)->sole()->update(['paid_value' => '610000.00']);
     }],
+    'discount on a payment after the position date' => [fn (Contract $sold) => ContractInstallment::query()->where('contract_id', $sold->id)->sole()
+        ->update(['payment_date' => '2026-08-10', 'paid_value' => '597000.00', 'discount_value' => '3000.00'])],
 ]);
 
 /**
@@ -296,6 +474,8 @@ it('still detects every fact that can change the position at the position date',
     'new installment on the schedule' => [fn (Contract $sold) => DerivationFixture::installment($sold, '002', '2026-12-10', '1000.00')],
     'distrato inside the competência' => [fn (Contract $sold, Contract $older) => $older->update(['cancellation_date' => '2026-07-20', 'status' => ContractStatus::Cancelled])],
     'contract holding the unit marked as exchanged' => [fn (Contract $sold, Contract $older) => $older->update(['status' => ContractStatus::Exchanged])],
+    'discount registered on a paid installment' => [fn (Contract $sold, Contract $older) => ContractInstallment::query()->where('contract_id', $older->id)->sole()
+        ->update(['discount_value' => '1000.00'])],
 ]);
 
 it('tells a payment moved past the position date apart from the one made before it', function () {
@@ -414,12 +594,21 @@ it('canonicalizes a raw installment row exactly as the typed model would', funct
     $cancelled = DerivationFixture::installment($contract, '002', '2026-04-10', '7500.00', null, null, '2026-06-30');
     $paidLater = DerivationFixture::installment($contract, '003', '2026-05-10', '1234567.89', '2026-08-01', '1234567.89');
     $cancelledLater = DerivationFixture::installment($contract, '004', '2026-06-10', '0.10', '2026-07-31', '0.10', '2026-12-01');
+    $discounted = DerivationFixture::installment($contract, '005', '2026-06-10', '1000.00', '2026-06-10', '950.00');
+    $discounted->forceFill(['discount_value' => '50.00'])->save();
+    $discountedLater = DerivationFixture::installment($contract, '006', '2026-06-10', '1000.00', '2026-08-03', '950.00');
+    $discountedLater->forceFill(['discount_value' => '50.00'])->save();
 
+    // As parcelas sem desconto mantêm a forma de sempre -- é o que preserva o
+    // fingerprint das versões já congeladas. O desconto só é anexado quando
+    // existe e o pagamento é até a data.
     $expected = (new CanonicalDigest)
         ->append(CanonicalDigest::row([$paid->id, $contract->id, 416667, 416667, '2026-03-09', null]))
         ->append(CanonicalDigest::row([$cancelled->id, $contract->id, 750000, null, null, '2026-06-30']))
         ->append(CanonicalDigest::row([$paidLater->id, $contract->id, 123456789, null, null, null]))
         ->append(CanonicalDigest::row([$cancelledLater->id, $contract->id, 10, 10, '2026-07-31', null]))
+        ->append(CanonicalDigest::row([$discounted->id, $contract->id, 100000, 95000, '2026-06-10', null, 5000]))
+        ->append(CanonicalDigest::row([$discountedLater->id, $contract->id, 100000, null, null, null]))
         ->digest();
 
     $observation = app(SalesBoardFingerprintService::class)
@@ -427,3 +616,34 @@ it('canonicalizes a raw installment row exactly as the typed model would', funct
 
     expect($observation->installmentDigests[$contract->id])->toBe($expected);
 })->group('parity');
+
+/**
+ * A regra do distrato posterior lê um fato que pode ser posterior à data -- o
+ * distrato --, e por isso não entra no resumo da fonte: um distrato lançado
+ * depois do fechamento não é fonte daquela competência. Mas ele reescreve a
+ * posição (as parcelas canceladas antes dele voltam a contar), e é assim que a
+ * mudança aparece: alteração material, pelo snapshot.
+ */
+it('does not change the source when a distrato after the position arrives, but reports the position change', function () {
+    [$construction, $units] = CycleFixture::readyConstruction(1);
+
+    $contract = DerivationFixture::contract($units[0], '2026-02-10', '600000.00');
+    DerivationFixture::installment($contract, '001', '2026-03-10', '300000.00', '2026-03-09', '300000.00');
+    DerivationFixture::installment($contract, '002', '2026-09-10', '300000.00', cancellationDate: '2026-07-20');
+
+    $cycle = CycleFixture::generate($construction)->cycle;
+    $frozenLine = CycleFixture::currentBaseline($cycle)->lines->firstWhere('construction_unit_id', $units[0]->id);
+
+    // Sem o distrato, o cancelamento de 20/07 quitaria o contrato em julho.
+    expect($frozenLine->classification)->toBe(SalesBoardUnitClassification::Settled);
+
+    $contract->update(['status' => ContractStatus::Cancelled, 'cancellation_date' => '2026-08-05']);
+
+    $assessment = CycleFixture::check($cycle);
+
+    expect($assessment->sourceChanged)->toBeFalse()
+        ->and($assessment->snapshotChanged)->toBeTrue()
+        ->and($assessment->impact)->toBe(SalesBoardStaleImpact::Material)
+        ->and(DerivationFixture::lineFor(DerivationFixture::derive($construction), $units[0])->classification)
+        ->toBe(SalesBoardUnitClassification::Financed);
+});

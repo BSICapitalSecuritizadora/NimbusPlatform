@@ -107,9 +107,9 @@ enum SalesBoardBuilderReviewSection: string
             self::PositionFinanced => 'Unidades vendidas com saldo em aberto no fechamento.',
             self::PositionSettled => 'Unidades cujo contrato estava integralmente pago no fechamento.',
             self::PositionExchanged => 'Unidades dadas em permuta e vigentes no fechamento.',
-            self::MovementSales => 'Vendas realizadas dentro da competência.',
-            self::MovementSettlements => 'Contratos que passaram a estar quitados dentro da competência.',
-            self::MovementCancellations => 'Distratos ocorridos dentro da competência.',
+            self::MovementSales => 'Vendas realizadas dentro da competência. As de competências anteriores lançadas depois (extemporâneas) e as vendas publicadas com valor ou data revistos aparecem primeiro, destacadas.',
+            self::MovementSettlements => 'Contratos que passaram a estar quitados dentro da competência. As quitações que já valiam no fechamento da competência anterior e não estavam nela aparecem primeiro, destacadas.',
+            self::MovementCancellations => 'Distratos ocorridos dentro da competência. Os de competências anteriores lançados depois aparecem primeiro, destacados.',
         };
     }
 }

@@ -69,6 +69,17 @@ enum SalesBoardNonconformityDecision: string
                 self::Pending,
                 self::CorrectionRequired,
             ],
+            /**
+             * A exceção sem limite de política conhecido, restrita à venda de
+             * competência publicada que não tem política aplicável e não pode
+             * mais ganhar uma. Sem ela a competência seguinte travaria para
+             * sempre; com ela, a decisão continua da Gestão, com motivo.
+             */
+            SalesBoardNonconformityOrigin::SystemLateSaleWithoutPolicy => [
+                self::Pending,
+                self::AcceptedException,
+                self::CorrectionRequired,
+            ],
         };
     }
 

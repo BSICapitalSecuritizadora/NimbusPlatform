@@ -1,6 +1,8 @@
 <?php
 
 use App\DTOs\ConstructionProgressData;
+use App\Enums\GuaranteeLegalStatus;
+use App\Enums\GuaranteeType;
 use App\Enums\SalesBoardSource;
 use App\Filament\Pages\Reports;
 use App\Filament\Resources\EmissionMonthlyReportNotes\EmissionMonthlyReportNoteResource;
@@ -13,19 +15,31 @@ use App\Models\EmissionPuEvent;
 use App\Models\Expense;
 use App\Models\ExpenseHistory;
 use App\Models\Fund;
+use App\Models\Guarantee;
+use App\Models\GuaranteeSnapshot;
+use App\Models\IntegralizationHistory;
 use App\Models\Negotiation;
+use App\Models\PuHistory;
 use App\Models\Receivable;
 use App\Models\SalesBoard;
 use App\Models\User;
 use App\Services\ConstructionProgressProvider;
+use App\Services\Guarantees\EmissionGuaranteeCoverageEngine;
 use App\Services\Guarantees\EmissionOperationalDataset;
+use App\Services\Guarantees\GuaranteeSnapshotWriter;
 use App\Services\Reports\EmissionMonthlyReportService;
+use App\Services\SalesBoards\SalesBoardCycleCancellationService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Dompdf\Frame;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 uses(RefreshDatabase::class);
@@ -757,7 +771,7 @@ it('flags an automated competence still waiting for publication in the PDF', fun
     ]);
 
     $published = ManagementReviewFixture::submittedCycleOn($emission, '1');
-    ManagementReviewFixture::submittedCycleOn($emission, '2');
+    $pending = ManagementReviewFixture::submittedCycleOn($emission, '2');
 
     ManagementReviewFixture::approve(ManagementReviewFixture::open($published['cycle']));
 
@@ -765,11 +779,52 @@ it('flags an automated competence still waiting for publication in the PDF', fun
         ->build($emission->fresh(), CarbonImmutable::parse('2026-07-01'));
 
     $html = view('pdf.emission-monthly-report', $data)->render();
+    $pendingName = $pending['construction']->development_name;
 
     expect($data['units']['coverage_summary']['label'])->toBe('1 de 2 empreendimentos com posição')
         ->and($data['units']['coverage_summary']['awaiting_publication'])->toBeTrue()
+        ->and($data['units']['coverage_summary']['awaiting'])->toBe([$pendingName])
+        ->and($data['units']['coverage_summary']['cancelled'])->toBe([])
         ->and($html)->toContain('Posição parcial ou transportada.')
-        ->and($html)->toContain('Competência produzida pelo ciclo mensal automatizado: ainda não publicada para os empreendimentos acima.');
+        ->and($html)->toContain('Competência produzida pelo ciclo mensal automatizado, ainda não publicada para: '.e($pendingName).'.');
+});
+
+it('labels a cancelled automated competence as cancelled and keeps the carried-forward position', function () {
+    $scenario = ManagementReviewFixture::submittedCycle();
+    $cycle = $scenario['cycle'];
+    $construction = $scenario['construction'];
+    $emission = Emission::query()->findOrFail($cycle->emission_id);
+
+    // Última posição conhecida, anterior ao início da automação.
+    SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create([
+        'reference_month' => '2025-12-01',
+        'stock_units' => 3,
+        'financed_units' => 0,
+        'paid_units' => 0,
+        'exchanged_units' => 0,
+    ]);
+
+    app(SalesBoardCycleCancellationService::class)->cancel(
+        $cycle->fresh(),
+        GovernanceFixture::approver(),
+        'Competência refeita fora do ciclo por decisão da diretoria.',
+    );
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission->fresh(), CarbonImmutable::parse($cycle->reference_month->toDateString()));
+
+    $html = view('pdf.emission-monthly-report', $data)->render();
+    $panel = str($html)->after('Unidades / Quadro de Vendas')->before('Posição por empreendimento')->squish()->toString();
+    $name = e($construction->development_name);
+
+    expect($data['units']['coverage_summary']['awaiting_publication'])->toBeFalse()
+        ->and($data['units']['coverage_summary']['awaiting'])->toBe([])
+        ->and($data['units']['coverage_summary']['cancelled'])->toBe([$construction->development_name])
+        ->and($html)->not->toContain('ainda não publicada')
+        ->and($panel)->toContain('Competência cancelada pela Gestão, sem quadro publicado neste mês: '.$name.'.')
+        ->and($panel)->toContain($name.': última posição conhecida, quadro de 12/2025.')
+        // O relatório vai para fora: o motivo interno do cancelamento não sai nele.
+        ->and($html)->not->toContain('refeita fora do ciclo');
 });
 
 it('states a complete coverage without the partial position alert', function () {
@@ -1179,4 +1234,322 @@ it('forbids users without the reports.view permission', function () {
         'emission' => $emission->id,
         'reference_month' => '2026-05',
     ]))->assertForbidden();
+});
+
+/**
+ * Garantia de estoque exigindo 120% do saldo devedor (PU 8.000 × 1.000 cotas)
+ * sobre o Residencial Alfa, que só tem o quadro de julho: agosto sai com a
+ * posição transportada.
+ *
+ * @return array{0: Emission, 1: Construction}
+ */
+function reportStockGuaranteeEmission(): array
+{
+    $emission = Emission::factory()->create(['issued_quantity' => 1000000, 'status' => 'active']);
+    $construction = Construction::factory()->create([
+        'emission_id' => $emission->id,
+        'development_name' => 'Residencial Alfa',
+    ]);
+
+    IntegralizationHistory::query()->create([
+        'emission_id' => $emission->id,
+        'date' => '2026-06-01',
+        'quantity' => 1000,
+        'unit_value' => 1,
+        'financial_value' => 1000,
+        'investor_fund' => 'Fundo A',
+    ]);
+
+    foreach (['2026-07-31', '2026-08-31'] as $date) {
+        PuHistory::query()->create(['emission_id' => $emission->id, 'date' => $date, 'unit_value' => 8000]);
+    }
+
+    SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create([
+        'reference_month' => '2026-07-01',
+        'stock_units' => 20,
+        'stock_value' => 10_000_000,
+    ]);
+
+    Guarantee::factory()
+        ->effectiveBetween()
+        ->ofType(GuaranteeType::Inventory)
+        ->requiringPercentage(1.2)
+        ->create([
+            'emission_id' => $emission->id,
+            'construction_id' => $construction->id,
+            'legal_status' => GuaranteeLegalStatus::Active,
+        ]);
+
+    return [$emission, $construction];
+}
+
+/**
+ * O texto de uma seção do PDF, sem marcação e com os espaços normalizados. Cada
+ * tag vira um espaço, para que rótulo e valor de células vizinhas não colem.
+ */
+function reportPdfSectionText(string $html, string $title, string $nextTitle): string
+{
+    $section = str($html)
+        ->after('<div class="section-title">'.$title.'</div>')
+        ->before('<div class="section-title">'.$nextTitle.'</div>')
+        ->toString();
+
+    return str((string) preg_replace('/<[^>]+>/', ' ', $section))->squish()->toString();
+}
+
+it('renders the consolidated guarantees with the outdated and confirmed partial marks', function () {
+    config(['app.timezone' => 'UTC']);
+    date_default_timezone_set('UTC');
+    $this->travelTo(Carbon::parse('2026-09-15 10:00:00', 'UTC'));
+    [$emission, $construction] = reportStockGuaranteeEmission();
+
+    app(GuaranteeSnapshotWriter::class)->close(
+        $emission,
+        '2026-08-01',
+        makeAdminUser(),
+        app(EmissionGuaranteeCoverageEngine::class)->buildPosition($emission, '2026-08-01')->salesBoardGapsFingerprint(),
+    );
+
+    // 13:00 UTC = 10:00 em Brasília: o quadro de agosto chega depois do fechamento.
+    $this->travelTo(Carbon::parse('2026-09-16 13:00:00', 'UTC'));
+    SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create([
+        'reference_month' => '2026-08-01',
+        'stock_units' => 12,
+        'stock_value' => 6_000_000,
+    ]);
+
+    $data = app(EmissionMonthlyReportService::class)->build($emission->fresh(), CarbonImmutable::parse('2026-08-01'));
+    $section = reportPdfSectionText(view('pdf.emission-monthly-report', $data)->render(), 'Garantias e Cobertura', 'Contas Vinculadas');
+
+    expect($data['guarantees']['consolidated'])->toBeTrue()
+        ->and($data['guarantees']['outdated'])->toBeTrue()
+        ->and($data['guarantees']['partial_coverage_confirmed'])->toBeTrue()
+        ->and($section)->not->toContain('Apuração preliminar.')
+        ->and($section)->toContain('Competência desatualizada. Quadro de Vendas registrado em 16/09/2026 10:00, depois da apuração. O número fechado continua valendo até a competência ser reaberta e apurada de novo.')
+        ->and($section)->toContain('Posição parcial do Quadro de Vendas nas garantias de estoque. Residencial Alfa: última posição conhecida (07/2026). Fechamento confirmado com a posição parcial.')
+        // O número é o fechado, não o que o quadro novo daria.
+        ->and($section)->toContain('Valor elegível R$ 10.000.000,00')
+        ->and($section)->toContain('Competência de garantias fechada em 15/09/2026 07:00 (horário de Brasília).');
+
+    // O consolidado traz a seção em cada competência: julho, ainda aberto, como preliminar.
+    $consolidated = app(EmissionMonthlyReportService::class)->buildConsolidated(
+        $emission->fresh(),
+        CarbonImmutable::parse('2026-07-01'),
+        CarbonImmutable::parse('2026-08-01'),
+    );
+    $consolidatedHtml = view('pdf.emission-monthly-report-consolidated', $consolidated)->render();
+
+    expect(substr_count($consolidatedHtml, '<div class="section-title">Garantias e Cobertura</div>'))->toBe(2)
+        ->and(substr_count($consolidatedHtml, 'Apuração preliminar.'))->toBe(1)
+        ->and(substr_count($consolidatedHtml, 'Competência desatualizada.'))->toBe(1);
+});
+
+it('labels the guarantees of a competence that is not closed as preliminary', function () {
+    $this->travelTo(Carbon::parse('2026-09-15 10:00:00', 'UTC'));
+    [$emission] = reportStockGuaranteeEmission();
+
+    // Atualizada e não fechada continua sendo apuração preliminar.
+    app(GuaranteeSnapshotWriter::class)->persist($emission, '2026-08-01', makeAdminUser());
+
+    $data = app(EmissionMonthlyReportService::class)->build($emission->fresh(), CarbonImmutable::parse('2026-08-01'));
+    $section = reportPdfSectionText(view('pdf.emission-monthly-report', $data)->render(), 'Garantias e Cobertura', 'Contas Vinculadas');
+
+    expect($data['guarantees']['consolidated'])->toBeFalse()
+        ->and($data['guarantees']['items'][0]['value_status'])->toBe('partial')
+        ->and($section)->toContain('Apuração preliminar. A competência de garantias ainda não foi fechada: os valores abaixo são a apuração com as fontes vigentes na geração deste relatório e podem mudar até o fechamento.')
+        ->and($section)->toContain('Quadro de vendas (parcial)')
+        ->and($section)->toContain('Apuração do mês com as fontes vigentes na geração deste relatório.')
+        ->and($section)->not->toContain('Competência de garantias fechada em');
+});
+
+/**
+ * Os textos do PDF como o dompdf os desenhou: cada quebra de linha divide o nó
+ * de texto, e uma palavra partida aparece em dois pedaços. Lidos durante o
+ * desenho, porque o dompdf descarta a árvore de cada página depois dele.
+ *
+ * @param  array<string, mixed>  $data
+ * @return list<string>
+ */
+function reportPdfRenderedTexts(array $data): array
+{
+    $texts = [];
+
+    $dompdf = Pdf::loadView('pdf.emission-monthly-report', $data)->getDomPDF();
+    $dompdf->setCallbacks([[
+        'event' => 'begin_frame',
+        'f' => function (Frame $frame) use (&$texts): void {
+            if ($frame->get_node()->nodeName === '#text' && trim((string) $frame->get_node()->nodeValue) !== '') {
+                $texts[] = trim((string) $frame->get_node()->nodeValue);
+            }
+        },
+    ]]);
+    $dompdf->render();
+
+    return $texts;
+}
+
+/**
+ * A célula do nome da garantia usava `word-break: break-word`, que o dompdf lê
+ * como `overflow-wrap: anywhere`: a largura mínima da coluna caía para um
+ * caractere, a tabela a estreitava e "Recebíveis" saía partido em duas linhas.
+ */
+it('keeps the guarantee names whole in the guarantees table of the PDF', function () {
+    $this->travelTo(Carbon::parse('2026-09-15 10:00:00', 'UTC'));
+    [$emission] = reportStockGuaranteeEmission();
+
+    Guarantee::factory()
+        ->effectiveBetween()
+        ->ofType(GuaranteeType::Receivables)
+        ->create([
+            'emission_id' => $emission->id,
+            'name' => 'Recebíveis',
+            'legal_status' => GuaranteeLegalStatus::Active,
+        ]);
+
+    $data = app(EmissionMonthlyReportService::class)->build($emission->fresh(), CarbonImmutable::parse('2026-08-01'));
+
+    $pieces = collect(reportPdfRenderedTexts($data))
+        ->filter(fn (string $text): bool => str_starts_with($text, 'Recebív'))
+        ->unique()
+        ->values()
+        ->all();
+
+    expect(collect($data['guarantees']['items'])->pluck('name')->all())->toContain('Recebíveis')
+        ->and($pieces)->toBe(['Recebíveis']);
+});
+
+it('states the absence of guarantees instead of zeros', function () {
+    $emission = Emission::factory()->create(['status' => 'active']);
+
+    $data = app(EmissionMonthlyReportService::class)->build($emission, CarbonImmutable::parse('2026-08-01'));
+    $section = reportPdfSectionText(view('pdf.emission-monthly-report', $data)->render(), 'Garantias e Cobertura', 'Contas Vinculadas');
+
+    expect($data['guarantees']['has_data'])->toBeFalse()
+        ->and($section)->toBe('Nenhuma garantia cadastrada para a emissão.');
+});
+
+it('keeps the totals of a closed competence whose guarantee positions were not recorded', function () {
+    $emission = Emission::factory()->create(['status' => 'active']);
+
+    // Fechamento com os totais, mas sem a posição de cada garantia gravada.
+    GuaranteeSnapshot::factory()->create([
+        'emission_id' => $emission->id,
+        'reference_month' => '2026-08-01',
+        'total_eligible_value' => 12_000_000,
+        'active_guarantees_count' => 1,
+        'closed_at' => '2026-09-15 10:00:00',
+    ]);
+
+    $data = app(EmissionMonthlyReportService::class)->build($emission, CarbonImmutable::parse('2026-08-01'));
+    $section = reportPdfSectionText(view('pdf.emission-monthly-report', $data)->render(), 'Garantias e Cobertura', 'Contas Vinculadas');
+
+    expect($data['guarantees']['has_data'])->toBeTrue()
+        ->and($data['guarantees']['items'])->toBe([])
+        ->and($section)->toContain('Valor elegível R$ 12.000.000,00')
+        ->and($section)->not->toContain('Nenhuma garantia cadastrada para a emissão.');
+});
+
+it('flags a closed competence recorded without sales board coverage', function () {
+    $this->travelTo(Carbon::parse('2026-09-15 10:00:00', 'UTC'));
+    [$emission, $construction] = reportStockGuaranteeEmission();
+    SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create(['reference_month' => '2026-08-01']);
+
+    app(GuaranteeSnapshotWriter::class)->close($emission, '2026-08-01', makeAdminUser());
+
+    // Fechamento gravado antes de a origem do quadro passar a ser registrada.
+    DB::table('guarantee_snapshots')->where('emission_id', $emission->id)->update(['sales_board_coverage' => null]);
+
+    $data = app(EmissionMonthlyReportService::class)->build($emission->fresh(), CarbonImmutable::parse('2026-08-01'));
+    $section = reportPdfSectionText(view('pdf.emission-monthly-report', $data)->render(), 'Garantias e Cobertura', 'Contas Vinculadas');
+
+    expect($data['guarantees']['sales_board_coverage_unknown'])->toBeTrue()
+        ->and($section)->toContain('Origem do Quadro de Vendas não registrada. A competência foi fechada antes de o sistema registrar de qual quadro saiu o estoque das garantias: não é possível indicar se a posição era a do próprio mês.');
+
+    // Sem garantia de estoque, a origem do quadro não tinha o que registrar.
+    $withoutStock = Emission::factory()->create(['status' => 'active']);
+    $quotas = Guarantee::factory()
+        ->effectiveBetween()
+        ->ofType(GuaranteeType::QuotaFiduciaryAlienation)
+        ->create(['emission_id' => $withoutStock->id, 'legal_status' => GuaranteeLegalStatus::Active]);
+    app(GuaranteeSnapshotWriter::class)->recordManualValue($quotas, '08/2026', 1_000_000, makeAdminUser());
+    app(GuaranteeSnapshotWriter::class)->close($withoutStock, '2026-08-01', makeAdminUser());
+
+    $plain = app(EmissionMonthlyReportService::class)->build($withoutStock->fresh(), CarbonImmutable::parse('2026-08-01'));
+
+    expect($plain['guarantees']['consolidated'])->toBeTrue()
+        ->and($plain['guarantees']['sales_board_coverage_unknown'])->toBeFalse()
+        ->and(view('pdf.emission-monthly-report', $plain)->render())->not->toContain('Origem do Quadro de Vendas não registrada.');
+});
+
+it('prints the generation instant in the business timezone', function () {
+    config(['app.timezone' => 'UTC']);
+    date_default_timezone_set('UTC');
+
+    // 01:30 UTC de 01/10 = 22:30 de 30/09 em Brasília.
+    $this->travelTo(Carbon::parse('2026-10-01 01:30:00', 'UTC'));
+    $emission = Emission::factory()->create(['status' => 'active']);
+
+    $data = app(EmissionMonthlyReportService::class)->build($emission, CarbonImmutable::parse('2026-08-01'));
+    $consolidated = app(EmissionMonthlyReportService::class)->buildConsolidated(
+        $emission,
+        CarbonImmutable::parse('2026-07-01'),
+        CarbonImmutable::parse('2026-08-01'),
+    );
+
+    expect($data['meta']['generated_at'])->toBe('30/09/2026 22:30')
+        ->and($consolidated['meta']['generated_at'])->toBe('30/09/2026 22:30')
+        ->and(view('pdf.emission-monthly-report', $data)->render())->toContain('Documento gerado automaticamente pela plataforma em 30/09/2026 22:30.');
+});
+
+it('defaults the PDF route to the previous business month', function () {
+    config(['app.timezone' => 'UTC']);
+    date_default_timezone_set('UTC');
+    $this->actingAs(makeAdminUser());
+
+    // 22:30 de 30/09 em Brasília, já outubro no relógio da aplicação.
+    $this->travelTo(Carbon::parse('2026-10-01 01:30:00', 'UTC'));
+    $emission = Emission::factory()->create(['status' => 'active']);
+
+    $response = $this->get(route('admin.emissions.monthly-report.pdf', ['emission' => $emission->id]));
+
+    $response->assertOk();
+    expect($response->headers->get('content-disposition'))->toContain('relatorio-mensal-emissao-'.$emission->id.'-2026-08.pdf');
+
+    // A competência com o dia continua aceita.
+    $withDay = $this->get(route('admin.emissions.monthly-report.pdf', ['emission' => $emission->id, 'reference_month' => '2026-05-15']));
+
+    $withDay->assertOk();
+    expect($withDay->headers->get('content-disposition'))->toContain('relatorio-mensal-emissao-'.$emission->id.'-2026-05.pdf');
+});
+
+it('refuses an unreadable competence in the PDF route with 422', function (string $parameter, string $value) {
+    $this->actingAs(makeAdminUser());
+    $emission = Emission::factory()->create(['status' => 'active']);
+
+    $this->get(route('admin.emissions.monthly-report.pdf', [
+        'emission' => $emission->id,
+        'reference_month' => '2026-05',
+        $parameter => $value,
+    ]))->assertStatus(422);
+})->with([
+    'texto livre' => ['reference_month', 'next month'],
+    'mês inexistente' => ['reference_month', '2026-13'],
+    'dia inexistente' => ['reference_month', '2026-02-31'],
+    'formato da tela' => ['reference_month', '07/2026'],
+    'competência final ilegível' => ['reference_month_end', 'xx'],
+]);
+
+it('opens the reports page on the previous business month, also after 21h of the last day', function () {
+    config(['app.timezone' => 'UTC']);
+    date_default_timezone_set('UTC');
+    $this->actingAs(makeAdminUser());
+
+    $this->travelTo(Carbon::parse('2026-09-15 12:00:00', 'UTC'));
+
+    expect(Livewire::test(Reports::class)->get('referenceMonth'))->toBe('2026-08');
+
+    // 01:30 UTC de 01/10 = 22:30 de 30/09 em Brasília: setembro ainda não acabou.
+    $this->travelTo(Carbon::parse('2026-10-01 01:30:00', 'UTC'));
+
+    expect(Livewire::test(Reports::class)->get('referenceMonth'))->toBe('2026-08');
 });

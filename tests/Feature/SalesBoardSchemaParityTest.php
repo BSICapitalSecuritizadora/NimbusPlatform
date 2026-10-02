@@ -1,10 +1,16 @@
 <?php
 
 use App\DTOs\SalesBoards\SalesBoardComparableSnapshot;
+use App\Enums\AccessPermission;
+use App\Enums\SalesBoardGenerationOutcome;
+use App\Enums\SalesBoardIssueCode;
 use App\Enums\SalesBoardSource;
+use App\Models\SalesBoardCycleBaseline;
 use App\Models\SalesBoardCycleMovement;
 use App\Models\User;
+use App\Support\SalesBoards\SalesBoardFrozenWarnings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Schema;
 use Tests\Support\SalesBoards\BuilderReviewFixture;
 use Tests\Support\SalesBoards\CycleFixture;
@@ -77,14 +83,37 @@ it('freezes block and unit identifiers as wide as the construction unit accepts'
         ->and(CycleFixture::check($result->cycle)->isStale())->toBeFalse();
 });
 
-it('freezes a premium far beyond the INT range of basis points', function () {
+/**
+ * A referência simbólica de R$ 1,00 contra uma venda de R$ 600 mil já não
+ * congela: está a uma ordem de grandeza da tabela, e a apuração recusa a fonte.
+ * O ágio de -5.999.990.000 basis points que este arquivo provava caber no banco
+ * deixou de ser alcançável por uma versão congelada.
+ */
+it('refuses to freeze a sale ten times the unit reference', function () {
     [$construction] = CycleFixture::readyConstruction(1);
 
-    // Referência simbólica de R$ 1,00 contra uma venda de R$ 600 mil: o ágio
-    // é de -5.999.990.000 basis points, fora dos ±2,1 bilhões de um INT.
     $unit = DerivationFixture::unit($construction, '900', '1.00');
     $sale = DerivationFixture::contract($unit, '2026-07-10', '600000.00');
     DerivationFixture::installment($sale, '001', '2026-12-10', '600000.00');
+
+    $result = CycleFixture::generate($construction);
+
+    expect($result->outcome)->toBe(SalesBoardGenerationOutcome::Blocked)
+        ->and($result->readiness->blockingIssueCounts())->toHaveKey(SalesBoardIssueCode::SaleValueOutOfScale->value)
+        ->and($result->cycle)->toBeNull();
+});
+
+/**
+ * O ágio mais largo que ainda está dentro da escala -- um centavo abaixo de dez
+ * vezes a tabela -- congela com o basis point exato, e o que volta do banco
+ * reconstrói o mesmo fingerprint.
+ */
+it('freezes the widest premium still inside the scale', function () {
+    [$construction] = CycleFixture::readyConstruction(1);
+
+    $unit = DerivationFixture::unit($construction, '900', '500000.00');
+    $sale = DerivationFixture::contract($unit, '2026-07-10', '4999999.99');
+    DerivationFixture::installment($sale, '001', '2026-12-10', '4999999.99');
 
     $result = CycleFixture::generate($construction);
 
@@ -96,9 +125,34 @@ it('freezes a premium far beyond the INT range of basis points', function () {
         ->where('contract_id', $sale->id)
         ->sole();
 
-    expect($movement->effective_discount_basis_points)->toBe(-5_999_990_000)
+    expect($movement->effective_discount_basis_points)->toBe(-90_000)
         ->and(SalesBoardComparableSnapshot::fromBaseline($baseline->fresh())->snapshot->fingerprint())
         ->toBe($baseline->snapshot_fingerprint);
+});
+
+/**
+ * Os avisos congelados com a versão voltam do banco como foram gravados. O
+ * MySQL reordena as chaves de um objeto JSON, então a comparação ordena as
+ * chaves antes: o que importa é o conteúdo, e a ordem da lista, que é a da
+ * versão, se mantém.
+ */
+it('round-trips the frozen warnings of a version through the database', function () {
+    [$construction] = CycleFixture::readyConstruction(1);
+
+    $unit = DerivationFixture::unit($construction, schemaParityIdentifier('Torre ', 255), '500000.00');
+    $atypical = DerivationFixture::contract($unit, '2026-07-10', '1200000.00');
+    DerivationFixture::installment($atypical, '001', '2026-12-10', '1200000.00');
+
+    $result = CycleFixture::generate($construction);
+    $written = SalesBoardFrozenWarnings::fromPosition($result->position);
+
+    $stored = SalesBoardCycleBaseline::query()->findOrFail($result->baseline->id)->frozenWarnings();
+
+    expect($result->wasGenerated())->toBeTrue()
+        ->and($written)->not->toBe([])
+        ->and(array_column($stored, 'code'))->toBe(array_column($written, 'code'))
+        ->and(Arr::sortRecursive($stored))->toBe(Arr::sortRecursive($written))
+        ->and(mb_strlen((string) $stored[0]['unit_label']))->toBe(mb_strlen((string) $written[0]['unit_label']));
 });
 
 it('freezes a reviewer whose name and e-mail use the full width of the users table', function () {
@@ -109,6 +163,7 @@ it('freezes a reviewer whose name and e-mail use the full width of the users tab
     $name = schemaParityIdentifier('Responsável Comercial da Construtora ', 255);
     $email = str_repeat('a', 255 - strlen($domain)).$domain;
     $actor = User::factory()->create(['name' => $name, 'email' => $email]);
+    $actor->givePermissionTo(AccessPermission::SalesBoardsUpdate->value);
 
     BuilderReviewFixture::confirmAll($review);
     $submitted = BuilderReviewFixture::submit($review, $actor)->fresh();
@@ -162,6 +217,16 @@ it('still indexes the foreign keys whose separate index was dropped', function (
         'sales_board_rollout_recipients',
         'emission_id',
         'sb_rollout_recipients_emission_role_user_unique',
+    ],
+    'ciclo das publicações' => [
+        'sales_board_publications',
+        'sales_board_cycle_id',
+        'sales_board_publications_cycle_sequence_unique',
+    ],
+    'ciclo das retificações' => [
+        'sales_board_cycle_rectifications',
+        'sales_board_cycle_id',
+        'sb_rectifications_cycle_sequence_unique',
     ],
 ]);
 

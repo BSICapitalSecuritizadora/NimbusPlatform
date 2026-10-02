@@ -6,6 +6,7 @@ namespace App\Services\SalesBoards;
 
 use App\Enums\SalesBoardAutomationClosureReason;
 use App\Enums\SalesBoardRolloutEventType;
+use App\Enums\SalesBoardRolloutSupersessionReason;
 use App\Enums\SalesBoardSource;
 use App\Exceptions\SalesBoardRolloutException;
 use App\Models\Emission;
@@ -45,6 +46,16 @@ class SalesBoardRolloutActivationService
      * inicial, um empreendimento pode ter entrado na Emissão, um destinatário
      * pode ter sido desativado, um contrato pode ter sido corrigido. Aprovar não
      * é prometer que o mundo ficou parado.
+     *
+     * Quando a recusa é por escopo ou por fonte, a homologação é marcada como
+     * substituída **e a transação é commitada antes da recusa**: a exceção é
+     * lançada depois do commit, para que a substituição sobreviva a ela. É isso
+     * que torna a situação durável -- quem volta à tela amanhã encontra a
+     * homologação substituída, e não uma aprovação que parece valer. Por isso
+     * ninguém deve envolver `activate()` numa transação externa: um rollback
+     * dela apagaria a substituição junto com o resto. Quadro manual e
+     * responsável ausente continuam sendo recusas simples, sem substituição:
+     * os dois se corrigem sem homologar de novo.
      */
     public function activate(
         Emission $emission,
@@ -64,7 +75,7 @@ class SalesBoardRolloutActivationService
             throw SalesBoardRolloutException::reasonRequired();
         }
 
-        return DB::transaction(function () use ($emission, $homologation, $actor, $reason): Emission {
+        $outcome = DB::transaction(function () use ($emission, $homologation, $actor, $reason): Emission|SalesBoardRolloutSupersessionReason {
             $locked = Emission::query()
                 ->whereKey($emission->getKey())
                 ->lockForUpdate()
@@ -78,6 +89,13 @@ class SalesBoardRolloutActivationService
             if ($locked->usesAutomatedSalesBoard()) {
                 throw SalesBoardRolloutException::emissionAlreadyAutomated();
             }
+
+            /**
+             * A Emissão pode ter voltado à elaboração -- ou sido liquidada --
+             * depois da aprovação: ativar uma automação que a geração bloqueia
+             * todo dia, ou que não tem competência a gerar, não é ativar.
+             */
+            $this->homologations->assertEmissionOperating($locked);
 
             if ((int) $homologation->emission_id !== (int) $locked->getKey()) {
                 throw SalesBoardRolloutException::homologationDoesNotBelongToEmission();
@@ -97,7 +115,13 @@ class SalesBoardRolloutActivationService
                 throw SalesBoardRolloutException::homologationAlreadyUsed();
             }
 
-            $this->assertStillApplicable($homologation, $locked);
+            $outdated = $this->outdatedReasonOrRefusal($homologation, $locked);
+
+            if ($outdated !== null) {
+                $this->homologations->markSuperseded($homologation, $outdated);
+
+                return $outdated;
+            }
 
             $start = $homologation->startsAt();
 
@@ -123,6 +147,12 @@ class SalesBoardRolloutActivationService
 
             return $locked->refresh();
         });
+
+        return match (true) {
+            $outcome === SalesBoardRolloutSupersessionReason::ScopeChanged => throw SalesBoardRolloutException::scopeChanged(),
+            $outcome instanceof SalesBoardRolloutSupersessionReason => throw SalesBoardRolloutException::homologationStale(),
+            default => $outcome,
+        };
     }
 
     /**
@@ -199,15 +229,22 @@ class SalesBoardRolloutActivationService
 
     /**
      * A homologação aprovada ainda descreve o mundo?
+     *
+     * Devolve o motivo da substituição quando o escopo ou a fonte mudaram, e
+     * lança a recusa simples quando o problema é do momento -- quadro manual
+     * ou responsável ausente. A ordem é a de sempre: escopo, quadro manual,
+     * responsáveis e, por último, a observação da fonte.
      */
-    private function assertStillApplicable(SalesBoardRolloutHomologation $homologation, Emission $emission): void
-    {
+    private function outdatedReasonOrRefusal(
+        SalesBoardRolloutHomologation $homologation,
+        Emission $emission,
+    ): ?SalesBoardRolloutSupersessionReason {
         $currentScope = $this->assessment->scopeHash(
             $this->assessment->constructionsOf($emission)->keys()->all()
         );
 
         if ($currentScope !== (string) $homologation->construction_scope_hash) {
-            throw SalesBoardRolloutException::scopeChanged();
+            return SalesBoardRolloutSupersessionReason::ScopeChanged;
         }
 
         /**
@@ -253,9 +290,9 @@ class SalesBoardRolloutActivationService
          */
         $observed = $this->assessment->observe($homologation);
 
-        if ($observed->assessmentHash !== (string) $homologation->assessment_hash) {
-            throw SalesBoardRolloutException::homologationStale();
-        }
+        return $observed->assessmentHash !== (string) $homologation->assessment_hash
+            ? SalesBoardRolloutSupersessionReason::SourceChanged
+            : null;
     }
 
     private function recordEvent(

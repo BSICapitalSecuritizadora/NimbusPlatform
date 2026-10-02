@@ -2,15 +2,20 @@
 
 namespace App\Actions\ConstructionUnits;
 
+use App\Enums\ImportRowWarningCode;
+use App\Exceptions\UnreadableSpreadsheetException;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
+use App\Models\ConstructionUnitRetirement;
 use App\Models\Emission;
 use App\Services\SalesBoards\RegisteredCompetenceIndex;
 use App\Support\Dates\SpreadsheetDate;
+use App\Support\Imports\SpreadsheetAmount;
+use App\Support\Imports\SpreadsheetPlausibility;
+use App\Support\Imports\SpreadsheetRows;
 use App\Support\Money\IntegerMoney;
 use DateTimeInterface;
 use Illuminate\Support\Str;
-use Spatie\SimpleExcel\SimpleExcelReader;
 use Stringable;
 
 /**
@@ -38,12 +43,27 @@ class AnalyzeConstructionUnitSpreadsheet
      */
     private const CHUNK_SIZE = 500;
 
+    /**
+     * Baixas abertas por empreendimento, indexadas por `bloco|unidade` em
+     * minúsculas -- a chave do arquivo --, carregadas uma vez por empreendimento
+     * na primeira linha já cadastrada que o alcança.
+     *
+     * @var array<int, array<string, string>>
+     */
+    private array $openRetirementsByConstruction = [];
+
     public function handle(string $path): ConstructionUnitSpreadsheetAnalysis
     {
-        $reader = SimpleExcelReader::create($path);
-        $rows = $reader->getRows();
+        try {
+            return $this->analyze($path);
+        } catch (UnreadableSpreadsheetException $exception) {
+            return new ConstructionUnitSpreadsheetAnalysis(fileErrors: [$exception->getMessage()]);
+        }
+    }
 
-        $firstRow = $rows->first();
+    private function analyze(string $path): ConstructionUnitSpreadsheetAnalysis
+    {
+        $firstRow = SpreadsheetRows::first($path);
 
         if ($firstRow === null) {
             return ConstructionUnitSpreadsheetAnalysis::emptyFile();
@@ -60,17 +80,85 @@ class AnalyzeConstructionUnitSpreadsheet
         $seenUnits = [];
         $lineNumber = 1;
 
-        SimpleExcelReader::create($path)
-            ->getRows()
-            ->chunk(self::CHUNK_SIZE)
-            ->each(function ($chunk) use (&$analyzedRows, &$seenUnits, &$lineNumber, $resolvedHeaders): void {
-                foreach ($chunk as $row) {
-                    $lineNumber++;
-                    $analyzedRows[] = $this->analyzeRow($row, $resolvedHeaders, $lineNumber, $seenUnits);
+        foreach (SpreadsheetRows::chunks($path, self::CHUNK_SIZE) as $chunk) {
+            foreach ($chunk as $row) {
+                $lineNumber++;
+                $analyzedRows[] = $this->analyzeRow($row, $resolvedHeaders, $lineNumber, $seenUnits);
+            }
+        }
+
+        return new ConstructionUnitSpreadsheetAnalysis(
+            $this->flagRegisteredCompetences($this->checkBaseValuesAgainstPeers($analyzedRows)),
+        );
+    }
+
+    /**
+     * Valor base de cada unidade nova contra a mediana do empreendimento: as
+     * unidades já cadastradas com valor e as linhas válidas do próprio arquivo.
+     *
+     * Só depois de ler o arquivo inteiro, porque a mediana depende de todas as
+     * linhas. Com menos de {@see SpreadsheetPlausibility::UNIT_BASE_MIN_PEERS}
+     * valores não há mediana, e nada é comparado. Muito além dela é erro da linha
+     * -- um zero a mais ou a leitura do milhar --; além, mas plausível, é aviso.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    private function checkBaseValuesAgainstPeers(array $rows): array
+    {
+        $valuesByConstruction = [];
+
+        foreach ($rows as $row) {
+            if (($row['status'] === self::STATUS_VALID) && ($row['base_value'] !== null)) {
+                $valuesByConstruction[(int) $row['construction_id']][] = (int) $row['base_value'];
+            }
+        }
+
+        if ($valuesByConstruction === []) {
+            return $rows;
+        }
+
+        ConstructionUnit::query()
+            ->toBase()
+            ->whereIn('construction_id', array_keys($valuesByConstruction))
+            ->whereNotNull('base_value')
+            ->get(['construction_id', 'base_value'])
+            ->each(function (object $unit) use (&$valuesByConstruction): void {
+                $cents = IntegerMoney::cents($unit->base_value);
+
+                if ($cents !== null) {
+                    $valuesByConstruction[(int) $unit->construction_id][] = $cents;
                 }
             });
 
-        return new ConstructionUnitSpreadsheetAnalysis($this->flagRegisteredCompetences($analyzedRows));
+        $medians = array_map(
+            static fn (array $values): ?int => SpreadsheetPlausibility::median($values),
+            $valuesByConstruction,
+        );
+
+        foreach ($rows as $index => $row) {
+            if (($row['status'] !== self::STATUS_VALID) || ($row['base_value'] === null)) {
+                continue;
+            }
+
+            $verdict = SpreadsheetPlausibility::unitBaseValue((int) $row['base_value'], $medians[(int) $row['construction_id']] ?? null);
+
+            if ($verdict->isImpossible()) {
+                $rows[$index] = [...$row, 'warnings' => [], 'status' => self::STATUS_ERROR, 'message' => $verdict->error];
+
+                continue;
+            }
+
+            $rows[$index]['warnings'] = [
+                ...$row['warnings'],
+                ...array_map(
+                    static fn (array $warning): array => ['code' => $warning['code']->value, 'message' => $warning['message']],
+                    $verdict->warnings,
+                ),
+            ];
+        }
+
+        return $rows;
     }
 
     /**
@@ -118,6 +206,7 @@ class AnalyzeConstructionUnitSpreadsheet
             'base_value' => null,
             'base_value_reference_date' => null,
             'registered_competences' => [],
+            'warnings' => [],
         ];
 
         if (blank($emissionName) && blank($constructionName) && blank($block) && blank($unit)
@@ -154,6 +243,10 @@ class AnalyzeConstructionUnitSpreadsheet
         $base['base_value'] = $baseValueResult['base_value'];
         $base['base_value_reference_date'] = $baseValueResult['base_value_reference_date'];
 
+        if ($baseValueResult['warning'] !== null) {
+            $base['warnings'] = [['code' => ImportRowWarningCode::AmbiguousAmountText->value, 'message' => $baseValueResult['warning']]];
+        }
+
         $key = $construction->id.'|'.Str::lower($block).'|'.Str::lower($unit);
 
         if (isset($seenUnits[$key])) {
@@ -167,14 +260,48 @@ class AnalyzeConstructionUnitSpreadsheet
         $seenUnits[$key] = $lineNumber;
 
         if (ConstructionUnit::isDuplicate($construction->id, $block, $unit)) {
+            $retiredOn = $this->openRetirementsOf((int) $construction->id)[Str::lower($block).'|'.Str::lower($unit)] ?? null;
+
+            /**
+             * A unidade baixada continua bloqueando a linha: a importação só
+             * cria unidades, e reativar é decisão da Gestão com data e motivo.
+             * A mensagem diz onde fica a saída.
+             */
             return [
                 ...$base,
                 'status' => self::STATUS_ALREADY_REGISTERED,
-                'message' => "A unidade {$unit} do bloco {$block} já está cadastrada para este empreendimento.",
+                'message' => $retiredOn === null
+                    ? "A unidade {$unit} do bloco {$block} já está cadastrada para este empreendimento."
+                    : "A unidade {$unit} do bloco {$block} já está cadastrada neste empreendimento e está baixada desde {$retiredOn}. "
+                        .'Para voltar a contá-la, reative-a na aba "Baixas" da unidade; a importação não reativa unidades.',
             ];
         }
 
         return [...$base, 'status' => self::STATUS_VALID, 'message' => null];
+    }
+
+    /**
+     * As baixas abertas das unidades do empreendimento, pela chave do arquivo,
+     * com a data da baixa já formatada. Uma consulta por empreendimento.
+     *
+     * @return array<string, string>
+     */
+    private function openRetirementsOf(int $constructionId): array
+    {
+        if (! array_key_exists($constructionId, $this->openRetirementsByConstruction)) {
+            $this->openRetirementsByConstruction[$constructionId] = ConstructionUnitRetirement::query()
+                ->toBase()
+                ->join('construction_units', 'construction_units.id', '=', 'construction_unit_retirements.construction_unit_id')
+                ->where('construction_units.construction_id', $constructionId)
+                ->whereNull('construction_unit_retirements.reactivated_on')
+                ->get(['construction_units.block', 'construction_units.unit', 'construction_unit_retirements.retired_on'])
+                ->mapWithKeys(fn (object $row): array => [
+                    Str::lower((string) $row->block).'|'.Str::lower((string) $row->unit) => SpreadsheetDate::display(substr((string) $row->retired_on, 0, 10)),
+                ])
+                ->all();
+        }
+
+        return $this->openRetirementsByConstruction[$constructionId];
     }
 
     /**
@@ -184,12 +311,12 @@ class AnalyzeConstructionUnitSpreadsheet
      * in time, and a date with no value places nothing. Returning the message
      * instead of the pair is how the caller turns it into a row error.
      *
-     * @return array{base_value: int|null, base_value_reference_date: string|null}|string
+     * @return array{base_value: int|null, base_value_reference_date: string|null, warning: string|null}|string
      */
     private function resolveBaseValue(?string $baseValue, mixed $rawBaseValue, ?string $referenceDate): array|string
     {
         if (blank($baseValue) && blank($referenceDate)) {
-            return ['base_value' => null, 'base_value_reference_date' => null];
+            return ['base_value' => null, 'base_value_reference_date' => null, 'warning' => null];
         }
 
         if (blank($baseValue)) {
@@ -200,7 +327,8 @@ class AnalyzeConstructionUnitSpreadsheet
             return 'O valor base foi informado sem a data de referência. Informe os dois campos ou nenhum.';
         }
 
-        $cents = $this->parseAmount($rawBaseValue);
+        $amount = SpreadsheetAmount::read($rawBaseValue);
+        $cents = $amount->cents;
 
         if ($cents === null) {
             return 'Valor base inválido.';
@@ -225,7 +353,7 @@ class AnalyzeConstructionUnitSpreadsheet
             return 'Data de referência do valor base inválida. '.SpreadsheetDate::FORMAT_HINT;
         }
 
-        return ['base_value' => $cents, 'base_value_reference_date' => $date];
+        return ['base_value' => $cents, 'base_value_reference_date' => $date, 'warning' => $amount->warning('Valor base')];
     }
 
     /**
@@ -236,20 +364,6 @@ class AnalyzeConstructionUnitSpreadsheet
     private function parseDate(string $value): ?string
     {
         return SpreadsheetDate::parse($value);
-    }
-
-    /**
-     * Centavos do valor. A célula numérica é lida pelo número que carrega:
-     * convertida antes em texto, `153.919` virava "153.919" e o parser de
-     * texto, com razão, lê ponto seguido de três dígitos como milhar.
-     */
-    private function parseAmount(mixed $value): ?int
-    {
-        if (! is_int($value) && ! is_float($value) && ! is_string($value)) {
-            return null;
-        }
-
-        return IntegerMoney::cents($value);
     }
 
     /**

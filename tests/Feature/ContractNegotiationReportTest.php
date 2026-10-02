@@ -3,6 +3,7 @@
 use App\Enums\ContractStatus;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
+use App\Models\ConstructionUnitExchange;
 use App\Models\Contract;
 use App\Models\Emission;
 use App\Services\Reports\EmissionMonthlyReportService;
@@ -293,4 +294,39 @@ it('includes boundary dates inclusive', function () {
     $data = app(EmissionMonthlyReportService::class)->build($emission, CarbonImmutable::parse('2026-07-01'));
 
     expect($data['negotiations']['sales_count'])->toBe(2);
+});
+
+/**
+ * O contrato de permuta não é venda nem distrato, também na série histórica lida
+ * dos contratos -- a mesma regra do Quadro de Vendas.
+ */
+it('leaves exchange contracts out of the live history of negotiations', function () {
+    $emission = Emission::factory()->withContractNegotiations()->create();
+    $construction = Construction::factory()->for($emission)->create();
+    [$saleUnit, $exchangeUnit, $endedUnit, $otherUnit] = ConstructionUnit::factory()->forConstruction($construction)->count(4)->create()->all();
+
+    Contract::factory()->forUnit($saleUnit)->create(['code' => 'VENDA-001', 'sale_date' => '2026-06-10']);
+    Contract::factory()->forUnit($otherUnit)->create(['code' => 'VENDA-002', 'sale_date' => '2026-07-10']);
+
+    $exchange = Contract::factory()->forUnit($exchangeUnit)->create([
+        'code' => 'PERMUTA-001',
+        'sale_date' => '2026-06-05',
+        'status' => ContractStatus::Exchanged,
+    ]);
+    ConstructionUnitExchange::factory()->forUnit($exchangeUnit)->forContract($exchange)->effectiveFrom('2026-06-05')->create();
+
+    $ended = Contract::factory()->forUnit($endedUnit)->create([
+        'code' => 'PERMUTA-002',
+        'sale_date' => '2025-12-05',
+        'cancellation_date' => '2026-07-20',
+        'status' => ContractStatus::Cancelled,
+    ]);
+    ConstructionUnitExchange::factory()->forUnit($endedUnit)->forContract($ended)->effectiveFrom('2025-12-05')->endedOn('2026-07-20')->create();
+
+    $history = collect(app(EmissionMonthlyReportService::class)->build($emission, CarbonImmutable::parse('2026-07-01'))['negotiations_history']['rows'])
+        ->keyBy('competencia');
+
+    expect($history['06/2026']['sales'])->toBe('1')
+        ->and($history['07/2026']['sales'])->toBe('1')
+        ->and($history['07/2026']['cancellations'])->toBe('0');
 });

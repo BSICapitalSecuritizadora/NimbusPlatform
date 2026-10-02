@@ -93,6 +93,17 @@ class ConstructionUnitSpreadsheetAnalysis
             ->count();
     }
 
+    /**
+     * Valid rows with a warning beside them. Warnings never block.
+     */
+    public function warningCount(): int
+    {
+        return $this->collect()
+            ->filter(fn (array $row): bool => ($row['status'] === AnalyzeConstructionUnitSpreadsheet::STATUS_VALID)
+                && (($row['warnings'] ?? []) !== []))
+            ->count();
+    }
+
     public function canImport(): bool
     {
         return ($this->fileErrors === [])
@@ -111,7 +122,13 @@ class ConstructionUnitSpreadsheetAnalysis
     }
 
     /**
-     * Preview rows, with the blocking ones first so problems are seen at once.
+     * Preview rows: the blocking ones first so problems are seen at once, then
+     * the valid rows that carry a warning or reach a registered competence, then
+     * the rest -- each group in the order of the file.
+     *
+     * The comparators take both rows. Given one argument, a comparator in
+     * `sortBy([...])` is handed the pair anyway and answers for the first row
+     * alone, which is no order at all.
      *
      * @return Collection<int, array<string, mixed>>
      */
@@ -120,10 +137,22 @@ class ConstructionUnitSpreadsheetAnalysis
         return $this->collect()
             ->reject(fn (array $row): bool => $row['status'] === AnalyzeConstructionUnitSpreadsheet::STATUS_EMPTY)
             ->sortBy([
-                fn (array $row): int => $row['status'] === AnalyzeConstructionUnitSpreadsheet::STATUS_VALID ? 1 : 0,
-                fn (array $row): int => $row['line'],
+                fn (array $a, array $b): int => self::previewWeight($a) <=> self::previewWeight($b),
+                fn (array $a, array $b): int => $a['line'] <=> $b['line'],
             ])
             ->values();
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private static function previewWeight(array $row): int
+    {
+        if ($row['status'] !== AnalyzeConstructionUnitSpreadsheet::STATUS_VALID) {
+            return 0;
+        }
+
+        return ((($row['warnings'] ?? []) !== []) || (($row['registered_competences'] ?? []) !== [])) ? 1 : 3;
     }
 
     private function countByStatus(string $status): int

@@ -18,7 +18,7 @@
             <div class="flex flex-col gap-1 xl:flex-row xl:items-center xl:justify-between">
                 <h3 class="text-base font-semibold text-[#fbfaf8]">Cobertura por Competência</h3>
                 <p class="text-xs text-slate-400">
-                    Snapshots gravados por competência. Fechados são imutáveis; "Desatualizada" indica Quadro de Vendas registrado depois da apuração.
+                    Snapshots gravados por competência. Só a competência fechada é o número do mês; "Em aberto" e "Reaberta" ainda podem mudar. "Desatualizada" indica Quadro de Vendas registrado ou saldo devedor alterado depois da apuração.
                 </p>
             </div>
         </div>
@@ -60,15 +60,33 @@
                             <tr class="align-top text-slate-200 hover:bg-[#081a22]/50 transition-colors">
                                 <td class="px-4 py-3">
                                     <div class="font-semibold text-[#fbfaf8]">{{ $snapshot->formatted_reference_month }}</div>
+                                    @php
+                                        $reopening = $snapshot->reopened_at === null
+                                            ? null
+                                            : \App\Support\BusinessTime::at($snapshot->reopened_at)->format('d/m/Y')
+                                                .($snapshot->reopenedBy ? ' por '.$snapshot->reopenedBy->name : '');
+                                    @endphp
                                     @if ($snapshot->isClosed())
                                         <div class="mt-0.5 text-[10px] text-slate-400 flex items-center gap-1">
                                             <x-heroicon-m-lock-closed class="h-3 w-3 text-slate-400" />
                                             Fechada
                                         </div>
+                                        @if ($reopening !== null)
+                                            <div class="mt-0.5 text-[10px] text-slate-400" title="{{ $snapshot->reopen_reason }}">
+                                                Última reabertura em {{ $reopening }}
+                                            </div>
+                                        @endif
+                                    @elseif ($snapshot->wasReopenedAndNotClosed())
+                                        <div class="mt-0.5 text-[10px] font-medium text-amber-300/90 flex items-center gap-1" title="{{ $snapshot->reopen_reason }}">
+                                            <x-heroicon-m-lock-open class="h-3 w-3" />
+                                            Reaberta em {{ $reopening }}
+                                        </div>
+                                    @else
+                                        <div class="mt-0.5 text-[10px] text-slate-400">Em aberto</div>
                                     @endif
-                                    @if ($snapshot->isSalesBoardOutdated())
+                                    @if ($snapshot->isOutdated())
                                         <div class="mt-1 inline-flex items-center gap-1 rounded bg-amber-950/40 px-1.5 py-0.5 text-[10px] font-medium text-amber-300/90 border border-amber-500/30"
-                                             title="Quadro de Vendas registrado em {{ \App\Support\BusinessTime::at($snapshot->sales_board_outdated_at)->format('d/m/Y H:i') }}, depois da apuração.">
+                                             title="{{ implode(' ', $snapshot->outdatedReasons()) }}">
                                             <x-heroicon-m-exclamation-triangle class="h-3 w-3" />
                                             Desatualizada
                                         </div>

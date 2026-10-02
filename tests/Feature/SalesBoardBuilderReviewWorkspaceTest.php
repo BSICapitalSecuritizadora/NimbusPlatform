@@ -166,7 +166,7 @@ it('reports the review progress in plain language', function () {
         ->and(workspaceFor($review)->canSubmit())->toBeFalse();
 
     app(SalesBoardBuilderReviewEditor::class)
-        ->confirmSection(BuilderReviewFixture::section($review, SectionEnum::PositionStock));
+        ->confirmSection(BuilderReviewFixture::section($review, SectionEnum::PositionStock), BuilderReviewFixture::reviewer());
 
     expect(workspaceFor($review)->progressLabel())->toBe('1 de 7 seções revisadas')
         ->and(workspaceFor($review)->progressPercent())->toBe(14)

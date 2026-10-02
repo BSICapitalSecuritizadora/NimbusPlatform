@@ -17,6 +17,7 @@ use App\Models\SalesBoardRolloutHomologation;
 use App\Models\SalesBoardRolloutHomologationConstruction;
 use App\Support\SalesBoards\CanonicalDigest;
 use App\Support\SalesBoards\RolloutPosition;
+use App\Support\SalesBoards\SalesBoardFrozenWarnings;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -51,9 +52,21 @@ class SalesBoardRolloutAssessmentService
      * Idempotente: reavaliar duas vezes sobre a mesma fonte produz o mesmo
      * `assessment_hash` e preserva os aceites. O que invalida um aceite é a
      * fonte ter mudado -- e é o fingerprint que responde isso, não o relógio.
+     *
+     * As duas atestações de impacto seguem a mesma regra do aceite de
+     * diferença: valem para o retrato que foi visto. A Gestão atesta que revisou
+     * os deltas apresentados; se a reavaliação produziu outro retrato -- outro
+     * `assessment_hash` --, esses deltas não são mais os da tela, e as
+     * atestações voltam a exigir revisão na mesma gravação do hash. Retrato
+     * igual preserva tudo: o hash não tem relógio, e reavaliar sem mudança não
+     * pode obrigar ninguém a atestar de novo. Dentro da aprovação, que também
+     * reavalia, um hash diferente recusa o ato e a transação desfaz o zeramento
+     * -- ele só persiste quando vem de uma reavaliação de fato.
      */
     public function assess(SalesBoardRolloutHomologation $homologation): SalesBoardRolloutHomologation
     {
+        $previousHash = $homologation->assessment_hash;
+
         $observation = $this->observe($homologation);
 
         foreach ($observation->constructionRows as $constructionId => $attributes) {
@@ -75,10 +88,18 @@ class SalesBoardRolloutAssessmentService
             ->each
             ->delete();
 
+        $pictureChanged = ($previousHash !== null) && ((string) $previousHash !== $observation->assessmentHash);
+
         $homologation->forceFill([
             'construction_scope_hash' => $observation->constructionScopeHash,
             'assessment_hash' => $observation->assessmentHash,
             'assessed_at' => CarbonImmutable::now(),
+            ...($pictureChanged ? [
+                'guarantees_reviewed_at' => null,
+                'guarantees_reviewed_by_user_id' => null,
+                'monthly_report_reviewed_at' => null,
+                'monthly_report_reviewed_by_user_id' => null,
+            ] : []),
         ])->save();
 
         return $homologation->refresh();
@@ -194,6 +215,13 @@ class SalesBoardRolloutAssessmentService
                 : collect($readiness->blockingIssueCounts())
                     ->map(fn (int $count, string $code): string => sprintf('%s (%d)', $code, $count))
                     ->implode('; '),
+            /**
+             * Os avisos acompanham o retrato, mas não entram no resumo da
+             * avaliação nem no aceite: aviso não decide nada, e um status de
+             * contrato alterado hoje não pode invalidar a revisão da Gestão
+             * sem que a fonte material tenha mudado. Reavaliar regrava a lista.
+             */
+            'warnings' => SalesBoardFrozenWarnings::fromPosition($position),
             'source_fingerprint' => $observation?->fingerprint(),
             'snapshot_fingerprint' => $this->snapshotFingerprint($derived),
             'comparison_status' => $status,
@@ -368,7 +396,8 @@ class SalesBoardRolloutAssessmentService
      * as duas posições e o quadro legado que sustentou a comparação. O delta não
      * entra à parte porque é função das duas posições. Fica de fora o que é
      * governança -- aceite, motivo, quem revisou e quando --: mudar um comentário
-     * não muda o mundo que foi revisado.
+     * não muda o mundo que foi revisado. Os avisos da apuração também ficam de
+     * fora: dependem do status de hoje e não decidem nada.
      *
      * @param  iterable<array<string, mixed>>  $rows
      */

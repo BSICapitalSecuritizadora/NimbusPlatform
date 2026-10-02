@@ -4,9 +4,11 @@ namespace App\Models;
 
 use App\DTOs\Guarantees\GuaranteeSalesBoardCoverage;
 use App\Enums\GuaranteeCoverageStatus;
+use App\Enums\GuaranteeValueSource;
+use App\Services\Guarantees\GuaranteeSnapshotWriter;
 use App\Support\BusinessTime;
+use App\Support\SalesBoards\CompetenceCalendar;
 use Carbon\Carbon;
-use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Database\Factories\GuaranteeSnapshotFactory;
 use DateTimeInterface;
@@ -39,12 +41,17 @@ class GuaranteeSnapshot extends Model
         'metadata',
         'sales_board_coverage',
         'sales_board_outdated_at',
+        'outstanding_balance_outdated_at',
+        'outstanding_balance_outdated_reason',
         'computed_at',
         'closed_at',
         'closed_by',
         'partial_coverage_confirmation',
         'partial_coverage_confirmed_at',
         'partial_coverage_confirmed_by',
+        'reopened_at',
+        'reopened_by',
+        'reopen_reason',
         'updated_by',
     ];
 
@@ -69,10 +76,12 @@ class GuaranteeSnapshot extends Model
             'metadata' => 'array',
             'sales_board_coverage' => 'array',
             'sales_board_outdated_at' => 'datetime',
+            'outstanding_balance_outdated_at' => 'datetime',
             'computed_at' => 'datetime',
             'closed_at' => 'datetime',
             'partial_coverage_confirmation' => 'array',
             'partial_coverage_confirmed_at' => 'datetime',
+            'reopened_at' => 'datetime',
         ];
     }
 
@@ -93,6 +102,115 @@ class GuaranteeSnapshot extends Model
     public function isSalesBoardOutdated(): bool
     {
         return $this->sales_board_outdated_at !== null;
+    }
+
+    /**
+     * O saldo devedor que a competência apurou deixou de ser o que a fonte de PU
+     * responde hoje: uma curva homologada ou invalidada, um Histórico de PU
+     * importado ou a verificação diária mudou o número em pelo menos um
+     * centavo depois da apuração.
+     */
+    public function isOutstandingBalanceOutdated(): bool
+    {
+        return $this->outstanding_balance_outdated_at !== null;
+    }
+
+    /**
+     * Desatualizada por qualquer uma das duas fontes que mudam o número gravado.
+     */
+    public function isOutdated(): bool
+    {
+        return $this->isSalesBoardOutdated() || $this->isOutstandingBalanceOutdated();
+    }
+
+    /**
+     * Reaberta e ainda não fechada de novo.
+     *
+     * `reopened_at` guarda a última reabertura e continua preenchido depois de
+     * um novo fechamento; o que distingue o estado "reaberta" é o fechamento
+     * ainda não ter acontecido.
+     */
+    public function wasReopenedAndNotClosed(): bool
+    {
+        return $this->reopened_at !== null && ! $this->isClosed();
+    }
+
+    /**
+     * Por que o número gravado deixou de valer, uma frase por fonte, com o
+     * instante no fuso de negócio.
+     *
+     * O texto do Quadro de Vendas é o mesmo que a aba já mostrava no selo
+     * "Desatualizada": quem lia aquele aviso continua lendo o mesmo aviso.
+     *
+     * @return list<string>
+     */
+    public function outdatedReasons(): array
+    {
+        $reasons = [];
+
+        if ($this->isSalesBoardOutdated()) {
+            $reasons[] = sprintf(
+                'Quadro de Vendas registrado em %s, depois da apuração.',
+                BusinessTime::at($this->sales_board_outdated_at)->format('d/m/Y H:i'),
+            );
+        }
+
+        if ($this->isOutstandingBalanceOutdated()) {
+            $reasons[] = sprintf(
+                'Saldo devedor alterado em %s (%s), depois da apuração.',
+                BusinessTime::at($this->outstanding_balance_outdated_at)->format('d/m/Y H:i'),
+                filled($this->outstanding_balance_outdated_reason)
+                    ? $this->outstanding_balance_outdated_reason
+                    : 'fonte de PU alterada',
+            );
+        }
+
+        return $reasons;
+    }
+
+    /**
+     * O rótulo curto das fontes que desatualizaram a competência, para listas
+     * de escolha: "desatualizada pelo Quadro de Vendas", "pelo saldo devedor"
+     * ou pelos dois. Nulo quando ela está em dia.
+     */
+    public function outdatedSourcesLabel(): ?string
+    {
+        $sources = array_values(array_filter([
+            $this->isSalesBoardOutdated() ? 'pelo Quadro de Vendas' : null,
+            $this->isOutstandingBalanceOutdated() ? 'pelo saldo devedor' : null,
+        ]));
+
+        if ($sources === []) {
+            return null;
+        }
+
+        return 'desatualizada '.implode(' e ', $sources);
+    }
+
+    /**
+     * A competência dependia do Quadro de Vendas sem que a origem tenha sido
+     * gravada.
+     *
+     * `sales_board_coverage` nulo tem dois sentidos. Em snapshot gravado antes
+     * de a origem passar a ser registrada, é desconhecimento: as garantias de
+     * estoque usaram algum quadro, mas não se sabe qual. Em qualquer snapshot
+     * posterior, é a competência sem garantia de estoque contribuindo, e aí não
+     * há quadro nenhum de que depender. O que separa os dois casos é a posição
+     * gravada de cada garantia na mesma competência: basta uma garantia de
+     * estoque que compunha a cobertura para a dependência existir.
+     */
+    public function hasUnrecordedSalesBoardCoverage(): bool
+    {
+        if ($this->sales_board_coverage !== null) {
+            return false;
+        }
+
+        return GuaranteeMonthlyPosition::query()
+            ->where('emission_id', $this->emission_id)
+            ->whereDate('reference_month', $this->reference_month->toDateString())
+            ->where('value_source', GuaranteeValueSource::SalesBoard->value)
+            ->get(['metadata'])
+            ->contains(fn (GuaranteeMonthlyPosition $position): bool => ($position->metadata['contributes_to_coverage'] ?? true) !== false);
     }
 
     /**
@@ -129,10 +247,13 @@ class GuaranteeSnapshot extends Model
     /**
      * Competência corrente do calendário de negócio (America/Sao_Paulo), no
      * formato gravado (`Y-m-01`).
+     *
+     * A regra do mês de negócio mora no {@see CompetenceCalendar}, a mesma que o
+     * Quadro de Vendas, o relatório mensal e a automação usam.
      */
     public static function currentBusinessMonth(?DateTimeInterface $instant = null): string
     {
-        return BusinessTime::at($instant ?? CarbonImmutable::now())->startOfMonth()->toDateString();
+        return CompetenceCalendar::currentMonth($instant)->toDateString();
     }
 
     /**
@@ -142,7 +263,7 @@ class GuaranteeSnapshot extends Model
      */
     public static function previousBusinessMonth(?DateTimeInterface $instant = null): string
     {
-        return BusinessTime::at($instant ?? CarbonImmutable::now())->startOfMonth()->subMonthNoOverflow()->toDateString();
+        return CompetenceCalendar::lastClosedMonth($instant)->toDateString();
     }
 
     public function closedBy(): BelongsTo
@@ -153,6 +274,14 @@ class GuaranteeSnapshot extends Model
     public function partialCoverageConfirmedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'partial_coverage_confirmed_by');
+    }
+
+    /**
+     * Quem fez a última reabertura.
+     */
+    public function reopenedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reopened_by');
     }
 
     public function updatedBy(): BelongsTo
@@ -166,9 +295,17 @@ class GuaranteeSnapshot extends Model
             ->whereColumn('guarantee_monthly_positions.reference_month', 'guarantee_snapshots.reference_month');
     }
 
+    /**
+     * A trilha da competência é evidência de um número que já saiu em
+     * relatório: fechamento, confirmação de posição parcial, reabertura e as
+     * marcas de desatualização. Ela vai para `guarantee_competences`, a mesma
+     * categoria protegida do {@see GuaranteeSnapshotWriter}; no balde `default`
+     * seria descartada em um ano.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('guarantee_competences')
             ->logFillable()
             ->logOnlyDirty()
             ->dontLogEmptyChanges();

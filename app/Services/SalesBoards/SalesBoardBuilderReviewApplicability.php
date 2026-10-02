@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Services\SalesBoards;
 
 use App\Enums\SalesBoardBuilderReviewStatus;
+use App\Enums\SalesBoardManagementReviewStatus;
 use App\Enums\SalesBoardStaleImpact;
 use App\Models\SalesBoardBuilderReview;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleBaseline;
+use App\Models\SalesBoardManagementReview;
 
 /**
  * Se uma validação ainda fala do quadro vigente, e se o quadro vigente pode ser
@@ -84,6 +86,14 @@ class SalesBoardBuilderReviewApplicability
     /**
      * As validações que deixaram de falar do quadro vigente.
      *
+     * As rodadas encerradas ({@see self::closedRoundIds()}) ficam de fora: uma
+     * rodada devolvida pela Gestão já teve a sua resposta, e a construtora
+     * recebeu a rodada seguinte -- marcá-la substituída reescreveria o que
+     * aconteceu naquela devolução. A rodada aprovada sustenta a publicação
+     * vigente, e a retificação não a reescreve. É a mesma regra do
+     * cancelamento da competência, que já preservava essas rodadas como
+     * "Enviada".
+     *
      * @return list<SalesBoardBuilderReview>
      */
     public function reviewsOutdatedBy(SalesBoardCycle $cycle, SalesBoardCycleBaseline $newBaseline): array
@@ -92,8 +102,36 @@ class SalesBoardBuilderReviewApplicability
             ->where('sales_board_cycle_id', $cycle->getKey())
             ->whereIn('status', [SalesBoardBuilderReviewStatus::Draft, SalesBoardBuilderReviewStatus::Submitted])
             ->where('snapshot_fingerprint', '!=', $newBaseline->snapshot_fingerprint)
+            ->whereKeyNot($this->closedRoundIds($cycle))
             ->orderBy('attempt')
             ->get()
+            ->all();
+    }
+
+    /**
+     * As validações cuja rodada já foi encerrada por uma análise da Gestão.
+     *
+     * As devolvidas -- a análise que as analisou terminou em "Devolvida", e a
+     * rodada seguinte já foi aberta -- e as aprovadas -- a análise aprovou e
+     * publicou a posição com base nelas. A validação que sustenta uma
+     * publicação não é substituída quando a retificação abre uma versão nova
+     * ou recalcula dentro dela: isso reescreveria o histórico da aprovação.
+     * Uma regra só para quem precisa saber quais rodadas não se reescrevem mais
+     * -- o recálculo material, o cancelamento da competência e a desistência da
+     * retificação.
+     *
+     * @return list<int>
+     */
+    public function closedRoundIds(SalesBoardCycle $cycle): array
+    {
+        return SalesBoardManagementReview::query()
+            ->where('sales_board_cycle_id', $cycle->getKey())
+            ->whereIn('status', [SalesBoardManagementReviewStatus::Returned, SalesBoardManagementReviewStatus::Approved])
+            ->whereNotNull('sales_board_builder_review_id')
+            ->pluck('sales_board_builder_review_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values()
             ->all();
     }
 }

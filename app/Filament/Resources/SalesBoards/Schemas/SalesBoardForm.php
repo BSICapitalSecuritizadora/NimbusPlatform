@@ -8,12 +8,14 @@ use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\SalesBoard;
 use App\Models\SalesBoardHistory;
+use App\Services\SalesBoards\SalesBoardWriteGuard;
 use Closure;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
@@ -81,7 +83,7 @@ class SalesBoardForm
                             'required' => 'Selecione o empreendimento.',
                         ]),
 
-                    static::referenceMonthField(),
+                    static::guardedReferenceMonthField(),
                 ])
                 ->columns(['sm' => 1, 'md' => 3, 'lg' => 3]),
 
@@ -159,6 +161,40 @@ class SalesBoardForm
             : null;
 
         return is_array($previousPosition) ? ($previousPosition[$field] ?? null) : null;
+    }
+
+    /**
+     * A competência do registro manual, já perguntando ao guard de escrita.
+     *
+     * Competência automatizada e quadro publicado são recusados pelo
+     * {@see SalesBoardWriteGuard} na gravação -- que continua sendo a
+     * autoridade. Aqui a tela pergunta antes, com a mesma regra
+     * ({@see SalesBoardWriteGuard::manualWriteRefusal()}): a recusa aparece no
+     * campo assim que Emissão, obra e competência estão preenchidas, e não
+     * depois de o formulário inteiro ser digitado.
+     *
+     * Só no resource do Quadro: o passo do assistente de criação da Emissão usa
+     * o campo compartilhado, e lá a Emissão ainda nem existe.
+     */
+    protected static function guardedReferenceMonthField(): TextInput
+    {
+        return static::referenceMonthField()
+            ->rule(static fn (Get $get): Closure => static function (string $attribute, mixed $value, Closure $fail) use ($get): void {
+                $refusal = app(SalesBoardWriteGuard::class)
+                    ->manualWriteRefusal($get('emission_id'), $get('construction_id'), $value);
+
+                if ($refusal !== null) {
+                    $fail($refusal);
+                }
+            })
+            ->belowContent(static function (Get $get): array {
+                $refusal = app(SalesBoardWriteGuard::class)
+                    ->manualWriteRefusal($get('emission_id'), $get('construction_id'), $get('reference_month'));
+
+                return $refusal === null
+                    ? []
+                    : [Text::make($refusal)->color('danger')->extraAttributes(['class' => 'bsi-sales-board-manual-write-refusal text-xs'])];
+            });
     }
 
     /**

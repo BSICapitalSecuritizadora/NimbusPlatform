@@ -96,20 +96,33 @@ it('parses any flag value fail closed', function (mixed $raw, bool $expected) {
     'string on' => ['On', true],
 ]);
 
-it('reads every reminder threshold as a non negative integer or null', function (?string $raw, ?int $expected) {
+/**
+ * Omissão e valor inválido são coisas diferentes: sem a variável -- ou vazia,
+ * ou o literal `null` -- vale o padrão documentado; `off` desliga de propósito;
+ * um valor ilegível desliga também, porque bloqueio e "pronta para a
+ * construtora" têm padrão zero e um erro de digitação nunca pode virar "avisar
+ * agora". O dataset é de strings: `default` compara com o padrão de cada chave.
+ */
+it('reads every reminder threshold from the environment, falling back to the documented default', function (?string $raw, string|int|null $expected) {
     $reminders = salesBoardConfigUnder(array_fill_keys(array_values(salesBoardReminderEnvKeys()), $raw))['automation']['reminders'];
 
     expect(array_keys($reminders))->toBe(array_keys(salesBoardReminderEnvKeys()));
 
-    foreach ($reminders as $value) {
-        $expected === null
-            ? expect($value)->toBeNull()
-            : expect($value)->toBeInt()->toBe($expected);
+    foreach ($reminders as $key => $value) {
+        match (true) {
+            $expected === 'default' => expect($value)->toBeInt()->toBe(SalesBoardAutomationConfig::DEFAULT_REMINDERS[$key]),
+            $expected === null => expect($value)->toBeNull(),
+            default => expect($value)->toBeInt()->toBe($expected),
+        };
     }
 })->with([
-    'unset' => [null, null],
-    'empty' => ['', null],
-    'blank' => ['   ', null],
+    'unset' => [null, 'default'],
+    'empty' => ['', 'default'],
+    'blank' => ['   ', 'default'],
+    'null literal' => ['null', 'default'],
+    'off' => ['off', null],
+    'padded upper off' => [' OFF ', null],
+    'false' => ['false', null],
     'zero' => ['0', 0],
     'one' => ['1', 1],
     'ten' => ['10', 10],
@@ -118,8 +131,46 @@ it('reads every reminder threshold as a non negative integer or null', function 
     'text' => ['abc', null],
     'decimal' => ['1.5', null],
     'exponent' => ['1e3', null],
-    'null literal' => ['null', null],
+    'true' => ['true', null],
 ]);
+
+it('ships the documented default reminder policy when nothing is set', function () {
+    $reminders = salesBoardConfigUnder(array_fill_keys(array_values(salesBoardReminderEnvKeys()), null))['automation']['reminders'];
+
+    expect(array_values($reminders))->toBe([0, 3, 0, 5, 10, 3, 7]);
+});
+
+it('parses any reminder setting fail closed, with the default only for an omission', function (mixed $raw, ?int $expected) {
+    expect(SalesBoardAutomationConfig::reminderSetting($raw, 4))->toBe($expected);
+})->with([
+    'null' => [null, 4],
+    'bool false' => [false, null],
+    'bool true' => [true, null],
+    'int zero' => [0, 0],
+    'int seven' => [7, 7],
+    'negative int' => [-2, null],
+    'float' => [1.5, null],
+    'array' => [[3], null],
+    'empty string' => ['', 4],
+    'off with spaces' => ['  Off ', null],
+]);
+
+/**
+ * O CI copia o `.env.example` para `.env`: uma variável de lembrete ativa ali
+ * mudaria a política da suíte inteira, e o teste dos padrões deixaria de provar
+ * os padrões. Os dois modelos documentam cada variável comentada, com o valor
+ * padrão.
+ */
+it('documents every reminder default commented out in the environment templates', function (string $template) {
+    $lines = file(base_path($template), FILE_IGNORE_NEW_LINES);
+
+    foreach (salesBoardReminderEnvKeys() as $key => $variable) {
+        $default = SalesBoardAutomationConfig::DEFAULT_REMINDERS[$key];
+
+        expect($lines)->toContain('# '.$variable.'='.$default)
+            ->and(collect($lines)->contains(fn (string $line): bool => str_starts_with(trim($line), $variable.'=')))->toBeFalse();
+    }
+})->with(['.env.example', '.env.example.production']);
 
 it('parses any threshold value fail closed', function (mixed $raw, ?int $expected) {
     expect(SalesBoardAutomationConfig::threshold($raw))->toBe($expected);
@@ -152,6 +203,8 @@ it('keeps the parsed values through the config cache serialization', function (s
         'SALES_BOARD_AUTOMATION_ENABLED' => $raw,
         'SALES_BOARD_AUTOMATION_BLOCKED_REMINDER_DAYS' => 'abc',
         'SALES_BOARD_AUTOMATION_BUILDER_REMINDER_DAYS' => '3',
+        'SALES_BOARD_AUTOMATION_MANAGEMENT_REMINDER_DAYS' => null,
+        'SALES_BOARD_AUTOMATION_READY_REMINDER_DAYS' => 'off',
     ]);
 
     /**
@@ -166,7 +219,10 @@ it('keeps the parsed values through the config cache serialization', function (s
 
     expect($cached['automation']['enabled'])->toBeBool()->toBeFalse()
         ->and($cached['automation']['reminders']['blocked_after_days'])->toBeNull()
-        ->and($cached['automation']['reminders']['builder_review_after_days'])->toBeInt()->toBe(3);
+        ->and($cached['automation']['reminders']['builder_review_after_days'])->toBeInt()->toBe(3)
+        // Ausente: o padrão chega ao cache como inteiro, não como "ler depois".
+        ->and($cached['automation']['reminders']['management_review_after_days'])->toBeInt()->toBe(3)
+        ->and($cached['automation']['reminders']['ready_for_builder_after_days'])->toBeNull();
 
     unlink($path);
 })->with(['off', 'no', 'false', 'banana']);

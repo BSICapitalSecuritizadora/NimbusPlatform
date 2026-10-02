@@ -88,6 +88,15 @@ class ContractResource extends Resource
     }
 
     /**
+     * Importar concilia a carteira -- cadastra e atualiza --, e por isso é
+     * respondido pela ability `import` da policy, que exige criar e editar.
+     */
+    public static function canImport(): bool
+    {
+        return static::getAuthorizationResponse('import')->allowed();
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function getGloballySearchableAttributes(): array

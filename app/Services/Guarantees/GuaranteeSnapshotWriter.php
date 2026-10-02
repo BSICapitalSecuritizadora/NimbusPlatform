@@ -24,18 +24,25 @@ use Illuminate\Validation\ValidationException;
  * ou fecha a competência — o histórico não pode mudar sozinho.
  *
  * Competência fechada é imutável: reabri-la exige permissão própria, motivo e
- * fica auditada, porque o número já saiu em relatório.
+ * fica auditada, porque o número já saiu em relatório. A última reabertura
+ * (quando, quem e por quê) fica também na própria linha.
+ *
+ * Toda a trilha daqui vai para `guarantee_competences`, categoria protegida em
+ * `config/audit.php`: valor manual, fechamento com a confirmação de posição
+ * parcial, reabertura com o motivo e as marcas de desatualização gravadas pelos
+ * invalidadores ({@see self::EVENT_COMPETENCE_OUTDATED}).
  *
  * A apuração que é gravada acontece dentro da transação, depois de travar a
- * emissão e o snapshot existente — nesta ordem. O invalidador
- * ({@see GuaranteeSnapshotSalesBoardInvalidator}) trava a mesma emissão em
- * modo compartilhado antes de procurar snapshots, e a própria FK do quadro na
- * emissão já faz isso na criação. Por isso a gravação e um Quadro de Vendas
- * publicado ao mesmo tempo se serializam, mesmo quando ainda não existe
- * snapshot da competência para travar: ou a apuração espera o quadro e o
- * inclui, ou o quadro espera a gravação e marca a competência como
- * desatualizada. O que não acontece mais é a gravação apagar a marca, ou nem
- * chegar a recebê-la, com um número calculado antes do quadro.
+ * emissão e o snapshot existente — nesta ordem. Os invalidadores
+ * ({@see GuaranteeSnapshotSalesBoardInvalidator} e
+ * {@see GuaranteeSnapshotOutstandingBalanceInvalidator}) travam a mesma emissão
+ * em modo compartilhado antes de procurar snapshots, e a própria FK do quadro
+ * na emissão já faz isso na criação. Por isso a gravação e um Quadro de Vendas
+ * publicado — ou uma troca da fonte de PU — ao mesmo tempo se serializam,
+ * mesmo quando ainda não existe snapshot da competência para travar: ou a
+ * apuração espera a mudança e a inclui, ou a mudança espera a gravação e marca
+ * a competência como desatualizada. O que não acontece mais é a gravação
+ * apagar a marca, ou nem chegar a recebê-la, com um número calculado antes.
  */
 class GuaranteeSnapshotWriter
 {
@@ -46,6 +53,13 @@ class GuaranteeSnapshotWriter
     public const EVENT_COMPETENCE_CLOSED = 'guarantee_competence_closed';
 
     public const EVENT_COMPETENCE_REOPENED = 'guarantee_competence_reopened';
+
+    /**
+     * Uma fonte mudou o número de uma competência já apurada: um Quadro de
+     * Vendas registrado depois ou o saldo devedor recalculado. Gravado pelos dois
+     * invalidadores, com a fonte em `properties.source`.
+     */
+    public const EVENT_COMPETENCE_OUTDATED = 'guarantee_competence_outdated';
 
     public function __construct(
         private readonly EmissionGuaranteeCoverageEngine $engine,
@@ -78,6 +92,9 @@ class GuaranteeSnapshotWriter
      * Só garantias sem fonte automática aceitam digitação: deixar alguém
      * sobrescrever um saldo lido da conta vinculada criaria um número sem
      * origem rastreável.
+     *
+     * A competência passa pela mesma régua de atualizar e fechar: mês que
+     * ainda não começou não recebe valor, e fechado só depois de reaberto.
      */
     public function recordManualValue(
         Guarantee $guarantee,
@@ -85,13 +102,7 @@ class GuaranteeSnapshotWriter
         ?float $value,
         User $actor,
     ): GuaranteeMonthlyPosition {
-        $referenceMonth = GuaranteeSnapshot::normalizeReferenceMonth($referenceMonth);
-
-        if ($referenceMonth === null) {
-            throw ValidationException::withMessages([
-                'reference_month' => 'Informe a competência no formato MM/AAAA.',
-            ]);
-        }
+        $referenceMonth = $this->resolveCompetence($referenceMonth);
 
         $emission = $guarantee->emission;
 
@@ -199,8 +210,12 @@ class GuaranteeSnapshotWriter
      * desfazer um fechamento reescreve indicador que já saiu em relatório.
      *
      * A confirmação de posição parcial pertence ao fechamento desfeito e sai com
-     * ele — continua na auditoria do fechamento. A marca de desatualização
-     * permanece até a competência ser apurada de novo.
+     * ele — continua na auditoria do fechamento, protegida. As marcas de
+     * desatualização permanecem até a competência ser apurada de novo, e vão
+     * junto no evento da reabertura: é o porquê de muita reabertura.
+     *
+     * Quando, quem e o motivo ficam também na linha (`reopened_*`). É a última
+     * reabertura, e ela continua lá depois de um novo fechamento.
      */
     public function reopen(Emission $emission, string $referenceMonth, User $actor, string $reason): GuaranteeSnapshot
     {
@@ -239,6 +254,9 @@ class GuaranteeSnapshotWriter
                 'partial_coverage_confirmation' => null,
                 'partial_coverage_confirmed_at' => null,
                 'partial_coverage_confirmed_by' => null,
+                'reopened_at' => now(),
+                'reopened_by' => $actor->getKey(),
+                'reopen_reason' => $reason,
             ])->save();
 
             activity(self::LOG_NAME)
@@ -252,6 +270,8 @@ class GuaranteeSnapshotWriter
                     'previously_closed_at' => $previouslyClosedAt,
                     'previously_closed_by' => $previouslyClosedBy,
                     'sales_board_outdated_at' => $snapshot->sales_board_outdated_at?->toIso8601String(),
+                    'outstanding_balance_outdated_at' => $snapshot->outstanding_balance_outdated_at?->toIso8601String(),
+                    'outstanding_balance_outdated_reason' => $snapshot->outstanding_balance_outdated_reason,
                 ])
                 ->log('Competência de garantias reaberta');
 
@@ -380,8 +400,8 @@ class GuaranteeSnapshotWriter
     }
 
     /**
-     * Grava a apuração. Apurar de novo é o que tira a marca de desatualizado:
-     * o número passa a refletir os quadros de agora.
+     * Grava a apuração. Apurar de novo é o que tira as marcas de desatualizado:
+     * o número passa a refletir os quadros e o saldo devedor de agora.
      */
     private function persistSnapshot(
         Emission $emission,
@@ -393,6 +413,8 @@ class GuaranteeSnapshotWriter
             ['reference_month' => $position->referenceMonth],
             array_merge($position->toSnapshotAttributes(), [
                 'sales_board_outdated_at' => null,
+                'outstanding_balance_outdated_at' => null,
+                'outstanding_balance_outdated_reason' => null,
                 'computed_at' => now(),
                 'updated_by' => $actor?->getKey(),
             ]),

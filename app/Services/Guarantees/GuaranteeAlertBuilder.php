@@ -15,6 +15,7 @@ use App\Models\GuaranteeSnapshot;
 use App\Models\GuaranteeValuation;
 use App\Support\BusinessTime;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -41,7 +42,7 @@ class GuaranteeAlertBuilder
     {
         $alerts = collect();
 
-        $this->addOutdatedCompetenceAlerts($alerts, $emission);
+        $this->addCompetenceStateAlerts($alerts, $emission);
         $this->addCoverageAlerts($alerts, $position);
         $this->addSalesBoardCoverageAlert($alerts, $position);
         $this->addPositionAlerts($alerts, $position);
@@ -84,35 +85,109 @@ class GuaranteeAlertBuilder
     }
 
     /**
-     * Competências gravadas antes de um Quadro de Vendas que passou a responder
-     * por elas. O número do snapshot — fechado ou não — já não é o que o motor
-     * apuraria, e é isso que o relatório e o histórico mostram.
+     * Avisos sobre as competências gravadas -- não sobre a apuração em tela:
+     * as desatualizadas e as reabertas que ainda não foram fechadas de novo.
+     *
+     * Uma consulta só, para os dois avisos.
      *
      * @param  Collection<int, array<string, mixed>>  $alerts
      */
-    private function addOutdatedCompetenceAlerts(Collection $alerts, Emission $emission): void
+    private function addCompetenceStateAlerts(Collection $alerts, Emission $emission): void
     {
         if (! Emission::hasGuaranteeSnapshotsTable()) {
             return;
         }
 
-        $outdated = $emission->guaranteeSnapshots()
-            ->whereNotNull('sales_board_outdated_at')
+        $snapshots = $emission->guaranteeSnapshots()
+            ->where(fn (Builder $query): Builder => $query
+                ->whereNotNull('sales_board_outdated_at')
+                ->orWhereNotNull('outstanding_balance_outdated_at')
+                ->orWhere(fn (Builder $reopened): Builder => $reopened->whereNotNull('reopened_at')->whereNull('closed_at')))
+            ->with('reopenedBy')
             ->orderBy('reference_month')
             ->get();
 
-        foreach ($outdated as $snapshot) {
+        $this->addOutdatedCompetenceAlerts($alerts, $snapshots);
+        $this->addReopenedCompetenceAlerts($alerts, $snapshots);
+    }
+
+    /**
+     * Competências gravadas antes de uma mudança que passou a responder por
+     * elas: um Quadro de Vendas registrado depois da apuração, ou o saldo
+     * devedor recalculado. O número do snapshot — fechado ou não — já não é o
+     * que o motor apuraria, e é isso que o relatório e o histórico mostram.
+     *
+     * @param  Collection<int, array<string, mixed>>  $alerts
+     * @param  Collection<int, GuaranteeSnapshot>  $snapshots
+     */
+    private function addOutdatedCompetenceAlerts(Collection $alerts, Collection $snapshots): void
+    {
+        foreach ($snapshots as $snapshot) {
             /** @var GuaranteeSnapshot $snapshot */
+            if ($snapshot->isSalesBoardOutdated()) {
+                $alerts->push([
+                    'severity' => self::SEVERITY_WARNING,
+                    'title' => 'Competência desatualizada pelo Quadro de Vendas',
+                    'description' => sprintf(
+                        'A competência %s foi apurada antes de um Quadro de Vendas registrado em %s. %s',
+                        $snapshot->formatted_reference_month,
+                        BusinessTime::at($snapshot->sales_board_outdated_at)->format('d/m/Y H:i'),
+                        $snapshot->isClosed()
+                            ? 'Reabra e atualize a competência para refletir a posição publicada.'
+                            : 'Atualize a competência para refletir a posição publicada.',
+                    ),
+                    'guarantee_id' => null,
+                ]);
+            }
+
+            if ($snapshot->isOutstandingBalanceOutdated()) {
+                $alerts->push([
+                    'severity' => self::SEVERITY_WARNING,
+                    'title' => 'Competência desatualizada pelo saldo devedor',
+                    'description' => sprintf(
+                        'A competência %s foi apurada antes de uma alteração no saldo devedor (%s) registrada em %s. %s',
+                        $snapshot->formatted_reference_month,
+                        filled($snapshot->outstanding_balance_outdated_reason)
+                            ? $snapshot->outstanding_balance_outdated_reason
+                            : 'fonte de PU alterada',
+                        BusinessTime::at($snapshot->outstanding_balance_outdated_at)->format('d/m/Y H:i'),
+                        $snapshot->isClosed()
+                            ? 'Reabra e atualize a competência para refletir o saldo devedor atual.'
+                            : 'Atualize a competência para refletir o saldo devedor atual.',
+                    ),
+                    'guarantee_id' => null,
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Competências reabertas que ainda não foram fechadas de novo.
+     *
+     * Reabrir desfaz um número que já saiu em relatório. Enquanto o fechamento
+     * não volta, o relatório da competência usa a apuração ao vivo, rotulada
+     * como preliminar -- e é isso que este aviso cobra.
+     *
+     * @param  Collection<int, array<string, mixed>>  $alerts
+     * @param  Collection<int, GuaranteeSnapshot>  $snapshots
+     */
+    private function addReopenedCompetenceAlerts(Collection $alerts, Collection $snapshots): void
+    {
+        foreach ($snapshots as $snapshot) {
+            /** @var GuaranteeSnapshot $snapshot */
+            if (! $snapshot->wasReopenedAndNotClosed()) {
+                continue;
+            }
+
             $alerts->push([
                 'severity' => self::SEVERITY_WARNING,
-                'title' => 'Competência desatualizada pelo Quadro de Vendas',
+                'title' => 'Competência reaberta e não fechada',
                 'description' => sprintf(
-                    'A competência %s foi apurada antes de um Quadro de Vendas registrado em %s. %s',
+                    'A competência %s foi reaberta em %s%s%s e ainda não foi fechada de novo. Atualize e feche a competência para que o número volte a ser o consolidado.',
                     $snapshot->formatted_reference_month,
-                    BusinessTime::at($snapshot->sales_board_outdated_at)->format('d/m/Y H:i'),
-                    $snapshot->isClosed()
-                        ? 'Reabra e atualize a competência para refletir a posição publicada.'
-                        : 'Atualize a competência para refletir a posição publicada.',
+                    BusinessTime::at($snapshot->reopened_at)->format('d/m/Y H:i'),
+                    $snapshot->reopenedBy === null ? '' : ' por '.$snapshot->reopenedBy->name,
+                    filled($snapshot->reopen_reason) ? ' (motivo: '.$snapshot->reopen_reason.')' : '',
                 ),
                 'guarantee_id' => null,
             ]);

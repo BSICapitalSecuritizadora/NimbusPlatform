@@ -6,6 +6,7 @@ namespace App\DTOs\SalesBoards;
 
 use App\DTOs\BaseDTO;
 use App\Enums\ResolvedUnitValueSource;
+use App\Enums\SalesBoardMovementTiming;
 use App\Enums\SalesBoardMovementType;
 use App\Enums\SalesPriceConformityStatus;
 use App\Models\SalesBoardCycleMovement;
@@ -45,6 +46,7 @@ readonly class SalesBoardSnapshotMovement extends BaseDTO
         public ?int $differenceCents,
         public ?SalesPriceConformityStatus $conformityStatus,
         public ?string $conformityReason,
+        public ?SalesBoardMovementTiming $timing = null,
     ) {}
 
     public static function fromSale(SalesBoardSaleMovement $sale): self
@@ -73,6 +75,7 @@ readonly class SalesBoardSnapshotMovement extends BaseDTO
             differenceCents: $conformity->differenceCents,
             conformityStatus: $conformity->status,
             conformityReason: $conformity->reasonWhenUndetermined,
+            timing: $sale->timing,
         );
     }
 
@@ -109,6 +112,7 @@ readonly class SalesBoardSnapshotMovement extends BaseDTO
             differenceCents: null,
             conformityStatus: null,
             conformityReason: null,
+            timing: $settlement->timing,
         );
     }
 
@@ -136,6 +140,7 @@ readonly class SalesBoardSnapshotMovement extends BaseDTO
             differenceCents: null,
             conformityStatus: null,
             conformityReason: null,
+            timing: $cancellation->timing,
         );
     }
 
@@ -169,6 +174,7 @@ readonly class SalesBoardSnapshotMovement extends BaseDTO
             differenceCents: IntegerMoney::cents($movement->difference_value),
             conformityStatus: $movement->conformity_status,
             conformityReason: $movement->conformity_reason,
+            timing: $movement->timing,
         );
     }
 
@@ -189,9 +195,21 @@ readonly class SalesBoardSnapshotMovement extends BaseDTO
         return trim(sprintf('%s / %s', (string) $this->block, (string) $this->unit), ' /');
     }
 
+    /**
+     * A linha canônica do movimento.
+     *
+     * O `timing` só entra quando existe -- o mesmo cuidado do fim da política de
+     * desconto no resumo da fonte. O movimento do mês continua com exatamente
+     * os campos de antes, e com isso o `snapshot_fingerprint` de toda versão
+     * congelada sem fato de competência anterior continua o mesmo, byte a byte:
+     * um marcador de nulo em todos os movimentos marcaria como alterada cada
+     * competência aberta no deploy, sem que nada tivesse mudado. A versão que
+     * tem extemporâneo muda de resumo -- e é isso que se quer: ela precisa ser
+     * recalculada para mostrá-lo.
+     */
     public function canonicalRow(): string
     {
-        return CanonicalDigest::row([
+        $fields = [
             $this->type,
             $this->contractId,
             $this->constructionUnitId,
@@ -213,7 +231,22 @@ readonly class SalesBoardSnapshotMovement extends BaseDTO
             $this->differenceCents,
             $this->conformityStatus,
             $this->conformityReason,
-        ]);
+        ];
+
+        if ($this->timing !== null) {
+            $fields[] = $this->timing;
+        }
+
+        return CanonicalDigest::row($fields);
+    }
+
+    /**
+     * O fato é de competência anterior (extemporâneo, revisão ou de competência
+     * sem posição).
+     */
+    public function isFromEarlierCompetence(): bool
+    {
+        return $this->timing !== null;
     }
 
     public function fingerprint(): string

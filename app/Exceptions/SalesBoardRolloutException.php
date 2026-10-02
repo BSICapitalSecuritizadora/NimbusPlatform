@@ -4,6 +4,7 @@ namespace App\Exceptions;
 
 use App\Enums\SalesBoardRolloutHomologationStatus;
 use App\Enums\SalesBoardSource;
+use App\Services\SalesBoards\SalesBoardPositionReader;
 use Illuminate\Contracts\Debug\ShouldntReport;
 use RuntimeException;
 
@@ -26,6 +27,17 @@ class SalesBoardRolloutException extends RuntimeException implements ShouldntRep
         return new self('Esta Emissão não está no modo automatizado.');
     }
 
+    public static function emissionInDraft(): self
+    {
+        return new self('A Emissão está em "Em Elaboração": o rollout do Quadro de Vendas só começa depois da elaboração, '
+            .'quando a posição inicial deixa de ser composta. Conclua a elaboração antes de homologar ou ativar.');
+    }
+
+    public static function emissionLiquidated(): self
+    {
+        return new self('A Emissão está "Liquidada": a operação foi encerrada e não há competência mensal a automatizar.');
+    }
+
     public static function homologationNotEditable(): self
     {
         return new self('Esta homologação já foi encerrada e não pode mais ser alterada.');
@@ -43,6 +55,16 @@ class SalesBoardRolloutException extends RuntimeException implements ShouldntRep
     {
         return new self('Esta homologação já foi usada numa ativação. '
             .'Reativar exige uma nova homologação, com os fatos revisados de novo.');
+    }
+
+    /**
+     * "Conferir se ainda vale" só faz sentido para quem ainda pode sustentar
+     * uma ativação: um rascunho se reavalia, e uma homologação rejeitada,
+     * substituída ou já usada não volta a valer de jeito nenhum.
+     */
+    public static function homologationNotCheckable(): self
+    {
+        return new self('Só uma homologação aprovada e ainda não usada numa ativação pode ser conferida.');
     }
 
     public static function homologationDoesNotBelongToEmission(): self
@@ -190,7 +212,45 @@ class SalesBoardRolloutException extends RuntimeException implements ShouldntRep
     {
         return new self('Este Quadro de Vendas foi publicado pela governança do ciclo mensal '
             .'e não pode ser alterado nem removido por fora dela. '
-            .'A posição publicada permanece como foi aprovada; correções na fonte passam a valer a partir das próximas competências.');
+            .'A posição publicada permanece como foi aprovada: fatos lançados depois entram como movimentos extemporâneos '
+            .'na competência seguinte, e a última competência publicada pode ser corrigida pela Gestão com “Retificar competência”.');
+    }
+
+    /**
+     * O quadro sairia de baixo da Emissão do empreendimento.
+     *
+     * O {@see SalesBoardPositionReader} lê a posição por empreendimento: um
+     * quadro gravado sob outra Emissão seria somado pela Emissão dele e pela do
+     * empreendimento, as duas como se fosse delas.
+     */
+    public static function boardOutsideConstructionEmission(
+        string $construction,
+        string $referenceMonth,
+        string $boardEmission,
+        string $constructionEmission,
+    ): self {
+        return new self(sprintf(
+            'O Quadro de Vendas de %s em %s seria gravado sob a Emissão %s, mas o empreendimento pertence à Emissão %s. '
+                .'A posição é lida por empreendimento, e um quadro fora da Emissão dele seria somado nas duas.',
+            $construction,
+            $referenceMonth,
+            $boardEmission,
+            $constructionEmission,
+        ));
+    }
+
+    /**
+     * Já existe posição do empreendimento no mês, em qualquer Emissão.
+     */
+    public static function competenceAlreadyPositioned(string $construction, string $referenceMonth, string $existingEmission): self
+    {
+        return new self(sprintf(
+            'O empreendimento %s já tem Quadro de Vendas em %s, registrado sob a Emissão %s. '
+                .'Um segundo quadro para o mesmo mês faria a posição ser lida duas vezes; corrija o registro existente.',
+            $construction,
+            $referenceMonth,
+            $existingEmission,
+        ));
     }
 
     public static function sourceChangedConcurrently(SalesBoardSource $current): self

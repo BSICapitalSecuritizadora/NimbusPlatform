@@ -14,6 +14,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\SalesBoards\ExtemporaneousFixture;
 
 uses(RefreshDatabase::class);
 
@@ -138,7 +139,7 @@ function countQueries(Closure $callback): int
     return $count;
 }
 
-it('derives twenty developments without paying six loads per development', function () {
+it('derives twenty developments without paying eight loads per development', function () {
     [, $constructions] = cycleBatchDataset(20, 50);
 
     $service = app(SalesBoardDerivationService::class);
@@ -153,9 +154,31 @@ it('derives twenty developments without paying six loads per development', funct
 
     expect($positions)->toHaveCount(20)
         ->and(collect($positions)->sum(fn ($position): int => $position->unitsTotal))->toBe(1_000)
-        // Seis carregamentos, os mesmos de um único empreendimento: unidades,
-        // contratos, permutas, parcelas, valores e políticas.
-        ->and($queries)->toBe(6);
+        // Oito carregamentos, os mesmos de um único empreendimento: unidades,
+        // baixas, contratos, permutas, parcelas, valores, políticas e a procura
+        // das competências anteriores (âncoras).
+        ->and($queries)->toBe(8);
+});
+
+it('reads the anchors of twenty developments in one more load', function () {
+    [, $constructions] = cycleBatchDataset(20, 50);
+
+    foreach ($constructions as $construction) {
+        ExtemporaneousFixture::frozenAnchor($construction);
+    }
+
+    $service = app(SalesBoardDerivationService::class);
+    $fresh = Construction::query()->whereIn('id', $constructions->pluck('id'))->get();
+
+    $positions = [];
+
+    $queries = countQueries(function () use ($service, $fresh, &$positions): void {
+        $positions = $service->deriveForConstructions($fresh, CarbonImmutable::parse('2026-07-01'));
+    });
+
+    expect(collect($positions)->filter(fn ($position): bool => $position->priorPosition !== null))->toHaveCount(20)
+        // As linhas congeladas das vinte âncoras numa carga só.
+        ->and($queries)->toBe(9);
 });
 
 it('keeps the batch query count flat as the portfolio doubles', function () {
@@ -207,14 +230,14 @@ it('observes the material source of the whole emission in a constant number of l
     });
 
     expect($observations)->toHaveCount(20)
-        ->and($queries)->toBe(6);
+        ->and($queries)->toBe(7);
 });
 
 /**
  * O custo marginal de congelar mais um empreendimento.
  *
  * O congelamento de uma emissão inteira apura **um empreendimento por vez**:
- * seis carregamentos para derivar e seis para observar a fonte de cada um, e
+ * oito carregamentos para derivar e sete para observar a fonte de cada um, e
  * depois a escrita do ciclo na sua própria transação. A derivação em lote da
  * emissão inteira, que deixava a apuração constante, somava na memória as
  * parcelas de todos os empreendimentos e derrubava o processo antes do primeiro
@@ -241,7 +264,7 @@ it('freezes a whole emission at a bounded marginal cost per development', functi
 
     expect(SalesBoardCycle::query()->count())->toBe(20)
         /**
-         * Doze leituras de apuração e a escrita -- transação, cabeçalho,
+         * Quinze leituras de apuração e a escrita -- transação, cabeçalho,
          * linhas, movimentos, ponteiro da versão e o comparativo com o quadro
          * publicado.
          */

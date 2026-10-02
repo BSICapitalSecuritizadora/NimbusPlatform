@@ -88,6 +88,14 @@ class DatabaseSalesBoardAutomationRecipientResolver implements SalesBoardAutomat
         );
     }
 
+    public function forEmissionLiquidated(Emission $emission): array
+    {
+        return $this->directory->activeFor(
+            $emission,
+            SalesBoardRolloutRecipientRole::forAlert(SalesBoardAutomationAlertType::EmissionLiquidated),
+        );
+    }
+
     /**
      * Os responsáveis operacionais de todas as Emissões automatizadas, cada
      * pessoa uma vez só.

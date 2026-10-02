@@ -66,6 +66,11 @@ final class FixedSalesBoardAutomationRecipientResolver implements SalesBoardAuto
         return $this->users;
     }
 
+    public function forEmissionLiquidated(Emission $emission): array
+    {
+        return $this->users;
+    }
+
     public function forRunInterrupted(SalesBoardAutomationRun $run): array
     {
         return $this->users;

@@ -52,6 +52,14 @@ Schedule::command('app:cleanup-temporary-uploads')
     ->dailyAt('02:00')
     ->name('cleanup-temporary-uploads');
 
+// Envios temporários do Livewire abandonados (planilhas com CPF/CNPJ de uma
+// importação que ninguém confirmou), no disco temporário ativo. O próprio
+// Livewire só limpa no envio seguinte; aqui o resíduo dura no máximo ~48 h.
+Schedule::command('uploads:purge-livewire-temporary --force')
+    ->dailyAt('02:30')
+    ->name('purge-livewire-temporary-uploads')
+    ->withoutOverlapping();
+
 Schedule::command('app:snapshot-monthly-fund-balances')
     ->monthlyOn(1, '00:05')
     ->name('fund-balances-monthly-snapshot');
@@ -113,6 +121,14 @@ Schedule::command('pu:index-rates:sync --indexer=cdi --queue')
 Schedule::command('pu:curves:generate-realized')
     ->dailyAt('07:15')
     ->name('pu-curves-generate-realized')
+    ->withoutOverlapping();
+
+// Garantias: marca as competências encerradas cujo saldo devedor gravado deixou de ser o
+// que a fonte de PU responde hoje. Roda depois da extensão diária das curvas (07:15), que
+// muda o saldo sem passar por homologação, invalidação ou importação do Histórico de PU.
+Schedule::command('guarantees:mark-outdated-competences')
+    ->dailyAt('08:30')
+    ->name('guarantees-mark-outdated-competences')
     ->withoutOverlapping();
 
 // IPCA publicado (BCB/SGS): todo dia 2 de cada mês, consultando sempre os últimos 10 anos. Idempotente.

@@ -12,7 +12,12 @@ namespace App\Enums;
  * carregar uma promessa que ela não pode cumprir.
  *
  * `Superseded` é a saída involuntária: a homologação foi aprovada, e depois os
- * fatos que ela revisou deixaram de ser os atuais.
+ * fatos que ela revisou deixaram de ser os atuais -- ou outra tentativa tomou o
+ * lugar dela. É gravado, com o motivo em
+ * {@see SalesBoardRolloutSupersessionReason}, em três momentos: quando a
+ * ativação a recusa porque a fonte ou o escopo mudaram, quando alguém confere
+ * se ela ainda vale ("Conferir se ainda vale") e ela não vale mais, e quando
+ * uma nova homologação é aberta enquanto ela estava aprovada e sem uso.
  */
 enum SalesBoardRolloutHomologationStatus: string
 {
@@ -48,7 +53,7 @@ enum SalesBoardRolloutHomologationStatus: string
             self::Draft => 'Em homologação',
             self::Approved => 'Homologação aprovada',
             self::Rejected => 'Homologação rejeitada',
-            self::Superseded => 'Substituída por mudança na fonte',
+            self::Superseded => 'Homologação substituída',
         };
     }
 
@@ -58,7 +63,7 @@ enum SalesBoardRolloutHomologationStatus: string
             self::Draft => 'warning',
             self::Approved => 'success',
             self::Rejected => 'danger',
-            self::Superseded => 'gray',
+            self::Superseded => 'warning',
         };
     }
 }

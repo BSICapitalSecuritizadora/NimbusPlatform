@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\SalesBoards;
 
 use App\DTOs\SalesBoards\SalesBoardApprovalResult;
+use App\DTOs\SalesBoards\SalesBoardCompetenceBridge;
 use App\Enums\SalesBoardApprovalOutcome;
 use App\Enums\SalesBoardBuilderReviewStatus;
 use App\Enums\SalesBoardCycleStatus;
@@ -12,18 +13,24 @@ use App\Enums\SalesBoardManagementReviewStatus;
 use App\Enums\SalesBoardMovementType;
 use App\Enums\SalesBoardNonconformityDecision;
 use App\Enums\SalesBoardNonconformityOrigin;
+use App\Enums\SalesBoardRectificationStatus;
 use App\Enums\SalesBoardStaleImpact;
+use App\Events\SalesBoards\SalesBoardPriorPositionChanged;
 use App\Exceptions\SalesBoardManagementReviewException;
+use App\Exceptions\SalesBoardRectificationException;
+use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\SalesBoardBuilderDivergence;
 use App\Models\SalesBoardBuilderReview;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardCycleBaseline;
 use App\Models\SalesBoardCycleMovement;
+use App\Models\SalesBoardCycleRectification;
 use App\Models\SalesBoardManagementNonconformity;
 use App\Models\SalesBoardManagementReview;
 use App\Models\SalesBoardPublication;
 use App\Models\User;
+use App\Support\SalesBoards\PublishedCompetenceBoundary;
 use App\Support\SalesBoards\SalesBoardApprovalAuthority;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -46,6 +53,44 @@ use Illuminate\Support\Facades\DB;
  * antiga e continua valendo: o `REPEATABLE READ` da transação dá uma leitura
  * coerente da fonte, e travar linha a linha uma obra inteira transformaria a
  * aprovação num bloqueio de escrita sobre a operação inteira.
+ *
+ * A obra é a exceção, em modo compartilhado e logo depois do ciclo -- antes de
+ * qualquer leitura comum, que é o que fixa o instantâneo do `REPEATABLE READ`.
+ * A política de desconto é registrada com a obra travada em modo exclusivo
+ * ({@see SalesDiscountPolicyRegistrar}), e a obra é o ponto em que as duas se
+ * encontram: ou o registro commita antes e a derivação daqui enxerga a política
+ * (a aprovação recusa por alteração material), ou ele espera esta aprovação
+ * terminar e enxerga a publicação (a política que alcança a competência é
+ * recusada). Com a obra lida só no fim, na publicação, uma política commitada
+ * durante a derivação passaria pelas duas checagens -- a competência sairia
+ * publicada com a régua antiga e a política nova valeria sobre ela.
+ *
+ * Três regras que a apuração por competência anterior trouxe:
+ *
+ * - **ordem**: aprovar M exige que a âncora -- M-1 ou, com M-1 cancelada, a
+ *   primeira competência não cancelada antes dela -- esteja aprovada sem
+ *   retificação aberta ({@see SalesBoardPriorCompetenceGate}); sem ciclo antes
+ *   da cadeia de canceladas não há exigência. Os ciclos da cadeia são lidos com
+ *   `sharedLock()` depois do lock de M -- do mês mais recente para o mais
+ *   antigo, a ordem de locks do Quadro;
+ * - **nada publicado depois**: fora da retificação, M não é publicada quando
+ *   uma competência posterior do empreendimento já foi. A posterior já reflete
+ *   os fatos de M, e os que chegaram depois dela entram como extemporâneos na
+ *   seguinte; publicar M daria a eles um segundo dono. É a mesma regra da
+ *   reabertura recusada, e a saída também: cancelar M. Protege o ciclo gerado
+ *   antes da recusa da geração, ou numa corrida com ela;
+ * - **retificação**: com retificação aberta, a aprovação publica de novo o
+ *   mesmo quadro ({@see SalesBoardPublicationService::republish()}), é isenta
+ *   da cobertura da automação (funciona depois de voltar ao legado), recusa se
+ *   outra competência foi publicada depois ou se a versão ficou igual à
+ *   publicada, e fecha a retificação. Quem abriu a retificação não aprova.
+ *
+ * O instantâneo do `REPEATABLE READ` nasce na primeira leitura comum da
+ * transação, e por isso nenhuma leitura comum acontece antes do portão de
+ * ordem: as esperas pela obra (o registro de uma política) e pelos locks da
+ * cadeia (uma reabertura, um cancelamento ou uma retificação em andamento)
+ * terminam antes de a fonte ser derivada, e a derivação enxerga a obra e a
+ * cadeia como o outro ato as deixou.
  */
 class SalesBoardManagementApprovalService
 {
@@ -53,12 +98,14 @@ class SalesBoardManagementApprovalService
      * Versão do texto que a Gestão aceita ao aprovar. Congelada junto com a
      * aprovação para que, se o texto mudar, se saiba qual foi aceito.
      */
-    public const DECLARATION_VERSION = '2026-09-v1';
+    public const DECLARATION_VERSION = '2026-10-v2';
 
     public function __construct(
         private readonly SalesBoardStaleDetectionService $staleDetectionService,
         private readonly SalesBoardPublicationService $publicationService,
         private readonly SalesBoardPublicationProjection $projection,
+        private readonly SalesBoardPriorCompetenceGate $priorCompetenceGate,
+        private readonly SalesBoardCompetenceBridgeBuilder $bridgeBuilder,
     ) {}
 
     /**
@@ -90,12 +137,32 @@ class SalesBoardManagementApprovalService
             /**
              * A ordem de locks é a das fases anteriores: ciclo, depois análise.
              * Invertê-la reabriria o TOCTOU entre aprovar e devolver.
+             *
+             * Até o portão de ordem a transação faz só leituras travadas --
+             * inclusive a da obra, logo abaixo --, e o instantâneo dela nasce
+             * depois das esperas da obra e da cadeia.
              */
             $cycle = SalesBoardCycle::query()
                 ->whereKey($review->sales_board_cycle_id)
                 ->lockForUpdate()
-                ->with('construction')
                 ->firstOrFail();
+
+            /**
+             * A obra, compartilhada, entre o ciclo e a análise -- e por leitura
+             * travada, nunca por eager load: uma leitura comum aqui fixaria o
+             * instantâneo antes de esperar o registro de política em andamento
+             * e os locks da cadeia, no portão de ordem.
+             * Ninguém trava a obra em modo exclusivo e depois pede um ciclo, nem
+             * trava um ciclo e depois pede a obra em modo exclusivo -- a
+             * reabertura, que trava os ciclos posteriores antes do próprio, lê a
+             * obra sem lock --, e a geração da competência seguinte pega a obra
+             * em modo compartilhado (a FK do ciclo novo): a ordem não cria espera
+             * circular.
+             */
+            $cycle->setRelation('construction', Construction::query()
+                ->whereKey($cycle->construction_id)
+                ->sharedLock()
+                ->firstOrFail());
 
             /**
              * As pendências vêm travadas, na mesma ordem: ciclo, análise, linhas
@@ -121,9 +188,33 @@ class SalesBoardManagementApprovalService
                 return $this->alreadyApproved($cycle, $review);
             }
 
+            /**
+             * A regra de ordem, com a cadeia até a âncora lida em modo
+             * compartilhado depois do lock deste ciclo. Vale também para a
+             * aprovação de uma retificação.
+             */
+            $this->priorCompetenceGate->assertClosed($cycle);
+
+            $rectification = SalesBoardCycleRectification::query()
+                ->where('sales_board_cycle_id', $cycle->getKey())
+                ->where('status', SalesBoardRectificationStatus::Open->value)
+                ->lockForUpdate()
+                ->first();
+
             $this->assertReviewOpen($review);
             $this->assertCycleInManagement($cycle);
-            $this->assertCoveredByAutomation($cycle);
+
+            /**
+             * A retificação corrige uma posição que já foi publicada pelo ciclo:
+             * ela continua possível depois de a Emissão voltar ao legado, que é
+             * justamente quando a competência deixa de ser coberta. E ela tem a
+             * própria conferência de "publicada depois"
+             * ({@see self::assertRectificationStillApplies()}).
+             */
+            if (! $rectification instanceof SalesBoardCycleRectification) {
+                $this->assertCoveredByAutomation($cycle);
+                $this->assertNoLaterPublication($cycle);
+            }
 
             $baseline = SalesBoardCycleBaseline::query()
                 ->with(['lines', 'movements', 'cycle'])
@@ -138,6 +229,10 @@ class SalesBoardManagementApprovalService
             $this->assertFullyMaterialized($review, $baseline);
             $this->assertNonconformitiesResolved($review);
 
+            if ($rectification instanceof SalesBoardCycleRectification) {
+                $this->assertRectificationStillApplies($cycle, $baseline);
+            }
+
             /**
              * A projeção acontece antes da publicação e recusa baseline
              * incompleto ou com unidade indeterminada. Chamá-la aqui é defesa em
@@ -150,14 +245,24 @@ class SalesBoardManagementApprovalService
 
             $sourceChangeReason = $this->resolveSourceOverride($assessment->impact, $sourceChangeReason);
 
-            $publication = $this->publicationService->publish(
-                cycle: $cycle,
-                baseline: $baseline,
-                review: $review,
-                assessment: $assessment,
-                sourceChangeReason: $sourceChangeReason,
-                actor: $actor,
-            );
+            $publication = $rectification instanceof SalesBoardCycleRectification
+                ? $this->publicationService->republish(
+                    cycle: $cycle,
+                    baseline: $baseline,
+                    review: $review,
+                    assessment: $assessment,
+                    sourceChangeReason: $sourceChangeReason,
+                    actor: $actor,
+                    rectification: $rectification,
+                )
+                : $this->publicationService->publish(
+                    cycle: $cycle,
+                    baseline: $baseline,
+                    review: $review,
+                    assessment: $assessment,
+                    sourceChangeReason: $sourceChangeReason,
+                    actor: $actor,
+                );
 
             $now = CarbonImmutable::now();
 
@@ -173,6 +278,24 @@ class SalesBoardManagementApprovalService
             ])->save();
 
             $cycle->forceFill(['status' => SalesBoardCycleStatus::Approved])->save();
+
+            if ($rectification instanceof SalesBoardCycleRectification) {
+                $rectification->forceFill([
+                    'status' => SalesBoardRectificationStatus::Published,
+                    'closed_at' => $now,
+                    'closed_by_user_id' => $actor->getKey(),
+                ])->save();
+
+                /**
+                 * A posição publicada desta competência mudou: as seguintes em
+                 * andamento são conferidas de novo depois do commit.
+                 */
+                SalesBoardPriorPositionChanged::dispatch(
+                    (int) $cycle->construction_id,
+                    CarbonImmutable::parse($cycle->reference_month->toDateString())->startOfMonth(),
+                    SalesBoardPriorPositionChanged::RECTIFICATION_PUBLISHED,
+                );
+            }
 
             return new SalesBoardApprovalResult(
                 outcome: SalesBoardApprovalOutcome::Approved,
@@ -192,9 +315,14 @@ class SalesBoardManagementApprovalService
      * Duas listas -- uma para exibir e outra para decidir -- divergiriam na
      * primeira regra nova.
      *
-     * @return array{ready: bool, checks: list<array{label: string, passed: bool, detail: string|null}>, impact: SalesBoardStaleImpact|null}
+     * A "Ponte com a competência anterior" entra como item informativo
+     * (`informative`): ela não bloqueia -- correções legítimas sem fato datado
+     * também aparecem nela --, mas a Gestão a confere antes de aprovar. Quem já
+     * montou a ponte a entrega pronta.
+     *
+     * @return array{ready: bool, checks: list<array{label: string, passed: bool, detail: string|null, informative?: bool}>, impact: SalesBoardStaleImpact|null}
      */
-    public function gate(SalesBoardManagementReview $review): array
+    public function gate(SalesBoardManagementReview $review, ?SalesBoardCompetenceBridge $bridge = null): array
     {
         $review->loadMissing(['cycle.construction', 'cycle.currentBaseline', 'nonconformities', 'builderReview']);
 
@@ -211,7 +339,22 @@ class SalesBoardManagementApprovalService
 
         $impact = $assessment?->impact;
 
+        $rectification = ($cycle === null) ? null : SalesBoardCycleRectification::query()
+            ->where('sales_board_cycle_id', $cycle->getKey())
+            ->where('status', SalesBoardRectificationStatus::Open->value)
+            ->with('rectifiedPublication')
+            ->first();
+
         $legacy = ($cycle === null) ? null : $this->publicationService->existingPosition($cycle);
+
+        /**
+         * Na retificação, o quadro registrado da competência é o próprio quadro
+         * publicado -- é ele que a aprovação vai atualizar.
+         */
+        if (($legacy !== null) && ($rectification !== null)
+            && ((int) $legacy->getKey() === (int) $rectification->rectifiedPublication?->sales_board_id)) {
+            $legacy = null;
+        }
 
         $uncoveredSales = ($baseline === null) ? [] : $this->uncoveredSales($review, $baseline);
         $uncoveredDivergences = $this->uncoveredDivergences($review);
@@ -219,17 +362,37 @@ class SalesBoardManagementApprovalService
         $emission = ($cycle === null) ? null : Emission::query()->find($cycle->emission_id);
         $automated = ($cycle !== null) && $this->automationCovers($emission, $cycle);
 
+        $priorRefusal = ($cycle === null) ? null : $this->priorCompetenceGate->assess($cycle);
+        $laterPublished = (($cycle === null) || ($rectification !== null)) ? null : $this->laterPublishedMonth($cycle);
+
         $checks = [
             [
                 'label' => 'Competência coberta pela automação',
-                'passed' => $automated,
-                'detail' => ($automated || ($cycle === null))
-                    ? null
-                    : sprintf(
+                'passed' => $automated || ($rectification !== null),
+                'detail' => match (true) {
+                    $automated || ($cycle === null) => null,
+                    $rectification !== null => 'Retificação de competência publicada: não depende da cobertura da automação.',
+                    default => sprintf(
                         'A Emissão não cobre %s pela automação. Use "Cancelar competência", na tela da competência, para encerrá-la.',
                         $cycle->reference_month->format('m/Y'),
                     ),
+                },
             ],
+            [
+                'label' => 'Competência anterior encerrada',
+                'passed' => $priorRefusal === null,
+                'detail' => $priorRefusal,
+            ],
+            ...($rectification !== null || $cycle === null ? [] : [[
+                'label' => 'Nenhuma competência posterior publicada',
+                'passed' => $laterPublished === null,
+                'detail' => $laterPublished === null
+                    ? null
+                    : SalesBoardManagementReviewException::laterCompetencePublished(
+                        $cycle->reference_month->format('m/Y'),
+                        $laterPublished->format('m/Y'),
+                    )->getMessage(),
+            ]]),
             [
                 'label' => 'Validação da construtora aplicável',
                 'passed' => ($builderReview?->status === SalesBoardBuilderReviewStatus::Submitted)
@@ -266,7 +429,13 @@ class SalesBoardManagementApprovalService
             [
                 'label' => 'Fonte sem alteração material',
                 'passed' => in_array($impact, [SalesBoardStaleImpact::None, SalesBoardStaleImpact::SourceOnly], true),
-                'detail' => $impact?->label(),
+                /**
+                 * A cadeia que mudou sem mudar número nenhum não aparece no
+                 * diff: o motivo vai junto, para a Gestão saber o que recalcular.
+                 */
+                'detail' => ($assessment?->chainChange === null)
+                    ? $impact?->label()
+                    : $impact?->label().'. '.$assessment->chainChange,
             ],
             [
                 'label' => 'Posição completa',
@@ -284,6 +453,8 @@ class SalesBoardManagementApprovalService
                     ? null
                     : sprintf('Já existe quadro #%d para esta competência.', (int) $legacy->getKey()),
             ],
+            ...($rectification === null || $cycle === null ? [] : $this->rectificationChecks($cycle, $baseline, $rectification)),
+            ...$this->bridgeCheck($bridge, $baseline),
             [
                 'label' => 'Análise em andamento',
                 'passed' => $review->isEditable()
@@ -298,6 +469,129 @@ class SalesBoardManagementApprovalService
             'checks' => $checks,
             'impact' => $impact,
         ];
+    }
+
+    /**
+     * Os dois itens próprios da retificação: ela continua sendo da última
+     * competência publicada, e a versão em análise muda a posição publicada.
+     *
+     * @return list<array{label: string, passed: bool, detail: string|null}>
+     */
+    private function rectificationChecks(SalesBoardCycle $cycle, ?SalesBoardCycleBaseline $baseline, SalesBoardCycleRectification $rectification): array
+    {
+        $month = CarbonImmutable::parse($cycle->reference_month->toDateString())->startOfMonth();
+        $lastPublished = PublishedCompetenceBoundary::lastPublishedMonth((int) $cycle->construction_id);
+        $stillLast = ($lastPublished === null) || ! $lastPublished->greaterThan($month);
+
+        $publishedFingerprint = (string) $rectification->rectifiedPublication?->snapshot_fingerprint;
+        $changes = ($baseline !== null) && ((string) $baseline->snapshot_fingerprint !== $publishedFingerprint);
+
+        return [
+            [
+                'label' => 'Última competência publicada do empreendimento',
+                'passed' => $stillLast,
+                'detail' => $stillLast ? null : sprintf('%s foi publicada depois desta competência.', $lastPublished->format('m/Y')),
+            ],
+            [
+                'label' => 'A retificação muda a posição publicada',
+                'passed' => $changes,
+                'detail' => $changes ? null : 'A versão em análise é igual à posição publicada.',
+            ],
+        ];
+    }
+
+    /**
+     * O item informativo da ponte, quando há competência anterior.
+     *
+     * @return list<array{label: string, passed: bool, detail: string|null, informative: bool}>
+     */
+    private function bridgeCheck(?SalesBoardCompetenceBridge $bridge, ?SalesBoardCycleBaseline $baseline): array
+    {
+        if (($bridge === null) && ($baseline !== null)) {
+            $bridge = $this->bridgeBuilder->forBaseline($baseline);
+        }
+
+        if (($bridge === null) || ! $bridge->hasAnchor()) {
+            return [];
+        }
+
+        return [[
+            'label' => 'Ponte com a competência anterior',
+            'passed' => true,
+            'detail' => $bridge->summary(),
+            'informative' => true,
+        ]];
+    }
+
+    /**
+     * A retificação continua cabendo no instante da aprovação.
+     *
+     * Outra competência do empreendimento publicada no meio do caminho -- só
+     * possível por um caminho que contorne a regra de ordem, como um estado
+     * anterior a ela -- e a versão em análise igual à publicada são recusadas:
+     * a primeira republicaria uma posição que já não é a última, e a segunda
+     * criaria uma publicação sem nada a publicar.
+     */
+    private function assertRectificationStillApplies(SalesBoardCycle $cycle, SalesBoardCycleBaseline $baseline): void
+    {
+        $month = CarbonImmutable::parse($cycle->reference_month->toDateString())->startOfMonth();
+
+        /**
+         * Leitura comum, sem lock: travar os ciclos posteriores depois deste
+         * inverteria a ordem de locks do Quadro. A competência seguinte não é
+         * publicada enquanto esta está em retificação -- a regra de ordem da
+         * aprovação dela a segura --, e esta conferência é a defesa para o que
+         * tiver contornado essa regra.
+         */
+        $lastPublished = PublishedCompetenceBoundary::lastPublishedMonth((int) $cycle->construction_id);
+
+        if (($lastPublished !== null) && $lastPublished->greaterThan($month)) {
+            throw SalesBoardRectificationException::noLongerLastPublished($month->format('m/Y'), $lastPublished->format('m/Y'));
+        }
+
+        $publishedFingerprint = SalesBoardPublication::query()
+            ->where('sales_board_cycle_id', $cycle->getKey())
+            ->orderByDesc('sequence_number')
+            ->value('snapshot_fingerprint');
+
+        if ((string) $publishedFingerprint === (string) $baseline->snapshot_fingerprint) {
+            throw SalesBoardRectificationException::unchangedAtApproval($month->format('m/Y'));
+        }
+    }
+
+    /**
+     * Fora da retificação, a competência só é publicada se nenhuma posterior
+     * do empreendimento já foi.
+     *
+     * Leitura comum, sem lock: travar os ciclos posteriores depois deste
+     * inverteria a ordem de locks do Quadro. O instantâneo nasce depois do
+     * portão de ordem, e a competência posterior em aprovação neste instante
+     * não termina -- a regra de ordem dela espera esta, que é a âncora dela.
+     *
+     * @throws SalesBoardManagementReviewException
+     */
+    private function assertNoLaterPublication(SalesBoardCycle $cycle): void
+    {
+        $laterPublished = $this->laterPublishedMonth($cycle);
+
+        if ($laterPublished !== null) {
+            throw SalesBoardManagementReviewException::laterCompetencePublished(
+                $cycle->reference_month->format('m/Y'),
+                $laterPublished->format('m/Y'),
+            );
+        }
+    }
+
+    /**
+     * A última competência publicada do empreendimento, quando ela é posterior
+     * a esta -- ou `null`.
+     */
+    private function laterPublishedMonth(SalesBoardCycle $cycle): ?CarbonImmutable
+    {
+        $month = CarbonImmutable::parse($cycle->reference_month->toDateString())->startOfMonth();
+        $lastPublished = PublishedCompetenceBoundary::lastPublishedMonth((int) $cycle->construction_id);
+
+        return ($lastPublished !== null) && $lastPublished->greaterThan($month) ? $lastPublished : null;
     }
 
     private function alreadyApproved(SalesBoardCycle $cycle, SalesBoardManagementReview $review): SalesBoardApprovalResult

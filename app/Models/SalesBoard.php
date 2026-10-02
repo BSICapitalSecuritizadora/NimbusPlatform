@@ -42,6 +42,15 @@ class SalesBoard extends Model
      */
     public ?string $changeReason = null;
 
+    /**
+     * Quem responde pela versão prestes a ser gravada, quando não é o usuário
+     * da requisição. Transiente, como o motivo: a republicação de uma
+     * retificação aprovada grava a versão em nome de quem aprovou, que é quem
+     * responde por ela -- inclusive quando a aprovação roda fora de uma
+     * requisição autenticada. Zerado depois de cada versão.
+     */
+    public ?int $changedById = null;
+
     protected $fillable = [
         'emission_id',
         'construction_id',
@@ -132,6 +141,28 @@ class SalesBoard extends Model
     public function valueHistories(): HasMany
     {
         return $this->hasMany(SalesBoardHistory::class);
+    }
+
+    /**
+     * As publicações do ciclo mensal que escreveram este quadro, da primeira à
+     * mais recente.
+     *
+     * A primeira publicação da competência e uma a cada retificação aprovada,
+     * na ordem da sequência -- e por isso a relação é de muitas, e não um
+     * `hasOne` que devolveria uma qualquer. Quem quer a vigente usa
+     * {@see self::currentPublication()}.
+     */
+    public function publications(): HasMany
+    {
+        return $this->hasMany(SalesBoardPublication::class, 'sales_board_id')->orderBy('sequence_number');
+    }
+
+    /**
+     * A publicação vigente deste quadro: a de maior sequência.
+     */
+    public function currentPublication(): HasOne
+    {
+        return $this->hasOne(SalesBoardPublication::class, 'sales_board_id')->latestOfMany('sequence_number');
     }
 
     /**
@@ -247,12 +278,16 @@ class SalesBoard extends Model
      */
     public function snapshotTrackedValues(bool $asInitialPosition = false): SalesBoardHistory
     {
-        return $this->valueHistories()->create([
+        $history = $this->valueHistories()->create([
             ...$this->trackedValueSnapshotData(),
             'is_initial' => $asInitialPosition,
-            'changed_by_id' => auth()->id(),
+            'changed_by_id' => $this->changedById ?? auth()->id(),
             'change_reason' => $this->changeReason,
         ]);
+
+        $this->changedById = null;
+
+        return $history;
     }
 
     public function getFormattedReferenceMonthAttribute(): string

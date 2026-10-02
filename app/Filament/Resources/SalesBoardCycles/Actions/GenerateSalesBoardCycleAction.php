@@ -3,13 +3,16 @@
 namespace App\Filament\Resources\SalesBoardCycles\Actions;
 
 use App\DTOs\SalesBoards\SalesBoardGenerationResult;
+use App\Enums\SalesBoardCycleStatus;
 use App\Enums\SalesBoardGenerationOutcome;
 use App\Enums\SalesBoardSource;
 use App\Filament\Resources\SalesBoardCycles\SalesBoardCycleResource;
 use App\Models\Construction;
 use App\Services\SalesBoards\SalesBoardGenerationService;
+use App\Support\BusinessTime;
 use App\Support\SalesBoards\CompetenceCalendar;
 use App\Support\SalesBoards\ReferenceMonthInput;
+use App\Support\SalesBoards\SalesBoardFrozenWarnings;
 use App\Support\SalesBoards\SalesBoardIssuePresenter;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
@@ -34,6 +37,16 @@ use Illuminate\Support\HtmlString;
  * automação ativa e competências já encerradas, a partir da ativação. Quem decide
  * continua sendo o {@see SalesBoardGenerationService} -- a tela só evita levar o
  * operador até uma recusa.
+ *
+ * Congelar é ato humano e continua disponível com o interruptor global
+ * desligado e para Emissão liquidada -- é por aqui que a Gestão fecha a última
+ * competência de uma operação encerrada. A opção do empreendimento diz quando a
+ * Emissão está liquidada, para ninguém confundir a parada da automação com o
+ * fim do caminho manual.
+ *
+ * A competência chega do DatePicker como `aaaa-mm-dd hh:mm:ss`, e por isso é
+ * lida por {@see ReferenceMonthInput::fromDateState()}, e não pelo leitor
+ * estrito da linha de comando.
  */
 class GenerateSalesBoardCycleAction
 {
@@ -75,10 +88,11 @@ class GenerateSalesBoardCycleAction
                         ->get()
                         ->mapWithKeys(fn (Construction $construction): array => [
                             $construction->getKey() => sprintf(
-                                '%s — %s (automação desde %s)',
+                                '%s — %s (automação desde %s)%s',
                                 (string) $construction->development_name,
                                 (string) $construction->emission?->name,
                                 (string) $construction->emission?->automationStartsAt()?->format('m/Y'),
+                                ($construction->emission?->isLiquidated() ?? false) ? ' · Emissão liquidada' : '',
                             ),
                         ])
                         ->all())
@@ -105,7 +119,7 @@ class GenerateSalesBoardCycleAction
             ])
             ->action(function (array $data): void {
                 $construction = Construction::query()->with('emission')->find($data['construction_id']);
-                $referenceMonth = ReferenceMonthInput::parse($data['reference_month']);
+                $referenceMonth = ReferenceMonthInput::fromDateState($data['reference_month'] ?? null);
 
                 if (($construction === null) || ($referenceMonth === null)) {
                     Notification::make()
@@ -126,13 +140,8 @@ class GenerateSalesBoardCycleAction
                 $notification = Notification::make()
                     ->title($result->outcome->label())
                     ->body(match ($result->outcome) {
-                        SalesBoardGenerationOutcome::Generated => sprintf(
-                            '%s · %s: versão %s congelada. Próximo passo: enviar a posição para a validação da construtora.',
-                            (string) $result->constructionName,
-                            $result->referenceMonth->format('m/Y'),
-                            (string) ($result->baseline?->versionLabel() ?? 'V1'),
-                        ),
-                        SalesBoardGenerationOutcome::AlreadyExists => 'Esta competência já foi congelada. Refazer a posição é recálculo, que exige motivo.',
+                        SalesBoardGenerationOutcome::Generated => self::generatedBody($result),
+                        SalesBoardGenerationOutcome::AlreadyExists => self::alreadyExistsBody($result),
                         SalesBoardGenerationOutcome::Blocked => self::blockedBody($result),
                     });
 
@@ -144,6 +153,26 @@ class GenerateSalesBoardCycleAction
 
                 $notification->send();
             });
+    }
+
+    /**
+     * A competência já tem ciclo. Se ele foi cancelado, o caminho de volta não é
+     * o recálculo -- recusado em ciclo cancelado --, e sim a reabertura pela
+     * Gestão.
+     */
+    private static function alreadyExistsBody(SalesBoardGenerationResult $result): string
+    {
+        $cycle = $result->cycle;
+
+        if ($cycle?->status !== SalesBoardCycleStatus::Cancelled) {
+            return 'Esta competência já foi congelada. Refazer a posição é recálculo, que exige motivo.';
+        }
+
+        return sprintf(
+            'A competência %s foi cancelada pela Gestão em %s. Para retomá-la, abra o ciclo e use “Reabrir competência”.',
+            $result->referenceMonth->format('m/Y'),
+            $cycle->cancelled_at === null ? '—' : BusinessTime::at($cycle->cancelled_at)->format('d/m/Y'),
+        );
     }
 
     /**
@@ -177,6 +206,32 @@ class GenerateSalesBoardCycleAction
             ?->emission
             ?->automationStartsAt()
             ?->toDateString();
+    }
+
+    /**
+     * A competência congelada e o próximo passo. Os avisos que a apuração
+     * registrou nesta versão vêm logo abaixo, com rótulo, código, contagem e
+     * onde se confere -- eles não impedem o congelamento, mas quem envia à
+     * construtora precisa vê-los antes. Sem aviso, o corpo é só o texto.
+     */
+    private static function generatedBody(SalesBoardGenerationResult $result): string|HtmlString
+    {
+        $text = sprintf(
+            '%s · %s: versão %s congelada. Próximo passo: enviar a posição para a validação da construtora.',
+            (string) $result->constructionName,
+            $result->referenceMonth->format('m/Y'),
+            (string) ($result->baseline?->versionLabel() ?? 'V1'),
+        );
+
+        $warnings = SalesBoardFrozenWarnings::countsByCode($result->baseline?->frozenWarnings());
+
+        if ($warnings === []) {
+            return $text;
+        }
+
+        return new HtmlString(e($text)
+            .'<br><br>A apuração registrou avisos que não impedem o congelamento; confira-os na competência antes de enviar à construtora:<br>'
+            .SalesBoardIssuePresenter::toHtml($warnings)->toHtml());
     }
 
     /**

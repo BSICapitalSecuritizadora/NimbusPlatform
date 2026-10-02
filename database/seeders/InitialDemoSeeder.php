@@ -11,11 +11,26 @@ use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 class InitialDemoSeeder extends Seeder
 {
+    /**
+     * Dados de demonstração -- nunca em produção.
+     *
+     * A recusa vem antes de tudo, inclusive da ressincronização dos papéis: o
+     * seeder pode ser chamado direto (`db:seed --class=InitialDemoSeeder
+     * --force`), sem passar pelo {@see DatabaseSeeder}.
+     */
     public function run(): void
     {
+        if (app()->isProduction()) {
+            throw new RuntimeException(
+                'O InitialDemoSeeder não roda em produção: ele cria o super-admin admin@bsi.local e o investidor '
+                    .'investidor@demo.local com senha conhecida, uma Emissão fictícia, e ressincroniza as permissões dos papéis.'
+            );
+        }
+
         $this->call(RolesAndPermissionsSeeder::class);
 
         $adminEmail = 'admin@bsi.local';

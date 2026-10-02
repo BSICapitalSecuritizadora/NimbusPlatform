@@ -6,11 +6,13 @@ use App\Enums\SalesBoardAutomationTargetStatus;
 use App\Filament\Resources\SalesBoardAutomationTargets\SalesBoardAutomationTargetResource;
 use App\Models\SalesBoardAutomationRun;
 use App\Support\BusinessTime;
+use App\Support\Operations\ProcessHeartbeat;
 use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use App\Support\SalesBoards\SalesBoardAutomationNotices;
 use App\Support\SalesBoards\SalesBoardAutomationPerimeter;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
+use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 
 class ListSalesBoardAutomationTargets extends ListRecords
@@ -30,28 +32,48 @@ class ListSalesBoardAutomationTargets extends ListRecords
     private ?SalesBoardAutomationPerimeter $perimeter = null;
 
     /**
-     * O cabeçalho responde a pergunta que antecede todas as outras: o scheduler
-     * rodou? Sem ela, uma lista vazia é indistinguível de uma automação morta.
+     * O cabeçalho responde as perguntas que antecedem todas as outras, nesta
+     * ordem: a automação rodou, os processos de fundo estão vivos, quem é
+     * avisado de quê, e o que mais a tela precisa dizer.
+     *
+     * O sinal de vida vem antes da política de avisos porque é ele que diz se
+     * algum aviso vai sair: com o agendador parado, nem a automação nem os
+     * lembretes rodam -- e com o interruptor desligado ele é a única prova de
+     * que o agendador está de pé.
+     */
+    public function getHeader(): ?View
+    {
+        return view('filament.resources.sales-board-automation-targets.pages.automation-header', [
+            'heartbeats' => ProcessHeartbeat::describe(),
+            'reminderPolicy' => SalesBoardAutomationNotices::reminderPolicy(),
+            'notices' => SalesBoardAutomationNotices::forAutomationScreen(),
+        ]);
+    }
+
+    /**
+     * A linha de estado: o agendador rodou? Sem ela, uma lista vazia é
+     * indistinguível de uma automação morta.
      *
      * Desligada, a automação não registra execução nenhuma -- nem a própria
      * passagem --, e o cabeçalho diz isso antes de tudo: "desligada" e "ligada,
-     * mas sem execução" pedem ações diferentes de quem está olhando.
+     * mas sem execução" pedem ações diferentes de quem está olhando. E diz o
+     * que o interruptor não para: o fluxo humano continua, e o freio de uma
+     * Emissão é o retorno ao legado.
      */
     public function getSubheading(): ?string
     {
         $run = SalesBoardAutomationRun::query()->latest('started_at')->first();
         $lastRun = $this->lastRunSummary($run);
 
-        $notices = implode(' ', SalesBoardAutomationNotices::forAutomationScreen());
-        $notices = $notices === '' ? '' : ' '.$notices;
-
         if (! SalesBoardAutomationConfig::enabled()) {
-            return 'Automação desligada no interruptor global: nenhum processamento mensal é executado nem registrado enquanto ela estiver assim. '.$lastRun.$notices;
+            return 'Automação desligada no interruptor global: o agendador não gera competências, não envia lembretes e não registra '
+                .'execuções enquanto ela estiver assim. “Congelar competência” continua disponível; para parar uma Emissão, use '
+                .'“Retornar ao modo legado”. '.$lastRun;
         }
 
-        return ($run === null
+        return $run === null
             ? 'Automação global ligada, mas ainda sem execução: nenhuma execução registrada até agora.'
-            : 'Automação global ligada. '.$lastRun).$notices;
+            : 'Automação global ligada. '.$lastRun;
     }
 
     private function lastRunSummary(?SalesBoardAutomationRun $run): string
@@ -61,7 +83,7 @@ class ListSalesBoardAutomationTargets extends ListRecords
         }
 
         return sprintf(
-            'Última execução em %s · %s · competência limite %s · %d gerado(s), %d existente(s), %d bloqueado(s), %d falha(s).',
+            'Última execução em %s · %s · competência limite %s · %d gerado(s), %d existente(s), %d bloqueado(s), %d falha(s) · durou %s.',
             BusinessTime::at($run->started_at)->format('d/m/Y H:i'),
             $run->status->label(),
             $run->latestDueMonthLabel(),
@@ -69,6 +91,7 @@ class ListSalesBoardAutomationTargets extends ListRecords
             $run->existing_count,
             $run->blocked_count,
             $run->failed_count,
+            $run->durationLabel(),
         );
     }
 

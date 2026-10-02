@@ -6,9 +6,12 @@ use App\Enums\SalesBoardCycleStatus;
 use App\Enums\SalesBoardStaleImpact;
 use App\Models\SalesBoardAutomationTarget;
 use App\Models\SalesBoardCycle;
+use App\Support\BusinessTime;
 use App\Support\Money\IntegerMoney;
 use App\Support\SalesBoards\SalesBoardCycleNextAction;
+use DateTimeInterface;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ViewEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -28,7 +31,10 @@ class SalesBoardCycleInfolist
         return $schema->components([
             static::nextActionSection(),
             static::identificationSection(),
+            static::rectificationSection(),
             static::positionSection(),
+            static::bridgeSection(),
+            static::warningsSection(),
             static::versionSection(),
         ]);
     }
@@ -62,7 +68,7 @@ class SalesBoardCycleInfolist
                         ? 'A fonte ainda não foi verificada desde a apuração. Use “Verificar alterações” para conferir agora.'
                         : sprintf(
                             'Situação da fonte na última verificação, em %s. Use “Verificar alterações” para conferir agora.',
-                            $record->currentBaseline->last_checked_at->format('d/m/Y \à\s H:i'),
+                            static::businessDateTime($record->currentBaseline->last_checked_at),
                         ))
                     ->color('gray')
                     ->size('sm')
@@ -114,19 +120,86 @@ class SalesBoardCycleInfolist
                     ->placeholder(fn (SalesBoardCycle $record): string => static::withoutUserLabel($record))
                     ->icon('heroicon-m-user'),
 
+                /**
+                 * O cancelamento continua à vista depois da reabertura: é o
+                 * registro do último cancelamento, ao lado de quem reabriu e
+                 * por quê. As horas saem no fuso de negócio, como no resto da
+                 * tela -- não no UTC em que são gravadas.
+                 */
                 TextEntry::make('cancelledBy.name')
-                    ->label('Cancelada por')
+                    ->label(fn (SalesBoardCycle $record): string => $record->reopened_at === null ? 'Cancelada por' : 'Último cancelamento')
                     ->placeholder('Sem usuário registrado')
                     ->icon('heroicon-m-no-symbol')
-                    ->helperText(fn (SalesBoardCycle $record): ?string => $record->cancelled_at?->format('d/m/Y \à\s H:i'))
-                    ->visible(fn (SalesBoardCycle $record): bool => $record->status === SalesBoardCycleStatus::Cancelled),
+                    ->helperText(fn (SalesBoardCycle $record): ?string => static::businessDateTime($record->cancelled_at))
+                    ->visible(fn (SalesBoardCycle $record): bool => static::showsCancellation($record)),
 
                 TextEntry::make('cancellation_reason')
-                    ->label('Motivo do cancelamento')
+                    ->label(fn (SalesBoardCycle $record): string => $record->reopened_at === null ? 'Motivo do cancelamento' : 'Motivo do último cancelamento')
                     ->placeholder('—')
                     ->columnSpanFull()
-                    ->visible(fn (SalesBoardCycle $record): bool => $record->status === SalesBoardCycleStatus::Cancelled),
+                    ->visible(fn (SalesBoardCycle $record): bool => static::showsCancellation($record)),
+
+                TextEntry::make('reopenedBy.name')
+                    ->label('Reaberta por')
+                    ->placeholder('Sem usuário registrado')
+                    ->icon('heroicon-m-arrow-uturn-up')
+                    ->helperText(fn (SalesBoardCycle $record): ?string => static::businessDateTime($record->reopened_at))
+                    ->visible(fn (SalesBoardCycle $record): bool => $record->reopened_at !== null),
+
+                TextEntry::make('reopen_reason')
+                    ->label('Motivo da reabertura')
+                    ->placeholder('—')
+                    ->columnSpanFull()
+                    ->visible(fn (SalesBoardCycle $record): bool => $record->reopened_at !== null),
             ]);
+    }
+
+    /**
+     * As retificações da competência publicada: a em andamento e o histórico.
+     */
+    protected static function rectificationSection(): Section
+    {
+        return Section::make('Retificação')
+            ->extraAttributes(['class' => 'bsi-cycle-section bsi-cycle-rectification'])
+            ->description('A correção da posição publicada desta competência. Enquanto a retificação corre, a posição publicada continua valendo.')
+            ->icon('heroicon-o-pencil-square')
+            ->columnSpanFull()
+            ->visible(fn (SalesBoardCycle $record): bool => $record->hasPublication() && $record->rectifications()->exists())
+            ->schema([
+                ViewEntry::make('rectifications')
+                    ->hiddenLabel()
+                    ->view('filament.infolists.sales-board-cycle-rectifications'),
+            ]);
+    }
+
+    /**
+     * A ponte com a competência anterior: como a posição congelada dela chega à
+     * desta versão, pelos movimentos congelados.
+     */
+    protected static function bridgeSection(): Section
+    {
+        return Section::make('Ponte com a competência anterior')
+            ->extraAttributes(['class' => 'bsi-cycle-section bsi-cycle-bridge'])
+            ->description('Por balde: o que veio da competência anterior, o que entrou e saiu com explicação e o que mudou sem movimento que explique.')
+            ->icon('heroicon-o-arrows-right-left')
+            ->columnSpanFull()
+            ->collapsible()
+            ->visible(fn (SalesBoardCycle $record): bool => $record->current_baseline_id !== null)
+            ->schema([
+                ViewEntry::make('competence_bridge')
+                    ->hiddenLabel()
+                    ->view('filament.infolists.sales-board-cycle-competence-bridge'),
+            ]);
+    }
+
+    protected static function showsCancellation(SalesBoardCycle $record): bool
+    {
+        return ($record->status === SalesBoardCycleStatus::Cancelled) || ($record->reopened_at !== null);
+    }
+
+    protected static function businessDateTime(?DateTimeInterface $instant): ?string
+    {
+        return $instant === null ? null : BusinessTime::at($instant)->format('d/m/Y \à\s H:i');
     }
 
     protected static function positionSection(): Section
@@ -173,6 +246,27 @@ class SalesBoardCycleInfolist
             ]);
     }
 
+    /**
+     * Os avisos que a apuração registrou na versão vigente: o que o Nimbus
+     * sinalizou sem impedir o congelamento. Congelados com a versão -- vários
+     * dependem do status de hoje e não se reconstroem depois --, e por isso a
+     * tela os lê da versão, e não da fonte viva.
+     */
+    protected static function warningsSection(): Section
+    {
+        return Section::make('Avisos da apuração')
+            ->extraAttributes(['class' => 'bsi-cycle-section bsi-cycle-warnings'])
+            ->description('Sinais que a apuração registrou nesta versão sem impedir o congelamento: confira antes de enviar à construtora e de aprovar.')
+            ->icon('heroicon-o-exclamation-triangle')
+            ->columnSpanFull()
+            ->visible(fn (SalesBoardCycle $record): bool => $record->current_baseline_id !== null)
+            ->schema([
+                ViewEntry::make('derivation_warnings')
+                    ->hiddenLabel()
+                    ->view('filament.infolists.sales-board-cycle-warnings'),
+            ]);
+    }
+
     protected static function versionSection(): Section
     {
         return Section::make('Versão vigente e a fonte')
@@ -190,7 +284,7 @@ class SalesBoardCycleInfolist
 
                 TextEntry::make('currentBaseline.computed_at')
                     ->label('Apurada em')
-                    ->dateTime('d/m/Y \à\s H:i')
+                    ->dateTime('d/m/Y \à\s H:i', BusinessTime::timezone())
                     ->placeholder('—'),
 
                 TextEntry::make('currentBaseline.computedBy.name')
@@ -206,20 +300,25 @@ class SalesBoardCycleInfolist
 
                 TextEntry::make('stale_impact')
                     ->label('Situação da fonte')
-                    ->state(fn (SalesBoardCycle $record): string => ($record->currentBaseline?->stale_impact ?? SalesBoardStaleImpact::None)->label())
+                    ->state(fn (SalesBoardCycle $record): string => static::publishedSourceLabel($record)
+                        ?? ($record->currentBaseline?->stale_impact ?? SalesBoardStaleImpact::None)->label())
                     ->badge()
-                    ->color(fn (SalesBoardCycle $record): string => ($record->currentBaseline?->stale_impact ?? SalesBoardStaleImpact::None)->color())
-                    ->helperText(fn (SalesBoardCycle $record): string => ($record->currentBaseline?->stale_impact ?? SalesBoardStaleImpact::None)->description())
+                    ->color(fn (SalesBoardCycle $record): string => static::publishedSourceLabel($record) !== null
+                        ? 'info'
+                        : ($record->currentBaseline?->stale_impact ?? SalesBoardStaleImpact::None)->color())
+                    ->helperText(fn (SalesBoardCycle $record): string => static::publishedSourceLabel($record) !== null
+                        ? 'A posição publicada não é recalculada: os fatos alterados depois da publicação entram como movimentos extemporâneos na próxima competência. A última competência publicada pode ser corrigida pela Gestão com “Retificar competência”.'
+                        : ($record->currentBaseline?->stale_impact ?? SalesBoardStaleImpact::None)->description())
                     ->columnSpan(['default' => 1, 'lg' => 2]),
 
                 TextEntry::make('currentBaseline.last_checked_at')
                     ->label('Última verificação')
-                    ->dateTime('d/m/Y \à\s H:i')
+                    ->dateTime('d/m/Y \à\s H:i', BusinessTime::timezone())
                     ->placeholder('—'),
 
                 TextEntry::make('currentBaseline.stale_detected_at')
                     ->label('Primeira divergência')
-                    ->dateTime('d/m/Y \à\s H:i')
+                    ->dateTime('d/m/Y \à\s H:i', BusinessTime::timezone())
                     ->placeholder('Nunca divergiu')
                     ->helperText('Fica registrado mesmo que a fonte volte ao que era.'),
 
@@ -240,6 +339,22 @@ class SalesBoardCycleInfolist
                     ->extraAttributes(['class' => 'font-mono bsi-cycle-fingerprint'])
                     ->columnSpan(['default' => 1, 'lg' => 2]),
             ]);
+    }
+
+    /**
+     * O rótulo próprio da competência publicada, sem retificação aberta, cuja
+     * fonte mudou depois da publicação -- `null` nos outros casos. "Alterações
+     * materiais" ali mandaria recalcular o que não se recalcula.
+     */
+    public static function publishedSourceLabel(SalesBoardCycle $record): ?string
+    {
+        $impact = $record->currentBaseline?->stale_impact ?? SalesBoardStaleImpact::None;
+
+        if (($record->status !== SalesBoardCycleStatus::Approved) || ($impact === SalesBoardStaleImpact::None)) {
+            return null;
+        }
+
+        return 'Fatos posteriores à publicação';
     }
 
     /**

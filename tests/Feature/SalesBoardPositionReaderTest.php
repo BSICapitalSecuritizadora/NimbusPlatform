@@ -9,6 +9,7 @@ use App\Services\SalesBoards\SalesBoardPositionReader;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\SalesBoards\SalesBoardAnomalyFixture;
 
 uses(RefreshDatabase::class);
 
@@ -188,13 +189,15 @@ it('resolves a tie on the reference month deterministically by the latest row', 
     // The uniqueness of (emission, construction, competence) rules out a tie
     // inside one emission, so the tie is built the only way the schema allows
     // it: the same construction carrying a board of another emission in the
-    // same competence.
+    // same competence. The write guard refuses that second board, so it only
+    // exists as data loaded outside the model -- which the reader must still
+    // resolve deterministically.
     $emission = Emission::factory()->create();
     $otherEmission = Emission::factory()->create();
     $construction = Construction::factory()->create(['emission_id' => $emission->id]);
 
     $older = salesBoardFor($emission, $construction, '2026-07-01', unitsBreakdown(10, 0, 0, 0));
-    $newer = salesBoardFor($otherEmission, $construction, '2026-07-01', unitsBreakdown(77, 0, 0, 0));
+    $newer = SalesBoardAnomalyFixture::misplacedBoard($otherEmission, $construction, '2026-07-01', unitsBreakdown(77, 0, 0, 0));
 
     $first = salesBoardReader()->forConstruction($construction, CarbonImmutable::parse('2026-07-01'));
     $second = salesBoardReader()->forConstruction($construction, CarbonImmutable::parse('2026-07-01'));
@@ -293,12 +296,15 @@ it('lists the competences with a board up to the queried month', function () {
 });
 
 it('keeps a board attached to the emission even when the construction is not listed under it', function () {
+    // A board filed under an emission that is not its construction's own is
+    // refused by the write guard; it only exists as data loaded outside the
+    // model, and the reader keeps counting it under the emission it sits in.
     $emission = Emission::factory()->create();
     $listed = Construction::factory()->create(['emission_id' => $emission->id]);
     $unlisted = Construction::factory()->create();
 
     salesBoardFor($emission, $listed, '2026-07-01', unitsBreakdown(5, 0, 0, 0));
-    salesBoardFor($emission, $unlisted, '2026-07-01', unitsBreakdown(9, 0, 0, 0));
+    SalesBoardAnomalyFixture::misplacedBoard($emission, $unlisted, '2026-07-01', unitsBreakdown(9, 0, 0, 0));
 
     $position = salesBoardReader()->forEmission($emission, CarbonImmutable::parse('2026-07-01'));
 

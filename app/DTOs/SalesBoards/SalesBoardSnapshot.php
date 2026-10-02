@@ -23,12 +23,23 @@ use Carbon\CarbonImmutable;
  * movimentos são. Um fingerprint feito só sobre os quatro baldes diria que nada
  * mudou quando uma venda passasse de 950.000 para 960.000 sem trocar de balde, e
  * era exatamente a posição que a construtora tinha conferido.
+ *
+ * `previousCompetenceBaselineId` também não é identidade: diz contra qual
+ * versão da competência anterior os movimentos extemporâneos foram apurados, e
+ * fica fora do fingerprint. Se a anterior for retificada e isso mudar algum
+ * movimento, o resumo muda pelos movimentos -- e só nesse caso.
+ *
+ * `absorbedCancelledMonths` (`Y-m`) fica fora pelo mesmo motivo: com a âncora,
+ * é a estrutura da cadeia da versão ({@see SalesBoardChainStructure}), que a
+ * verificação de alterações compara à parte. `null` no snapshot de uma versão
+ * congelada antes desse registro.
  */
 readonly class SalesBoardSnapshot extends BaseDTO
 {
     /**
      * @param  list<SalesBoardSnapshotLine>  $lines
      * @param  list<SalesBoardSnapshotMovement>  $movements
+     * @param  list<string>|null  $absorbedCancelledMonths  `Y-m`, do mais recente para o mais antigo
      */
     public function __construct(
         public int $constructionId,
@@ -47,6 +58,8 @@ readonly class SalesBoardSnapshot extends BaseDTO
         public bool $isComplete,
         public array $lines,
         public array $movements,
+        public ?int $previousCompetenceBaselineId = null,
+        public ?array $absorbedCancelledMonths = null,
     ) {}
 
     public static function fromDerivedPosition(SalesBoardDerivedPosition $position): self
@@ -74,6 +87,8 @@ readonly class SalesBoardSnapshot extends BaseDTO
             isComplete: $position->isComplete(),
             lines: array_map(SalesBoardSnapshotLine::fromDerived(...), $position->lines),
             movements: $movements,
+            previousCompetenceBaselineId: $position->priorPosition?->baselineId,
+            absorbedCancelledMonths: SalesBoardChainStructure::fromPosition($position)->absorbedCancelledMonths,
         );
     }
 
@@ -113,6 +128,10 @@ readonly class SalesBoardSnapshot extends BaseDTO
                 ->map(fn (SalesBoardCycleMovement $movement): SalesBoardSnapshotMovement => SalesBoardSnapshotMovement::fromPersisted($movement))
                 ->values()
                 ->all(),
+            previousCompetenceBaselineId: $baseline->previous_competence_baseline_id === null
+                ? null
+                : (int) $baseline->previous_competence_baseline_id,
+            absorbedCancelledMonths: $baseline->absorbedCancelledMonths(),
         );
     }
 

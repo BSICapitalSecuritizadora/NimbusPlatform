@@ -9,12 +9,20 @@ use App\DTOs\SalesBoards\SalesBoardBuilderWorkspaceBucket;
 use App\DTOs\SalesBoards\SalesBoardBuilderWorkspaceMovementRow;
 use App\DTOs\SalesBoards\SalesBoardBuilderWorkspaceSection;
 use App\DTOs\SalesBoards\SalesBoardBuilderWorkspaceUnitRow;
+use App\DTOs\SalesBoards\SalesBoardComparableSnapshot;
+use App\DTOs\SalesBoards\SalesBoardPriorPosition;
 use App\Enums\SalesBoardBuilderReviewSection as SectionEnum;
+use App\Enums\SalesBoardRectificationStatus;
 use App\Models\SalesBoardBuilderReview;
 use App\Models\SalesBoardBuilderReviewSection;
+use App\Models\SalesBoardCycle;
+use App\Models\SalesBoardCycleBaseline;
 use App\Models\SalesBoardCycleLine;
 use App\Models\SalesBoardCycleMovement;
+use App\Models\SalesBoardCycleRectification;
 use App\Support\Money\IntegerMoney;
+use App\Support\SalesBoards\SalesBoardIssuePresenter;
+use App\Support\SalesBoards\UnitDisplayOrder;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -30,9 +38,25 @@ use Illuminate\Support\Collection;
  *
  * Nenhuma consulta toca contratos, parcelas, tabelas de preço ou permutas
  * vivas. O que existe aqui é o que foi congelado.
+ *
+ * As linhas saem na ordem em que a construtora confere: unidades pela ordem
+ * natural de {@see UnitDisplayOrder}, a mesma da aba Unidades do ciclo, e
+ * movimentos com os de competências anteriores primeiro, depois pela data do
+ * evento -- os sem data no fim -- e pela mesma ordem de unidade. A paginação
+ * da tela vem depois desta ordem.
+ *
+ * A "Ponte com a competência anterior" e o contexto da retificação aberta --
+ * motivo, posição publicada e o que muda contra ela, comparando versões
+ * congeladas -- também saem daqui, sem leitura da fonte viva.
  */
 class SalesBoardBuilderReviewWorkspaceBuilder
 {
+    public function __construct(
+        private readonly SalesBoardPriorPositionResolver $priorPositionResolver,
+        private readonly SalesBoardCompetenceBridgeBuilder $bridgeBuilder,
+        private readonly SalesBoardBaselineDiffService $diffService,
+    ) {}
+
     public function build(SalesBoardBuilderReview $review): SalesBoardBuilderReviewWorkspace
     {
         $review->loadMissing([
@@ -45,6 +69,7 @@ class SalesBoardBuilderReviewWorkspaceBuilder
 
         $baseline = $review->baseline;
         $cycle = $review->cycle;
+        $anchor = $this->priorPositionResolver->forCycle($cycle);
 
         $linesByClassification = $baseline->lines->groupBy(
             fn (SalesBoardCycleLine $line): string => $line->classification->value,
@@ -67,6 +92,7 @@ class SalesBoardBuilderReviewWorkspaceBuilder
                 $linesByClassification,
                 $movementsByType,
                 (int) ($divergenceCounts[$section->getKey()] ?? 0),
+                $anchor,
             );
         }
 
@@ -93,7 +119,50 @@ class SalesBoardBuilderReviewWorkspaceBuilder
             submittedAt: $review->submitted_at,
             reviewerName: $review->reviewer_name,
             overallComment: $review->overall_comment,
+            warnings: SalesBoardIssuePresenter::groupFrozen($baseline->frozenWarnings(), forBuilder: true),
+            bridge: $this->bridgeBuilder->forBaselineWithAnchor($baseline, $anchor),
+            rectification: $this->rectificationContext($cycle, $baseline),
+            lateMovementsCount: $baseline->movements
+                ->filter(fn (SalesBoardCycleMovement $movement): bool => $movement->timing !== null)
+                ->count(),
         );
+    }
+
+    /**
+     * O contexto da retificação aberta da competência: o motivo, a posição
+     * publicada que ela substitui e o que muda contra ela -- a comparação entre
+     * as duas versões congeladas, sem tocar a fonte viva. `null` sem
+     * retificação aberta.
+     *
+     * @return array{reason: string, requested_by: string|null, requested_at: CarbonImmutable|null, published_version: string|null, published_at: CarbonImmutable|null, diff: string|null}|null
+     */
+    private function rectificationContext(SalesBoardCycle $cycle, SalesBoardCycleBaseline $baseline): ?array
+    {
+        $rectification = SalesBoardCycleRectification::query()
+            ->where('sales_board_cycle_id', $cycle->getKey())
+            ->where('status', SalesBoardRectificationStatus::Open->value)
+            ->with(['requestedBy', 'rectifiedPublication.baseline'])
+            ->first();
+
+        if (! $rectification instanceof SalesBoardCycleRectification) {
+            return null;
+        }
+
+        $published = $rectification->rectifiedPublication?->baseline;
+
+        return [
+            'reason' => (string) $rectification->reason,
+            'requested_by' => $rectification->requestedBy?->name,
+            'requested_at' => $rectification->requested_at,
+            'published_version' => $published?->versionLabel(),
+            'published_at' => $rectification->rectifiedPublication?->published_at,
+            'diff' => $published === null
+                ? null
+                : $this->diffService->compare(
+                    SalesBoardComparableSnapshot::fromBaseline($published),
+                    SalesBoardComparableSnapshot::fromBaseline($baseline),
+                )->summary(),
+        ];
     }
 
     /**
@@ -105,6 +174,7 @@ class SalesBoardBuilderReviewWorkspaceBuilder
         $linesByClassification,
         $movementsByType,
         int $divergenceCount,
+        ?SalesBoardPriorPosition $anchor = null,
     ): SalesBoardBuilderWorkspaceSection {
         $classification = $section->section->classification();
 
@@ -112,6 +182,8 @@ class SalesBoardBuilderReviewWorkspaceBuilder
             $lines = $linesByClassification->get($classification->value, collect());
 
             $rows = $lines
+                ->sort(fn (SalesBoardCycleLine $left, SalesBoardCycleLine $right): int => UnitDisplayOrder::compare($left->block, $left->unit, $right->block, $right->unit)
+                    ?: [(int) $left->construction_unit_id, (int) $left->getKey()] <=> [(int) $right->construction_unit_id, (int) $right->getKey()])
                 ->map(fn (SalesBoardCycleLine $line): SalesBoardBuilderWorkspaceUnitRow => SalesBoardBuilderWorkspaceUnitRow::fromLine($line))
                 ->values()
                 ->all();
@@ -135,11 +207,56 @@ class SalesBoardBuilderReviewWorkspaceBuilder
             status: $section->status,
             comment: $section->comment,
             rows: $movements
-                ->map(fn (SalesBoardCycleMovement $movement): SalesBoardBuilderWorkspaceMovementRow => SalesBoardBuilderWorkspaceMovementRow::fromMovement($movement))
+                ->sort(fn (SalesBoardCycleMovement $left, SalesBoardCycleMovement $right): int => self::compareMovements($left, $right))
+                ->map(fn (SalesBoardCycleMovement $movement): SalesBoardBuilderWorkspaceMovementRow => self::movementRow($movement, $anchor))
                 ->values()
                 ->all(),
             divergenceCount: $divergenceCount,
         );
+    }
+
+    /**
+     * A linha do movimento com o selo de competência anterior. Na revisão de
+     * venda, o valor e a data como a competência anterior os congelou -- a
+     * linha da âncora vigente para a unidade.
+     */
+    private static function movementRow(SalesBoardCycleMovement $movement, ?SalesBoardPriorPosition $anchor): SalesBoardBuilderWorkspaceMovementRow
+    {
+        $prior = $anchor?->line((int) $movement->construction_unit_id);
+        $previousSaleDate = $prior?->saleDate === null ? null : CarbonImmutable::parse($prior->saleDate);
+        $previousSaleValue = $prior?->saleValueCents;
+
+        return SalesBoardBuilderWorkspaceMovementRow::fromMovement(
+            $movement,
+            $movement->timingLabel($anchor?->referenceMonth, $anchor?->isPublished ?? true, $previousSaleValue, $previousSaleDate),
+            $previousSaleValue,
+            $previousSaleDate,
+        );
+    }
+
+    /**
+     * Os de competências anteriores primeiro; depois a data do evento
+     * crescente, sem data no fim -- a quitação não traz o dia --, e a ordem
+     * natural da unidade.
+     */
+    private static function compareMovements(SalesBoardCycleMovement $left, SalesBoardCycleMovement $right): int
+    {
+        $byOrigin = (int) ($left->timing === null) <=> (int) ($right->timing === null);
+
+        $leftDate = $left->event_date?->toDateString();
+        $rightDate = $right->event_date?->toDateString();
+
+        $byDate = match (true) {
+            $leftDate === $rightDate => 0,
+            $leftDate === null => 1,
+            $rightDate === null => -1,
+            default => $leftDate <=> $rightDate,
+        };
+
+        return $byOrigin
+            ?: $byDate
+            ?: UnitDisplayOrder::compare($left->block, $left->unit, $right->block, $right->unit)
+            ?: [(int) $left->construction_unit_id, (int) $left->getKey()] <=> [(int) $right->construction_unit_id, (int) $right->getKey()];
     }
 
     /**

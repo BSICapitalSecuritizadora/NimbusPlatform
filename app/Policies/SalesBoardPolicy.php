@@ -6,6 +6,7 @@ use App\Exceptions\SalesBoardRolloutException;
 use App\Models\SalesBoard;
 use App\Models\User;
 use App\Services\SalesBoards\SalesBoardWriteGuard;
+use App\Support\SalesBoards\SalesBoardAccess;
 use Illuminate\Auth\Access\Response;
 
 /**
@@ -16,6 +17,10 @@ use Illuminate\Auth\Access\Response;
  * tela não oferece exclusão nenhuma -- a regra abaixo existe para que qualquer
  * ação padrão futura já nasça autorizada pela permissão certa e pelo guard de
  * escrita, em vez de liberada por falta de policy.
+ *
+ * Ver exige também `emissions.view` ({@see SalesBoardAccess::canView()}): o
+ * Quadro é um recorte da Emissão, e o Filament entrega o registro, com a
+ * Emissão e a obra carregadas, a quem chamar `getRecord()` na tela.
  */
 class SalesBoardPolicy
 {
@@ -23,12 +28,12 @@ class SalesBoardPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->can('sales-boards.view');
+        return SalesBoardAccess::canView($user);
     }
 
     public function view(User $user, SalesBoard $salesBoard): bool
     {
-        return $user->can('sales-boards.view');
+        return SalesBoardAccess::canView($user);
     }
 
     public function create(User $user): bool
@@ -36,6 +41,15 @@ class SalesBoardPolicy
         return $user->can('sales-boards.create');
     }
 
+    /**
+     * Só a permissão, de propósito. `canEdit()` também decide se a competência
+     * existente pode ganhar versão nova na tela de "Nova Atualização", e
+     * negar aqui um quadro publicado trocaria a explicação certa -- "publicado
+     * pelo fluxo de governança" -- por "exige a permissão de editar". Quadro
+     * publicado e competência automatizada são recusados pelo
+     * {@see SalesBoardWriteGuard} na gravação, e a tela avisa antes, pela mesma
+     * regra.
+     */
     public function update(User $user, SalesBoard $salesBoard): bool
     {
         return $user->can('sales-boards.update');

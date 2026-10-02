@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\DTOs\SalesBoards;
 
 use App\DTOs\BaseDTO;
+use App\Enums\SalesBoardMovementTiming;
 use App\Enums\SalesBoardMovementType;
 use App\Models\SalesBoardCycleMovement;
 use App\Support\Money\IntegerMoney;
@@ -24,6 +25,10 @@ use Carbon\CarbonImmutable;
  * A quitação não traz data porque o motor não a apura -- ele prova a transição
  * dentro do mês, não o dia. Inventar uma data para preencher a coluna seria
  * pedir à construtora que confirmasse um fato que o Nimbus não afirmou.
+ *
+ * O fato de competência anterior -- extemporâneo, revisão de venda publicada ou
+ * de competência sem posição -- vem com o selo que diz de onde ele veio e, na
+ * revisão, com a venda como a competência anterior a congelou.
  */
 readonly class SalesBoardBuilderWorkspaceMovementRow extends BaseDTO
 {
@@ -36,10 +41,18 @@ readonly class SalesBoardBuilderWorkspaceMovementRow extends BaseDTO
         public ?CarbonImmutable $eventDate,
         public ?int $saleValueCents,
         public ?int $settlementInstallmentsTotal,
+        public ?SalesBoardMovementTiming $timing = null,
+        public ?string $timingLabel = null,
+        public ?int $previousSaleValueCents = null,
+        public ?CarbonImmutable $previousSaleDate = null,
     ) {}
 
-    public static function fromMovement(SalesBoardCycleMovement $movement): self
-    {
+    public static function fromMovement(
+        SalesBoardCycleMovement $movement,
+        ?string $timingLabel = null,
+        ?int $previousSaleValueCents = null,
+        ?CarbonImmutable $previousSaleDate = null,
+    ): self {
         return new self(
             movementId: (int) $movement->getKey(),
             type: $movement->movement_type,
@@ -51,7 +64,16 @@ readonly class SalesBoardBuilderWorkspaceMovementRow extends BaseDTO
                 : CarbonImmutable::parse($movement->event_date->toDateString()),
             saleValueCents: IntegerMoney::cents($movement->sale_value),
             settlementInstallmentsTotal: $movement->settlement_installments_total,
+            timing: $movement->timing,
+            timingLabel: $timingLabel ?? $movement->timingLabel(),
+            previousSaleValueCents: $previousSaleValueCents,
+            previousSaleDate: $previousSaleDate,
         );
+    }
+
+    public function isFromEarlierCompetence(): bool
+    {
+        return $this->timing !== null;
     }
 
     public function displayName(): string

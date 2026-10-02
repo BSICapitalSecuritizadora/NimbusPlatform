@@ -29,6 +29,15 @@ use Throwable;
  * transações e o seu próprio `try`, e a execução termina relatando o que
  * conseguiu e o que não -- que é a diferença entre uma automação operável e uma
  * que precisa ser babysitada.
+ *
+ * Quem entra no perímetro é decidido pelo provider de elegibilidade, e é lá que
+ * mora a regra de parada da Emissão liquidada: ela sai do perímetro, e a
+ * execução encerra os alvos abertos dela, para de lembrar e avisa a Gestão uma
+ * vez -- sem nenhuma lógica de datas a mais aqui.
+ *
+ * A duração de cada execução é medida com `hrtime()` e gravada em
+ * milissegundos: os timestamps da execução não guardam fração de segundo, e a
+ * diferença entre eles transformava 0,75 s em zero e 1,96 s em um segundo.
  */
 class SalesBoardAutomationService
 {
@@ -58,6 +67,7 @@ class SalesBoardAutomationService
         ?CarbonImmutable $asOf = null,
         bool $dryRun = false,
     ): SalesBoardAutomationRun {
+        $startedNs = hrtime(true);
         $businessDate = $asOf?->startOfDay() ?? $this->dueDates->businessDate();
         $now = CarbonImmutable::now();
 
@@ -68,13 +78,13 @@ class SalesBoardAutomationService
          * seria uma automação rodando devagar, não uma automação desligada.
          */
         if (! $this->enabled()) {
-            return $this->previewRun($trigger, $businessDate, $now);
+            return $this->previewRun($trigger, $businessDate, $now, $startedNs);
         }
 
         $this->alerts->reset();
 
         if ($dryRun) {
-            return $this->previewRun($trigger, $businessDate, $now);
+            return $this->previewRun($trigger, $businessDate, $now, $startedNs);
         }
 
         $run = $this->startRun($trigger, $businessDate, $now);
@@ -83,7 +93,7 @@ class SalesBoardAutomationService
         $stage = 'início';
 
         try {
-            $this->execute($run, $businessDate, $now, $counters, $stage);
+            $this->execute($run, $businessDate, $now, $counters, $stage, $startedNs);
         } catch (Throwable $exception) {
             /**
              * Chega aqui o que estourou fora do laço dos alvos -- a recuperação
@@ -102,6 +112,7 @@ class SalesBoardAutomationService
                 ...$this->counterColumns($counters, $alerts),
                 'status' => SalesBoardAutomationRunStatus::Failed,
                 'finished_at' => CarbonImmutable::now(),
+                'duration_ms' => $this->elapsedMilliseconds($startedNs),
                 'failure_message' => sprintf(
                     'Falha técnica na orquestração, na etapa de %s (%s). O detalhe técnico está no log da aplicação.',
                     $stage,
@@ -128,6 +139,7 @@ class SalesBoardAutomationService
         CarbonImmutable $now,
         array &$counters,
         string &$stage,
+        int $startedNs,
     ): void {
         /**
          * Primeiro, o que a execução anterior deixou pela metade: quem morreu
@@ -194,8 +206,17 @@ class SalesBoardAutomationService
 
         /**
          * Os lembretes rodam depois da geração e fora dela: um aviso que falha
-         * não pode desfazer uma competência apurada, e uma competência apurada
-         * agora mesmo não deve gerar lembrete de atraso no mesmo instante.
+         * não pode desfazer uma competência apurada.
+         *
+         * E avaliam o mundo num instante tomado **depois** do processamento, não
+         * no `$now` do início. A tentativa grava `first_attempt_at` e o ciclo
+         * gravado tem `updated_at` com o relógio de quando aconteceram -- depois
+         * do início --, e os limiares comparam esses instantes com precisão de
+         * segundo. Com o `$now` do início, bastava o relógio virar o segundo
+         * durante a geração para os lembretes de limiar zero (bloqueio e
+         * "pronta para a construtora") ficarem de fora, e o aviso do mesmo dia
+         * só sair na execução seguinte. A janela de deduplicação passa a ser o
+         * dia de negócio desse mesmo instante.
          *
          * E um lembrete que estoura não transforma em "falhou" uma execução que
          * gerou as competências: ela termina "concluída com falhas", com a causa.
@@ -204,7 +225,7 @@ class SalesBoardAutomationService
         $reminderFailure = null;
 
         try {
-            $this->reminders->run($now, $perimeter);
+            $this->reminders->run(CarbonImmutable::now(), $perimeter);
         } catch (Throwable $exception) {
             report($exception);
 
@@ -223,8 +244,19 @@ class SalesBoardAutomationService
                 ? SalesBoardAutomationRunStatus::fromCounters($counters['failed'], $counters['blocked'], $alerts['failed'])
                 : SalesBoardAutomationRunStatus::CompletedWithFailures,
             'finished_at' => CarbonImmutable::now(),
+            'duration_ms' => $this->elapsedMilliseconds($startedNs),
             'failure_message' => $reminderFailure,
         ])->save();
+    }
+
+    /**
+     * Milissegundos desde `$startedNs`, pelo relógio monotônico do `hrtime()`:
+     * não anda para trás com ajuste de hora do servidor nem depende do relógio
+     * congelado dos testes.
+     */
+    private function elapsedMilliseconds(int $startedNs): int
+    {
+        return intdiv(max(0, hrtime(true) - $startedNs), 1_000_000);
     }
 
     /**
@@ -329,6 +361,7 @@ class SalesBoardAutomationService
         SalesBoardAutomationRunTrigger $trigger,
         CarbonImmutable $businessDate,
         CarbonImmutable $now,
+        int $startedNs,
     ): SalesBoardAutomationRun {
         $candidates = $this->enabled()
             ? $this->discovery->unsettled($this->discovery->discover($businessDate))
@@ -341,6 +374,7 @@ class SalesBoardAutomationService
             'latest_due_reference_month' => $this->dueDates->latestDueReferenceMonth($businessDate)->toDateString(),
             'started_at' => $now,
             'finished_at' => CarbonImmutable::now(),
+            'duration_ms' => $this->elapsedMilliseconds($startedNs),
             'targets_discovered' => count($candidates),
             'instance_key' => $this->instanceKey(),
         ]);

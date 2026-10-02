@@ -1,7 +1,7 @@
 /* ═════════════════════════════════════════════════════════════════════
    SELETOR DE COMPETÊNCIA INSTITUCIONAL (MonthPicker)
-   Padrão visual: Azul-petróleo (#091B23), Dourado (#A06E28), Off-white (#E6E4E4).
-   Superfície elevada: #0D2530 | Hover: #12313B
+   Padrão visual: Consome tokens semânticos (var(--surface-*), var(--text-*), var(--accent*))
+   Modo escuro: Preserva identidade azul-petróleo (#091B23) e dourado (#B7832F / #D8A94F).
    Grid de 4 colunas × 3 linhas (trimestral), ancorado via fixed positioning.
 ═════════════════════════════════════════════════════════════════════ */
 
@@ -19,19 +19,33 @@
     min-width: 0;
     height: 2.5rem;
     border-radius: 8px;
-    border: 1px solid rgba(160, 110, 40, 0.28);
-    background: #091b23;
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-card);
     transition: border-color 150ms ease, box-shadow 150ms ease;
     box-sizing: border-box;
 }
 
 .bsi-month-picker-control:hover {
-    border-color: rgba(160, 110, 40, 0.45);
+    border-color: var(--accent);
 }
 
 .bsi-month-picker-control:focus-within {
-    border-color: #a06e28;
-    box-shadow: 0 0 0 1px #a06e28;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+}
+
+.dark .bsi-month-picker-control {
+    border: 1px solid rgba(183, 131, 47, 0.28);
+    background: #091b23;
+}
+
+.dark .bsi-month-picker-control:hover {
+    border-color: rgba(183, 131, 47, 0.45);
+}
+
+.dark .bsi-month-picker-control:focus-within {
+    border-color: #b7832f;
+    box-shadow: 0 0 0 1px #b7832f;
 }
 
 .bsi-month-picker-input {
@@ -44,7 +58,7 @@
     outline: none;
     box-shadow: none;
     background: transparent;
-    color: #e6e4e4;
+    color: var(--text-primary);
     font-size: 0.875rem;
     line-height: 2.5rem;
     cursor: pointer;
@@ -57,7 +71,15 @@
 }
 
 .bsi-month-picker-input::placeholder {
-    color: rgba(230, 228, 228, 0.45);
+    color: var(--text-muted);
+}
+
+.dark .bsi-month-picker-input {
+    color: #fbfaf8;
+}
+
+.dark .bsi-month-picker-input::placeholder {
+    color: rgba(251, 250, 248, 0.45);
 }
 
 .bsi-month-picker-toggle {
@@ -72,7 +94,7 @@
     border: none;
     border-radius: 0 7px 7px 0;
     background: transparent;
-    color: #94a3b8;
+    color: var(--text-muted);
     cursor: pointer;
     transition: color 130ms ease, background-color 130ms ease;
 }
@@ -84,12 +106,21 @@
 
 .bsi-month-picker-toggle:hover,
 .bsi-month-picker-toggle[aria-expanded="true"] {
+    color: var(--accent);
+}
+
+.dark .bsi-month-picker-toggle {
+    color: #94a3b8;
+}
+
+.dark .bsi-month-picker-toggle:hover,
+.dark .bsi-month-picker-toggle[aria-expanded="true"] {
     color: #d8a94f;
 }
 
 .bsi-month-picker-toggle:focus-visible {
     border-radius: 6px;
-    outline: 2px solid rgba(160, 110, 40, 0.7);
+    outline: 2px solid var(--accent);
     outline-offset: -5px;
 }
 
@@ -100,11 +131,19 @@
 
 /* Painel de Filtros / Validação */
 .fi-ta-filters .bsi-month-picker-input {
-    color: #e6e4e4 !important;
+    color: var(--text-primary) !important;
 }
 
 .fi-ta-filters .bsi-month-picker-input::placeholder {
-    color: rgba(230, 228, 228, 0.45) !important;
+    color: var(--text-muted) !important;
+}
+
+.dark .fi-ta-filters .bsi-month-picker-input {
+    color: #fbfaf8 !important;
+}
+
+.dark .fi-ta-filters .bsi-month-picker-input::placeholder {
+    color: rgba(251, 250, 248, 0.45) !important;
 }
 
 .fi-ta-filters .fi-input-wrp.bsi-month-picker-control.bsi-month-picker-control-invalid,
@@ -127,12 +166,19 @@
     max-width: calc(100vw - 2rem);
     padding: 0.875rem;
     box-sizing: border-box;
-    border: 1px solid rgba(160, 110, 40, 0.28);
+    border: 1px solid var(--border-subtle);
     border-radius: 12px;
+    background: var(--surface-card);
+    box-shadow: 0 12px 32px rgba(9, 27, 35, 0.12), 0 4px 12px rgba(9, 27, 35, 0.06);
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+}
+
+.dark .bsi-month-picker-panel {
+    border: 1px solid rgba(183, 131, 47, 0.28);
     background: #091b23;
     box-shadow: 0 16px 36px rgba(4, 14, 19, 0.85), 0 4px 14px rgba(0, 0, 0, 0.55);
-    color: #e6e4e4;
-    font-size: 0.8125rem;
+    color: #fbfaf8;
 }
 
 /* ── Cabeçalho do Ano ── */
@@ -143,16 +189,24 @@
     gap: 0.5rem;
     margin-bottom: 0.75rem;
     padding-bottom: 0.5rem;
-    border-bottom: 1px solid rgba(160, 110, 40, 0.18);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.dark .bsi-month-picker-header {
+    border-bottom: 1px solid rgba(183, 131, 47, 0.18);
 }
 
 .bsi-month-picker-year {
     font-size: 0.9375rem;
     font-weight: 600;
-    color: #e6e4e4;
+    color: var(--text-primary);
     font-variant-numeric: tabular-nums;
     text-align: center;
     flex: 1 1 auto;
+}
+
+.dark .bsi-month-picker-year {
+    color: #fbfaf8;
 }
 
 .bsi-month-picker-nav-btn,
@@ -164,10 +218,10 @@
     height: 1.875rem;
     padding: 0;
     margin: 0;
-    border: 1px solid rgba(160, 110, 40, 0.25);
+    border: 1px solid var(--border-subtle);
     border-radius: 6px;
-    background: #0d2530;
-    color: #e6e4e4;
+    background: var(--surface-ground);
+    color: var(--text-secondary);
     cursor: pointer;
     transition: background-color 130ms ease, border-color 130ms ease, color 130ms ease;
 }
@@ -180,15 +234,34 @@
 
 .bsi-month-picker-nav-btn:hover,
 .bsi-month-picker-panel .fi-fo-date-time-picker-nav-btn:hover {
-    background: #12313b;
-    border-color: #a06e28;
-    color: #ffffff;
+    background: var(--surface-highlight);
+    border-color: var(--accent);
+    color: var(--accent);
 }
 
 .bsi-month-picker-nav-btn:focus-visible,
 .bsi-month-picker-panel .fi-fo-date-time-picker-nav-btn:focus-visible {
-    outline: 2px solid #a06e28;
+    outline: 2px solid var(--accent);
     outline-offset: 1px;
+}
+
+.dark .bsi-month-picker-nav-btn,
+.dark .bsi-month-picker-panel .fi-fo-date-time-picker-nav-btn {
+    border: 1px solid rgba(183, 131, 47, 0.25);
+    background: #0d2530;
+    color: #fbfaf8;
+}
+
+.dark .bsi-month-picker-nav-btn:hover,
+.dark .bsi-month-picker-panel .fi-fo-date-time-picker-nav-btn:hover {
+    background: #12313b;
+    border-color: #b7832f;
+    color: #ffffff;
+}
+
+.dark .bsi-month-picker-nav-btn:focus-visible,
+.dark .bsi-month-picker-panel .fi-fo-date-time-picker-nav-btn:focus-visible {
+    outline: 2px solid #b7832f;
 }
 
 /* ── Grade de Meses (4 colunas × 3 linhas padrão) ── */
@@ -211,7 +284,7 @@
     border: 1px solid transparent;
     border-radius: 6px;
     background: transparent;
-    color: #e6e4e4;
+    color: var(--text-primary);
     font-size: 0.8125rem;
     font-weight: 500;
     text-transform: lowercase;
@@ -220,45 +293,77 @@
     transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
 }
 
-/* Hover: #12313B */
 .bsi-month-picker-month:hover:not([aria-disabled="true"]):not(.bsi-month-picker-month-selected) {
-    background: #12313b;
-    border-color: rgba(160, 110, 40, 0.35);
-    color: #ffffff;
+    background: var(--surface-highlight);
+    border-color: var(--border-subtle);
+    color: var(--text-primary);
 }
 
 .bsi-month-picker-month:focus-visible {
-    outline: 2px solid #a06e28;
+    outline: 2px solid var(--accent);
     outline-offset: 1px;
 }
 
-/* Mês atual (outline dourado discreto com superfície elevada) */
+/* Mês atual */
 .bsi-month-picker-month.bsi-month-picker-month-current:not(.bsi-month-picker-month-selected) {
-    background: rgba(13, 37, 48, 0.7);
-    border-color: rgba(160, 110, 40, 0.75);
-    color: #d8a94f;
+    background: var(--surface-ground);
+    border-color: var(--accent);
+    color: var(--accent);
     font-weight: 600;
 }
 
-/* Mês selecionado (destaque institucional dourado #A06E28) */
+/* Mês selecionado */
 .bsi-month-picker-month.bsi-month-picker-month-selected {
-    background: #a06e28;
-    border-color: #d8a94f;
-    box-shadow: 0 2px 8px rgba(160, 110, 40, 0.45);
-    color: #091b23;
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(160, 110, 40, 0.3);
+    color: var(--accent-foreground);
     font-weight: 700;
 }
 
 /* Quando mês atual e selecionado coincidem */
 .bsi-month-picker-month.bsi-month-picker-month-selected.bsi-month-picker-month-current {
-    background: #a06e28;
-    border-color: #f0c568;
-    color: #091b23;
+    background: var(--accent);
+    border-color: var(--accent-hover);
+    color: var(--accent-foreground);
 }
 
 .bsi-month-picker-month[aria-disabled="true"] {
     cursor: not-allowed;
     opacity: 0.3;
+}
+
+.dark .bsi-month-picker-month {
+    color: #fbfaf8;
+}
+
+.dark .bsi-month-picker-month:hover:not([aria-disabled="true"]):not(.bsi-month-picker-month-selected) {
+    background: #12313b;
+    border-color: rgba(183, 131, 47, 0.35);
+    color: #ffffff;
+}
+
+.dark .bsi-month-picker-month:focus-visible {
+    outline: 2px solid #b7832f;
+}
+
+.dark .bsi-month-picker-month.bsi-month-picker-month-current:not(.bsi-month-picker-month-selected) {
+    background: rgba(13, 37, 48, 0.7);
+    border-color: rgba(183, 131, 47, 0.75);
+    color: #d8a94f;
+}
+
+.dark .bsi-month-picker-month.bsi-month-picker-month-selected {
+    background: #b7832f;
+    border-color: #d8a94f;
+    box-shadow: 0 2px 8px rgba(183, 131, 47, 0.45);
+    color: #06151c;
+}
+
+.dark .bsi-month-picker-month.bsi-month-picker-month-selected.bsi-month-picker-month-current {
+    background: #b7832f;
+    border-color: #f0c568;
+    color: #06151c;
 }
 
 /* ── Rodapé do Popup (Ações Limpar / Este mês) ── */
@@ -270,7 +375,12 @@
     gap: 0.5rem !important;
     padding-top: 0.625rem !important;
     margin-top: 0.375rem !important;
-    border-top: 1px solid rgba(160, 110, 40, 0.18) !important;
+    border-top: 1px solid var(--border-subtle) !important;
+}
+
+.dark .bsi-month-picker-footer,
+.dark .bsi-month-picker-panel .fi-fo-date-time-picker-panel-footer {
+    border-top: 1px solid rgba(183, 131, 47, 0.18) !important;
 }
 
 .bsi-month-picker-footer-btn,
@@ -290,42 +400,42 @@
 
 .bsi-month-picker-footer-btn-clear,
 .bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn-clear {
-    color: #e6e4e4 !important;
+    color: var(--text-secondary) !important;
     background: transparent !important;
-    border: 1px solid rgba(230, 228, 228, 0.2) !important;
+    border: 1px solid var(--border-subtle) !important;
 }
 
 .bsi-month-picker-footer-btn-clear:hover,
 .bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn-clear:hover {
-    background: #12313b !important;
-    border-color: rgba(160, 110, 40, 0.4) !important;
-    color: #ffffff !important;
+    background: var(--surface-ground) !important;
+    border-color: var(--accent) !important;
+    color: var(--text-primary) !important;
 }
 
 .bsi-month-picker-footer-btn-clear:focus-visible,
 .bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn-clear:focus-visible {
-    outline: 2px solid #a06e28 !important;
+    outline: 2px solid var(--accent) !important;
     outline-offset: 1px !important;
 }
 
 .bsi-month-picker-footer-btn-today,
 .bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn-today {
-    color: #e6e4e4 !important;
-    background: rgba(160, 110, 40, 0.2) !important;
-    border: 1px solid rgba(160, 110, 40, 0.45) !important;
+    color: var(--accent) !important;
+    background: var(--accent-subtle) !important;
+    border: 1px solid var(--border-subtle) !important;
     font-weight: 600 !important;
 }
 
 .bsi-month-picker-footer-btn-today:hover:not(:disabled),
 .bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn-today:hover:not(:disabled) {
-    background: #a06e28 !important;
-    border-color: #d8a94f !important;
-    color: #091b23 !important;
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+    color: var(--accent-foreground) !important;
 }
 
 .bsi-month-picker-footer-btn-today:focus-visible,
 .bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn-today:focus-visible {
-    outline: 2px solid #a06e28 !important;
+    outline: 2px solid var(--accent) !important;
     outline-offset: 1px !important;
 }
 
@@ -333,4 +443,43 @@
 .bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn:disabled {
     cursor: not-allowed !important;
     opacity: 0.4 !important;
+}
+
+.dark .bsi-month-picker-footer-btn-clear,
+.dark .bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn-clear {
+    color: #fbfaf8 !important;
+    background: transparent !important;
+    border: 1px solid rgba(148, 163, 184, 0.18) !important;
+}
+
+.dark .bsi-month-picker-footer-btn-clear:hover,
+.dark .bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn-clear:hover {
+    background: #12313b !important;
+    border-color: rgba(183, 131, 47, 0.35) !important;
+    color: #ffffff !important;
+}
+
+.dark .bsi-month-picker-footer-btn-clear:focus-visible,
+.dark .bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn-clear:focus-visible {
+    outline: 2px solid #b7832f !important;
+}
+
+.dark .bsi-month-picker-footer-btn-today,
+.dark .bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn-today {
+    color: #d8a94f !important;
+    background: rgba(183, 131, 47, 0.12) !important;
+    border: 1px solid rgba(183, 131, 47, 0.35) !important;
+    font-weight: 600 !important;
+}
+
+.dark .bsi-month-picker-footer-btn-today:hover:not(:disabled),
+.dark .bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn-today:hover:not(:disabled) {
+    background: #b7832f !important;
+    border-color: #d8a94f !important;
+    color: #06151c !important;
+}
+
+.dark .bsi-month-picker-footer-btn-today:focus-visible,
+.dark .bsi-month-picker-panel .fi-fo-date-time-picker-footer-btn-today:focus-visible {
+    outline: 2px solid #b7832f !important;
 }

@@ -29,9 +29,16 @@ class ViewContract extends ViewRecord
             EditAction::make()
                 ->label('Editar')
                 ->visible(fn (Contract $record): bool => ContractResource::canEdit($record)),
+            /**
+             * Autorizada pela policy, pela autorização padrão da página, como
+             * a exclusão na edição. A recusa com motivo -- contrato congelado
+             * num ciclo, ou que voltaria a ocupar a unidade durante uma baixa
+             * -- deixa o botão desabilitado com o motivo, em vez de sumir com
+             * ele; a falta da permissão continua escondendo.
+             */
             RestoreAction::make()
                 ->label('Restaurar Contrato')
-                ->visible(fn (Contract $record): bool => ContractResource::canRestore($record)),
+                ->authorizationTooltip(),
         ];
     }
 }

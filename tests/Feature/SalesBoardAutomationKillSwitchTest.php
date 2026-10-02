@@ -77,7 +77,9 @@ it('writes nothing at all when the command runs while disabled', function () {
     $before = salesBoardAutomationFootprint();
 
     $this->artisan('sales-boards:automation-run', ['--as-of' => '2026-09-13'])
-        ->expectsOutputToContain('A automação do Quadro de Vendas está desligada')
+        // Uma linha só: o interruptor para o agendador, não o fluxo humano.
+        ->expectsOutputToContain('A automação do Quadro de Vendas está desligada (sales_board.automation.enabled). '
+            .'Nada foi executado nem registrado. O fluxo humano continua: “Congelar competência” segue disponível.')
         ->assertExitCode(0);
 
     expect(salesBoardAutomationFootprint())->toBe($before)

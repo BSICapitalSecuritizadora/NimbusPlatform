@@ -5,6 +5,7 @@ use App\Models\Emission;
 use App\Models\SalesBoard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\SalesBoards\SalesBoardAnomalyFixture;
 
 uses(RefreshDatabase::class);
 
@@ -72,7 +73,10 @@ it('reports no divergence for a single-construction emission', function () {
  * duas posições no mesmo mês, e a Emissão A continua contando C2.
  *
  * A troca é feita direto na tabela, como numa carga feita por fora -- o
- * diagnóstico existe justamente para achar o que passou ao largo das telas.
+ * diagnóstico existe justamente para achar o que passou ao largo das telas. O
+ * segundo quadro também: o guard de escrita recusa a segunda posição do mesmo
+ * empreendimento no mesmo mês, e a anomalia só existe como dado anterior a ele
+ * ou carregado por SQL.
  *
  * @return array{a: Emission, b: Emission, moved: Construction, orphan: SalesBoard, duplicate: SalesBoard}
  */
@@ -101,7 +105,7 @@ function driftConstructionMovedBetweenEmissions(): array
 
     Construction::query()->whereKey($moved->id)->update(['emission_id' => $emissionB->id]);
 
-    $duplicate = $board($emissionB, $moved->fresh(), 5);
+    $duplicate = SalesBoardAnomalyFixture::misplacedBoard($emissionB, $moved->fresh(), '2026-07-01', ['stock_units' => 5]);
 
     return ['a' => $emissionA, 'b' => $emissionB, 'moved' => $moved, 'orphan' => $orphan, 'duplicate' => $duplicate];
 }

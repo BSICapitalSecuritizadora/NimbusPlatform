@@ -9,6 +9,8 @@ use App\Models\Emission;
 use App\Models\SalesBoard;
 use App\Models\SalesBoardHistory;
 use App\Models\SalesBoardPublication;
+use App\Support\BusinessTime;
+use DateTimeInterface;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -59,7 +61,7 @@ class SalesBoardInfolist
                     ->state('Este quadro foi publicado pelo fluxo de governança e não pode mais ser alterado ou excluído manualmente.')
                     ->icon('heroicon-m-lock-closed')
                     ->weight('bold')
-                    ->helperText('A posição publicada permanece como foi aprovada. Correções na fonte passam a valer a partir das próximas competências.'),
+                    ->helperText('A posição publicada permanece como foi aprovada. Fatos lançados depois entram como movimentos extemporâneos na competência seguinte; a última competência publicada pode ser corrigida pela Gestão com “Retificar competência”, que publica de novo este quadro com motivo e autor no histórico.'),
 
                 TextEntry::make('governance_publication')
                     ->label('Publicação')
@@ -68,7 +70,7 @@ class SalesBoardInfolist
 
                         return sprintf(
                             'Publicado em %s por %s, a partir da versão %s do ciclo.',
-                            $publication?->published_at?->format('d/m/Y \à\s H:i') ?? '—',
+                            static::businessDateTime($publication?->published_at),
                             $publication?->publishedBy?->name ?? '—',
                             $publication?->baseline?->versionLabel() ?? '—',
                         );
@@ -76,15 +78,55 @@ class SalesBoardInfolist
                     ->url(fn (SalesBoard $record): ?string => ($cycleId = static::publication($record)?->sales_board_cycle_id) === null
                         ? null
                         : SalesBoardCycleResource::getUrl('view', ['record' => $cycleId])),
+
+                TextEntry::make('governance_rectifications')
+                    ->label('Retificações')
+                    ->state(fn (SalesBoard $record): array => static::rectifications($record))
+                    ->listWithLineBreaks()
+                    ->visible(fn (SalesBoard $record): bool => static::rectifications($record) !== []),
             ]);
     }
 
+    /**
+     * A publicação vigente do quadro: a de maior sequência -- a original, ou a
+     * da última retificação aprovada.
+     */
     protected static function publication(SalesBoard $record): ?SalesBoardPublication
     {
-        return SalesBoardPublication::query()
+        return $record->currentPublication()
             ->with(['publishedBy', 'baseline'])
-            ->where('sales_board_id', $record->getKey())
             ->first();
+    }
+
+    /**
+     * As retificações publicadas deste quadro, da primeira à mais recente:
+     * quando, por quem e por quê.
+     *
+     * @return list<string>
+     */
+    protected static function rectifications(SalesBoard $record): array
+    {
+        return $record->publications()
+            ->whereNotNull('sales_board_cycle_rectification_id')
+            ->with(['publishedBy', 'rectification'])
+            ->get()
+            ->map(fn (SalesBoardPublication $publication): string => sprintf(
+                'Retificada em %s por %s: %s',
+                static::businessDateTime($publication->published_at),
+                $publication->publishedBy?->name ?? '—',
+                (string) ($publication->rectification?->reason ?? '—'),
+            ))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Data e hora de um instante no fuso de negócio, como nas outras telas do
+     * Quadro -- não no UTC em que são gravadas.
+     */
+    protected static function businessDateTime(?DateTimeInterface $instant): string
+    {
+        return $instant === null ? '—' : BusinessTime::at($instant)->format('d/m/Y \à\s H:i');
     }
 
     protected static function operationDataSection(): Section
@@ -174,7 +216,7 @@ class SalesBoardInfolist
 
                         TextEntry::make('initial_consolidated_at')
                             ->label('Consolidado em')
-                            ->state(fn (SalesBoard $record): string => static::constructionInitialPosition($record)?->created_at?->format('d/m/Y \à\s H:i') ?? '—')
+                            ->state(fn (SalesBoard $record): string => static::businessDateTime(static::constructionInitialPosition($record)?->created_at))
                             ->icon('heroicon-m-clock')
                             ->columnSpan(['default' => 1, 'sm' => 1, 'md' => 2]),
 
@@ -266,7 +308,7 @@ class SalesBoardInfolist
 
                         TextEntry::make('current_position_updated_at')
                             ->label('Atualizado em')
-                            ->state(fn (SalesBoard $record): string => $record->updated_at?->format('d/m/Y \à\s H:i') ?? '—')
+                            ->state(fn (SalesBoard $record): string => static::businessDateTime($record->updated_at))
                             ->icon('heroicon-m-clock')
                             ->columnSpan(['default' => 1, 'sm' => 1, 'md' => 2]),
 

@@ -884,3 +884,37 @@ it('hides the contracts listing from a user without the view permission', functi
 
     $this->get(ContractResource::getUrl('index'))->assertForbidden();
 });
+
+it('subtracts the registered discount from the contract saldo', function () {
+    [, , $unit] = contractScenario();
+    $contract = Contract::factory()->forUnit($unit)->create(['code' => 'CVC-00123', 'sale_value' => 850000.00]);
+
+    ContractInstallment::factory()->forContract($contract)->create([
+        'number' => '001', 'due_date' => '2026-01-10', 'expected_value' => 500000,
+        'payment_date' => '2026-01-10', 'paid_value' => 495000, 'discount_value' => 5000,
+    ]);
+    ContractInstallment::factory()->forContract($contract)->create([
+        'number' => '002', 'due_date' => '2026-02-10', 'expected_value' => 350000,
+        'payment_date' => '2026-02-10', 'paid_value' => 300000,
+    ]);
+    // Cancelada: fora de todos os totais, desconto inclusive.
+    ContractInstallment::factory()->forContract($contract)->create([
+        'number' => '003', 'due_date' => '2026-03-10', 'expected_value' => 90000,
+        'payment_date' => '2026-03-10', 'paid_value' => 80000, 'discount_value' => 10000, 'cancellation_date' => '2026-04-01',
+    ]);
+
+    $summary = $contract->installmentsSummary();
+
+    expect($summary['count'])->toBe(2)
+        ->and($summary['expected'])->toBe(850000.00)
+        ->and($summary['paid'])->toBe(795000.00)
+        ->and($summary['discount'])->toBe(5000.00)
+        // O desconto registrado cobre a primeira; a segunda ainda deve 50.000.
+        ->and($summary['outstanding'])->toBe(50000.00);
+
+    $this->actingAs(makeAdminUser());
+
+    Livewire::test(ViewContract::class, ['record' => $contract->getKey()])
+        ->assertOk()
+        ->assertSee('Descontos concedidos: R$ 5.000,00.');
+});

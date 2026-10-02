@@ -14,17 +14,17 @@ use App\Exceptions\SalesBoardManagementReviewException;
 use App\Models\SalesBoardCycleMovement;
 use App\Models\SalesBoardManagementNonconformity;
 use App\Models\SalesBoardManagementReview;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\SalesBoards\BuilderReviewFixture;
 use Tests\Support\SalesBoards\CycleFixture;
+use Tests\Support\SalesBoards\GovernanceFixture;
 use Tests\Support\SalesBoards\ManagementReviewFixture;
 
 uses(RefreshDatabase::class);
 
 it('opens a draft management review anchored on the current baseline and the submitted builder review', function () {
     $scenario = ManagementReviewFixture::submittedCycle();
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::operator();
 
     $review = ManagementReviewFixture::open($scenario['cycle'], $actor);
     $baseline = CycleFixture::currentBaseline($scenario['cycle']);

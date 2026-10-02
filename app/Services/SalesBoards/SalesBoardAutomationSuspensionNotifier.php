@@ -16,16 +16,24 @@ use Illuminate\Support\Facades\Log;
 /**
  * Avisa quando uma Emissão automatizada parou de ser atendida.
  *
- * A suspensão por mudança de escopo é uma decisão correta do provider -- um
- * empreendimento novo não entra sozinho numa Emissão homologada --, mas até aqui
- * ela só produzia um `Log::warning`, e a execução seguia "concluída". Um
- * empreendimento acrescentado à Emissão parava a automação da Emissão inteira
- * sem que ninguém fosse avisado.
+ * Uma Emissão automatizada fica fora do perímetro por dois motivos, e cada um
+ * tem aviso próprio:
  *
- * O aviso sai uma vez por situação, e não uma vez por dia: a janela de
- * deduplicação é o escopo atual somado à homologação vigente. Enquanto nada
- * mudar, o aviso não se repete; se alguém mexer no escopo de novo, a situação é
- * outra e o aviso sai outra vez.
+ * - **suspensão por mudança de escopo**: decisão correta do provider -- um
+ *   empreendimento novo não entra sozinho numa Emissão homologada --, que até
+ *   aqui só produzia um `Log::warning`, com a execução "concluída". Um
+ *   empreendimento acrescentado à Emissão parava a automação da Emissão
+ *   inteira sem que ninguém fosse avisado;
+ * - **Emissão liquidada**: a operação foi encerrada e a automação parou de
+ *   propósito. Chamá-la de "suspensa" seria um falso alarme -- não há escopo a
+ *   corrigir --, e o que a Gestão precisa saber é que a automação acabou e que
+ *   o fim do rollout se registra com "Retornar ao modo legado".
+ *
+ * Os dois avisos saem uma vez por situação, e não uma vez por dia. A janela da
+ * suspensão é o escopo atual somado à homologação vigente: enquanto nada mudar,
+ * o aviso não se repete; se alguém mexer no escopo de novo, a situação é outra
+ * e o aviso sai outra vez. A da liquidação é a homologação vigente: uma vez por
+ * ativação.
  */
 class SalesBoardAutomationSuspensionNotifier
 {
@@ -36,7 +44,7 @@ class SalesBoardAutomationSuspensionNotifier
     ) {}
 
     /**
-     * @return int quantas Emissões estão suspensas agora
+     * @return int quantas Emissões estão suspensas por mudança de escopo agora
      */
     public function notify(SalesBoardAutomationPerimeter $perimeter): int
     {
@@ -51,12 +59,17 @@ class SalesBoardAutomationSuspensionNotifier
                 ->values()
                 ->all();
 
-        $suspended = Emission::query()
+        [$liquidated, $suspended] = Emission::query()
             ->where('sales_board_source', SalesBoardSource::Automated)
             ->whereNotNull('sales_board_automation_start_reference_month')
             ->when($coveredEmissionIds !== [], fn ($query) => $query->whereNotIn('id', $coveredEmissionIds))
             ->orderBy('id')
-            ->get();
+            ->get()
+            ->partition(fn (Emission $emission): bool => $emission->isLiquidated());
+
+        foreach ($liquidated as $emission) {
+            $this->announceLiquidation($emission);
+        }
 
         foreach ($suspended as $emission) {
             $constructionIds = Construction::query()
@@ -94,5 +107,38 @@ class SalesBoardAutomationSuspensionNotifier
         }
 
         return $suspended->count();
+    }
+
+    /**
+     * A automação desta Emissão acabou porque ela foi liquidada.
+     *
+     * Uma vez por ativação: a janela é a homologação vigente. O registro no log
+     * segue a mesma regra, com um marcador de 30 dias no cache, para a execução
+     * horária não repetir a mesma linha o dia inteiro.
+     */
+    private function announceLiquidation(Emission $emission): void
+    {
+        $window = sprintf('liquidada-%d', (int) $emission->sales_board_active_homologation_id);
+
+        if (Cache::add('sales-board-automation:liquidated:'.$emission->getKey().':'.$window, true, now()->addDays(30))) {
+            Log::info('Sales board automation stopped: the emission was liquidated', [
+                'event' => 'sales_board_automation_stopped_liquidated',
+                'emission_id' => (int) $emission->getKey(),
+                'homologation_id' => $emission->sales_board_active_homologation_id,
+            ]);
+        }
+
+        $this->alerts->dispatch(
+            SalesBoardAutomationAlertType::EmissionLiquidated,
+            $this->recipients->forEmissionLiquidated($emission),
+            ['emission_id' => (int) $emission->getKey()],
+            $window,
+            'Emissão '.$emission->name,
+            '',
+            'A Emissão foi liquidada: a automação deixou de gerar competências e de enviar lembretes para ela, e as '
+                .'competências pendentes foram encerradas. Ciclos já gerados continuam em “Ciclos do Quadro” para serem '
+                .'concluídos ou cancelados; para registrar o fim do rollout, use “Retornar ao modo legado”.',
+            SalesBoardAutomationLinks::rollout($emission->getKey()),
+        );
     }
 }

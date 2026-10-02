@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use LogicException;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * Uma discordância declarada pela construtora contra um fato congelado.
@@ -24,7 +26,7 @@ use LogicException;
 class SalesBoardBuilderDivergence extends Model
 {
     /** @use HasFactory<SalesBoardBuilderDivergenceFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'sales_board_builder_review_id',
@@ -80,6 +82,41 @@ class SalesBoardBuilderDivergence extends Model
             'declared_date' => 'immutable_date',
             'declared_classification' => SalesBoardUnitClassification::class,
         ];
+    }
+
+    /**
+     * Quem declarou, corrigiu e apagou cada divergência, e o que ela dizia.
+     * Grava em `sales_board`, a categoria protegida do módulo.
+     *
+     * A remoção continua física -- rascunho é formulário, e uma divergência
+     * apagada não pode continuar contando nas consultas, no validador e na
+     * materialização da Gestão. O que ela dizia fica aqui: na exclusão, o
+     * conteúdo inteiro vai para `attribute_changes.old`, com o autor da remoção
+     * como causador e a data da trilha. Sem isso, uma divergência declarada e
+     * apagada antes do envio sumia sem deixar rastro de que existiu.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('sales_board')
+            ->logOnly([
+                'sales_board_builder_review_id',
+                'sales_board_builder_review_section_id',
+                'type',
+                'sales_board_cycle_line_id',
+                'sales_board_cycle_movement_id',
+                'construction_unit_id',
+                'contract_id',
+                'declared_block',
+                'declared_unit',
+                'declared_contract_code',
+                'declared_value',
+                'declared_date',
+                'declared_classification',
+                'reason',
+            ])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges();
     }
 
     public function review(): BelongsTo

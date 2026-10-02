@@ -40,8 +40,10 @@ enum SalesBoardRolloutRecipientRole: string
      * parada; a escalação é o que leva o atraso a quem decide.
      *
      * A suspensão por mudança de escopo também é da Gestão -- retomar exige nova
-     * homologação, que é decisão dela. A execução interrompida é falha técnica
-     * do motor e vai para quem acompanha a apuração.
+     * homologação, que é decisão dela --, e o mesmo vale para a automação
+     * encerrada por liquidação da Emissão: registrar o fim do rollout é ato da
+     * Gestão. A execução interrompida é falha técnica do motor e vai para quem
+     * acompanha a apuração.
      */
     public static function forAlert(SalesBoardAutomationAlertType $alert): self
     {
@@ -55,7 +57,8 @@ enum SalesBoardRolloutRecipientRole: string
             SalesBoardAutomationAlertType::BuilderEscalation,
             SalesBoardAutomationAlertType::ManagementReminder,
             SalesBoardAutomationAlertType::ManagementEscalation,
-            SalesBoardAutomationAlertType::ScopeSuspended => self::Management,
+            SalesBoardAutomationAlertType::ScopeSuspended,
+            SalesBoardAutomationAlertType::EmissionLiquidated => self::Management,
         };
     }
 
@@ -71,7 +74,7 @@ enum SalesBoardRolloutRecipientRole: string
     {
         return match ($this) {
             self::Operational => 'Recebe avisos de geração bloqueada, falha técnica, execução interrompida e da validação pendente com a construtora.',
-            self::Management => 'Recebe avisos de competência aguardando análise e decisão da Gestão, as escalações de atraso e a suspensão da automação por mudança de escopo.',
+            self::Management => 'Recebe avisos de competência aguardando análise e decisão da Gestão, as escalações de atraso, a suspensão da automação por mudança de escopo e a automação encerrada pela liquidação da Emissão.',
         };
     }
 }

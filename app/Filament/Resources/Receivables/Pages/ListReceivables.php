@@ -7,6 +7,8 @@ use App\Filament\Resources\Receivables\ReceivableResource;
 use App\Models\Emission;
 use App\Models\Receivable;
 use App\Rules\ReceivablesSpreadsheetFile;
+use App\Support\Uploads\LocalUploadedFile;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
@@ -17,11 +19,15 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class ListReceivables extends ListRecords
 {
     protected static string $resource = ReceivableResource::class;
+
+    /**
+     * Diretório onde o campo de arquivo grava a planilha enviada.
+     */
+    private const STORED_SPREADSHEET_DIRECTORY = 'imports/receivables';
 
     protected static ?string $title = 'Recebíveis';
 
@@ -43,6 +49,13 @@ class ListReceivables extends ListRecords
                 ->icon('heroicon-o-arrow-up-tray')
                 ->modalHeading('Importar resumo de recebíveis')
                 ->modalWidth('2xl')
+                /**
+                 * Cria ou reescreve o resumo da competência, então exige criar e
+                 * editar ({@see ReceivableResource::canImport()}). O Filament
+                 * confere o `visible()` de novo no servidor, quando a ação monta
+                 * e quando executa: o mount forjado por quem só vê não abre nada.
+                 */
+                ->visible(fn (): bool => ReceivableResource::canImport())
                 ->form([
                     Select::make('emission_id')
                         ->label('Emissão')
@@ -59,7 +72,7 @@ class ListReceivables extends ListRecords
                     FileUpload::make('file')
                         ->label('Arquivo Excel (.xlsx)')
                         ->disk('local')
-                        ->directory('imports/receivables')
+                        ->directory(self::STORED_SPREADSHEET_DIRECTORY)
                         ->acceptedFileTypes((array) config('uploads.receivables_import.allowed_mimes', []))
                         ->rules([new ReceivablesSpreadsheetFile])
                         ->helperText('A competência e os indicadores serão lidos da aba "Resumo". Caso ela não exista, o sistema tentará as abas "Planilha1" ou "Plan1".')
@@ -67,10 +80,12 @@ class ListReceivables extends ListRecords
                 ])
                 ->action(function (array $data, Action $action): void {
                     $emission = Emission::query()->findOrFail($data['emission_id']);
-                    $path = $this->resolveUploadedSpreadsheetPath($data['file'] ?? null);
 
                     try {
-                        $result = app(ImportReceivablesFromSpreadsheet::class)->handle($path, $emission);
+                        $result = $this->withUploadedSpreadsheet(
+                            $data['file'] ?? null,
+                            fn (string $path): array => app(ImportReceivablesFromSpreadsheet::class)->handle($path, $emission),
+                        );
                     } catch (ValidationException $exception) {
                         $this->notifyImportValidationFailure($exception);
 
@@ -100,31 +115,60 @@ class ListReceivables extends ListRecords
         ];
     }
 
-    protected function resolveUploadedSpreadsheetPath(mixed $file): string
+    /**
+     * Executa a importação com um caminho local legível da planilha enviada.
+     *
+     * O envio vai por {@see LocalUploadedFile}: com o temporário num disco
+     * remoto, `getRealPath()` era relativo e a planilha não era encontrada.
+     *
+     * @template TReturn
+     *
+     * @param  Closure(string): TReturn  $callback
+     * @return TReturn
+     */
+    protected function withUploadedSpreadsheet(mixed $file, Closure $callback): mixed
     {
         $file = is_array($file) ? Arr::first($file) : $file;
 
-        if (($file instanceof TemporaryUploadedFile) || ($file instanceof UploadedFile)) {
-            $realPath = $file->getRealPath();
-
-            if (is_string($realPath) && is_file($realPath)) {
-                return $realPath;
-            }
+        if ($file instanceof UploadedFile) {
+            return LocalUploadedFile::using($file, $callback);
         }
 
-        if (is_string($file)) {
-            if (Storage::disk('local')->exists($file)) {
-                return Storage::disk('local')->path($file);
-            }
+        return $callback($this->resolveUploadedSpreadsheetPath($file));
+    }
 
-            if (is_file($file)) {
-                return $file;
-            }
+    /**
+     * O caminho físico da planilha que o campo gravou no disco privado.
+     *
+     * O valor do campo vem do cliente, como todo estado de formulário Livewire.
+     * Por isso só é aceito um caminho relativo dentro de
+     * {@see self::STORED_SPREADSHEET_DIRECTORY}, sem `..`: antes, um caminho
+     * absoluto qualquer era lido como planilha.
+     */
+    protected function resolveUploadedSpreadsheetPath(mixed $file): string
+    {
+        if (is_string($file) && self::isStoredSpreadsheetPath($file) && Storage::disk('local')->exists($file)) {
+            return Storage::disk('local')->path($file);
         }
 
         throw ValidationException::withMessages([
             'file' => ['Não foi possível localizar o arquivo enviado. Por favor, envie a planilha novamente.'],
         ]);
+    }
+
+    private static function isStoredSpreadsheetPath(string $file): bool
+    {
+        if (! str_starts_with($file, self::STORED_SPREADSHEET_DIRECTORY.'/')) {
+            return false;
+        }
+
+        foreach (explode('/', $file) as $segment) {
+            if (in_array($segment, ['', '.', '..'], true)) {
+                return false;
+            }
+        }
+
+        return ! str_contains($file, '\\');
     }
 
     protected function formatImportValidationErrors(ValidationException $exception): string

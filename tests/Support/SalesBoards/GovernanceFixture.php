@@ -33,6 +33,11 @@ final class GovernanceFixture
 
     /**
      * Quem opera a competência: enxerga e registra posição, mas não conclui.
+     *
+     * Enxergar o Quadro exige também `emissions.view` -- o Quadro é recorte da
+     * Emissão --, e é com esta conta que as fixtures de validação, de análise e
+     * de rollout agem quando o teste não informa outra: os serviços de preparo
+     * recusam quem não opera a competência.
      */
     public static function operator(): User
     {
@@ -41,6 +46,7 @@ final class GovernanceFixture
             AccessPermission::SalesBoardsView->value,
             AccessPermission::SalesBoardsCreate->value,
             AccessPermission::SalesBoardsUpdate->value,
+            AccessPermission::EmissionsView->value,
         ]);
 
         return $user;

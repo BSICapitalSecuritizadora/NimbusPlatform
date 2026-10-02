@@ -6,6 +6,7 @@ use App\Enums\SalesBoardBuilderDivergenceType;
 use App\Enums\SalesBoardBuilderReviewSection;
 use App\Enums\SalesBoardCycleStatus;
 use App\Enums\SalesBoardStaleImpact;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Debug\ShouldntReport;
 use RuntimeException;
 
@@ -170,5 +171,71 @@ class SalesBoardBuilderReviewException extends RuntimeException implements Shoul
     public static function reviewerIdentityRequired(): self
     {
         return new self('Não foi possível identificar quem está enviando esta validação.');
+    }
+
+    /**
+     * O envio interno é o registro da resposta da construtora, e sem a
+     * resposta não há o que registrar.
+     */
+    public static function builderResponseEvidenceRequired(): self
+    {
+        return new self('Registre a resposta da construtora para enviar a validação: quem respondeu por ela, o canal, a data do recebimento e de 1 a 5 arquivos.');
+    }
+
+    public static function builderRespondentRequired(): self
+    {
+        return new self('Informe quem respondeu pela construtora, com pelo menos 3 caracteres.');
+    }
+
+    public static function builderRespondentEmailInvalid(): self
+    {
+        return new self('Informe um e-mail válido de quem respondeu pela construtora.');
+    }
+
+    public static function builderResponseChannelRequired(): self
+    {
+        return new self('Informe por qual canal a resposta da construtora chegou.');
+    }
+
+    /**
+     * A construtora responde sobre uma posição já fechada, e a resposta não
+     * pode ter chegado depois de hoje.
+     */
+    public static function builderResponseReceivedOutOfRange(CarbonImmutable $from, CarbonImmutable $until): self
+    {
+        return new self(sprintf(
+            'A data de recebimento da resposta precisa estar entre %s, data da posição, e %s, hoje.',
+            $from->format('d/m/Y'),
+            $until->format('d/m/Y'),
+        ));
+    }
+
+    public static function builderResponseChannelNeedsComment(): self
+    {
+        return new self('Com o canal "Outro canal", descreva nas observações gerais por onde a resposta da construtora chegou.');
+    }
+
+    public static function builderResponseAttachmentRequired(): self
+    {
+        return new self('Anexe pelo menos um arquivo com a resposta da construtora: o e-mail salvo em PDF, a planilha ou a ata.');
+    }
+
+    public static function tooManyBuilderResponseAttachments(int $max): self
+    {
+        return new self(sprintf('Anexe no máximo %d arquivos com a resposta da construtora.', $max));
+    }
+
+    public static function builderResponseAttachmentRejected(string $name, string $reason): self
+    {
+        return new self(sprintf('O arquivo "%s" não foi aceito: %s', $name, $reason));
+    }
+
+    /**
+     * Antivírus fora do ar não é arquivo reprovado: o envio é recusado, e a
+     * mesma resposta pode ser enviada de novo quando a varredura voltar.
+     */
+    public static function builderResponseScanUnavailable(): self
+    {
+        return new self('Não foi possível validar a segurança dos arquivos da resposta no momento. Tente enviar novamente mais tarde.');
     }
 }

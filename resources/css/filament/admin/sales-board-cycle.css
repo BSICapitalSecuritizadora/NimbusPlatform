@@ -140,6 +140,22 @@
     color: #e6e4e4;
 }
 
+/*
+ * As ações coloridas de contorno -- Cancelar, Desistir, Retificar e Reabrir --
+ * ficam sobre o cabeçalho escuro nos dois temas. Fora do modo escuro o Filament
+ * usa a variante clara (texto 700, anel 600), que sobre o #091b23 fica abaixo de
+ * 4,5:1; aqui vale a variante do modo escuro sempre. `--dark-text` é definida
+ * pela classe de cor do próprio botão, nos dois temas.
+ */
+.bsi-sales-board-cycle-view-page .fi-header-actions-ctn .fi-btn.fi-outlined.fi-color {
+    color: var(--dark-text);
+    --tw-ring-color: var(--color-500);
+}
+
+.bsi-sales-board-cycle-view-page .fi-header-actions-ctn .fi-btn.fi-outlined.fi-color > .fi-icon {
+    color: var(--color-400);
+}
+
 .bsi-sales-board-cycle-view-page .bsi-cycle-section > .fi-section,
 .bsi-sales-board-cycle-view-page .fi-ta-ctn {
     background: var(--cycle-surface);

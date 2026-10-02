@@ -3,11 +3,13 @@
 use App\Enums\SalesBoardRolloutEventType;
 use App\Enums\SalesBoardRolloutHomologationStatus;
 use App\Enums\SalesBoardRolloutRecipientRole;
+use App\Enums\SalesBoardRolloutSupersessionReason;
 use App\Enums\SalesBoardSource;
 use App\Exceptions\SalesBoardRolloutException;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\ConstructionUnitExchange;
+use App\Models\ConstructionUnitRetirement;
 use App\Models\ConstructionUnitValue;
 use App\Models\Contract;
 use App\Models\ContractInstallment;
@@ -18,7 +20,6 @@ use App\Models\SalesBoardRolloutHomologation;
 use App\Models\SalesBoardRolloutHomologationConstruction;
 use App\Models\SalesBoardRolloutRecipient;
 use App\Models\SalesDiscountPolicy;
-use App\Models\User;
 use App\Services\SalesBoards\SalesBoardRolloutAssessmentService;
 use App\Services\SalesBoards\SalesBoardRolloutHomologationService;
 use App\Services\SalesBoards\SalesBoardRolloutRecipientDirectory;
@@ -37,8 +38,9 @@ uses(RefreshDatabase::class);
  * Aprovar e ativar são atos separados, e entre eles a fonte pode mudar sem que
  * nenhum quadro manual apareça. A Gestão só pode ativar exatamente o que
  * revisou: se a posição derivada, a legada ou a fonte que as sustenta mudou, a
- * ativação é recusada e o caminho é uma nova homologação -- nunca reescrever a
- * aprovada.
+ * ativação é recusada, a homologação é gravada como substituída -- com o motivo
+ * -- e o caminho é uma nova homologação. O retrato aprovado nunca é reescrito:
+ * só o status e o motivo da substituição mudam.
  *
  * Roda também no MySQL: as posições atravessam coluna JSON, e um hash que só
  * coincidisse no SQLite recusaria toda ativação real.
@@ -115,6 +117,8 @@ function changeAfterApproval(string $change, array $scenario): void
             'effective_from' => '2026-01-01',
         ]),
         'new unit' => DerivationFixture::unit($scenario['constructions'][0], 'A99'),
+        // A baixa que vale no mês de comparação tira a unidade da posição.
+        'unit retired' => ConstructionUnitRetirement::factory()->forUnit($scenario['stockUnitA'])->retiredOn('2026-07-10')->create(),
 
         // Escopo: o conjunto de empreendimentos da Emissão.
         'construction added' => RolloutFixture::construction($scenario['emission'], 'Z'),
@@ -136,6 +140,9 @@ function changeAfterApproval(string $change, array $scenario): void
             $scenario['legacyBoard']->fresh()->touch(),
         ],
         'construction renamed' => $scenario['constructions'][1]->update(['development_name' => 'Residencial Renomeado']),
+        // Não material: a baixa que só começa depois do mês de comparação não
+        // é fonte dele.
+        'unit retired after the comparison month' => ConstructionUnitRetirement::factory()->forUnit($scenario['stockUnitA'])->retiredOn('2026-08-05')->create(),
         // Não material: destinatário é portão do momento, e não fato revisado.
         'operational recipient replaced' => replaceOperationalRecipient($scenario['emission']),
     };
@@ -150,8 +157,8 @@ function replaceOperationalRecipient(Emission $emission): void
         ->forRole(SalesBoardRolloutRecipientRole::Operational)
         ->sole();
 
-    $directory->add($emission, SalesBoardRolloutRecipientRole::Operational, RolloutFixture::operationalUser(), null);
-    $directory->remove($previous);
+    $directory->add($emission, SalesBoardRolloutRecipientRole::Operational, RolloutFixture::operationalUser(), GovernanceFixture::operator());
+    $directory->remove($previous, GovernanceFixture::operator());
 }
 
 /**
@@ -166,7 +173,7 @@ function homologateAndApprove(Emission $emission): SalesBoardRolloutHomologation
 
 function approveAttempt(SalesBoardRolloutHomologation $homologation): SalesBoardRolloutHomologation
 {
-    $operator = User::factory()->create();
+    $operator = GovernanceFixture::operator();
     $approver = GovernanceFixture::approver();
     $service = app(SalesBoardRolloutHomologationService::class);
 
@@ -205,6 +212,21 @@ function rolloutState(Emission $emission, SalesBoardRolloutHomologation $homolog
             ->all(),
         'events' => SalesBoardRolloutEvent::query()->where('emission_id', $emission->id)->count(),
     ];
+}
+
+/**
+ * O estado sem as três colunas que a substituição grava -- status, data e
+ * motivo -- e sem o carimbo de atualização que vem junto com elas. É tudo o que
+ * uma ativação recusada por fonte ou escopo ainda pode ter mudado.
+ *
+ * @param  array{emission: array<string, mixed>, homologation: array<string, mixed>, rows: list<array<string, mixed>>, events: int}  $state
+ * @return array{emission: array<string, mixed>, homologation: array<string, mixed>, rows: list<array<string, mixed>>, events: int}
+ */
+function withoutSupersession(array $state): array
+{
+    $state['homologation'] = Arr::except($state['homologation'], ['status', 'superseded_at', 'superseded_reason', 'updated_at']);
+
+    return $state;
 }
 
 function rolloutAssessment(): SalesBoardRolloutAssessmentService
@@ -250,10 +272,12 @@ it('refuses to activate when material source changed after approval', function (
         ->and($emission->sales_board_automation_start_reference_month)->toBeNull()
         ->and($emission->sales_board_active_homologation_id)->toBeNull()
         ->and(SalesBoardRolloutEvent::query()->where('event_type', SalesBoardRolloutEventType::Activated)->count())->toBe(0)
-        // A homologação aprovada não foi reescrita, nem marcada como substituída.
-        ->and($homologation->fresh()->status)->toBe(SalesBoardRolloutHomologationStatus::Approved)
+        // O retrato aprovado não foi reescrito: a homologação só foi marcada
+        // como substituída, com o motivo, e continua sem uso.
+        ->and($homologation->fresh()->status)->toBe(SalesBoardRolloutHomologationStatus::Superseded)
+        ->and($homologation->fresh()->superseded_reason)->toBe(SalesBoardRolloutSupersessionReason::SourceChanged->value)
         ->and($homologation->fresh()->activated_at)->toBeNull()
-        ->and(rolloutState($scenario['emission'], $homologation))->toBe($before);
+        ->and(withoutSupersession(rolloutState($scenario['emission'], $homologation)))->toBe(withoutSupersession($before));
 })->with([
     'contract sale value',
     'installment payment',
@@ -261,6 +285,7 @@ it('refuses to activate when material source changed after approval', function (
     'discount policy',
     'exchange',
     'new unit',
+    'unit retired',
 ]);
 
 it('refuses to activate when the legacy board of the comparison month changed', function () {
@@ -278,7 +303,9 @@ it('refuses to activate when the legacy board of the comparison month changed', 
     expect(fn () => RolloutFixture::activate($scenario['emission'], $homologation))
         ->toThrow(SalesBoardRolloutException::class, 'mudou desde a homologação aprovada');
 
-    expect(rolloutState($scenario['emission'], $homologation))->toBe($before);
+    expect($homologation->fresh()->status)->toBe(SalesBoardRolloutHomologationStatus::Superseded)
+        ->and($homologation->fresh()->superseded_reason)->toBe(SalesBoardRolloutSupersessionReason::SourceChanged->value)
+        ->and(withoutSupersession(rolloutState($scenario['emission'], $homologation)))->toBe(withoutSupersession($before));
 });
 
 it('refuses to activate when the emission scope changed', function (string $change) {
@@ -291,7 +318,9 @@ it('refuses to activate when the emission scope changed', function (string $chan
     expect(fn () => RolloutFixture::activate($scenario['emission'], $homologation))
         ->toThrow(SalesBoardRolloutException::class, 'empreendimentos da Emissão mudaram');
 
-    expect(rolloutState($scenario['emission'], $homologation))->toBe($before);
+    expect($homologation->fresh()->status)->toBe(SalesBoardRolloutHomologationStatus::Superseded)
+        ->and($homologation->fresh()->superseded_reason)->toBe(SalesBoardRolloutSupersessionReason::ScopeChanged->value)
+        ->and(withoutSupersession(rolloutState($scenario['emission'], $homologation)))->toBe(withoutSupersession($before));
 })->with([
     'construction added',
     'construction removed',
@@ -316,6 +345,7 @@ it('still activates when only non-material data changed', function (string $chan
     'records touched',
     'construction renamed',
     'operational recipient replaced',
+    'unit retired after the comparison month',
 ]);
 
 it('refuses to activate when the only operational recipient is no longer operational', function () {
@@ -365,8 +395,10 @@ it('requires a new homologation attempt once the approved one went stale', funct
     expect($emission->sales_board_source)->toBe(SalesBoardSource::Automated)
         ->and($emission->sales_board_active_homologation_id)->toBe($approved->id)
         ->and(SalesBoardRolloutEvent::query()->sole()->sales_board_rollout_homologation_id)->toBe($approved->id)
-        // A tentativa envelhecida fica como estava: aprovada, nunca usada.
-        ->and($stale->fresh()->status)->toBe(SalesBoardRolloutHomologationStatus::Approved)
+        // A tentativa envelhecida foi substituída pela fonte que mudou, nunca
+        // foi usada, e o retrato que ela aprovou continua o mesmo.
+        ->and($stale->fresh()->status)->toBe(SalesBoardRolloutHomologationStatus::Superseded)
+        ->and($stale->fresh()->superseded_reason)->toBe(SalesBoardRolloutSupersessionReason::SourceChanged->value)
         ->and($stale->fresh()->activated_at)->toBeNull()
         ->and($stale->fresh()->assessment_hash)->toBe($stale->assessment_hash);
 });
@@ -409,7 +441,7 @@ it('persists exactly the rows its hash describes', function () {
 
 it('keeps governance out of the assessment hash', function () {
     $scenario = freshnessScenario();
-    $actor = User::factory()->create();
+    $actor = GovernanceFixture::operator();
     $service = app(SalesBoardRolloutHomologationService::class);
 
     $homologation = RolloutFixture::open($scenario['emission'], $actor);
@@ -426,7 +458,7 @@ it('keeps governance out of the assessment hash', function () {
     // Aceites e atestações mudaram; os fatos não.
     expect(rolloutAssessment()->assessmentHash($homologation->fresh()))->toBe($hash)
         ->and(rolloutAssessment()->observe($homologation->fresh())->assessmentHash)->toBe($hash)
-        ->and($service->reassess($homologation->fresh())->assessment_hash)->toBe($hash);
+        ->and($service->reassess($homologation->fresh(), $actor)->assessment_hash)->toBe($hash);
 });
 
 it('observes the source inside the activation transaction', function () {
