@@ -17,9 +17,15 @@ class GeneratePuDailyCurve
         private readonly PuCurvePrerequisiteService $prerequisiteService,
     ) {}
 
+    /**
+     * Calcula e grava uma versão de curva. Gerar não publica nada: a curva só
+     * chega ao PU oficial, aos pagamentos e ao site pela homologação.
+     *
+     * @param  bool  $syncLegacyProjections  sem efeito desde a Fase 2 de governança; mantido pela assinatura
+     */
     public function handle(
         Emission $emission,
-        bool $syncLegacyProjections = true,
+        bool $syncLegacyProjections = false,
         ?string $calculationVersion = null,
     ): PuCurveGenerationResult {
         $prerequisiteCheck = $this->prerequisiteService->handle($emission);

@@ -88,8 +88,10 @@ function outstandingBalanceEmission(): array
         'investor_fund' => 'Fundo A',
     ]);
 
+    // Histórico importado de planilha: continua valendo como legado legítimo
+    // depois que a emissão ganha curva de PU.
     foreach (['2026-07-31', '2026-08-31', '2026-09-14'] as $date) {
-        PuHistory::query()->create(['emission_id' => $emission->id, 'date' => $date, 'unit_value' => 8000]);
+        PuHistory::query()->create(['emission_id' => $emission->id, 'date' => $date, 'unit_value' => 8000, 'source' => PuHistory::SOURCE_IMPORT]);
     }
 
     foreach (['2026-07-01', '2026-08-01'] as $month) {
@@ -291,8 +293,9 @@ it('does not blame a source change for the daily PU of the open competence of th
 
     expect((string) outstandingBalanceSnapshot($emission, '2026-09-01')->outstanding_balance)->toBe('8000000.00');
 
-    // O PU de um dia novo, como a extensão diária gravaria: o saldo de setembro muda sem ato de ninguém.
-    PuHistory::query()->create(['emission_id' => $emission->id, 'date' => '2026-09-15', 'unit_value' => 8010]);
+    // O PU de um dia novo, importado do sistema antigo: o saldo de setembro muda
+    // sem ato de ninguém. (A extensão diária não grava mais no Histórico de PU.)
+    PuHistory::query()->create(['emission_id' => $emission->id, 'date' => '2026-09-15', 'unit_value' => 8010, 'source' => PuHistory::SOURCE_IMPORT]);
 
     // A curva responde em 31/08 o mesmo PU do Histórico e não cobre setembro.
     outstandingBalanceCurve($emission, 'v9', '8000.0000000000000000', $maker);

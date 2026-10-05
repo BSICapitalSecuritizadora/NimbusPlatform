@@ -14,6 +14,7 @@ use App\Domain\PuCalculator\DTOs\PuValidationReport;
 use App\Domain\PuCalculator\DTOs\PuValidationRowResult;
 use App\Domain\PuCalculator\Enums\PuCandidateReviewDecision;
 use App\Domain\PuCalculator\Enums\PuCurvePromotionDecision;
+use App\Domain\PuCalculator\Enums\PuCurveStatus;
 use App\Domain\PuCalculator\Enums\PuExternalValidationDecision;
 use App\Enums\BusinessArea;
 use App\Models\Emission;
@@ -465,12 +466,17 @@ class PuAuditLogService
         ?int $requestedByUserId,
         bool $selfHomologated = false,
         ?string $justification = null,
+        ?int $curveVersionId = null,
+        ?string $previousStatus = null,
     ): void {
         $logger = activity(self::LOG_NAME)
             ->performedOn($emission)
             ->withProperties([
                 'engine_version' => self::ENGINE_VERSION,
                 'calculation_version' => $calculationVersion,
+                'curve_version_id' => $curveVersionId,
+                'previous_status' => $previousStatus,
+                'new_status' => PuCurveStatus::Homologated->value,
                 'self_homologated' => $selfHomologated,
                 'justification' => $justification,
                 'authorized_by_area' => $selfHomologated ? BusinessArea::PuCurve->value : null,
@@ -483,13 +489,24 @@ class PuAuditLogService
         $logger->event('homologated')->log('pu_curve_homologated');
     }
 
-    public function logInvalidation(Emission $emission, ?string $calculationVersion, ?int $requestedByUserId): void
-    {
+    public function logInvalidation(
+        Emission $emission,
+        ?string $calculationVersion,
+        ?int $requestedByUserId,
+        ?int $curveVersionId = null,
+        ?string $previousStatus = null,
+        ?string $reason = null,
+    ): void {
         $logger = activity(self::LOG_NAME)
             ->performedOn($emission)
             ->withProperties([
                 'engine_version' => self::ENGINE_VERSION,
                 'calculation_version' => $calculationVersion,
+                'curve_version_id' => $curveVersionId,
+                'previous_status' => $previousStatus,
+                'new_status' => PuCurveStatus::Obsolete->value,
+                'obsolete_reason' => 'invalidated',
+                'reason' => $reason,
             ]);
 
         if (($causer = $this->causer($requestedByUserId)) !== null) {
@@ -622,7 +639,7 @@ class PuAuditLogService
     }
 
     /**
-     * @param  array{updated: int, created: int, moved: int, reverted: int}  $counts
+     * @param  array{updated: int, created: int, moved: int, reverted: int, restored_components?: int, settled_kept?: int, settled_divergent_dates?: list<string>}  $counts
      * @param  list<string>  $unmatchedDates
      */
     public function logPaymentsReconciled(

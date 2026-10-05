@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Emissions\GeneratePuDailyCurve;
+use App\Actions\Emissions\HomologatePuCurve;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Services\DecimalRounder;
@@ -11,12 +12,13 @@ use App\Models\Emission;
 use App\Models\IndexRate;
 use App\Models\Payment;
 use App\Models\PuHistory;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-it('generates and persists a deterministic zero-rate curve with legacy projections', function () {
+it('generates a deterministic zero-rate curve that publishes nothing until it is homologated', function () {
     $emission = Emission::factory()->create([
         'type' => 'CRI',
         'status' => 'active',
@@ -63,24 +65,34 @@ it('generates and persists a deterministic zero-rate curve with legacy projectio
         'sequence' => 2,
     ]);
 
+    $currentPuBefore = $emission->fresh()->getRawOriginal('current_pu');
     $result = app(GeneratePuDailyCurve::class)->handle($emission);
 
+    // Mesmo com a flag legada ligada, gerar não grava Histórico de PU,
+    // pagamentos nem o PU atual da emissão.
     expect($result->rows)->toHaveCount(5)
         ->and($result->calculationVersion)->toBe('v1')
         ->and($emission->puDailyCurves()->count())->toBe(5)
-        ->and(PuHistory::query()->where('emission_id', $emission->id)->count())->toBe(5)
-        ->and(Payment::query()->where('emission_id', $emission->id)->count())->toBe(1);
+        ->and(PuHistory::query()->where('emission_id', $emission->id)->count())->toBe(0)
+        ->and(Payment::query()->where('emission_id', $emission->id)->count())->toBe(0)
+        ->and($emission->fresh()->getRawOriginal('current_pu'))->toBe($currentPuBefore);
 
     $eventRow = $emission->puDailyCurves()->whereDate('curve_date', '2026-01-05')->sole();
-    $payment = Payment::query()->where('emission_id', $emission->id)->sole();
 
     expect($eventRow->payment_total_unit_value)->toBe('100.0000000000000000')
         ->and($eventRow->amortization_value)->toBe('10000.0000000000000000')
         ->and($eventRow->payment_total_value)->toBe('10000.0000000000000000')
-        ->and($eventRow->residual_unit_value)->toBe('900.0000000000000000')
-        ->and($payment->interest_value)->toBe('0.00')
+        ->and($eventRow->residual_unit_value)->toBe('900.0000000000000000');
+
+    app(HomologatePuCurve::class)->handle($emission->fresh(), 'v1', User::factory()->create()->id, 'Curva de referência conferida.');
+
+    $payment = Payment::query()->where('emission_id', $emission->id)->sole();
+
+    expect($payment->interest_value)->toBe('0.00')
         ->and($payment->amortization_value)->toBe('10000.00')
-        ->and(bccomp((string) $emission->fresh()->getRawOriginal('current_pu'), '900', 6))->toBe(0);
+        ->and($payment->isCalculatedByOfficialCurve())->toBeTrue()
+        ->and(PuHistory::query()->where('emission_id', $emission->id)->count())->toBe(0)
+        ->and($emission->fresh()->getRawOriginal('current_pu'))->toBe($currentPuBefore);
 });
 
 it('uses cumulative quantity, keeps factor identities and resets the base after a payment event', function () {

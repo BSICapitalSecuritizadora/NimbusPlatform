@@ -108,9 +108,13 @@ function officialCurveEmission(bool $legacyProjection = false): Emission
     return $emission->fresh();
 }
 
-function homologateOfficialCurve(Emission $emission): void
+/**
+ * A curva do cenário nasce sem maker identificado (gerada direto pela ação),
+ * então a homologação registra justificativa; e sempre nomeia a versão.
+ */
+function homologateOfficialCurve(Emission $emission, string $calculationVersion = 'v1'): void
 {
-    app(HomologatePuCurve::class)->handle($emission->fresh(), null, User::factory()->create()->id);
+    app(HomologatePuCurve::class)->handle($emission->fresh(), $calculationVersion, User::factory()->create()->id, 'Conferida contra o sistema antigo.');
 }
 
 function officialCurveRow(Emission $emission, string $date): EmissionPuDailyCurve
@@ -137,7 +141,8 @@ function puReaderOn(Emission $emission, string $date): ?PuReading
 
 it('keeps a generated curve away from the other areas until it is homologated', function () {
     $emission = officialCurveEmission();
-    PuHistory::query()->create(['emission_id' => $emission->id, 'date' => '2026-03-10', 'unit_value' => '999.00000000']);
+    // PU legado importado de planilha: é o que vale enquanto não há curva homologada.
+    PuHistory::query()->create(['emission_id' => $emission->id, 'date' => '2026-03-10', 'unit_value' => '999.00000000', 'source' => PuHistory::SOURCE_IMPORT]);
 
     $beforeHomologation = puReaderOn($emission, '2026-03-10');
 
@@ -145,7 +150,7 @@ it('keeps a generated curve away from the other areas until it is homologated', 
     $official = puReaderOn($emission, '2026-03-10');
     $curveValue = (string) officialCurveRow($emission, '2026-03-10')->residual_unit_value;
 
-    app(InvalidatePuCurve::class)->handle($emission->fresh(), null, User::factory()->create()->id);
+    app(InvalidatePuCurve::class)->handle($emission->fresh(), 'v1', User::factory()->create()->id);
     $afterInvalidation = puReaderOn($emission, '2026-03-10');
 
     expect($beforeHomologation->source)->toBe(PuReading::SOURCE_PU_HISTORY)
@@ -210,7 +215,7 @@ it('replaces the forecast of every payment the official curve calculated and kee
         ->and($activity->properties['moved'])->toBe(1)
         ->and($activity->properties['unmatched_forecast_dates'])->toBe(['2026-03-05']);
 
-    app(InvalidatePuCurve::class)->handle($emission->fresh(), null, User::factory()->create()->id);
+    app(InvalidatePuCurve::class)->handle($emission->fresh(), 'v1', User::factory()->create()->id);
 
     expect($payment->fresh()->value_source)->toBeNull()
         ->and((string) $payment->fresh()->interest_value)->toBe('999.00')
@@ -259,12 +264,20 @@ it('brings the new payments of a homologated curve in with the daily extension',
         ->toBeTrue();
 });
 
-it('leaves emissions with the legacy projection to the legacy writer', function () {
+it('reconciles emissions with the old legacy projection flag through the official writer only', function () {
     $emission = officialCurveEmission(legacyProjection: true);
 
-    $result = app(PuPaymentScheduleService::class)->reconcile($emission);
+    $beforeHomologation = app(PuPaymentScheduleService::class)->reconcile($emission);
 
-    expect($result['action'])->toBe(PuPaymentScheduleService::ACTION_LEGACY_PROJECTION);
+    expect($beforeHomologation['action'])->toBe(PuPaymentScheduleService::ACTION_RECONCILED)
+        ->and($beforeHomologation['version'])->toBeNull()
+        ->and(Payment::query()->whereBelongsTo($emission)->count())->toBe(0)
+        ->and(PuHistory::query()->whereBelongsTo($emission)->count())->toBe(0);
+
+    homologateOfficialCurve($emission);
+
+    expect(Payment::query()->whereBelongsTo($emission)->sole()->isCalculatedByOfficialCurve())->toBeTrue()
+        ->and(PuHistory::query()->whereBelongsTo($emission)->count())->toBe(0);
 });
 
 it('shows on the emission tabs that the official curve feeds the PU and the payments', function () {

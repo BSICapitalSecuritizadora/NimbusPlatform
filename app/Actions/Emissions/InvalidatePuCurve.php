@@ -2,6 +2,8 @@
 
 namespace App\Actions\Emissions;
 
+use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Exceptions\PuCurveGovernanceException;
 use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Domain\PuCalculator\Services\PuCurveVersionService;
 use App\Domain\PuCalculator\Services\PuPaymentScheduleService;
@@ -9,8 +11,18 @@ use App\Enums\PuSourceChange;
 use App\Events\PuCalculator\EmissionPuSourceChanged;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
-use InvalidArgumentException;
+use Illuminate\Support\Facades\DB;
 
+/**
+ * Invalidação da versão NOMEADA, numa única transação com a conciliação dos
+ * pagamentos.
+ *
+ * A versão vira `obsolete` (motivo `invalidated`) e fica preservada para
+ * auditoria. Uma versão em `processing` é recusada: a geração ainda é dona dela.
+ * Invalidada a curva oficial, a homologada anterior -- se ainda homologada --
+ * volta a ser a oficial; sem nenhuma, a emissão fica sem curva oficial. Nunca se
+ * cai para uma versão não homologada.
+ */
 class InvalidatePuCurve
 {
     public function __construct(
@@ -19,29 +31,54 @@ class InvalidatePuCurve
         private readonly PuPaymentScheduleService $paymentSchedule,
     ) {}
 
-    public function handle(Emission $emission, ?string $calculationVersion = null, ?int $requestedByUserId = null): EmissionPuCurveVersion
-    {
-        $version = $this->versionService->findByCalculationVersion($emission, $calculationVersion);
+    /**
+     * @param  string|null  $calculationVersion  versão revisada por quem invalida; obrigatória
+     */
+    public function handle(
+        Emission $emission,
+        ?string $calculationVersion,
+        ?int $requestedByUserId = null,
+        ?string $reason = null,
+    ): EmissionPuCurveVersion {
+        $reason = filled($reason) ? trim($reason) : null;
 
-        if ($version === null) {
-            throw new InvalidArgumentException('Nenhuma versao de curva disponivel para invalidacao.');
-        }
+        return DB::transaction(function () use ($emission, $calculationVersion, $requestedByUserId, $reason): EmissionPuCurveVersion {
+            $lockedEmission = Emission::query()->whereKey($emission->id)->lockForUpdate()->firstOrFail();
+            $version = $this->versionService->lockForGovernance($lockedEmission, $calculationVersion);
+            $previousStatus = $version->status;
 
-        $this->versionService->markInvalidated($version, $requestedByUserId);
-        $this->auditLogService->logInvalidation($emission, $version->calculation_version, $requestedByUserId);
+            if (! $previousStatus->canBeInvalidated()) {
+                throw new PuCurveGovernanceException(sprintf(
+                    'A versão %s está %s e não pode ser invalidada.%s',
+                    $version->calculation_version,
+                    mb_strtolower($previousStatus->label()),
+                    $previousStatus === PuCurveStatus::Processing ? ' Aguarde a geração terminar.' : '',
+                ));
+            }
 
-        // Se a versão invalidada era a oficial, os pagamentos calculados por ela
-        // voltam ao previsto (ou passam para a homologada anterior).
-        $this->paymentSchedule->reconcile($emission->fresh(), $requestedByUserId);
+            $this->versionService->markInvalidated($version, $requestedByUserId);
+            $this->auditLogService->logInvalidation(
+                $lockedEmission,
+                $version->calculation_version,
+                $requestedByUserId,
+                $version->id,
+                $previousStatus->value,
+                $reason,
+            );
 
-        // E o saldo devedor das garantias também volta a outra fonte.
-        EmissionPuSourceChanged::dispatch(
-            (int) $emission->getKey(),
-            PuSourceChange::CurveInvalidated,
-            $version->calculation_version,
-            $requestedByUserId,
-        );
+            // Se a versão invalidada era a oficial, os pagamentos calculados por ela
+            // voltam ao previsto (ou passam para a homologada anterior).
+            $this->paymentSchedule->reconcile($lockedEmission, $requestedByUserId);
 
-        return $version;
+            // E o saldo devedor das garantias também volta a outra fonte.
+            EmissionPuSourceChanged::dispatch(
+                (int) $lockedEmission->getKey(),
+                PuSourceChange::CurveInvalidated,
+                $version->calculation_version,
+                $requestedByUserId,
+            );
+
+            return $version;
+        });
     }
 }

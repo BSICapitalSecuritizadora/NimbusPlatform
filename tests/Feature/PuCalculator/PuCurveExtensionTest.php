@@ -17,6 +17,7 @@ use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuDailyCurve;
 use App\Models\IndexRate;
+use App\Models\Payment;
 use App\Models\PuHistory;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -203,16 +204,19 @@ it('does not extend while a generation prerequisite is blocking', function () {
         ->and(EmissionPuDailyCurve::query()->count())->toBe($rows);
 });
 
-it('projects only the appended days into the legacy PU history', function () {
+it('never projects the appended days of an unhomologated curve into the legacy PU history', function () {
     $emission = generatedExtensionEmission(legacyProjection: true);
     $historyBefore = PuHistory::query()->whereBelongsTo($emission)->count();
+    $currentPuBefore = $emission->fresh()->getRawOriginal('current_pu');
     publishCdi('2026-03-16', '2026-03-20');
 
     $result = extendCurve($emission);
-    $lastRow = $emission->currentPuCurveVersion()->dailyCurves()->orderByDesc('curve_date')->first();
 
-    expect(PuHistory::query()->whereBelongsTo($emission)->count())->toBe($historyBefore + $result->appendedRows)
-        ->and(bccomp((string) $emission->fresh()->current_pu, (string) $lastRow->residual_unit_value, 2))->toBe(0);
+    expect($result->action)->toBe(PuCurveExtensionService::ACTION_EXTENDED)
+        ->and($result->appendedRows)->toBeGreaterThan(0)
+        ->and(PuHistory::query()->whereBelongsTo($emission)->count())->toBe($historyBefore)
+        ->and(Payment::query()->whereBelongsTo($emission)->count())->toBe(0)
+        ->and($emission->fresh()->getRawOriginal('current_pu'))->toBe($currentPuBefore);
 });
 
 it('queues a full generation only when the extension cannot proceed on its own', function () {

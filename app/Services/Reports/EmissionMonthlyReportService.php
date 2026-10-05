@@ -1646,12 +1646,13 @@ class EmissionMonthlyReportService
 
     /**
      * PU da seção de saldo devedor na data-base; sem leitura, o PU atual
-     * cadastrado na emissão (emissões sem curva nem histórico).
+     * cadastrado na emissão -- só para emissão legada (sem curva de PU): numa
+     * governada ele pode ter vindo de uma curva nunca homologada.
      */
     private function debtBalanceUnitValue(Emission $emission, CarbonImmutable $monthEnd): ?string
     {
         return $this->puReader->readingOn($emission, $monthEnd)?->unitValue
-            ?? ($emission->current_pu !== null ? (string) $emission->current_pu : null);
+            ?? $this->puReader->legacyCurrentUnitValue($emission);
     }
 
     private function debtBalanceValue(Emission $emission, ?string $unitValue): ?float

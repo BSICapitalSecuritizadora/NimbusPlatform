@@ -845,7 +845,7 @@
 }
 
 .dark .fi-ta-table tr.fi-ta-row:hover td {
-    background-color: rgba(13, 39, 51, 0.65) !important;
+    background-color: var(--surface-highlight) !important;
 }
 
 .dark .fi-ta-table td {
@@ -1962,7 +1962,7 @@
 /* ── Filter & Form Select Dropdown Panel / Popover Floating Context ── */
 .fi-dropdown-panel {
     z-index: 9999 !important;
-    background: var(--surface-card) !important;
+    background: var(--surface-elevated) !important;
     color: var(--text-primary) !important;
     border: 1px solid var(--border-subtle) !important;
     box-shadow: 0 12px 32px rgba(9, 27, 35, 0.10), 0 4px 12px rgba(9, 27, 35, 0.05) !important;
@@ -1971,7 +1971,7 @@
 }
 
 .dark .fi-dropdown-panel {
-    background: var(--surface-card) !important;
+    background: var(--surface-elevated) !important;
     color: var(--text-primary) !important;
     border: 1px solid rgba(183, 131, 47, 0.25) !important;
     box-shadow: 0 20px 45px rgba(4, 14, 19, 0.8), 0 6px 18px rgba(4, 14, 19, 0.5) !important;
@@ -2741,7 +2741,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 
 /* ── Calendário e Seletor de Data/Hora (BSI Capital Admin) ── */
 .fi-fo-date-time-picker-panel {
-    background: var(--surface-card) !important;
+    background: var(--surface-elevated) !important;
     border: 1px solid var(--border-subtle) !important;
     box-shadow: 0 12px 32px rgba(9, 27, 35, 0.12), 0 4px 12px rgba(9, 27, 35, 0.06) !important;
     border-radius: 12px !important;
@@ -2755,7 +2755,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 }
 
 .dark .fi-fo-date-time-picker-panel {
-    background: #091b23 !important;
+    background: var(--surface-elevated) !important;
     border: 1px solid rgba(183, 131, 47, 0.28) !important;
     box-shadow: 0 16px 36px rgba(4, 14, 19, 0.85), 0 4px 14px rgba(0, 0, 0, 0.55) !important;
     color: #fbfaf8 !important;
@@ -4499,6 +4499,601 @@ select.fi-select-input {
     color: rgba(251, 250, 248, 0.65) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
+
+/* ═════════════════════════════════════════════════════════════════════
+   PHASE 3 — FILAMENT CORE PRIMITIVES
+   Stabilized visual identities consuming canonical semantic tokens:
+   1. Generic Filament Sections (.fi-section)
+   2. Generic Table Containers & Table Chrome (.fi-ta-ctn, .fi-ta-table)
+   3. Table Headers, Rows, Dividers, & Selection (.fi-ta-row, etc.)
+   4. Generic Pagination Chrome (.fi-pagination, .fi-pagination-items)
+   5. Filament Notifications / Toasts (.fi-no-notification)
+   6. Modal Backdrop / Close Overlay (.fi-modal-close-overlay)
+   7. Tippy / Tooltips (.tippy-box, .tippy-arrow)
+   ═════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Generic Filament Sections ── */
+.fi-section:not(.fi-section-not-contained):not(.fi-aside),
+.fi-section:not(.fi-section-not-contained).fi-aside > .fi-section-content-ctn {
+    background-color: var(--surface-card) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: 0.75rem !important;
+    box-shadow: 0 1px 3px rgba(9, 27, 35, 0.04) !important;
+    --tw-ring-color: transparent !important;
+}
+
+.dark .fi-section:not(.fi-section-not-contained):not(.fi-aside),
+.dark .fi-section:not(.fi-section-not-contained).fi-aside > .fi-section-content-ctn {
+    background-color: var(--surface-card) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: 0 4px 20px rgba(4, 14, 19, 0.4) !important;
+    --tw-ring-color: transparent !important;
+}
+
+.fi-section.fi-secondary:not(.fi-section-not-contained):not(.fi-aside),
+.fi-section.fi-secondary:not(.fi-section-not-contained).fi-aside > .fi-section-content-ctn {
+    background-color: var(--surface-ground) !important;
+}
+
+.dark .fi-section.fi-secondary:not(.fi-section-not-contained):not(.fi-aside),
+.dark .fi-section.fi-secondary:not(.fi-section-not-contained).fi-aside > .fi-section-content-ctn {
+    background-color: var(--surface-ground) !important;
+}
+
+.fi-section-header-heading {
+    color: var(--text-primary) !important;
+}
+
+.dark .fi-section-header-heading {
+    color: var(--text-primary) !important;
+}
+
+.fi-section-header-description {
+    color: var(--text-secondary) !important;
+}
+
+.dark .fi-section-header-description {
+    color: var(--text-secondary) !important;
+}
+
+.fi-section-header > .fi-icon,
+.fi-section-collapse-btn {
+    color: var(--text-muted) !important;
+}
+
+.fi-section-collapse-btn:hover {
+    color: var(--text-secondary) !important;
+}
+
+.dark .fi-section-header > .fi-icon,
+.dark .fi-section-collapse-btn {
+    color: var(--text-muted) !important;
+}
+
+.dark .fi-section-collapse-btn:hover {
+    color: var(--text-secondary) !important;
+}
+
+.fi-section:not(.fi-section-not-contained):not(.fi-aside).fi-section-has-header:not(.fi-collapsed) > .fi-section-content-ctn,
+.fi-section > .fi-section-content-ctn > .fi-section-footer {
+    border-top: 1px solid var(--border-subtle) !important;
+}
+
+.dark .fi-section:not(.fi-section-not-contained):not(.fi-aside).fi-section-has-header:not(.fi-collapsed) > .fi-section-content-ctn,
+.dark .fi-section > .fi-section-content-ctn > .fi-section-footer {
+    border-top: 1px solid var(--border-subtle) !important;
+}
+
+.fi-section > .fi-section-content-ctn > .fi-section-footer {
+    background-color: var(--surface-ground) !important;
+    border-bottom-left-radius: 0.75rem !important;
+    border-bottom-right-radius: 0.75rem !important;
+}
+
+.dark .fi-section > .fi-section-content-ctn > .fi-section-footer {
+    background-color: var(--surface-ground) !important;
+}
+
+.fi-section.fi-divided > .fi-section-content-ctn > .fi-section-content > * + * {
+    border-top: 1px solid var(--border-subtle) !important;
+}
+
+.dark .fi-section.fi-divided > .fi-section-content-ctn > .fi-section-content > * + * {
+    border-top: 1px solid var(--border-subtle) !important;
+}
+
+
+/* ── 2. Generic Table Containers & Table Chrome ── */
+.fi-ta-ctn {
+    background-color: var(--surface-card) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: 0.75rem !important;
+    box-shadow: 0 1px 3px rgba(9, 27, 35, 0.04) !important;
+    --tw-ring-color: transparent !important;
+}
+
+.dark .fi-ta-ctn {
+    background-color: var(--surface-card) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: 0 4px 20px rgba(4, 14, 19, 0.4) !important;
+    --tw-ring-color: transparent !important;
+}
+
+.fi-ta-header,
+.fi-ta-header-toolbar {
+    background-color: var(--surface-ground) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+.dark .fi-ta-header,
+.dark .fi-ta-header-toolbar {
+    background-color: var(--surface-ground) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+.fi-ta-header-heading {
+    color: var(--text-primary) !important;
+}
+
+.dark .fi-ta-header-heading {
+    color: var(--text-primary) !important;
+}
+
+.fi-ta-header-description {
+    color: var(--text-secondary) !important;
+}
+
+.dark .fi-ta-header-description {
+    color: var(--text-secondary) !important;
+}
+
+
+/* ── 3. Table Column Headers, Rows, Dividers, & States ── */
+.fi-ta-table > thead > tr {
+    background-color: var(--surface-ground) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+.dark .fi-ta-table > thead > tr {
+    background-color: var(--surface-ground) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+.fi-ta-table > thead > tr.fi-ta-table-head-groups-row {
+    background-color: var(--surface-highlight) !important;
+}
+
+.dark .fi-ta-table > thead > tr.fi-ta-table-head-groups-row {
+    background-color: var(--surface-highlight) !important;
+}
+
+.fi-ta-header-cell,
+.fi-ta-header-group-cell {
+    color: var(--text-primary) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+.dark .fi-ta-header-cell,
+.dark .fi-ta-header-group-cell {
+    color: var(--text-primary) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+.fi-ta-header-cell .fi-icon {
+    color: var(--text-muted) !important;
+}
+
+.fi-ta-header-cell-sorted .fi-icon {
+    color: var(--accent) !important;
+}
+
+.dark .fi-ta-header-cell .fi-icon {
+    color: var(--text-muted) !important;
+}
+
+.dark .fi-ta-header-cell-sorted .fi-icon {
+    color: var(--accent) !important;
+}
+
+.fi-ta-header-cell .fi-ta-header-cell-sort-btn:hover .fi-icon,
+.fi-ta-header-cell .fi-ta-header-cell-sort-btn:focus-visible .fi-icon {
+    color: var(--text-secondary) !important;
+}
+
+.dark .fi-ta-header-cell .fi-ta-header-cell-sort-btn:hover .fi-icon,
+.dark .fi-ta-header-cell .fi-ta-header-cell-sort-btn:focus-visible .fi-icon {
+    color: var(--text-secondary) !important;
+}
+
+.fi-ta-table {
+    border-color: var(--border-subtle) !important;
+}
+
+.dark .fi-ta-table {
+    border-color: var(--border-subtle) !important;
+}
+
+.fi-ta-table > thead,
+.fi-ta-table > tbody {
+    border-color: var(--border-subtle) !important;
+}
+
+.dark .fi-ta-table > thead,
+.dark .fi-ta-table > tbody {
+    border-color: var(--border-subtle) !important;
+}
+
+.fi-ta-table > tbody > tr {
+    border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+.dark .fi-ta-table > tbody > tr {
+    border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+.fi-ta-row td {
+    color: var(--text-primary) !important;
+}
+
+.dark .fi-ta-row td {
+    color: var(--text-primary) !important;
+}
+
+.fi-ta-row.fi-clickable:hover td,
+.fi-ta-table tr.fi-ta-row:hover td {
+    background-color: var(--surface-highlight) !important;
+}
+
+.dark .fi-ta-row.fi-clickable:hover td,
+.dark .fi-ta-table tr.fi-ta-row:hover td {
+    background-color: var(--surface-highlight) !important;
+}
+
+.fi-ta-row.fi-striped td {
+    background-color: var(--surface-ground) !important;
+}
+
+.dark .fi-ta-row.fi-striped td {
+    background-color: var(--surface-ground) !important;
+}
+
+.fi-ta-row.fi-selected td,
+.fi-ta-table tr.fi-ta-row.fi-selected td {
+    background-color: var(--accent-subtle) !important;
+}
+
+.dark .fi-ta-row.fi-selected td,
+.dark .fi-ta-table tr.fi-ta-row.fi-selected td {
+    background-color: var(--accent-subtle) !important;
+}
+
+.fi-ta-row.fi-selected > *:first-child {
+    box-shadow: inset 3px 0 0 0 var(--accent) !important;
+}
+
+.dark .fi-ta-row.fi-selected > *:first-child {
+    box-shadow: inset 3px 0 0 0 var(--accent) !important;
+}
+
+.fi-ta-group-header-row > td {
+    background-color: var(--surface-ground) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+.dark .fi-ta-group-header-row > td {
+    background-color: var(--surface-ground) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+.fi-ta-group-heading {
+    color: var(--text-primary) !important;
+}
+
+.dark .fi-ta-group-heading {
+    color: var(--text-primary) !important;
+}
+
+.fi-ta-group-description {
+    color: var(--text-secondary) !important;
+}
+
+.dark .fi-ta-group-description {
+    color: var(--text-secondary) !important;
+}
+
+.fi-ta-selection-indicator,
+.fi-ta-filter-indicators,
+.fi-ta-reorder-indicator {
+    background-color: var(--surface-ground) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+    color: var(--text-secondary) !important;
+}
+
+.dark .fi-ta-selection-indicator,
+.dark .fi-ta-filter-indicators,
+.dark .fi-ta-reorder-indicator {
+    background-color: var(--surface-ground) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+    color: var(--text-secondary) !important;
+}
+
+.fi-ta-empty-state {
+    border-top: 1px solid var(--border-subtle) !important;
+}
+
+.dark .fi-ta-empty-state {
+    border-top: 1px solid var(--border-subtle) !important;
+}
+
+.fi-ta-empty-state-heading {
+    color: var(--text-primary) !important;
+}
+
+.dark .fi-ta-empty-state-heading {
+    color: var(--text-primary) !important;
+}
+
+.fi-ta-empty-state-description {
+    color: var(--text-secondary) !important;
+}
+
+.dark .fi-ta-empty-state-description {
+    color: var(--text-secondary) !important;
+}
+
+.fi-ta-empty-state-icon-bg {
+    background-color: var(--surface-ground) !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+
+.dark .fi-ta-empty-state-icon-bg {
+    background-color: var(--surface-ground) !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+
+.fi-ta-empty-state-icon-bg .fi-icon {
+    color: var(--text-muted) !important;
+}
+
+.dark .fi-ta-empty-state-icon-bg .fi-icon {
+    color: var(--text-muted) !important;
+}
+
+
+/* ── 4. Generic Pagination Chrome ── */
+.fi-pagination {
+    border-top: 1px solid var(--border-subtle) !important;
+    background-color: var(--surface-ground) !important;
+}
+
+.dark .fi-pagination {
+    border-top: 1px solid var(--border-subtle) !important;
+    background-color: var(--surface-ground) !important;
+}
+
+.fi-pagination-overview {
+    color: var(--text-secondary) !important;
+}
+
+.dark .fi-pagination-overview {
+    color: var(--text-secondary) !important;
+}
+
+.fi-pagination-items {
+    background-color: var(--surface-card) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: 0.5rem !important;
+    box-shadow: 0 1px 2px rgba(9, 27, 35, 0.04) !important;
+    --tw-ring-color: transparent !important;
+}
+
+.dark .fi-pagination-items {
+    background-color: var(--surface-card) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: 0 2px 8px rgba(4, 14, 19, 0.4) !important;
+    --tw-ring-color: transparent !important;
+}
+
+.fi-pagination-item {
+    border-color: var(--border-subtle) !important;
+}
+
+.dark .fi-pagination-item {
+    border-color: var(--border-subtle) !important;
+}
+
+.fi-pagination-item-btn {
+    color: var(--text-secondary) !important;
+}
+
+.dark .fi-pagination-item-btn {
+    color: var(--text-secondary) !important;
+}
+
+.fi-pagination-item-btn:enabled:hover {
+    background-color: var(--surface-highlight) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark .fi-pagination-item-btn:enabled:hover {
+    background-color: var(--surface-highlight) !important;
+    color: var(--text-primary) !important;
+}
+
+.fi-pagination-item.fi-active .fi-pagination-item-btn {
+    background-color: var(--accent-subtle) !important;
+}
+
+.dark .fi-pagination-item.fi-active .fi-pagination-item-btn {
+    background-color: var(--accent-subtle) !important;
+}
+
+.fi-pagination-item.fi-active .fi-pagination-item-label {
+    color: var(--accent) !important;
+    font-weight: 600 !important;
+}
+
+.dark .fi-pagination-item.fi-active .fi-pagination-item-label {
+    color: var(--accent) !important;
+    font-weight: 600 !important;
+}
+
+.fi-pagination-item.fi-disabled .fi-pagination-item-label {
+    color: var(--text-muted) !important;
+    opacity: 0.5 !important;
+}
+
+.dark .fi-pagination-item.fi-disabled .fi-pagination-item-label {
+    color: var(--text-muted) !important;
+    opacity: 0.5 !important;
+}
+
+.fi-pagination-previous-btn .fi-icon,
+.fi-pagination-next-btn .fi-icon {
+    color: var(--text-secondary) !important;
+}
+
+.dark .fi-pagination-previous-btn .fi-icon,
+.dark .fi-pagination-next-btn .fi-icon {
+    color: var(--text-secondary) !important;
+}
+
+
+/* ── 5. Filament Notifications / Toasts ── */
+.fi-no-notification:not(.fi-inline) {
+    background-color: var(--surface-card) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: 0.75rem !important;
+    box-shadow: 0 10px 25px -5px rgba(9, 27, 35, 0.1), 0 8px 10px -6px rgba(9, 27, 35, 0.05) !important;
+    --tw-ring-color: transparent !important;
+}
+
+.dark .fi-no-notification:not(.fi-inline) {
+    background-color: var(--surface-elevated) !important;
+    border: 1px solid var(--border-strong) !important;
+    box-shadow: 0 16px 36px rgba(4, 14, 19, 0.8), 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+    --tw-ring-color: transparent !important;
+}
+
+.fi-no-notification-title {
+    color: var(--text-primary) !important;
+}
+
+.dark .fi-no-notification-title {
+    color: var(--text-primary) !important;
+}
+
+.fi-no-notification-date {
+    color: var(--text-muted) !important;
+}
+
+.dark .fi-no-notification-date {
+    color: var(--text-muted) !important;
+}
+
+.fi-no-notification-body {
+    color: var(--text-secondary) !important;
+}
+
+.dark .fi-no-notification-body {
+    color: var(--text-secondary) !important;
+}
+
+.fi-no-notification .fi-icon-btn {
+    color: var(--text-muted) !important;
+}
+
+.fi-no-notification .fi-icon-btn:hover {
+    color: var(--text-primary) !important;
+}
+
+.dark .fi-no-notification .fi-icon-btn {
+    color: var(--text-muted) !important;
+}
+
+.dark .fi-no-notification .fi-icon-btn:hover {
+    color: var(--text-primary) !important;
+}
+
+.fi-no-notification.fi-color {
+    background-color: color-mix(in oklab, var(--surface-card) 92%, var(--color-500, #4b6871)) !important;
+}
+
+.dark .fi-no-notification.fi-color {
+    background-color: color-mix(in oklab, var(--surface-elevated) 88%, var(--color-400, #758d95)) !important;
+}
+
+
+/* ── 6. Modal Backdrop / Close Overlay ── */
+.fi-modal-close-overlay {
+    background-color: rgba(6, 21, 28, 0.45) !important;
+    backdrop-filter: blur(2px) !important;
+    -webkit-backdrop-filter: blur(2px) !important;
+    --tw-bg-opacity: 1 !important;
+}
+
+.dark .fi-modal-close-overlay {
+    background-color: rgba(6, 21, 28, 0.75) !important;
+    backdrop-filter: blur(3px) !important;
+    -webkit-backdrop-filter: blur(3px) !important;
+    --tw-bg-opacity: 1 !important;
+}
+
+
+/* ── 7. Tippy / Filament Tooltip Surfaces ── */
+.tippy-box {
+    --tippy-background-color: var(--surface-elevated) !important;
+    background-color: var(--surface-elevated) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-strong) !important;
+    border-radius: 0.5rem !important;
+    box-shadow: 0 10px 25px -5px rgba(9, 27, 35, 0.15), 0 4px 10px -2px rgba(9, 27, 35, 0.08) !important;
+}
+
+.dark .tippy-box {
+    --tippy-background-color: var(--surface-elevated) !important;
+    background-color: var(--surface-elevated) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-strong) !important;
+    box-shadow: 0 12px 30px rgba(4, 14, 19, 0.7), 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+.tippy-arrow {
+    color: var(--surface-elevated) !important;
+}
+
+.dark .tippy-arrow {
+    color: var(--surface-elevated) !important;
+}
+
+.tippy-box[data-placement^='top'] > .tippy-arrow::before {
+    border-top-color: var(--surface-elevated) !important;
+}
+
+.tippy-box[data-placement^='bottom'] > .tippy-arrow::before {
+    border-bottom-color: var(--surface-elevated) !important;
+}
+
+.tippy-box[data-placement^='left'] > .tippy-arrow::before {
+    border-left-color: var(--surface-elevated) !important;
+}
+
+.tippy-box[data-placement^='right'] > .tippy-arrow::before {
+    border-right-color: var(--surface-elevated) !important;
+}
+
+.tippy-content {
+    color: var(--text-primary) !important;
+    font-size: 0.75rem !important;
+    line-height: 1.125rem !important;
+    font-weight: 500 !important;
+    padding: 0.375rem 0.625rem !important;
+}
+
+.dark .tippy-content {
+    color: var(--text-primary) !important;
+}
+
 
 /* ── Resource List Pages Fine-Tuning (Carteira, Investidores, Representantes, Emissões, Documentos, Quadro de Vendas, Negociações, Notas Explicativas, Obras, Medições, Fundos, Tipos de Fundo, Nomes de Fundo, Aplicações, Bancos, Despesas, Prestadores, Recebíveis) ── */
 .bsi-proposal-list-page .fi-page,

@@ -14,11 +14,17 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class PuCurveExportService
 {
     /**
+     * Linhas da versão pedida; sem versão, as da versão de trabalho vigente --
+     * nunca as de uma tentativa com erro só porque é a mais nova. Linhas
+     * operacionais anteriores ao versionamento continuam visíveis.
+     *
      * @return Collection<int, EmissionPuDailyCurve>
      */
     public function rows(Emission $emission, ?string $calculationVersion = null): Collection
     {
-        $resolvedVersion = $calculationVersion ?? EmissionPuDailyCurve::latestCalculationVersionForEmission($emission->id);
+        $resolvedVersion = $calculationVersion
+            ?? $emission->currentPuCurveVersion()?->calculation_version
+            ?? $this->unversionedCalculationVersion($emission);
 
         if ($resolvedVersion === null) {
             return collect();
@@ -30,6 +36,20 @@ class PuCurveExportService
             ->where('calculation_version', $resolvedVersion)
             ->orderBy('curve_date')
             ->get();
+    }
+
+    /**
+     * Curvas gravadas antes do registro de versões não têm versão operacional:
+     * só elas entram aqui como último recurso.
+     */
+    private function unversionedCalculationVersion(Emission $emission): ?string
+    {
+        return EmissionPuDailyCurve::query()
+            ->where('emission_id', $emission->id)
+            ->operational()
+            ->whereNull('curve_version_id')
+            ->orderByDesc('id')
+            ->value('calculation_version');
     }
 
     /**

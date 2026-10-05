@@ -168,7 +168,7 @@
     box-sizing: border-box;
     border: 1px solid var(--border-subtle);
     border-radius: 12px;
-    background: var(--surface-card);
+    background: var(--surface-elevated);
     box-shadow: 0 12px 32px rgba(9, 27, 35, 0.12), 0 4px 12px rgba(9, 27, 35, 0.06);
     color: var(--text-primary);
     font-size: 0.8125rem;
@@ -176,7 +176,7 @@
 
 .dark .bsi-month-picker-panel {
     border: 1px solid rgba(183, 131, 47, 0.28);
-    background: #091b23;
+    background: var(--surface-elevated);
     box-shadow: 0 16px 36px rgba(4, 14, 19, 0.85), 0 4px 14px rgba(0, 0, 0, 0.55);
     color: #fbfaf8;
 }

@@ -12,6 +12,7 @@ use App\Domain\PuCalculator\Enums\PuBaselineReadinessStatus;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Enums\PuValidationMode;
+use App\Domain\PuCalculator\Exceptions\PuCurveGovernanceException;
 use App\Domain\PuCalculator\Exceptions\PuMakerCheckerException;
 use App\Domain\PuCalculator\Services\BusinessCalendarCatalogService;
 use App\Domain\PuCalculator\Services\BusinessCalendarSelectionEvidenceService;
@@ -29,6 +30,7 @@ use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Emissions\Schemas\EmissionForm;
 use App\Jobs\GeneratePuDailyCurveJob;
 use App\Jobs\ValidatePuCurveJob;
+use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuDailyCurve;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -37,6 +39,7 @@ use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Component;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -100,27 +103,96 @@ class EditEmission extends EditRecord
     }
 
     /**
-     * A versão vigente foi gerada ou validada pelo próprio usuário logado.
+     * A versão sobre a qual uma ação de governança age: a capturada quando o
+     * modal abriu -- a que a pessoa revisou -- ou, antes de abrir, a vigente. A
+     * ação recebe a capturada; nunca resolve "a vigente" de novo na execução.
      */
-    private function isSelfHomologatingPuCurve(): bool
+    private function puGovernanceTarget(?string $calculationVersion): ?EmissionPuCurveVersion
     {
-        $version = $this->getRecord()->currentPuCurveVersion();
-
-        return $version !== null
-            && app(HomologatePuCurve::class)->isSelfHomologation($version, auth()->id());
-    }
-
-    private function homologationModalDescription(): string
-    {
-        $version = $this->getRecord()->currentPuCurveVersion();
-        $default = 'A versao corrente sera marcada como homologada e protegida contra sobrescrita.';
-
-        if ($version === null || ! $this->isSelfHomologatingPuCurve()) {
-            return $default;
+        if (blank($calculationVersion)) {
+            return $this->getRecord()->currentPuCurveVersion();
         }
 
-        return app(HomologatePuCurve::class)->selfHomologationBlocker($version, auth()->id())
-            ?? 'Você gerou ou validou esta versão. Como responsável pela área Curva de PU e Índices, pode homologá-la registrando a justificativa. '.$default;
+        try {
+            return app(PuCurveVersionService::class)->findByCalculationVersion($this->getRecord(), $calculationVersion);
+        } catch (PuCurveGovernanceException) {
+            return null;
+        }
+    }
+
+    private function describePuVersion(EmissionPuCurveVersion $version): string
+    {
+        return sprintf(
+            'Versão %s — %s, gerada em %s por %s.',
+            $version->calculation_version,
+            $version->status->label(),
+            $version->generated_at?->format('d/m/Y H:i') ?? '—',
+            $version->generatedBy?->name ?? 'rotina automática',
+        );
+    }
+
+    /**
+     * Por que a homologação da versão alvo exige justificativa, ou nulo.
+     */
+    private function homologationJustificationRequirement(?string $calculationVersion): ?string
+    {
+        $version = $this->puGovernanceTarget($calculationVersion);
+
+        return $version === null
+            ? null
+            : app(HomologatePuCurve::class)->justificationRequirement($version, auth()->id());
+    }
+
+    private function homologationModalDescription(?string $calculationVersion): string
+    {
+        $version = $this->puGovernanceTarget($calculationVersion);
+
+        if ($version === null) {
+            return 'Não há versão de curva para homologar.';
+        }
+
+        $identity = $this->describePuVersion($version);
+
+        if (! $version->status->canBeHomologated()) {
+            return sprintf('%s Ela não pode ser homologada nesse status.', $identity);
+        }
+
+        $default = $identity.' Esta versão -- e só ela -- será marcada como homologada e passa a ser a curva oficial, protegida contra sobrescrita.';
+        $homologate = app(HomologatePuCurve::class);
+
+        if ($homologate->isSelfHomologation($version, auth()->id())) {
+            return $homologate->selfHomologationBlocker($version, auth()->id())
+                ?? 'Você gerou ou validou esta versão. Como responsável pela área Curva de PU e Índices, pode homologá-la registrando a justificativa. '.$default;
+        }
+
+        $requirement = $homologate->justificationRequirement($version, auth()->id());
+
+        return $requirement !== null ? $default.' '.$requirement : $default;
+    }
+
+    private function invalidationModalDescription(?string $calculationVersion): string
+    {
+        $version = $this->puGovernanceTarget($calculationVersion);
+
+        if ($version === null) {
+            return 'Não há versão de curva para invalidar.';
+        }
+
+        $identity = $this->describePuVersion($version);
+
+        if (! $version->status->canBeInvalidated()) {
+            return sprintf('%s Ela não pode ser invalidada nesse status.', $identity);
+        }
+
+        if (! $version->status->isOfficial()) {
+            return $identity.' Esta versão será marcada como obsoleta. O histórico é preservado.';
+        }
+
+        $previous = $this->getRecord()->puCurveVersions()->official()->whereKeyNot($version->id)->first();
+
+        return $identity.' É a curva oficial: invalidada, '.($previous !== null
+            ? sprintf('a versão homologada anterior (%s) volta a ser a oficial.', $previous->calculation_version)
+            : 'a emissão fica sem curva oficial até uma nova homologação.').' O histórico é preservado.';
     }
 
     protected function getHeaderActions(): array
@@ -149,6 +221,8 @@ class EditEmission extends EditRecord
                 ->modalContent(fn () => view('filament.emissions.pu-curve-panel', [
                     'emission' => $this->getRecord(),
                     'version' => $this->getRecord()->currentPuCurveVersion(),
+                    'latestAttempt' => $this->getRecord()->puCurveVersions()->latestAttempt()->first(),
+                    'officialVersion' => $this->getRecord()->officialPuCurveVersion(),
                     'coverage' => app(PuIndexCoverageService::class)->report($this->getRecord()),
                 ])),
 
@@ -238,19 +312,23 @@ class EditEmission extends EditRecord
                 ->color('success')
                 ->visible(fn (): bool => auth()->user()?->can('pu.curve.homologate') ?? false)
                 ->modalHeading('Homologar Curva PU')
-                ->modalDescription(fn (): string => $this->homologationModalDescription())
+                ->modalDescription(fn (Action $action): string => $this->homologationModalDescription($action->getRawData()['calculation_version'] ?? null))
                 ->modalSubmitActionLabel('Homologar')
+                ->fillForm(fn (): array => [
+                    'calculation_version' => $this->getRecord()->currentPuCurveVersion()?->calculation_version,
+                ])
                 ->form(fn (): array => [
+                    Hidden::make('calculation_version'),
                     Textarea::make('justification')
-                        ->label(fn (): string => $this->isSelfHomologatingPuCurve() ? 'Justificativa da auto-homologação' : 'Observação (opcional)')
-                        ->helperText(fn (): ?string => $this->isSelfHomologatingPuCurve() ? 'Fica registrada na versão e na auditoria da curva.' : null)
-                        ->required(fn (): bool => $this->isSelfHomologatingPuCurve())
+                        ->label(fn (Get $get): string => $this->homologationJustificationRequirement($get('calculation_version')) !== null ? 'Justificativa da homologação' : 'Observação (opcional)')
+                        ->helperText(fn (Get $get): ?string => $this->homologationJustificationRequirement($get('calculation_version')) !== null ? 'Fica registrada na versão e na auditoria da curva.' : null)
+                        ->required(fn (Get $get): bool => $this->homologationJustificationRequirement($get('calculation_version')) !== null)
                         ->rows(3)
                         ->maxLength(2000),
                 ])
                 ->action(function (array $data): void {
                     try {
-                        $version = app(HomologatePuCurve::class)->handle($this->getRecord(), null, auth()->id(), $data['justification'] ?? null);
+                        $version = app(HomologatePuCurve::class)->handle($this->getRecord(), $data['calculation_version'] ?? null, auth()->id(), $data['justification'] ?? null);
                     } catch (\InvalidArgumentException|PuMakerCheckerException $exception) {
                         Notification::make()->title('Nao foi possivel homologar.')->body($exception->getMessage())->danger()->persistent()->send();
 
@@ -423,14 +501,14 @@ class EditEmission extends EditRecord
                     ->modalHeading('Validar Curva PU')
                     ->fillForm(fn (): array => [
                         'reference_spreadsheet' => $this->defaultSpreadsheetSelection(),
-                        'calculation_version' => EmissionPuDailyCurve::latestCalculationVersionForEmission($this->getRecord()->id),
+                        'calculation_version' => $this->getRecord()->currentPuCurveVersion()?->calculation_version,
                         'validation_mode' => PuValidationMode::DisplayScale->value,
                     ])
                     ->form([
                         Select::make('calculation_version')
                             ->label('Versao da curva')
-                            ->options($this->getCalculationVersionOptions())
-                            ->placeholder('Usar a versao mais recente'),
+                            ->options(fn (): array => $this->getValidatableVersionOptions())
+                            ->required(),
                         Select::make('validation_mode')
                             ->label('Modo de validacao')
                             ->options([
@@ -505,7 +583,8 @@ class EditEmission extends EditRecord
                     ->visible(fn (): bool => auth()->user()?->can('pu.curve.export') ?? false)
                     ->modalHeading('Exportar Curva PU')
                     ->fillForm(fn (): array => [
-                        'calculation_version' => EmissionPuDailyCurve::latestCalculationVersionForEmission($this->getRecord()->id),
+                        'calculation_version' => $this->getRecord()->currentPuCurveVersion()?->calculation_version
+                            ?? EmissionPuDailyCurve::latestCalculationVersionForEmission($this->getRecord()->id),
                     ])
                     ->form([
                         Select::make('calculation_version')
@@ -538,10 +617,21 @@ class EditEmission extends EditRecord
                     ->visible(fn (): bool => auth()->user()?->can('pu.curve.invalidate') ?? false)
                     ->requiresConfirmation()
                     ->modalHeading('Invalidar Curva PU')
-                    ->modalDescription('A versao corrente sera marcada como obsoleta. O historico e preservado.')
-                    ->action(function (): void {
+                    ->modalDescription(fn (Action $action): string => $this->invalidationModalDescription($action->getRawData()['calculation_version'] ?? null))
+                    ->fillForm(fn (): array => [
+                        'calculation_version' => $this->getRecord()->currentPuCurveVersion()?->calculation_version,
+                    ])
+                    ->form([
+                        Hidden::make('calculation_version'),
+                        Textarea::make('reason')
+                            ->label('Motivo (opcional)')
+                            ->helperText('Fica registrado na auditoria da curva.')
+                            ->rows(3)
+                            ->maxLength(2000),
+                    ])
+                    ->action(function (array $data): void {
                         try {
-                            $version = app(InvalidatePuCurve::class)->handle($this->getRecord(), null, auth()->id());
+                            $version = app(InvalidatePuCurve::class)->handle($this->getRecord(), $data['calculation_version'] ?? null, auth()->id(), $data['reason'] ?? null);
                         } catch (\InvalidArgumentException $exception) {
                             Notification::make()->title('Nao foi possivel invalidar.')->body($exception->getMessage())->danger()->send();
 
@@ -952,8 +1042,9 @@ class EditEmission extends EditRecord
                 ->default(false)
                 ->visible(fn (Get $get): bool => (bool) $get('first_coupon_pre_integralization_premium_enabled')),
             Toggle::make('legacy_projection_enabled')
-                ->label('Atualizar projecoes legadas (payments / pu_histories)')
-                ->default(true),
+                ->label('Projeções legadas (payments / pu_histories)')
+                ->helperText('Sem efeito sobre o PU oficial: nenhuma curva grava no Histórico de PU, nos pagamentos ou no PU atual da emissão por esta opção. A curva só vale como PU depois de homologada, e o Cronograma de Pagamentos é conciliado a partir dela.')
+                ->default(false),
         ];
     }
 
@@ -1045,7 +1136,7 @@ class EditEmission extends EditRecord
             'first_coupon_premium_evidence_excerpt' => null,
             'first_coupon_premium_evidence_notes' => null,
             'first_coupon_premium_evidence_confirmed' => false,
-            'legacy_projection_enabled' => $parameter?->legacy_projection_enabled ?? ($candidate['legacy_projection_enabled'] ?? true),
+            'legacy_projection_enabled' => $parameter?->legacy_projection_enabled ?? ($candidate['legacy_projection_enabled'] ?? false),
         ];
 
         $calendarEvidence = $this->contractualEvidenceFor('calendar_code', $defaults['calendar_code']);
@@ -1160,6 +1251,23 @@ class EditEmission extends EditRecord
             $pending === 1 ? '1 evidência' : $pending.' evidências',
             $pending === 1 ? 'aguarda' : 'aguardam',
         );
+    }
+
+    /**
+     * Versões que aceitam o resultado de uma validação: cálculo concluído e
+     * ainda utilizável. Obsoletas, com erro e em processamento ficam de fora.
+     *
+     * @return array<string, string>
+     */
+    private function getValidatableVersionOptions(): array
+    {
+        return $this->getRecord()->puCurveVersions()
+            ->current()
+            ->get(['calculation_version', 'status'])
+            ->mapWithKeys(fn (EmissionPuCurveVersion $version): array => [
+                $version->calculation_version => sprintf('%s — %s', $version->calculation_version, $version->status->label()),
+            ])
+            ->all();
     }
 
     /**

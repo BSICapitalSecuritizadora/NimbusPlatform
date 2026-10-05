@@ -25,6 +25,29 @@ class Payment extends Model
         'extra_amortization_value',
     ];
 
+    /**
+     * Componentes que a curva oficial calcula (juros ordinários e amortização
+     * ordinária): só eles são escritos pela conciliação, com o previsto guardado
+     * em `expected_*`.
+     *
+     * @var list<string>
+     */
+    public const CURVE_OWNED_FIELDS = [
+        'interest_value',
+        'amortization_value',
+    ];
+
+    /**
+     * Componentes que a curva NÃO calcula (prêmio e amortização extraordinária):
+     * vêm da planilha ou do cadastro e a conciliação nunca os escreve nem zera.
+     *
+     * @var list<string>
+     */
+    public const EXTERNAL_FIELDS = [
+        'premium_value',
+        'extra_amortization_value',
+    ];
+
     protected $fillable = [
         'emission_id',
         'payment_date',

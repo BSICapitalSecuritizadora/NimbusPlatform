@@ -1,8 +1,15 @@
 @php
     /** @var \App\Models\Emission $emission */
-    /** @var \App\Models\EmissionPuCurveVersion|null $version */
+    /** @var \App\Models\EmissionPuCurveVersion|null $version versão de trabalho vigente (utilizável) */
+    /** @var \App\Models\EmissionPuCurveVersion|null $latestAttempt última tentativa, em qualquer status */
+    /** @var \App\Models\EmissionPuCurveVersion|null $officialVersion curva oficial (homologada) */
     /** @var \App\Domain\PuCalculator\DTOs\PuIndexCoverageReport $coverage */
     $status = $version?->status;
+    $latestAttempt ??= null;
+    $officialVersion ??= null;
+    $pendingAttempt = $latestAttempt !== null && $latestAttempt->id !== $version?->id && ! $latestAttempt->status->isWorkable()
+        ? $latestAttempt
+        : null;
     $canExport = auth()->user()?->can('pu.curve.export') ?? false;
 @endphp
 
@@ -67,6 +74,33 @@
                 <span>Primeira divergencia: <strong>{{ $version->validation_summary['first_divergence_date'] ?? '-' }}</strong></span>
                 <span>Validado por: <strong>{{ $version->validatedBy?->name ?? '-' }}</strong></span>
             </div>
+        </div>
+    @endif
+
+    <div class="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+        <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Curva oficial</p>
+        <p class="mt-2 text-sm text-gray-700 dark:text-gray-200">
+            @if ($officialVersion !== null)
+                Versão <strong>{{ $officialVersion->calculation_version }}</strong>, homologada em {{ $officialVersion->homologated_at?->format('d/m/Y H:i') ?? '-' }}: é a única que alimenta relatório, garantias, site e Cronograma de Pagamentos.
+            @else
+                Nenhuma curva homologada. Curvas geradas ou validadas não valem como PU oficial.
+            @endif
+        </p>
+    </div>
+
+    @if ($pendingAttempt !== null)
+        <div @class([
+            'rounded-xl border p-4 text-sm',
+            'border-danger-300 bg-danger-50 text-danger-700 dark:border-danger-700 dark:bg-danger-950/40 dark:text-danger-300' => $pendingAttempt->status === \App\Domain\PuCalculator\Enums\PuCurveStatus::Error,
+            'border-gray-200 text-gray-700 dark:border-gray-700 dark:text-gray-200' => $pendingAttempt->status !== \App\Domain\PuCalculator\Enums\PuCurveStatus::Error,
+        ])>
+            <strong>Última tentativa ({{ $pendingAttempt->calculation_version }}): {{ $pendingAttempt->status->label() }}.</strong>
+            @if ($pendingAttempt->error_message !== null)
+                {{ $pendingAttempt->error_message }}
+            @endif
+            @if ($version !== null)
+                A versão vigente ({{ $version->calculation_version }}) continua valendo.
+            @endif
         </div>
     @endif
 

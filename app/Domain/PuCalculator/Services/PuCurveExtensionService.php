@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\DTOs\PuCurveExtensionResult;
-use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\Enums\PuCurveReviewStatus;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
@@ -61,7 +60,6 @@ final class PuCurveExtensionService
         private readonly PuCurveGeneratorService $generator,
         private readonly PuPersistedCurveChecksumService $checksums,
         private readonly PuOperationalProfileGuard $operationalProfiles,
-        private readonly LegacyProjectionService $legacyProjections,
         private readonly PuAuditLogService $auditLog,
         private readonly PuPaymentScheduleService $paymentSchedule,
     ) {}
@@ -126,11 +124,23 @@ final class PuCurveExtensionService
             return new PuCurveExtensionResult(self::ACTION_UP_TO_DATE, $version->id);
         }
 
-        DB::transaction(function () use ($emission, $version, $tail): void {
+        // O status visto antes do recálculo não vale como final: sob a trava da
+        // emissão a versão é relida, e uma versão invalidada ou substituída no
+        // meio do caminho não recebe dia novo. Anexar não publica nada no legado;
+        // numa curva oficial, os pagamentos dos dias novos são conciliados na
+        // mesma transação -- ou entram as linhas e os pagamentos, ou nada.
+        $extended = DB::transaction(function () use ($emission, $version, $tail): ?EmissionPuCurveVersion {
+            $lockedEmission = Emission::query()->whereKey($emission->id)->lockForUpdate()->firstOrFail();
+            $locked = EmissionPuCurveVersion::query()->whereKey($version->id)->lockForUpdate()->firstOrFail();
+
+            if (! in_array($locked->status, self::EXTENDABLE_STATUSES, true)) {
+                return null;
+            }
+
             $timestamp = now();
             $rows = array_map(fn (PuDailyCurveRowData $row): array => [
-                ...$row->toPersistenceArray($emission->id, $version->calculation_version),
-                'curve_version_id' => $version->id,
+                ...$row->toPersistenceArray($emission->id, $locked->calculation_version),
+                'curve_version_id' => $locked->id,
                 'extended_at' => $timestamp,
                 'created_at' => $timestamp,
                 'updated_at' => $timestamp,
@@ -140,28 +150,33 @@ final class PuCurveExtensionService
                 EmissionPuDailyCurve::query()->insert($chunk);
             }
 
-            $version->forceFill([
-                'extended_rows_count' => $version->extended_rows_count + count($rows),
+            $locked->forceFill([
+                'extended_rows_count' => $locked->extended_rows_count + count($rows),
                 'last_extended_at' => $timestamp,
             ])->save();
 
-            if ($emission->puParameter?->legacy_projection_enabled ?? true) {
-                $this->legacyProjections->sync(
-                    $emission,
-                    new PuCurveGenerationResult($tail, $version->calculation_version),
-                );
+            // Dias novos da curva oficial podem trazer pagamentos: o Cronograma de
+            // Pagamentos acompanha na mesma rodada.
+            if ($locked->status->isOfficial()) {
+                $this->paymentSchedule->reconcile($lockedEmission);
             }
+
+            return $locked;
         });
+
+        if (! $extended instanceof EmissionPuCurveVersion) {
+            $current = $version->fresh() ?? $version;
+
+            return new PuCurveExtensionResult(
+                action: self::ACTION_NOT_EXTENDABLE,
+                versionId: $version->id,
+                reason: sprintf('A versão %s mudou para %s durante a extensão.', $current->calculation_version, $current->status->label()),
+            );
+        }
 
         $fromDate = $tail[0]->date->toDateString();
         $toDate = $tail[array_key_last($tail)]->date->toDateString();
-        $this->auditLog->logCurveExtended($emission, $version, count($tail), $fromDate, $toDate);
-
-        // Dias novos da curva oficial podem trazer pagamentos: o Cronograma de
-        // Pagamentos acompanha na mesma rodada.
-        if ($version->status === PuCurveStatus::Homologated) {
-            $this->paymentSchedule->reconcile($emission);
-        }
+        $this->auditLog->logCurveExtended($emission, $extended, count($tail), $fromDate, $toDate);
 
         return new PuCurveExtensionResult(
             action: self::ACTION_EXTENDED,

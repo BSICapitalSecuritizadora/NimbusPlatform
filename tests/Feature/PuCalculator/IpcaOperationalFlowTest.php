@@ -184,7 +184,7 @@ it('keeps the IPCA engine flag false but flips contextual homologation only afte
 
     expect($status->isOperationallyHomologated($emission->fresh()))->toBeFalse();
 
-    app(HomologatePuCurve::class)->handle($emission->fresh(), null, $checker->id);
+    app(HomologatePuCurve::class)->handle($emission->fresh(), $emission->fresh()->currentPuCurveVersion()->calculation_version, $checker->id);
 
     expect(PuIndexer::Ipca->isHomologated())->toBeFalse()
         ->and(EmissionPuCurveVersion::query()->where('emission_id', $emission->id)->homologated()->exists())->toBeTrue()

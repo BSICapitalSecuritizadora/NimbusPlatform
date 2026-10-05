@@ -623,13 +623,13 @@
                             <div class="tech-data-card h-100 p-4">
                                 @php
                                     /** @var \Illuminate\Support\Collection<int, \App\Domain\PuCalculator\DTOs\PuReading> $puReadings */
-                                    $puReadings ??= app(\App\Domain\PuCalculator\Services\EmissionPuReader::class)
-                                        ->latestReadings($emission, \Carbon\CarbonImmutable::today(), 5);
+                                    $puReader = app(\App\Domain\PuCalculator\Services\EmissionPuReader::class);
+                                    $puReadings ??= $puReader->latestReadings($emission, \Carbon\CarbonImmutable::today(), 5);
                                     $lastFiveDays = $puReadings->map(fn ($reading) => [
                                         'date' => $reading->date,
                                         'value' => $reading->unitValue,
                                     ]);
-                                    $todayPu = $lastFiveDays->first()['value'] ?? $emission->current_pu;
+                                    $todayPu = $lastFiveDays->first()['value'] ?? $puReader->legacyCurrentUnitValue($emission);
                                 @endphp
 
                                 <div class="d-flex justify-content-between align-items-center gap-3 mb-4">

@@ -56,13 +56,14 @@ class ImportPuHistoriesFromSpreadsheet
                 ->first();
 
             if ($puHistory) {
-                $puHistory->fill(['unit_value' => $unitValue]);
+                $puHistory->fill(['unit_value' => $unitValue, 'source' => PuHistory::SOURCE_IMPORT]);
                 $puHistory->save();
             } else {
                 PuHistory::query()->create([
                     'emission_id' => $emission->id,
                     'date' => $date,
                     'unit_value' => $unitValue,
+                    'source' => PuHistory::SOURCE_IMPORT,
                 ]);
             }
 

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\PuCalculator\Enums\PuCurveStatus;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Jobs\ExtendPuDailyCurveJob;
 use App\Jobs\GeneratePuDailyCurveJob;
@@ -24,15 +25,31 @@ class GenerateRealizedPuCurvesCommand extends Command
         $extensions = 0;
         $generations = 0;
         $skippedComplete = 0;
+        $skippedAttempts = 0;
 
         $this->eligibleEmissions()->each(function (Emission $emission) use (
             &$extensions,
             &$generations,
             &$skippedComplete,
+            &$skippedAttempts,
         ): void {
+            // A versão vigente é a utilizável mais recente: uma tentativa nova com
+            // erro ou em processamento não esconde a anterior.
             $version = $emission->currentPuCurveVersion();
 
             if (! $version instanceof EmissionPuCurveVersion) {
+                // Sem versão utilizável, uma tentativa em andamento ou que falhou
+                // fica para decisão humana, como antes: a rotina não a repete.
+                if (in_array($emission->latestPuCurveVersion()->first()?->status, [
+                    PuCurveStatus::Pending,
+                    PuCurveStatus::Processing,
+                    PuCurveStatus::Error,
+                ], true)) {
+                    $skippedAttempts++;
+
+                    return;
+                }
+
                 GeneratePuDailyCurveJob::dispatch($emission->id, null, false);
                 $generations++;
 
@@ -53,10 +70,11 @@ class GenerateRealizedPuCurvesCommand extends Command
         });
 
         $this->info(sprintf(
-            'Curvas de PU realizadas: %d extensao(oes) enfileirada(s), %d geracao(oes) completa(s) enfileirada(s), %d ja completa(s).',
+            'Curvas de PU realizadas: %d extensao(oes) enfileirada(s), %d geracao(oes) completa(s) enfileirada(s), %d ja completa(s), %d sem versao utilizavel (em processamento ou com erro).',
             $extensions,
             $generations,
             $skippedComplete,
+            $skippedAttempts,
         ));
 
         return self::SUCCESS;

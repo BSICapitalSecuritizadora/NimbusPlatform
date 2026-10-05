@@ -2,24 +2,37 @@
 
 namespace App\Domain\PuCalculator\Services;
 
+use App\Actions\Emissions\HomologatePuCurve;
 use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
+use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Exceptions\PuCurveGovernanceException;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuDailyCurve;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Grava as linhas de uma versão de curva operacional.
+ *
+ * Gerar não publica: nada aqui escreve no Histórico de PU, no Cronograma de
+ * Pagamentos ou no PU atual da emissão. A curva só alcança as outras áreas pela
+ * homologação ({@see HomologatePuCurve}).
+ */
 class PuCurvePersistenceService
 {
     public function __construct(
-        private readonly LegacyProjectionService $legacyProjectionService,
         private readonly PuCurveVersionService $curveVersions,
         private readonly PuOperationalProfileGuard $operationalProfiles,
     ) {}
 
+    /**
+     * @param  bool  $syncLegacyProjections  sem efeito desde a Fase 2 de governança: nenhuma
+     *                                       geração projeta no legado. Mantido pela assinatura.
+     */
     public function handle(
         Emission $emission,
         PuCurveGenerationResult $result,
-        bool $syncLegacyProjections = true,
+        bool $syncLegacyProjections = false,
         ?string $calculationVersion = null,
     ): PuCurveGenerationResult {
         // Curva oficial: só entra linha calculada no perfil contratual. O perfil de
@@ -29,7 +42,7 @@ class PuCurvePersistenceService
 
         $persistedResult = $result;
 
-        DB::transaction(function () use ($emission, $result, $syncLegacyProjections, $calculationVersion, &$persistedResult): void {
+        DB::transaction(function () use ($emission, $result, $calculationVersion, &$persistedResult): void {
             $requestedCalculationVersion = $calculationVersion ?? $result->calculationVersion;
             $version = $requestedCalculationVersion === null
                 ? null
@@ -40,6 +53,11 @@ class PuCurvePersistenceService
                     ->latest('id')
                     ->first();
             $createdVersion = ! $version instanceof EmissionPuCurveVersion;
+
+            if (! $createdVersion) {
+                $version = $this->lockProcessingVersion($emission, $version);
+            }
+
             $version ??= $this->curveVersions->startGeneration(
                 emission: $emission,
                 requestedByUserId: null,
@@ -61,15 +79,31 @@ class PuCurvePersistenceService
                 EmissionPuDailyCurve::query()->insert($chunk);
             }
 
-            if ($syncLegacyProjections && ($emission->puParameter?->legacy_projection_enabled ?? true)) {
-                $this->legacyProjectionService->sync($emission, $persistedResult);
-            }
-
             if ($createdVersion) {
                 $this->curveVersions->markGenerated($version, count($rows), $calculationVersion);
             }
         });
 
         return $persistedResult;
+    }
+
+    /**
+     * Linhas só entram numa versão que a geração ainda possui. Substituída ou
+     * invalidada no meio do cálculo, a versão não recebe linha nenhuma.
+     */
+    private function lockProcessingVersion(Emission $emission, EmissionPuCurveVersion $version): EmissionPuCurveVersion
+    {
+        Emission::query()->whereKey($emission->id)->lockForUpdate()->first();
+        $locked = EmissionPuCurveVersion::query()->whereKey($version->id)->lockForUpdate()->firstOrFail();
+
+        if ($locked->status !== PuCurveStatus::Processing) {
+            throw new PuCurveGovernanceException(sprintf(
+                'A versão %s não está em processamento (status atual: %s); as linhas calculadas não foram gravadas nela.',
+                $locked->calculation_version,
+                $locked->status->label(),
+            ));
+        }
+
+        return $locked;
     }
 }

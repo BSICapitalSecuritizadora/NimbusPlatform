@@ -224,8 +224,9 @@ it('keeps the previous version and the current PU intact when a regeneration fai
         ->and($after['pu_histories'])->toBe($before['pu_histories'])
         ->and($after['payments'])->toBe($before['payments'])
         ->and($after['current_pu'])->toBe($before['current_pu'])
-        // A geração anterior, bem-sucedida, já tinha substituído o PU de partida.
-        ->and(bccomp((string) $before['current_pu'], '1234.567890', 6))->not->toBe(0);
+        // Gerar não publica (Fase 2): nem a geração anterior, bem-sucedida, toca o
+        // PU atual da emissão -- só a homologação leva uma curva ao PU oficial.
+        ->and(bccomp((string) $before['current_pu'], '1234.567890', 6))->toBe(0);
 });
 
 // ---------------------------------------------------------------------------

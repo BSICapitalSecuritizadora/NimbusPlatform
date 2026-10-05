@@ -662,14 +662,29 @@ class Emission extends Model
         return $this->hasMany(EmissionPuBaselineEvidence::class);
     }
 
+    /**
+     * Versão de trabalho vigente: a operacional utilizável mais recente
+     * (gerada, validada, divergente ou homologada). Não é a oficial -- quem
+     * publica PU usa {@see self::officialPuCurveVersion()}.
+     */
     public function currentPuCurveVersion(): ?EmissionPuCurveVersion
     {
         return $this->puCurveVersions()->current()->first();
     }
 
     /**
-     * Última versão OPERACIONAL. Uma candidate com id/calculation_version maior
-     * jamais pode vencer aqui: os consumidores desta relação leem "curva atual".
+     * Curva oficial: a operacional homologada mais recente, ou nenhuma.
+     */
+    public function officialPuCurveVersion(): ?EmissionPuCurveVersion
+    {
+        return $this->puCurveVersions()->official()->first();
+    }
+
+    /**
+     * Última TENTATIVA operacional, em qualquer status (inclusive em
+     * processamento ou com erro). Uma candidate com id/calculation_version maior
+     * jamais pode vencer aqui. Serve ao painel operacional e ao dossiê de
+     * promoção; nunca para escolher a versão sobre a qual se age ou que se publica.
      */
     public function latestPuCurveVersion(): HasOne
     {

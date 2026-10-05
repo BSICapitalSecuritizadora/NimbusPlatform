@@ -79,9 +79,10 @@ class GeneratePuDailyCurveJob implements ShouldQueue
                 $this->parameterSnapshot($emission),
             );
 
+            // Gerar não publica: a versão nasce `generated` e só a homologação a
+            // leva ao PU oficial, aos pagamentos e ao site.
             $result = $generatePuDailyCurve->handle(
                 $emission,
-                syncLegacyProjections: true,
                 calculationVersion: $version->calculation_version,
             );
 
@@ -91,7 +92,7 @@ class GeneratePuDailyCurveJob implements ShouldQueue
                 $result,
                 $this->requestedByUserId,
                 $prerequisiteCheck,
-                true,
+                false,
                 $this->confirmedReprocess,
             );
 

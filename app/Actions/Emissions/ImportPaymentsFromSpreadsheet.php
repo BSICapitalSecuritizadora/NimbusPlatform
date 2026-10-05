@@ -62,11 +62,20 @@ class ImportPaymentsFromSpreadsheet
                 ?? $this->paymentMovedByCalendar($emission, $paymentDate);
 
             if ($payment) {
-                // Pagamento já calculado pela curva oficial: a planilha só
-                // atualiza o previsto guardado ao lado do valor calculado.
+                // Pagamento já calculado pela curva oficial: nos componentes da
+                // curva a planilha só atualiza o previsto guardado ao lado do
+                // valor calculado; prêmio e amortização extraordinária não são
+                // da curva e seguem a planilha.
                 if ($payment->isCalculatedByOfficialCurve()) {
                     foreach ($paymentValues['values'] as $field => $value) {
-                        $payment->{'expected_'.$field} = $value;
+                        if (in_array($field, Payment::CURVE_OWNED_FIELDS, true)) {
+                            $payment->{'expected_'.$field} = $value;
+
+                            continue;
+                        }
+
+                        $payment->{$field} = $value;
+                        $payment->{'expected_'.$field} = null;
                     }
                 } else {
                     $payment->fill($paymentValues['values']);

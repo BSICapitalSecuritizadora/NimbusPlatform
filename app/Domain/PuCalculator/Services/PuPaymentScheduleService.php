@@ -8,6 +8,7 @@ use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuDailyCurve;
 use App\Models\Payment;
+use App\Support\BusinessTime;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -15,25 +16,29 @@ use Illuminate\Support\Facades\DB;
 /**
  * Cronograma de Pagamentos alimentado pela curva oficial.
  *
- * Todo pagamento que a curva oficial (versão operacional homologada) já
- * calculou passa a mostrar o valor dela; o valor que estava na linha -- da
- * planilha ou do cadastro manual -- fica guardado nas colunas `expected_*` como
- * previsto. Datas futuras continuam com o previsto até a curva chegar nelas. Uma
- * linha de planilha na data original de um evento que o calendário adiou é
- * movida para a data efetiva, em vez de duplicar o pagamento.
+ * Único escritor da curva na tabela `payments`, e só a partir da versão
+ * operacional HOMOLOGADA: gerar ou validar uma curva não toca pagamento nenhum.
  *
- * A conciliação é determinística: o estado dos pagamentos é função da curva
- * oficial vigente e do previsto. Linha calculada por uma versão que deixou de
- * ser a oficial (ou que ela não cobre mais) volta ao valor previsto.
+ * A curva é dona apenas do que calcula -- juros ordinários e amortização
+ * ordinária ({@see Payment::CURVE_OWNED_FIELDS}). Para esses, todo pagamento que
+ * a oficial já calculou passa a mostrar o valor dela e o valor que estava na
+ * linha (planilha ou cadastro manual) fica nas colunas `expected_*` como
+ * previsto. Prêmio e amortização extraordinária ({@see Payment::EXTERNAL_FIELDS})
+ * nunca são escritos pela conciliação. Datas futuras continuam com o previsto até
+ * a curva chegar nelas. Uma linha de planilha na data original de um evento que o
+ * calendário adiou é movida para a data efetiva, em vez de duplicar o pagamento.
  *
- * Emissões com projeção legada ligada ficam de fora: `LegacyProjectionService`
- * já escreve nelas, e dois escritores na mesma tabela brigariam.
+ * Pagamento liquidado ({@see self::isSettled()}) é fato: a conciliação não o
+ * recalcula nem o devolve ao previsto quando a oficial muda; se a nova oficial
+ * calcula outro valor para ele, a divergência fica registrada na auditoria.
+ *
+ * A conciliação é determinística: o estado dos pagamentos não liquidados é
+ * função da curva oficial vigente e do previsto. Linha calculada por uma versão
+ * que deixou de ser a oficial (ou que ela não cobre mais) volta ao previsto.
  */
 final class PuPaymentScheduleService
 {
     public const ACTION_RECONCILED = 'payments_reconciled';
-
-    public const ACTION_LEGACY_PROJECTION = 'legacy_projection_owns_payments';
 
     public function __construct(
         private readonly EmissionPuReader $puReader,
@@ -42,23 +47,40 @@ final class PuPaymentScheduleService
     ) {}
 
     /**
-     * @return array{action: string, version: ?string, updated: int, created: int, moved: int, reverted: int, unmatched_dates: list<string>}
+     * @return array{action: string, version: ?string, updated: int, created: int, moved: int, reverted: int, restored_components: int, settled_kept: int, unmatched_dates: list<string>, settled_divergent_dates: list<string>}
      */
     public function reconcile(Emission $emission, ?int $actorId = null): array
     {
-        if ((bool) $emission->puParameter?->legacy_projection_enabled) {
-            return $this->result(self::ACTION_LEGACY_PROJECTION, null);
-        }
-
         return DB::transaction(function () use ($emission, $actorId): array {
             Emission::query()->whereKey($emission->id)->lockForUpdate()->first();
             $version = $this->puReader->officialVersion($emission, fresh: true);
             $rows = $version instanceof EmissionPuCurveVersion ? $this->paymentRows($version) : collect();
-            $counts = ['updated' => 0, 'created' => 0, 'moved' => 0, 'reverted' => 0];
+            $today = BusinessTime::dateString();
+            $counts = ['updated' => 0, 'created' => 0, 'moved' => 0, 'reverted' => 0, 'restored_components' => 0, 'settled_kept' => 0];
+            $settledDivergent = [];
             $touched = [];
 
             foreach ($rows as $row) {
                 [$payment, $how] = $this->paymentFor($emission, $row);
+
+                if ($payment->exists && $this->isSettled($payment, $today)) {
+                    $counts['restored_components'] += $this->restoreExternalComponents($payment);
+
+                    if ($payment->isDirty()) {
+                        $payment->save();
+                    }
+
+                    if ($this->curveValuesDiffer($payment, $row)) {
+                        $settledDivergent[] = $payment->payment_date->toDateString();
+                    }
+
+                    $counts['settled_kept']++;
+                    $touched[] = $payment->id;
+
+                    continue;
+                }
+
+                $counts['restored_components'] += $this->restoreExternalComponents($payment);
                 $payment = $this->applyCurveValues($payment, $row, $version);
 
                 if ($payment->isDirty() || ! $payment->exists) {
@@ -69,15 +91,52 @@ final class PuPaymentScheduleService
                 $touched[] = $payment->id;
             }
 
-            $counts['reverted'] = $this->revertStaleCalculations($emission, $touched);
+            [$reverted, $settledKept, $restored] = $this->revertStaleCalculations($emission, $touched, $today);
+            $counts['reverted'] = $reverted;
+            $counts['settled_kept'] += $settledKept;
+            $counts['restored_components'] += $restored;
             $unmatched = $this->unmatchedForecasts($emission, $rows);
 
-            if (array_sum($counts) > 0) {
-                $this->auditLog->logPaymentsReconciled($emission, $version?->calculation_version, $counts, $unmatched, $actorId);
+            if ($counts['updated'] + $counts['created'] + $counts['moved'] + $counts['reverted'] + $counts['restored_components'] > 0
+                || $settledDivergent !== []) {
+                $this->auditLog->logPaymentsReconciled(
+                    $emission,
+                    $version?->calculation_version,
+                    [...$counts, 'settled_divergent_dates' => $settledDivergent],
+                    $unmatched,
+                    $actorId,
+                );
             }
 
-            return $this->result(self::ACTION_RECONCILED, $version?->calculation_version, $counts, $unmatched);
+            return $this->result(self::ACTION_RECONCILED, $version?->calculation_version, $counts, $unmatched, $settledDivergent);
         });
+    }
+
+    /**
+     * Pagamento LIQUIDADO: calculado por uma curva que já era a oficial quando a
+     * data do pagamento chegou (homologada até aquela data) e cuja data já
+     * passou no calendário de negócio. É o valor que valia no dia em que o
+     * pagamento aconteceu; uma homologação posterior não o reescreve, e invalidar
+     * a curva que o calculou não o devolve ao previsto.
+     *
+     * Um recálculo retroativo -- a primeira homologação de uma curva cujo passado
+     * já tinha pagamentos -- não é liquidação: a curva não valia naquele dia.
+     */
+    public function isSettled(Payment $payment, ?string $today = null): bool
+    {
+        if (! $payment->isCalculatedByOfficialCurve() || $payment->payment_date === null) {
+            return false;
+        }
+
+        $paymentDate = $payment->payment_date->toDateString();
+
+        if ($paymentDate >= ($today ?? BusinessTime::dateString())) {
+            return false;
+        }
+
+        $homologatedAt = $payment->puCurveVersion?->homologated_at;
+
+        return $homologatedAt !== null && BusinessTime::dateString($homologatedAt) <= $paymentDate;
     }
 
     /**
@@ -136,24 +195,24 @@ final class PuPaymentScheduleService
         return [new Payment(['emission_id' => $emission->id, 'payment_date' => $date]), 'created'];
     }
 
+    /**
+     * Grava só os componentes que a curva calcula. O previsto desses
+     * componentes vai para `expected_*` na primeira vez em que a curva assume a
+     * linha; prêmio e amortização extraordinária ficam como estão.
+     */
     private function applyCurveValues(Payment $payment, EmissionPuDailyCurve $row, EmissionPuCurveVersion $version): Payment
     {
         if ($payment->exists && ! $payment->isCalculatedByOfficialCurve()) {
-            foreach (Payment::VALUE_FIELDS as $field) {
+            foreach (Payment::CURVE_OWNED_FIELDS as $field) {
                 $payment->{'expected_'.$field} = $payment->getRawOriginal($field);
             }
         }
 
-        $values = [
-            'premium_value' => '0.00',
-            'interest_value' => $this->rounder->round((string) $row->interest_payment_value, DecimalRounder::LEGACY_MONEY_SCALE),
-            'amortization_value' => $this->rounder->round((string) $row->amortization_value, DecimalRounder::LEGACY_MONEY_SCALE),
-            'extra_amortization_value' => '0.00',
+        $payment->fill([
+            ...$this->curveValues($row),
             'value_source' => Payment::SOURCE_OFFICIAL_CURVE,
             'pu_curve_version_id' => $version->id,
-        ];
-
-        $payment->fill($values);
+        ]);
 
         if ($payment->isDirty()) {
             $payment->calculated_at = now();
@@ -163,21 +222,91 @@ final class PuPaymentScheduleService
     }
 
     /**
+     * @return array{interest_value: string, amortization_value: string}
+     */
+    private function curveValues(EmissionPuDailyCurve $row): array
+    {
+        return [
+            'interest_value' => $this->rounder->round((string) $row->interest_payment_value, DecimalRounder::LEGACY_MONEY_SCALE),
+            'amortization_value' => $this->rounder->round((string) $row->amortization_value, DecimalRounder::LEGACY_MONEY_SCALE),
+        ];
+    }
+
+    private function curveValuesDiffer(Payment $payment, EmissionPuDailyCurve $row): bool
+    {
+        foreach ($this->curveValues($row) as $field => $value) {
+            if (bccomp((string) $payment->getRawOriginal($field), $value, 2) !== 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Reparo das linhas calculadas antes da Fase 2 de governança: a conciliação
+     * de então zerava prêmio e amortização extraordinária e guardava o valor em
+     * `expected_*`. Esses componentes nunca foram da curva, então o valor
+     * guardado volta para a linha. Idempotente: sem `expected_` desses campos,
+     * não há o que reparar.
+     */
+    private function restoreExternalComponents(Payment $payment): int
+    {
+        if (! $payment->exists || ! $payment->isCalculatedByOfficialCurve()) {
+            return 0;
+        }
+
+        $restored = 0;
+
+        foreach (Payment::EXTERNAL_FIELDS as $field) {
+            $expected = $payment->getRawOriginal('expected_'.$field);
+
+            if ($expected === null) {
+                continue;
+            }
+
+            $payment->{$field} = $expected;
+            $payment->{'expected_'.$field} = null;
+            $restored++;
+        }
+
+        return $restored;
+    }
+
+    /**
      * Linhas calculadas que a curva oficial vigente não cobre mais voltam ao
-     * previsto que estava nelas.
+     * previsto que estava nelas -- só nos componentes da curva. As liquidadas
+     * ficam como estão.
      *
      * @param  list<int>  $touched
+     * @return array{0: int, 1: int, 2: int}
      */
-    private function revertStaleCalculations(Emission $emission, array $touched): int
+    private function revertStaleCalculations(Emission $emission, array $touched, string $today): array
     {
         $stale = Payment::query()
+            ->with('puCurveVersion')
             ->where('emission_id', $emission->id)
             ->where('value_source', Payment::SOURCE_OFFICIAL_CURVE)
             ->whereNotIn('id', $touched === [] ? [0] : $touched)
             ->get();
+        $reverted = 0;
+        $settledKept = 0;
+        $restored = 0;
 
         foreach ($stale as $payment) {
-            foreach (Payment::VALUE_FIELDS as $field) {
+            $restored += $this->restoreExternalComponents($payment);
+
+            if ($this->isSettled($payment, $today)) {
+                if ($payment->isDirty()) {
+                    $payment->save();
+                }
+
+                $settledKept++;
+
+                continue;
+            }
+
+            foreach (Payment::CURVE_OWNED_FIELDS as $field) {
                 $payment->{$field} = $payment->getRawOriginal('expected_'.$field) ?? '0.00';
                 $payment->{'expected_'.$field} = null;
             }
@@ -187,9 +316,10 @@ final class PuPaymentScheduleService
                 'pu_curve_version_id' => null,
                 'calculated_at' => null,
             ])->save();
+            $reverted++;
         }
 
-        return $stale->count();
+        return [$reverted, $settledKept, $restored];
     }
 
     /**
@@ -220,11 +350,12 @@ final class PuPaymentScheduleService
     }
 
     /**
-     * @param  array{updated?: int, created?: int, moved?: int, reverted?: int}  $counts
+     * @param  array{updated?: int, created?: int, moved?: int, reverted?: int, restored_components?: int, settled_kept?: int}  $counts
      * @param  list<string>  $unmatched
-     * @return array{action: string, version: ?string, updated: int, created: int, moved: int, reverted: int, unmatched_dates: list<string>}
+     * @param  list<string>  $settledDivergent
+     * @return array{action: string, version: ?string, updated: int, created: int, moved: int, reverted: int, restored_components: int, settled_kept: int, unmatched_dates: list<string>, settled_divergent_dates: list<string>}
      */
-    private function result(string $action, ?string $version, array $counts = [], array $unmatched = []): array
+    private function result(string $action, ?string $version, array $counts = [], array $unmatched = [], array $settledDivergent = []): array
     {
         return [
             'action' => $action,
@@ -233,7 +364,10 @@ final class PuPaymentScheduleService
             'created' => $counts['created'] ?? 0,
             'moved' => $counts['moved'] ?? 0,
             'reverted' => $counts['reverted'] ?? 0,
+            'restored_components' => $counts['restored_components'] ?? 0,
+            'settled_kept' => $counts['settled_kept'] ?? 0,
             'unmatched_dates' => $unmatched,
+            'settled_divergent_dates' => $settledDivergent,
         ];
     }
 }

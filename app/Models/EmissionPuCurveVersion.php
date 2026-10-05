@@ -243,7 +243,12 @@ class EmissionPuCurveVersion extends Model
     }
 
     /**
-     * "Versão atual" é sempre a operacional viva: candidate nunca aparece aqui.
+     * Versão de TRABALHO vigente: a operacional mais recente com cálculo concluído
+     * e utilizável ({@see PuCurveStatus::workable()}). Uma tentativa em
+     * processamento, com erro ou obsoleta nunca a desloca, por mais nova que seja.
+     *
+     * Vigente não é oficial: a fonte oficial de PU é {@see self::scopeOfficial()}.
+     * Candidate nunca aparece aqui.
      *
      * @param  Builder<EmissionPuCurveVersion>  $query
      * @return Builder<EmissionPuCurveVersion>
@@ -252,7 +257,39 @@ class EmissionPuCurveVersion extends Model
     {
         return $query
             ->operational()
-            ->where('status', '!=', PuCurveStatus::Obsolete->value)
+            ->whereIn('status', array_map(fn (PuCurveStatus $status): string => $status->value, PuCurveStatus::workable()))
+            ->orderByDesc('id');
+    }
+
+    /**
+     * Versão OFICIAL: a operacional homologada mais recente. É a única que pode
+     * alimentar relatório, garantias, site e o Cronograma de Pagamentos.
+     * Invalidada a oficial, a homologada anterior (se ainda homologada) volta a
+     * responder; sem nenhuma, não há curva oficial.
+     *
+     * @param  Builder<EmissionPuCurveVersion>  $query
+     * @return Builder<EmissionPuCurveVersion>
+     */
+    public function scopeOfficial(Builder $query): Builder
+    {
+        return $query
+            ->operational()
+            ->homologated()
+            ->orderByDesc('id');
+    }
+
+    /**
+     * Última TENTATIVA operacional, em qualquer status -- inclusive
+     * `processing` e `error`. Serve para mostrar o andamento e a falha da geração;
+     * nunca para escolher a curva sobre a qual se age ou que se publica.
+     *
+     * @param  Builder<EmissionPuCurveVersion>  $query
+     * @return Builder<EmissionPuCurveVersion>
+     */
+    public function scopeLatestAttempt(Builder $query): Builder
+    {
+        return $query
+            ->operational()
             ->orderByDesc('id');
     }
 

@@ -30,7 +30,8 @@ it('homologates a generated version and logs the activity', function () {
         'status' => PuCurveStatus::Generated->value,
     ]);
 
-    app(HomologatePuCurve::class)->handle($emission, 'v1', $user->id);
+    // Versão sem maker identificado (como a da rotina): a homologação registra justificativa.
+    app(HomologatePuCurve::class)->handle($emission, 'v1', $user->id, 'Conferida contra a planilha do sistema antigo.');
 
     expect($version->fresh()->status)->toBe(PuCurveStatus::Homologated)
         ->and(Activity::query()->where('description', 'pu_curve_homologated')->where('subject_id', $emission->id)->exists())->toBeTrue();

@@ -3,6 +3,7 @@
 namespace App\Actions\Emissions;
 
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Exceptions\PuCurveGovernanceException;
 use App\Domain\PuCalculator\Exceptions\PuMakerCheckerException;
 use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Domain\PuCalculator\Services\PuCurveVersionService;
@@ -13,8 +14,17 @@ use App\Events\PuCalculator\EmissionPuSourceChanged;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use App\Services\AreaResponsibilityService;
-use InvalidArgumentException;
+use Illuminate\Support\Facades\DB;
 
+/**
+ * Homologação: o único ato que torna uma curva oficial.
+ *
+ * Age sobre a versão NOMEADA por quem homologa -- nunca sobre "a vigente" no
+ * momento da execução -- e numa única transação: trava a emissão e a versão,
+ * relê o status, aplica maker/checker e justificativa, marca a versão, registra
+ * a auditoria e concilia o Cronograma de Pagamentos. Se qualquer passo falha,
+ * nada disso fica gravado e nenhum consumidor vê a curva como oficial.
+ */
 class HomologatePuCurve
 {
     public function __construct(
@@ -24,57 +34,65 @@ class HomologatePuCurve
         private readonly PuPaymentScheduleService $paymentSchedule,
     ) {}
 
+    /**
+     * @param  string|null  $calculationVersion  versão revisada por quem homologa; obrigatória
+     */
     public function handle(
         Emission $emission,
-        ?string $calculationVersion = null,
+        ?string $calculationVersion,
         ?int $requestedByUserId = null,
         ?string $justification = null,
     ): EmissionPuCurveVersion {
-        $version = $this->versionService->findByCalculationVersion($emission, $calculationVersion);
-
-        if ($version === null) {
-            throw new InvalidArgumentException('Nenhuma versao de curva disponivel para homologacao.');
-        }
-
-        if (! in_array($version->status, [PuCurveStatus::Generated, PuCurveStatus::Validated, PuCurveStatus::Divergent], true)) {
-            throw new InvalidArgumentException('Apenas curvas geradas ou validadas podem ser homologadas.');
-        }
-
         $justification = filled($justification) ? trim($justification) : null;
-        $selfHomologation = $this->isSelfHomologation($version, $requestedByUserId);
 
-        if ($selfHomologation) {
+        return DB::transaction(function () use ($emission, $calculationVersion, $requestedByUserId, $justification): EmissionPuCurveVersion {
+            $lockedEmission = Emission::query()->whereKey($emission->id)->lockForUpdate()->firstOrFail();
+            $version = $this->versionService->lockForGovernance($lockedEmission, $calculationVersion);
+            $previousStatus = $version->status;
+
+            if (! $previousStatus->canBeHomologated()) {
+                throw new PuCurveGovernanceException(sprintf(
+                    'A versão %s está %s e não pode ser homologada. Só curvas geradas, validadas ou divergentes (com justificativa) são homologáveis.',
+                    $version->calculation_version,
+                    mb_strtolower($previousStatus->label()),
+                ));
+            }
+
+            $selfHomologation = $this->isSelfHomologation($version, $requestedByUserId);
             $blocker = $this->selfHomologationBlocker($version, $requestedByUserId)
-                ?? ($justification === null ? 'Informe a justificativa da auto-homologação.' : null);
+                ?? ($justification === null ? $this->justificationRequirement($version, $requestedByUserId) : null);
 
             if ($blocker !== null) {
                 throw new PuMakerCheckerException($blocker);
             }
-        }
 
-        $this->versionService->markHomologated($version, $requestedByUserId, $selfHomologation, $justification);
-        $this->auditLogService->logHomologation(
-            $emission,
-            $version->calculation_version,
-            $requestedByUserId,
-            $selfHomologation,
-            $justification,
-        );
+            $this->versionService->markHomologated($version, $requestedByUserId, $selfHomologation, $justification);
+            $this->auditLogService->logHomologation(
+                $lockedEmission,
+                $version->calculation_version,
+                $requestedByUserId,
+                $selfHomologation,
+                $justification,
+                $version->id,
+                $previousStatus->value,
+            );
 
-        // A versão homologada passa a ser a curva oficial das outras áreas: os
-        // pagamentos que ela já calculou substituem o previsto.
-        $this->paymentSchedule->reconcile($emission->fresh(), $requestedByUserId);
+            // A versão homologada passa a ser a curva oficial das outras áreas: os
+            // pagamentos que ela calculou substituem o previsto. Dentro da mesma
+            // transação: se a conciliação falha, a homologação não acontece.
+            $this->paymentSchedule->reconcile($lockedEmission, $requestedByUserId);
 
-        // O saldo devedor das garantias passa a vir dela: as competências cujo
-        // saldo gravado mudou ficam marcadas (depois do commit, se houver).
-        EmissionPuSourceChanged::dispatch(
-            (int) $emission->getKey(),
-            PuSourceChange::CurveHomologated,
-            $version->calculation_version,
-            $requestedByUserId,
-        );
+            // O saldo devedor das garantias passa a vir dela: as competências cujo
+            // saldo gravado mudou ficam marcadas (depois do commit).
+            EmissionPuSourceChanged::dispatch(
+                (int) $lockedEmission->getKey(),
+                PuSourceChange::CurveHomologated,
+                $version->calculation_version,
+                $requestedByUserId,
+            );
 
-        return $version;
+            return $version;
+        });
     }
 
     /**
@@ -90,6 +108,36 @@ class HomologatePuCurve
         $makerIds = array_map('intval', array_filter([$version->generated_by, $version->validated_by]));
 
         return in_array($userId, $makerIds, true);
+    }
+
+    /**
+     * Por que esta homologação só pode sair com justificativa registrada, ou nulo
+     * quando a segregação maker/checker já basta:
+     *
+     * - auto-homologação (regra de 2026-09-28: responsável da área, curva validada);
+     * - curva divergente: a validação contra planilha encontrou diferenças;
+     * - curva gerada pela rotina, sem maker identificado: não há segregação a
+     *   verificar, então quem homologa registra por quê.
+     *
+     * Uma curva gerada por uma pessoa e homologada por outra segue o caminho
+     * oficial decidido em 2026-09-28 ("Gerar Curva PU" + homologação) sem exigir
+     * justificativa.
+     */
+    public function justificationRequirement(EmissionPuCurveVersion $version, ?int $userId): ?string
+    {
+        if ($this->isSelfHomologation($version, $userId)) {
+            return 'Informe a justificativa da auto-homologação.';
+        }
+
+        if ($version->status === PuCurveStatus::Divergent) {
+            return 'A validação contra planilha encontrou divergências nesta versão: informe a justificativa para homologá-la.';
+        }
+
+        if ($version->generated_by === null) {
+            return 'Esta versão foi gerada pela rotina automática, sem responsável identificado: informe a justificativa da homologação.';
+        }
+
+        return null;
     }
 
     /**

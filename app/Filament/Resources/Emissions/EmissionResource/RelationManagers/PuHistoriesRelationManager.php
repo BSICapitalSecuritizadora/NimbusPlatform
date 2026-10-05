@@ -6,6 +6,7 @@ use App\Actions\Emissions\ImportPuHistoriesFromSpreadsheet;
 use App\Actions\Emissions\PuHistorySpreadsheetTemplate;
 use App\Domain\PuCalculator\Services\EmissionPuReader;
 use App\Filament\Pages\SpreadsheetTemplates as SpreadsheetTemplatesPage;
+use App\Models\PuHistory;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -20,6 +21,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 
 class PuHistoriesRelationManager extends RelationManager
@@ -53,12 +55,7 @@ class PuHistoriesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->description(fn (): ?string => ($version = app(EmissionPuReader::class)->officialVersion($this->getOwnerRecord())) !== null
-                ? sprintf(
-                    'Esta emissão tem curva oficial homologada (%s): relatório, garantias e site usam o PU dela. Este histórico só vale para datas que a curva não cobre.',
-                    $version->calculation_version,
-                )
-                : null)
+            ->description(fn (): ?string => $this->governanceDescription())
             ->recordTitleAttribute('date')
             ->searchPlaceholder('Buscar por data...')
             ->columns([
@@ -73,6 +70,15 @@ class PuHistoriesRelationManager extends RelationManager
                     ->prefix('R$ ')
                     ->alignEnd()
                     ->sortable(),
+                TextColumn::make('source')
+                    ->label('Origem')
+                    ->badge()
+                    ->state(fn (PuHistory $record): string => match ($record->source) {
+                        PuHistory::SOURCE_IMPORT => 'Planilha',
+                        PuHistory::SOURCE_MANUAL => 'Manual',
+                        default => 'Não registrada',
+                    })
+                    ->color(fn (PuHistory $record): string => $record->source === null ? 'gray' : 'info'),
             ])
             ->defaultSort('date', 'desc')
             ->headerActions([
@@ -94,6 +100,7 @@ class PuHistoriesRelationManager extends RelationManager
                     ->label('Importar Dados')
                     ->icon('heroicon-o-arrow-up-tray')
                     ->color('primary')
+                    ->visible(fn (): bool => $this->canImportPuHistory())
                     ->tooltip('Importar histórico de PU via planilha (.xlsx / .csv)')
                     ->modalHeading('Importar Planilha de Preço Unitário')
                     ->modalSubmitActionLabel('Importar Dados')
@@ -128,10 +135,12 @@ class PuHistoriesRelationManager extends RelationManager
                 CreateAction::make()
                     ->label('Lançar PU')
                     ->icon('heroicon-m-plus')
-                    ->tooltip('Cadastrar valor de PU manualmente'),
+                    ->tooltip('Cadastrar valor de PU manualmente')
+                    ->mutateDataUsing(fn (array $data): array => [...$data, 'source' => PuHistory::SOURCE_MANUAL]),
             ])
             ->actions([
-                EditAction::make(),
+                EditAction::make()
+                    ->mutateDataUsing(fn (array $data): array => [...$data, 'source' => PuHistory::SOURCE_MANUAL]),
                 DeleteAction::make(),
             ])
             ->bulkActions([
@@ -147,6 +156,7 @@ class PuHistoriesRelationManager extends RelationManager
                     ->label('Importar Dados')
                     ->icon('heroicon-o-arrow-up-tray')
                     ->color('primary')
+                    ->visible(fn (): bool => $this->canImportPuHistory())
                     ->modalHeading('Importar Planilha de Preço Unitário')
                     ->modalSubmitActionLabel('Importar Dados')
                     ->form([
@@ -180,7 +190,41 @@ class PuHistoriesRelationManager extends RelationManager
                 CreateAction::make('empty_create')
                     ->label('Lançar PU')
                     ->icon('heroicon-m-plus')
-                    ->color('gray'),
+                    ->color('gray')
+                    ->mutateDataUsing(fn (array $data): array => [...$data, 'source' => PuHistory::SOURCE_MANUAL]),
             ]);
+    }
+
+    /**
+     * Importar sobrescreve o PU de datas já lançadas: segue a policy do
+     * Histórico de PU e, como as demais ações de escrita, some na página de
+     * visualização.
+     */
+    protected function canImportPuHistory(): bool
+    {
+        return ! $this->isReadOnly() && Gate::allows('import', PuHistory::class);
+    }
+
+    /**
+     * O que o histórico vale como PU, conforme a emissão tenha curva oficial,
+     * seja governada sem curva oficial ou seja legada.
+     */
+    protected function governanceDescription(): ?string
+    {
+        $reader = app(EmissionPuReader::class);
+        $emission = $this->getOwnerRecord();
+
+        if (($version = $reader->officialVersion($emission)) !== null) {
+            return sprintf(
+                'Esta emissão tem curva oficial homologada (%s): relatório, garantias e site usam o PU dela. Este histórico só vale para datas que a curva não cobre.',
+                $version->calculation_version,
+            );
+        }
+
+        if ($reader->isGoverned($emission)) {
+            return 'Esta emissão tem curva de PU ainda não homologada: nenhuma curva gerada ou validada vale como PU. Até a homologação valem só os PUs importados de planilha ou lançados à mão, e os sem origem registrada anteriores à primeira geração de curva.';
+        }
+
+        return null;
     }
 }

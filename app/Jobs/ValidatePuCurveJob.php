@@ -5,8 +5,10 @@ namespace App\Jobs;
 use App\Actions\Emissions\ValidatePuDailyCurve;
 use App\Domain\PuCalculator\Enums\PuValidationMode;
 use App\Domain\PuCalculator\Enums\PuValidationStatus;
+use App\Domain\PuCalculator\Exceptions\PuCurveGovernanceException;
 use App\Domain\PuCalculator\Services\PuCurveVersionService;
 use App\Models\Emission;
+use App\Models\EmissionPuCurveVersion;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -42,10 +44,15 @@ class ValidatePuCurveJob implements ShouldQueue
         try {
             $emission = Emission::findOrFail($this->emissionId);
 
+            // A validação age sobre a versão escolhida por quem a pediu -- nunca
+            // sobre "a mais recente" no momento em que o job roda. O status é
+            // conferido antes de comparar e relido sob trava ao gravar o resultado.
+            $version = $this->targetVersion($emission, $versionService);
+
             $report = $validatePuDailyCurve->handle(
                 $emission,
                 $this->spreadsheetPath,
-                $this->calculationVersion,
+                $version->calculation_version,
                 PuValidationMode::from($this->mode),
                 $this->rangeStart !== null ? CarbonImmutable::parse($this->rangeStart) : null,
                 $this->rangeEnd !== null ? CarbonImmutable::parse($this->rangeEnd) : null,
@@ -53,29 +60,34 @@ class ValidatePuCurveJob implements ShouldQueue
             );
 
             $approved = $report->status === PuValidationStatus::Approved;
-            $version = $versionService->findByCalculationVersion($emission, $report->calculationVersion ?? $this->calculationVersion);
 
-            if ($version !== null) {
-                $versionService->markValidated($version, $approved, [
-                    'mode' => $report->mode->value,
-                    'status' => $report->status->value,
-                    'total_rows_compared' => $report->totalRowsCompared,
-                    'total_divergences' => $report->totalDivergences,
-                    'total_field_divergences' => $report->totalFieldDivergences,
-                    'first_divergence_date' => $report->firstDivergenceDate?->toDateString(),
-                    'largest_pu_difference' => $report->largestPuDifference,
-                    'largest_total_value_difference' => $report->largestTotalValueDifference,
-                    'largest_payment_difference' => $report->largestPaymentDifference,
-                ], $this->requestedByUserId);
-            }
+            $versionService->markValidated($version, $approved, [
+                'mode' => $report->mode->value,
+                'status' => $report->status->value,
+                'total_rows_compared' => $report->totalRowsCompared,
+                'total_divergences' => $report->totalDivergences,
+                'total_field_divergences' => $report->totalFieldDivergences,
+                'first_divergence_date' => $report->firstDivergenceDate?->toDateString(),
+                'largest_pu_difference' => $report->largestPuDifference,
+                'largest_total_value_difference' => $report->largestTotalValueDifference,
+                'largest_payment_difference' => $report->largestPaymentDifference,
+            ], $this->requestedByUserId);
 
             Cache::put($this->cacheKey(), [
                 'status' => 'completed',
                 'validation_status' => $report->status->value,
-                'calculation_version' => $report->calculationVersion ?? $this->calculationVersion,
+                'calculation_version' => $version->calculation_version,
                 'total_rows_compared' => $report->totalRowsCompared,
                 'total_divergences' => $report->totalDivergences,
                 'total_field_divergences' => $report->totalFieldDivergences,
+            ], 1800);
+        } catch (PuCurveGovernanceException $exception) {
+            // Recusa de governança (versão inexistente, ambígua ou num status que
+            // não aceita validação): não é falha de infraestrutura, e nada foi
+            // gravado na versão.
+            Cache::put($this->cacheKey(), [
+                'status' => 'failed',
+                'error' => $exception->getMessage(),
             ], 1800);
         } catch (\Throwable $exception) {
             Log::error('ValidatePuCurveJob failed', [
@@ -98,6 +110,29 @@ class ValidatePuCurveJob implements ShouldQueue
             'status' => 'failed',
             'error' => $exception->getMessage(),
         ], 1800);
+    }
+
+    private function targetVersion(Emission $emission, PuCurveVersionService $versionService): EmissionPuCurveVersion
+    {
+        if (blank($this->calculationVersion)) {
+            throw new PuCurveGovernanceException('Informe a versão da curva a validar.');
+        }
+
+        $version = $versionService->findByCalculationVersion($emission, $this->calculationVersion);
+
+        if (! $version instanceof EmissionPuCurveVersion) {
+            throw new PuCurveGovernanceException(sprintf('A versão %s não existe nesta emissão.', $this->calculationVersion));
+        }
+
+        if (! $version->status->acceptsValidationResult()) {
+            throw new PuCurveGovernanceException(sprintf(
+                'A versão %s está %s e não aceita validação.',
+                $version->calculation_version,
+                mb_strtolower($version->status->label()),
+            ));
+        }
+
+        return $version;
     }
 
     private function cacheKey(): string
