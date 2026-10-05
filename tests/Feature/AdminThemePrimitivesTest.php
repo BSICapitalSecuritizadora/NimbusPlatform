@@ -118,6 +118,13 @@ it('ensures table rows consume semantic text, hover, and selection tokens', func
     $darkSelected = findPrimitiveDeclarations('.dark .fi-ta-row.fi-selected td');
     expect($selected['background-color'] ?? null)->toBe('var(--accent-subtle)')
         ->and($darkSelected['background-color'] ?? null)->toBe('var(--accent-subtle)');
+
+    $selectedHover = findPrimitiveDeclarations('.fi-ta-row.fi-selected:hover td');
+    $darkSelectedHover = findPrimitiveDeclarations('.dark .fi-ta-row.fi-selected:hover td');
+    expect($selectedHover['background-color'] ?? null)->toContain('color-mix')
+        ->and($selectedHover['background-color'] ?? null)->toContain('var(--accent-subtle)')
+        ->and($darkSelectedHover['background-color'] ?? null)->toContain('color-mix')
+        ->and($darkSelectedHover['background-color'] ?? null)->toContain('var(--accent-subtle)');
 });
 
 it('ensures generic pagination consumes semantic ground, card, and accent tokens', function () {
@@ -144,11 +151,11 @@ it('ensures generic pagination consumes semantic ground, card, and accent tokens
         ->and($darkActiveLabel['color'] ?? null)->toBe('var(--accent)');
 });
 
-it('ensures notifications consume semantic card and elevated surfaces and preserve status colors', function () {
+it('ensures notifications consume semantic elevated surfaces and preserve status colors', function () {
     $light = findPrimitiveDeclarations('.fi-no-notification:not(.fi-inline)');
     $dark = findPrimitiveDeclarations('.dark .fi-no-notification:not(.fi-inline)');
 
-    expect($light['background-color'] ?? null)->toBe('var(--surface-card)')
+    expect($light['background-color'] ?? null)->toBe('var(--surface-elevated)')
         ->and($light['border'] ?? null)->toContain('var(--border-subtle)')
         ->and($dark['background-color'] ?? null)->toBe('var(--surface-elevated)')
         ->and($dark['border'] ?? null)->toContain('var(--border-strong)');
@@ -166,7 +173,7 @@ it('ensures notifications consume semantic card and elevated surfaces and preser
     $lightTint = findPrimitiveDeclarations('.fi-no-notification.fi-color');
     $darkTint = findPrimitiveDeclarations('.dark .fi-no-notification.fi-color');
     expect($lightTint['background-color'] ?? null)->toContain('color-mix')
-        ->and($lightTint['background-color'] ?? null)->toContain('var(--surface-card)')
+        ->and($lightTint['background-color'] ?? null)->toContain('var(--surface-elevated)')
         ->and($darkTint['background-color'] ?? null)->toContain('color-mix')
         ->and($darkTint['background-color'] ?? null)->toContain('var(--surface-elevated)');
 });

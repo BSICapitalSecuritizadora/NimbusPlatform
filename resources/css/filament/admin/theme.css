@@ -4739,6 +4739,14 @@ select.fi-select-input {
     color: var(--text-primary) !important;
 }
 
+.fi-ta-row.fi-striped td {
+    background-color: var(--surface-ground) !important;
+}
+
+.dark .fi-ta-row.fi-striped td {
+    background-color: var(--surface-ground) !important;
+}
+
 .fi-ta-row.fi-clickable:hover td,
 .fi-ta-table tr.fi-ta-row:hover td {
     background-color: var(--surface-highlight) !important;
@@ -4749,14 +4757,6 @@ select.fi-select-input {
     background-color: var(--surface-highlight) !important;
 }
 
-.fi-ta-row.fi-striped td {
-    background-color: var(--surface-ground) !important;
-}
-
-.dark .fi-ta-row.fi-striped td {
-    background-color: var(--surface-ground) !important;
-}
-
 .fi-ta-row.fi-selected td,
 .fi-ta-table tr.fi-ta-row.fi-selected td {
     background-color: var(--accent-subtle) !important;
@@ -4765,6 +4765,16 @@ select.fi-select-input {
 .dark .fi-ta-row.fi-selected td,
 .dark .fi-ta-table tr.fi-ta-row.fi-selected td {
     background-color: var(--accent-subtle) !important;
+}
+
+.fi-ta-row.fi-selected:hover td,
+.fi-ta-table tr.fi-ta-row.fi-selected:hover td {
+    background-color: color-mix(in oklab, var(--accent-subtle) 70%, var(--surface-highlight)) !important;
+}
+
+.dark .fi-ta-row.fi-selected:hover td,
+.dark .fi-ta-table tr.fi-ta-row.fi-selected:hover td {
+    background-color: color-mix(in oklab, var(--accent-subtle) 70%, var(--surface-highlight)) !important;
 }
 
 .fi-ta-row.fi-selected > *:first-child {
@@ -4961,7 +4971,7 @@ select.fi-select-input {
 
 /* ── 5. Filament Notifications / Toasts ── */
 .fi-no-notification:not(.fi-inline) {
-    background-color: var(--surface-card) !important;
+    background-color: var(--surface-elevated) !important;
     border: 1px solid var(--border-subtle) !important;
     border-radius: 0.75rem !important;
     box-shadow: 0 10px 25px -5px rgba(9, 27, 35, 0.1), 0 8px 10px -6px rgba(9, 27, 35, 0.05) !important;
@@ -5016,7 +5026,7 @@ select.fi-select-input {
 }
 
 .fi-no-notification.fi-color {
-    background-color: color-mix(in oklab, var(--surface-card) 92%, var(--color-500, #4b6871)) !important;
+    background-color: color-mix(in oklab, var(--surface-elevated) 92%, var(--color-400, #758d95)) !important;
 }
 
 .dark .fi-no-notification.fi-color {
