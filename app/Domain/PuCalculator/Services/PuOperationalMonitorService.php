@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Enums\PuOfficialCurveFreshness;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use Illuminate\Support\Collection;
@@ -16,6 +17,7 @@ class PuOperationalMonitorService
 {
     public function __construct(
         private readonly PuIndexCoverageService $indexCoverageService,
+        private readonly PuOfficialCurveFreshnessService $officialFreshness,
     ) {}
 
     /**
@@ -183,7 +185,60 @@ class PuOperationalMonitorService
             );
         }
 
+        if (($missingIndex = count($this->officialCurvesMissingIndexEmissionIds())) > 0) {
+            $issues[] = sprintf(
+                '%d curva(s) oficial(is) parada(s) por CDI exigido ausente ou com divulgacao atrasada.',
+                $missingIndex,
+            );
+        }
+
+        if (($failed = $this->failedOfficialExtensionCount()) > 0) {
+            $issues[] = sprintf(
+                '%d curva(s) oficial(is) cuja extensao diaria falhou: o PU oficial nao avanca alem da ultima data realizada gravada.',
+                $failed,
+            );
+        }
+
         return $issues;
+    }
+
+    /**
+     * Emissões cuja curva oficial não avança porque falta uma observação de CDI
+     * exigida: buraco no histórico ou divulgação que já deveria ter chegado. A
+     * curva apenas atrasada (índice disponível, rotina ainda não rodou) não entra:
+     * a extensão diária a resolve sozinha.
+     *
+     * @return list<int>
+     */
+    public function officialCurvesMissingIndexEmissionIds(): array
+    {
+        return Cache::remember(
+            'pu_monitor_official_missing_index_ids',
+            (int) config('pu_calculator.missing_cdi_cache_seconds', 300),
+            fn (): array => Emission::query()
+                ->whereHas('puCurveVersions', fn ($query) => $query->official())
+                ->get()
+                ->filter(fn (Emission $emission): bool => $this->officialFreshness->status($emission)->freshness
+                    === PuOfficialCurveFreshness::MissingIndex)
+                ->pluck('id')
+                ->map(fn ($id): int => (int) $id)
+                ->values()
+                ->all(),
+        );
+    }
+
+    /**
+     * Curvas homologadas cuja última extensão diária tentou e não conseguiu rodar
+     * (pré-requisito bloqueado ou erro de cálculo). A próxima extensão que rodar
+     * limpa a marca.
+     */
+    public function failedOfficialExtensionCount(): int
+    {
+        return EmissionPuCurveVersion::query()
+            ->operational()
+            ->homologated()
+            ->whereNotNull('extension_failed_at')
+            ->count();
     }
 
     /**

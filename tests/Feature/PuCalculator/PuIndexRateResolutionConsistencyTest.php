@@ -8,6 +8,7 @@ use App\Domain\PuCalculator\Services\PuCurveGenerationService;
 use App\Domain\PuCalculator\Services\PuCurvePrerequisiteService;
 use App\Domain\PuCalculator\Services\PuIndexCoverageService;
 use App\Domain\PuCalculator\Services\PuIndexRateRequirementResolver;
+use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
 use App\Models\EmissionPuParameter;
@@ -97,10 +98,14 @@ function phase2b3SeedCdi(string $rateDate, bool $projected = false): void
     app(IndexRateService::class)->flushCache();
 }
 
+// Fase 3.1: o D-1 calendário exige a observação do dia anterior só quando ele foi
+// dia de divulgação. Domingo, segunda e o dia seguinte ao feriado não exigem nada
+// (o dia anterior não teve CDI) e têm Fator DI 1; pedir o CDI de sábado no domingo
+// não tem sentido financeiro e bloqueava o modo inteiro.
 dataset('phase2b3_previous_calendar_day_cases', [
-    'segunda-feira consulta domingo' => ['2026-08-10', '2026-08-09', []],
-    'domingo consulta sabado' => ['2026-08-09', '2026-08-08', []],
-    'dia seguinte ao feriado consulta o feriado' => ['2026-09-08', '2026-09-07', ['2026-09-07']],
+    'terca-feira consulta a segunda' => ['2026-08-11', '2026-08-10', []],
+    'sabado consulta a sexta' => ['2026-08-08', '2026-08-07', []],
+    'segundo dia apos o feriado consulta o primeiro dia util' => ['2026-09-09', '2026-09-08', ['2026-09-07']],
     'virada de mes consulta o ultimo dia do mes anterior' => ['2026-09-01', '2026-08-31', []],
     'virada de ano consulta 31 de dezembro' => ['2027-01-01', '2026-12-31', []],
 ]);
@@ -133,7 +138,7 @@ it('keeps engine prerequisite and coverage on exact D-1 calendar across boundari
 
     expect($requirement->lookupDate?->toDateString())->toBe($requiredRateDate)
         ->and($requirement->requiredRateDate()?->toDateString())->toBe($requiredRateDate)
-        ->and($requirement->ruleDescription())->toBe('D-1 calendário')
+        ->and($requirement->ruleDescription())->toStartWith('D-1 calendário')
         ->and($requirement->isRequiredForCalculation())->toBeTrue()
         ->and($prerequisite->passes())->toBeTrue()
         ->and($coverage->missingIndexDates)->toBe([])
@@ -157,6 +162,49 @@ it('keeps engine prerequisite and coverage on exact D-1 calendar across boundari
         ->and($missingPrerequisite->blockingSummary())->toContain("Data requerida: {$requiredRateDate}");
 })->with('phase2b3_previous_calendar_day_cases');
 
+dataset('phase2b3_previous_calendar_day_without_publication_cases', [
+    'segunda-feira: domingo nao tem CDI' => ['2026-08-10', '2026-08-09', []],
+    'domingo: sabado nao tem CDI' => ['2026-08-09', '2026-08-08', []],
+    'dia seguinte ao feriado: o feriado nao tem CDI' => ['2026-09-08', '2026-09-07', ['2026-09-07']],
+]);
+
+it('requires no D-1 observation when the previous calendar day had no publication, in every consumer', function (
+    string $curveDate,
+    string $previousDay,
+    array $holidays,
+) {
+    $startDate = CarbonImmutable::parse($curveDate)->subDay()->toDateString();
+    $emission = phase2b3Emission(
+        $startDate,
+        $curveDate,
+        PuIndexRateLookupMode::PreviousCalendarDayExact,
+    );
+    phase2b3SeedCalendar($startDate, $curveDate, holidays: $holidays);
+    // Uma linha avulsa num dia sem divulgação não vira exigência nem é aplicada:
+    // engine e pré-requisitos seguem a mesma regra, e a regra vem do calendário.
+    phase2b3SeedCdi($previousDay);
+
+    $requirement = app(PuIndexRateRequirementResolver::class)->resolve(
+        $emission->puParameter,
+        CarbonImmutable::parse($curveDate),
+    );
+    $prerequisite = app(PuCurvePrerequisiteService::class)->handle($emission->fresh());
+    $coverage = app(PuIndexCoverageService::class)->report($emission->fresh());
+    $curveRow = collect(app(PuCurveGenerationService::class)->handle($emission->fresh())->rows)
+        ->first(fn ($row): bool => $row->date->toDateString() === $curveDate);
+
+    expect($requirement->lookupDate)->toBeNull()
+        ->and($requirement->isRequiredForCalculation())->toBeFalse()
+        ->and($requirement->lacksRealizedObservation())->toBeFalse()
+        ->and($requirement->endsRealizedCurve())->toBeFalse()
+        ->and($prerequisite->passes())->toBeTrue()
+        ->and($coverage->missingIndexDates)->toBe([])
+        ->and($coverage->pendingIndexDates)->toBe([])
+        ->and($curveRow)->not->toBeNull()
+        ->and($curveRow->indexRateDate)->toBeNull()
+        ->and($curveRow->factorDi)->toBe('1.0000000000000000');
+})->with('phase2b3_previous_calendar_day_without_publication_cases');
+
 dataset('phase2b3_business_day_lag_cases', [
     'lag negativo de um dia util' => ['2026-08-10', -1, '2026-08-07', 'B3', [], true],
     'lag positivo de um dia util' => ['2026-08-07', 1, '2026-08-10', 'B3', [], true],
@@ -164,7 +212,7 @@ dataset('phase2b3_business_day_lag_cases', [
     'data da curva no fim de semana' => ['2026-08-09', -1, '2026-08-07', 'B3', [], false],
     'virada de mes' => ['2026-09-01', -1, '2026-08-31', 'B3', [], true],
     'virada de ano com feriado' => ['2027-01-04', -1, '2026-12-31', 'B3', ['2027-01-01'], true],
-    'calendario HML isolado' => ['2026-03-03', -1, '2026-02-27', 'HML_PU_PHASE_2B3', ['2026-03-02'], true],
+    'calendario HML de divulgacao explicito' => ['2026-03-03', -1, '2026-02-27', 'HML_PU_PHASE_2B3', ['2026-03-02'], true],
 ]);
 
 it('resolves exact business-day lags with the configured calendar', function (
@@ -183,6 +231,12 @@ it('resolves exact business-day lags with the configured calendar', function (
         $calendarCode,
         $lag,
     );
+
+    // Calendário próprio não é de divulgação do CDI: só conta a defasagem quando a
+    // configuração o escolhe explicitamente como calendário de divulgação.
+    if (! BusinessCalendarRegistry::isCdiPublicationCalendar($calendarCode)) {
+        $parameter->forceFill(['index_rate_calendar_code' => $calendarCode])->save();
+    }
 
     $requirement = app(PuIndexRateRequirementResolver::class)->resolve(
         $parameter,
@@ -252,15 +306,18 @@ it('keeps business-day lag lookup separate from financial application and aligns
         ->and($missingPrerequisite->blockingSummary())->toContain('Data requerida: 2026-09-04');
 });
 
+// Fase 3 (P0-02): a data de observação sai do calendário, nunca dos dados. Uma
+// segunda-feira cuja taxa ainda não existe NÃO herda a da sexta -- herdar era
+// projetar o último CDI conhecido e chamá-lo de realizado.
 dataset('phase2b3_previous_available_cases', [
     'dia util comum usa a taxa do proprio dia' => ['2026-08-06', [], ['2026-08-06'], '2026-08-06', true],
-    'segunda-feira usa a ultima taxa disponivel da sexta' => ['2026-08-10', [], ['2026-08-07'], '2026-08-07', true],
+    'segunda-feira sem a taxa do proprio dia nao herda a da sexta' => ['2026-08-10', [], ['2026-08-07'], null, true],
     'feriado nao consulta taxa' => ['2026-08-12', ['2026-08-12'], ['2026-08-11'], null, false],
-    'sequencia feriado e fim de semana usa a taxa anterior' => ['2026-09-08', ['2026-09-04', '2026-09-07'], ['2026-09-03'], '2026-09-03', true],
+    'sequencia feriado e fim de semana nao herda a taxa anterior' => ['2026-09-08', ['2026-09-04', '2026-09-07'], ['2026-09-03'], null, true],
     'ausencia de indice anterior permanece ausente' => ['2026-08-10', [], [], null, true],
 ]);
 
-it('preserves the actual previous-available engine semantics', function (
+it('resolves the previous-available observation date from the calendar, never from the data', function (
     string $curveDate,
     array $holidays,
     array $availableRateDates,
@@ -291,26 +348,29 @@ it('preserves the actual previous-available engine semantics', function (
     }
 })->with('phase2b3_previous_available_cases');
 
-it('uses one previous available snapshot without producing false coverage gaps', function () {
+it('ends the previous-available realized curve before a business day whose rate is not published yet', function () {
     $emission = phase2b3Emission(
-        '2026-09-03',
+        '2026-09-02',
         '2026-09-08',
         PuIndexRateLookupMode::PreviousAvailableBusinessDay,
     );
-    phase2b3SeedCalendar('2026-09-03', '2026-09-08', holidays: ['2026-09-04', '2026-09-07']);
+    phase2b3SeedCalendar('2026-09-02', '2026-09-08', holidays: ['2026-09-04', '2026-09-07']);
+    phase2b3SeedCdi('2026-09-02');
     phase2b3SeedCdi('2026-09-03');
 
     $prerequisite = app(PuCurvePrerequisiteService::class)->handle($emission->fresh());
     $coverage = app(PuIndexCoverageService::class)->report($emission->fresh());
     $generation = app(PuCurveGenerationService::class)->handle($emission->fresh());
-    $septemberEighth = collect($generation->rows)->first(
-        fn ($row): bool => $row->date->toDateString() === '2026-09-08',
-    );
+    $dates = collect($generation->rows)->map(fn ($row): string => $row->date->toDateString())->all();
 
     expect($prerequisite->passes())->toBeTrue()
         ->and($coverage->missingIndexDates)->toBe([])
-        ->and($septemberEighth->indexRateDate?->toDateString())->toBe('2026-09-03')
-        ->and(bccomp($septemberEighth->factorDi, '1', 8))->toBe(1);
+        ->and($coverage->pendingIndexDates)->toBe(['2026-09-08'])
+        ->and($dates)->toBe(['2026-09-02', '2026-09-03', '2026-09-04', '2026-09-05', '2026-09-06', '2026-09-07'])
+        // A linha da integralização registra a taxa do próprio dia sem aplicá-la; a
+        // única taxa aplicada é a de 03/09, e nenhuma linha usa uma taxa de outro dia.
+        ->and(collect($generation->rows)->pluck('indexRateDate')->filter()->map->toDateString()->unique()->values()->all())
+        ->toBe(['2026-09-02', '2026-09-03']);
 });
 
 it('does not require a lagged snapshot that the engine will not apply on non-business dates', function () {
@@ -335,15 +395,15 @@ it('does not require a lagged snapshot that the engine will not apply on non-bus
 
 it('renders the exact missing Taxa DI context in the administrative command', function () {
     $emission = phase2b3Emission(
-        '2026-08-09',
         '2026-08-10',
+        '2026-08-11',
         PuIndexRateLookupMode::PreviousCalendarDayExact,
     );
-    phase2b3SeedCalendar('2026-08-09', '2026-08-10');
+    phase2b3SeedCalendar('2026-08-10', '2026-08-11');
 
     $this->artisan('pu:check-missing-data', ['emission' => $emission->id])
-        ->expectsOutputToContain('Taxa DI ausente para 2026-08-09.')
-        ->expectsOutputToContain('Data da curva: 2026-08-10')
+        ->expectsOutputToContain('Taxa DI ausente para 2026-08-10.')
+        ->expectsOutputToContain('Data da curva: 2026-08-11')
         ->expectsOutputToContain('Modo: PreviousCalendarDayExact')
         ->expectsOutputToContain('Regra: D-1 calendário')
         ->assertFailed();

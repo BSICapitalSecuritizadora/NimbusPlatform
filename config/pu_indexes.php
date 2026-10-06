@@ -79,6 +79,15 @@ return [
                 // annual_rate: valor armazenado direto em rate_value (% a.a. base 252).
                 'value_type' => 'annual_rate',
                 'source' => 'bcb_sgs',
+                /**
+                 * Quando a observação de um dia útil passa a ser ESPERADA no banco: a taxa do dia útil D
+                 * chega pela sincronização (06:30) do dia útil D + `publication_lag_business_days`, e é
+                 * esperada a partir de `available_after` (horário de Brasília) desse dia. Antes disso, a
+                 * falta dela é "ainda não publicada", não "atrasada". Só alimenta o diagnóstico de
+                 * atualidade da curva oficial; nunca entra no cálculo.
+                 */
+                'publication_lag_business_days' => (int) env('PU_CDI_PUBLICATION_LAG_BUSINESS_DAYS', 1),
+                'available_after' => env('PU_CDI_AVAILABLE_AFTER', '07:00'),
             ],
             'ipca' => [
                 // 433 = IPCA cheio/headline (variação mensal). Para IPCA Serviços use 10844 via env —

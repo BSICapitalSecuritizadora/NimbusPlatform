@@ -3,13 +3,12 @@
 namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\Contracts\BusinessDayCalendar;
-use App\Domain\PuCalculator\DTOs\IndexRateData;
 use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
+use App\Domain\PuCalculator\DTOs\PuIndexRateRequirement;
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuCalculationProfile;
 use App\Domain\PuCalculator\Enums\PuEventType;
-use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Models\Emission;
 use App\Models\EmissionPuEvent;
@@ -122,7 +121,7 @@ class PuCurveGenerationService
             );
             $rateSnapshot = $rateRequirement->rate;
 
-            if ($this->reachedRealizedTail($parameter, $currentDate, $startDate, $isBusinessDay, $rateSnapshot)) {
+            if ($this->reachedRealizedTail($currentDate, $startDate, $rateRequirement)) {
                 break;
             }
 
@@ -594,24 +593,23 @@ class PuCurveGenerationService
     }
 
     /**
-     * No modo de offset exato do CDI a curva realizada termina no último dia útil cujo índice já foi
-     * publicado. Uma data-alvo sem CDI (futuro ainda não divulgado) não é projetada silenciosamente:
-     * apenas trunca a geração. A parte futura entra automaticamente quando o índice for sincronizado.
-     * O lookup do BusinessDayLagExact sempre cai em um dia útil, então um snapshot nulo significa
-     * genuinamente "sem CDI publicado" — diferente do PreviousCalendarDayExact, cujo alvo pode ser
-     * um fim de semana sem cotação por natureza.
+     * A curva REALIZADA termina no último dia cujas observações exigidas existem.
+     *
+     * Uma data que exige taxa e não tem a observação realizada correspondente
+     * interrompe a geração ({@see PuIndexRateRequirement::endsRealizedCurve()}):
+     * nada é projetado, nem a última taxa repetida. O futuro ainda não divulgado
+     * interrompe em todos os modos; a parte seguinte entra pela extensão diária
+     * quando o índice for divulgado. O buraco no histórico é barrado antes, pelos
+     * pré-requisitos.
+     *
+     * A linha da integralização não consulta índice e nunca interrompe.
      */
     private function reachedRealizedTail(
-        EmissionPuParameter $parameter,
         CarbonImmutable $currentDate,
         CarbonImmutable $startDate,
-        bool $isBusinessDay,
-        ?IndexRateData $rateSnapshot,
+        PuIndexRateRequirement $rateRequirement,
     ): bool {
         return ! $currentDate->equalTo($startDate)
-            && $isBusinessDay
-            && $rateSnapshot === null
-            && $parameter->indexer_enum === PuIndexer::Cdi
-            && $parameter->index_rate_lookup_mode_enum === PuIndexRateLookupMode::BusinessDayLagExact;
+            && $rateRequirement->endsRealizedCurve();
     }
 }

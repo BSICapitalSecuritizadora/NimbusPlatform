@@ -3,15 +3,16 @@
 namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\Calculators\DailyFactorCalculator;
+use App\Domain\PuCalculator\DTOs\IndexRateRecordOutcome;
 use App\Domain\PuCalculator\DTOs\SpreadsheetReferenceRowData;
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
+use App\Domain\PuCalculator\Exceptions\IndexRateObservationRefusedException;
 use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
 use App\Models\EmissionPuEvent;
-use App\Models\IndexRate;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -19,15 +20,33 @@ use LogicException;
 
 class PuReferenceWorkbookScenarioService
 {
+    /** Origem gravada nas observações de CDI que vêm da planilha de referência. */
+    public const INDEX_RATE_SOURCE = 'reference_workbook';
+
     public function __construct(
         private readonly PuSpreadsheetReferenceReader $reader,
         private readonly DailyFactorCalculator $dailyFactorCalculator,
         private readonly DecimalRounder $rounder,
         private readonly BusinessDayCalendarService $businessDayCalendarService,
         private readonly IndexRateService $indexRateService,
+        private readonly IndexRateObservationRecorder $observations,
     ) {}
 
     /**
+     * Monta o cenário de homologação de uma planilha de referência.
+     *
+     * O CDI da planilha entra como qualquer observação realizada: pelo
+     * {@see IndexRateObservationRecorder}, com as mesmas regras de domínio e de
+     * conflito da produção. Reimportar é idempotente; um valor diferente numa
+     * data já registrada, uma data ocupada por projeção ou um valor recusado
+     * desfazem o cenário inteiro ({@see IndexRateObservationRefusedException}) --
+     * corrigir histórico é `pu:index-rates:correct`. Nada é projetado: a curva
+     * do cenário é realizada até a última taxa da planilha, como em produção.
+     *
+     * O calendário de divulgação do cenário é o próprio calendário de
+     * homologação, montado dos dias úteis da planilha: é ela que diz em que dias
+     * houve CDI.
+     *
      * @return array{
      *     sheet_name: string,
      *     row_count: int,
@@ -36,6 +55,9 @@ class PuReferenceWorkbookScenarioService
      *     index_lag_business_days: int,
      *     calendar_rows: int,
      *     index_rate_rows: int,
+     *     index_rates_created: int,
+     *     index_rates_unchanged: int,
+     *     index_rate_source_conflicts: list<string>,
      *     event_rows: int,
      *     integralization_rows_created: int
      * }
@@ -61,7 +83,7 @@ class PuReferenceWorkbookScenarioService
         $homologationCalendarCode = $this->homologationCalendarCode($emission);
 
         $calendarRows = 0;
-        $indexRateRows = 0;
+        $indexRates = ['rows' => 0, 'created' => 0, 'unchanged' => 0, 'source_conflicts' => []];
         $eventRows = 0;
         $integralizationRowsCreated = 0;
 
@@ -75,7 +97,7 @@ class PuReferenceWorkbookScenarioService
             $spreadRate,
             $homologationCalendarCode,
             &$calendarRows,
-            &$indexRateRows,
+            &$indexRates,
             &$eventRows,
             &$integralizationRowsCreated,
         ): void {
@@ -87,13 +109,14 @@ class PuReferenceWorkbookScenarioService
                 'indexer' => PuIndexer::Cdi->value,
                 'business_day_basis' => 252,
                 'calendar_code' => $homologationCalendarCode,
+                'index_rate_calendar_code' => $homologationCalendarCode,
                 'index_rate_lookup_mode' => $lookupMode->value,
                 'index_rate_lag_business_days' => $lagBusinessDays,
                 'legacy_projection_enabled' => $emission->puParameter?->legacy_projection_enabled ?? true,
             ]);
 
             $calendarRows = $this->syncCalendarDates($businessDayMap, $homologationCalendarCode, basename($spreadsheetPath));
-            $indexRateRows = $this->syncIndexRates($rows, $businessDayMap, basename($spreadsheetPath));
+            $indexRates = $this->syncIndexRates($rows, basename($spreadsheetPath));
             $eventRows = $this->syncEvents($emission, $rows, basename($spreadsheetPath));
             $integralizationRowsCreated = $this->syncIntegralizations($emission, $rows);
         });
@@ -111,7 +134,10 @@ class PuReferenceWorkbookScenarioService
             'index_lookup_mode' => $lookupMode->value,
             'index_lag_business_days' => $lagBusinessDays,
             'calendar_rows' => $calendarRows,
-            'index_rate_rows' => $indexRateRows,
+            'index_rate_rows' => $indexRates['rows'],
+            'index_rates_created' => $indexRates['created'],
+            'index_rates_unchanged' => $indexRates['unchanged'],
+            'index_rate_source_conflicts' => $indexRates['source_conflicts'],
             'event_rows' => $eventRows,
             'integralization_rows_created' => $integralizationRowsCreated,
         ];
@@ -301,10 +327,14 @@ class PuReferenceWorkbookScenarioService
     }
 
     /**
+     * As taxas que a planilha declara ter usado, uma a uma pelo registro
+     * governado de observações realizadas. Só a recusa desfaz: mesma taxa com
+     * outra origem mantém a procedência existente e volta listada.
+     *
      * @param  list<SpreadsheetReferenceRowData>  $rows
-     * @param  array<string, bool>  $businessDayMap
+     * @return array{rows: int, created: int, unchanged: int, source_conflicts: list<string>}
      */
-    private function syncIndexRates(array $rows, array $businessDayMap, string $sourceReference): int
+    private function syncIndexRates(array $rows, string $sourceReference): array
     {
         $explicitRates = [];
 
@@ -313,63 +343,44 @@ class PuReferenceWorkbookScenarioService
                 continue;
             }
 
-            $explicitRates[$row->indexRateDate->toDateString()] = [
-                'rate_value' => $row->indexRateValue,
-                'source_reference' => $sourceReference,
-            ];
-        }
-
-        if ($explicitRates === []) {
-            return 0;
+            $explicitRates[$row->indexRateDate->toDateString()] = $row->indexRateValue;
         }
 
         ksort($explicitRates);
-        $lastExplicitRateDate = array_key_last($explicitRates);
-        $lastExplicitRateValue = $explicitRates[$lastExplicitRateDate]['rate_value'];
+        $created = 0;
+        $unchanged = 0;
+        $sourceConflicts = [];
+        $refused = [];
 
-        foreach ($businessDayMap as $date => $isBusinessDay) {
-            if (! $isBusinessDay || $date <= $lastExplicitRateDate || isset($explicitRates[$date])) {
-                continue;
-            }
+        foreach ($explicitRates as $date => $value) {
+            $outcome = $this->observations->recordRealized(
+                PuIndexer::Cdi,
+                CarbonImmutable::parse($date),
+                (string) $value,
+                ['source' => self::INDEX_RATE_SOURCE, 'source_reference' => $sourceReference],
+            );
 
-            $explicitRates[$date] = [
-                'rate_value' => $lastExplicitRateValue,
-                'source_reference' => 'forward_projection',
-            ];
+            match (true) {
+                $outcome->wasCreated() => $created++,
+                $outcome->isUnchanged() => $unchanged++,
+                $outcome->status === IndexRateRecordOutcome::SOURCE_CONFLICT => $sourceConflicts[] = $date,
+                default => $refused[] = $outcome,
+            };
         }
 
-        ksort($explicitRates);
-        $timestamp = now();
-        $payload = [];
-
-        foreach ($explicitRates as $date => $rateData) {
-            $payload[] = [
-                'indexer' => PuIndexer::Cdi->value,
-                'rate_date' => $date,
-                'rate_value' => $rateData['rate_value'],
-                'source' => 'reference_workbook',
-                'source_reference' => $rateData['source_reference'],
-                'created_at' => $timestamp,
-                'updated_at' => $timestamp,
-            ];
+        if ($refused !== []) {
+            throw IndexRateObservationRefusedException::fromOutcomes(
+                sprintf('O CDI da planilha de referência %s não entrou no cenário', $sourceReference),
+                $refused,
+            );
         }
 
-        IndexRate::query()
-            ->forIndexer(PuIndexer::Cdi)
-            ->where('source', 'reference_workbook')
-            ->whereBetween('rate_date', [
-                $payload[0]['rate_date'],
-                $payload[array_key_last($payload)]['rate_date'],
-            ])
-            ->delete();
-
-        IndexRate::query()->upsert(
-            $payload,
-            ['indexer', 'rate_date'],
-            ['rate_value', 'source', 'source_reference', 'updated_at'],
-        );
-
-        return count($payload);
+        return [
+            'rows' => count($explicitRates),
+            'created' => $created,
+            'unchanged' => $unchanged,
+            'source_conflicts' => $sourceConflicts,
+        ];
     }
 
     /**

@@ -9,6 +9,7 @@ use App\Domain\PuCalculator\DTOs\BcbSgsRateData;
 use App\Domain\PuCalculator\DTOs\IndexRateSyncResult;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Models\IndexRate;
+use App\Models\IndexRateCorrection;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -25,6 +26,14 @@ use InvalidArgumentException;
  * Idempotência: a chave é (indexer, rate_date). Como o cast `date` persiste `Y-m-d H:i:s`, a busca usa
  * `whereDate`. Linhas de outra origem (manual/projetada) NÃO são sobrescritas — a sync só gerencia as
  * linhas que ela mesma criou (source = bcb_sgs).
+ *
+ * Data nova entra pelo {@see IndexRateObservationRecorder} (domínio financeiro, data não futura, valor
+ * fora do padrão retido). Data já registrada com o MESMO valor é idempotente: nada é regravado, nem a
+ * procedência. Valor DIFERENTE numa data já registrada é revisão de histórico:
+ *  - na política padrão (`skip_existing`) vira conflito explícito no resultado e nada muda;
+ *  - com `update_if_changed`/`overwrite` (escolha explícita do operador) passa pelo
+ *    {@see IndexRateCorrectionService} como revisão da fonte: valor anterior no livro de correções,
+ *    trilha, e as curvas governadas que o usavam ficam marcadas para reprocessamento -- nunca reescritas.
  */
 class IndexRateSyncService
 {
@@ -40,6 +49,8 @@ class IndexRateSyncService
         private readonly BcbSgsClient $client,
         private readonly IndexRateLookupService $lookupService,
         private readonly PuAuditLogService $auditLogService,
+        private readonly IndexRateObservationRecorder $recorder,
+        private readonly IndexRateCorrectionService $corrections,
     ) {}
 
     /**
@@ -121,8 +132,8 @@ class IndexRateSyncService
         usort($rates, fn (BcbSgsRateData $a, BcbSgsRateData $b): int => $a->referenceDate <=> $b->referenceDate);
 
         match ((string) $config['value_type']) {
-            'annual_rate' => $this->syncAnnualRate($rates, $config, $policy, $dryRun, $fetchedAt, $result),
-            'monthly_variation' => $this->syncMonthlyVariation($rates, $config, $policy, $dryRun, $fetchedAt, $result),
+            'annual_rate' => $this->syncAnnualRate($rates, $config, $policy, $dryRun, $fetchedAt, $result, $userId),
+            'monthly_variation' => $this->syncMonthlyVariation($rates, $config, $policy, $dryRun, $fetchedAt, $result, $userId),
             default => throw new InvalidArgumentException(sprintf('value_type desconhecido para %s.', $indexer->value)),
         };
 
@@ -161,10 +172,10 @@ class IndexRateSyncService
      * @param  list<BcbSgsRateData>  $rates
      * @param  array<string, mixed>  $config
      */
-    private function syncAnnualRate(array $rates, array $config, string $policy, bool $dryRun, CarbonImmutable $fetchedAt, IndexRateSyncResult $result): void
+    private function syncAnnualRate(array $rates, array $config, string $policy, bool $dryRun, CarbonImmutable $fetchedAt, IndexRateSyncResult $result, ?int $userId): void
     {
         foreach ($rates as $rate) {
-            $this->applyRow($result->indexer, $rate->referenceDate->startOfDay(), $rate->value, $config, $policy, $dryRun, $fetchedAt, $result);
+            $this->applyRow($result->indexer, $rate->referenceDate->startOfDay(), $rate->value, $config, $policy, $dryRun, $fetchedAt, $result, $userId);
         }
     }
 
@@ -179,7 +190,7 @@ class IndexRateSyncService
      * @param  list<BcbSgsRateData>  $rates
      * @param  array<string, mixed>  $config
      */
-    private function syncMonthlyVariation(array $rates, array $config, string $policy, bool $dryRun, CarbonImmutable $fetchedAt, IndexRateSyncResult $result): void
+    private function syncMonthlyVariation(array $rates, array $config, string $policy, bool $dryRun, CarbonImmutable $fetchedAt, IndexRateSyncResult $result, ?int $userId): void
     {
         $firstMonth = $rates[0]->referenceDate->startOfMonth();
         $anchor = $this->latestIpcaIndexBefore($firstMonth);
@@ -204,7 +215,7 @@ class IndexRateSyncService
             $factor = bcadd('1', bcdiv($rate->value, '100', 16), 16);
             $derivedNi = $this->round8(bcmul($runningNi, $factor, 16));
 
-            $runningNi = $this->applyRow($result->indexer, $month, $derivedNi, $config, $policy, $dryRun, $fetchedAt, $result);
+            $runningNi = $this->applyRow($result->indexer, $month, $derivedNi, $config, $policy, $dryRun, $fetchedAt, $result, $userId);
         }
     }
 
@@ -237,8 +248,8 @@ class IndexRateSyncService
     }
 
     /**
-     * Cria/atualiza uma linha respeitando idempotência e proteção a dados de outra origem.
-     * Retorna o valor efetivo persistido naquela data (para encadeamento do IPCA).
+     * Cria uma linha nova ou classifica a data já registrada, respeitando idempotência e a proteção a
+     * dados de outra origem. Retorna o valor efetivo naquela data (para encadeamento do IPCA).
      *
      * @param  array<string, mixed>  $config
      */
@@ -251,6 +262,7 @@ class IndexRateSyncService
         bool $dryRun,
         CarbonImmutable $fetchedAt,
         IndexRateSyncResult $result,
+        ?int $userId,
     ): string {
         $existing = IndexRate::query()
             ->where('indexer', $indexer->value)
@@ -258,49 +270,113 @@ class IndexRateSyncService
             ->first();
 
         if ($existing === null) {
-            if (! $dryRun) {
-                IndexRate::query()->create([
-                    'indexer' => $indexer->value,
-                    'rate_date' => $date->startOfDay(),
-                    'rate_value' => $value,
+            $outcome = $this->recorder->recordRealized(
+                $indexer,
+                $date,
+                $value,
+                [
                     'source' => (string) $config['source'],
                     'source_reference' => sprintf('%s:%d', $config['source'], $config['code']),
                     'external_series_code' => (string) $config['code'],
                     'fetched_at' => $fetchedAt,
-                    'is_projected' => false,
-                    'projection_source' => null,
-                    'projection_reference_date' => null,
-                    'projection_policy' => null,
-                    'index_projection_series_id' => null,
+                ],
+                dryRun: $dryRun,
+            );
+
+            if ($outcome->wasCreated()) {
+                $result->created++;
+
+                return (string) $outcome->value;
+            }
+
+            // Recusa (domínio, data futura), valor retido para confirmação ou a mesma data gravada por outro
+            // processo entre a leitura e a gravação: nada novo entra, e o motivo fica no resultado.
+            $result->skipped++;
+
+            if ($outcome->isConflict()) {
+                $result->addConflict($outcome->toArray());
+            }
+
+            if ($outcome->isConflict() || $outcome->isRejected()) {
+                $result->addError(sprintf('%s: %s', $date->toDateString(), $outcome->reason));
+            }
+
+            return $outcome->existing !== null ? (string) $outcome->existing->rate_value : $value;
+        }
+
+        $changed = bccomp((string) $existing->rate_value, $value, self::VALUE_SCALE) !== 0;
+
+        // Não sobrescreve dado de outra origem (manual/publicado/projetado). Valor diferente fica explícito.
+        if ((string) $existing->source !== (string) $config['source']) {
+            $result->skipped++;
+
+            if ($changed) {
+                $result->addConflict([
+                    'status' => 'source_conflict',
+                    'date' => $date->toDateString(),
+                    'value' => $value,
+                    'existing_value' => (string) $existing->rate_value,
+                    'existing_source' => $existing->source,
+                    'reason' => 'Data registrada por outra origem com valor diferente; mantida.',
                 ]);
             }
 
-            $result->created++;
-
-            return $value;
+            return (string) $existing->rate_value;
         }
 
-        // Não sobrescreve dado de outra origem (manual/publicado/projetado).
-        if ((string) $existing->source !== (string) $config['source']) {
+        // Mesmo valor: idempotente. Nem o valor nem a procedência são regravados.
+        if (! $changed) {
             $result->skipped++;
 
             return (string) $existing->rate_value;
         }
 
-        $changed = bccomp((string) $existing->rate_value, $value, self::VALUE_SCALE) !== 0;
-
-        if ($policy === self::POLICY_SKIP || ($policy === self::POLICY_UPDATE && ! $changed)) {
+        if ($policy === self::POLICY_SKIP) {
             $result->skipped++;
+            $result->addConflict([
+                'status' => 'value_conflict',
+                'date' => $date->toDateString(),
+                'value' => $value,
+                'existing_value' => (string) $existing->rate_value,
+                'existing_source' => $existing->source,
+                'reason' => 'A fonte informa valor diferente do registrado; revisão de histórico não é aplicada na política padrão.',
+            ]);
+            $result->addError(sprintf(
+                '%s: a fonte informa %s, mas o registrado é %s; nada foi alterado (corrija pelo caminho de correção, com motivo).',
+                $date->toDateString(),
+                $value,
+                (string) $existing->rate_value,
+            ));
 
             return (string) $existing->rate_value;
         }
 
         if (! $dryRun) {
-            $existing->update([
-                'rate_value' => $value,
+            try {
+                $this->corrections->correct(
+                    indexer: $indexer,
+                    rateDate: $date->toDateString(),
+                    newValue: $value,
+                    reason: sprintf(
+                        'Revisão divulgada pela fonte %s (série %d), aplicada pela sincronização com a política %s.',
+                        (string) $config['source'],
+                        (int) $config['code'],
+                        $policy,
+                    ),
+                    correctedByUserId: $userId,
+                    origin: IndexRateCorrection::ORIGIN_PROVIDER_REVISION,
+                );
+            } catch (InvalidArgumentException $exception) {
+                $result->skipped++;
+                $result->addError(sprintf('%s: %s', $date->toDateString(), $exception->getMessage()));
+
+                return (string) $existing->rate_value;
+            }
+
+            $existing->refresh()->forceFill([
                 'external_series_code' => (string) $config['code'],
                 'fetched_at' => $fetchedAt,
-            ]);
+            ])->save();
         }
 
         $result->updated++;

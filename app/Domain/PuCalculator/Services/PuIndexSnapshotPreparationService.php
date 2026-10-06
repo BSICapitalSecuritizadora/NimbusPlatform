@@ -8,13 +8,14 @@ use App\Domain\PuCalculator\DTOs\BcbSgsBlockFailure;
 use App\Domain\PuCalculator\DTOs\BcbSgsFetchResult;
 use App\Domain\PuCalculator\DTOs\BcbSgsRateData;
 use App\Domain\PuCalculator\DTOs\BcbSgsRawPayload;
+use App\Domain\PuCalculator\DTOs\IndexRateRecordOutcome;
 use App\Domain\PuCalculator\DTOs\PuNumericPreparationPlan;
 use App\Domain\PuCalculator\DTOs\PuNumericPreparationResult;
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Domain\PuCalculator\Exceptions\IndexRateObservationRefusedException;
 use App\Enums\AccessPermission;
 use App\Models\Emission;
 use App\Models\EmissionPuParameter;
-use App\Models\IndexRate;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -43,6 +44,7 @@ final class PuIndexSnapshotPreparationService
         private readonly CdiRateNormalizer $cdiRateNormalizer,
         private readonly IndexRateLookupService $indexRateLookup,
         private readonly PuAuditLogService $auditLog,
+        private readonly IndexRateObservationRecorder $observations,
     ) {}
 
     public function write(
@@ -165,37 +167,65 @@ final class PuIndexSnapshotPreparationService
                         payloadChecksums: $incoming['payload_checksums'],
                     ),
                 ));
+        } catch (IndexRateObservationRefusedException $refusal) {
+            // O registro governado recusou uma observação pelo domínio (taxa que
+            // não forma fator, data futura) ou a reteve como fora do padrão: a
+            // transação desfez as já gravadas e nada fica pela metade.
+            $refusedByDomain = array_values(array_filter(
+                $refusal->outcomes,
+                fn (IndexRateRecordOutcome $outcome): bool => $outcome->isRejected(),
+            ));
+
+            if ($refusedByDomain !== []) {
+                return new PuNumericPreparationResult(
+                    action: self::ACTION_INVALID_SOURCE_PAYLOAD,
+                    reason: 'O registro de observações recusou uma taxa da resposta SGS; nenhuma linha foi criada.',
+                    writes: 0,
+                    plan: $this->plans->plan($emission, $asOf),
+                    actorId: $actorResolution['actor']->id,
+                    details: ['refused' => array_map(fn (IndexRateRecordOutcome $outcome): array => $outcome->toArray(), $refusedByDomain)],
+                );
+            }
+
+            return $this->reclassifyAfterConcurrentCreation($emission, $asOf, $actorResolution['actor']->id);
         } catch (UniqueConstraintViolationException) {
-            // A constraint é global — unique(indexer, rate_date) — então outra
-            // emissão/processo pode ocupar a data exata entre a rechecagem e o
-            // insert. Nada foi sobrescrito; o estado real é lido novamente e
-            // reclassificado: idempotente só quando a linha concorrente é
-            // compatível, conflito quando divergir.
-            $after = $this->plans->plan($emission, $asOf);
-
-            [$action, $reason] = match (true) {
-                $after->conflictingRates !== [] => [
-                    self::ACTION_INDEX_RATE_CONFLICT,
-                    'Uma criação concorrente ocupou uma data exata com valor ou fonte incompatível; nada foi sobrescrito.',
-                ],
-                $after->missingRateDates === [] => [
-                    self::ACTION_ALREADY_PRESENT,
-                    'Uma criação concorrente compatível completou os snapshots exatos requeridos.',
-                ],
-                default => [
-                    self::ACTION_PREPARATION_STATE_CHANGED,
-                    'Uma criação concorrente alterou os snapshots durante a persistência; nenhuma linha foi sobrescrita.',
-                ],
-            };
-
-            return new PuNumericPreparationResult(
-                action: $action,
-                reason: $reason,
-                writes: 0,
-                plan: $after,
-                actorId: $actorResolution['actor']->id,
-            );
+            return $this->reclassifyAfterConcurrentCreation($emission, $asOf, $actorResolution['actor']->id);
         }
+    }
+
+    /**
+     * A constraint é global — unique(indexer, rate_date) — então outra
+     * emissão/processo pode ocupar a data exata entre a rechecagem e o
+     * insert. Nada foi sobrescrito; o estado real é lido novamente e
+     * reclassificado: idempotente só quando a linha concorrente é
+     * compatível, conflito quando divergir.
+     */
+    private function reclassifyAfterConcurrentCreation(Emission $emission, CarbonImmutable $asOf, int $actorId): PuNumericPreparationResult
+    {
+        $after = $this->plans->plan($emission, $asOf);
+
+        [$action, $reason] = match (true) {
+            $after->conflictingRates !== [] => [
+                self::ACTION_INDEX_RATE_CONFLICT,
+                'Uma criação concorrente ocupou uma data exata com valor ou fonte incompatível; nada foi sobrescrito.',
+            ],
+            $after->missingRateDates === [] => [
+                self::ACTION_ALREADY_PRESENT,
+                'Uma criação concorrente compatível completou os snapshots exatos requeridos.',
+            ],
+            default => [
+                self::ACTION_PREPARATION_STATE_CHANGED,
+                'Uma criação concorrente alterou os snapshots durante a persistência; nenhuma linha foi sobrescrita.',
+            ],
+        };
+
+        return new PuNumericPreparationResult(
+            action: $action,
+            reason: $reason,
+            writes: 0,
+            plan: $after,
+            actorId: $actorId,
+        );
     }
 
     /**
@@ -274,23 +304,36 @@ final class PuIndexSnapshotPreparationService
         }
 
         $insertedDates = [];
+        $refused = [];
+        $fetchedAt = now();
 
+        // Pelo registro governado de observações realizadas, como a sincronização e a
+        // importação: mesmas regras de domínio, de data futura e de conflito. A carga é
+        // tudo ou nada -- uma recusa desfaz a transação inteira.
         foreach ($plan->missingRateDates as $rateDate) {
-            IndexRate::query()->create([
-                'indexer' => PuIndexer::Cdi->value,
-                'rate_date' => $rateDate,
-                'rate_value' => $incomingByDate[$rateDate],
-                'source' => $source['source'],
-                'source_reference' => $source['source_reference'],
-                'external_series_code' => $source['series'],
-                'fetched_at' => now(),
-                'is_projected' => false,
-                'projection_source' => null,
-                'projection_reference_date' => null,
-                'projection_policy' => null,
-                'index_projection_series_id' => null,
-            ]);
+            $outcome = $this->observations->recordRealized(
+                PuIndexer::Cdi,
+                CarbonImmutable::parse($rateDate),
+                $incomingByDate[$rateDate],
+                [
+                    'source' => $source['source'],
+                    'source_reference' => $source['source_reference'],
+                    'external_series_code' => $source['series'],
+                    'fetched_at' => $fetchedAt,
+                ],
+            );
+
+            if (! $outcome->wasCreated()) {
+                $refused[] = $outcome;
+
+                continue;
+            }
+
             $insertedDates[] = $rateDate;
+        }
+
+        if ($refused !== []) {
+            throw IndexRateObservationRefusedException::fromOutcomes('Preparação de snapshots CDI', $refused);
         }
 
         $this->indexRateLookup->flushCache();

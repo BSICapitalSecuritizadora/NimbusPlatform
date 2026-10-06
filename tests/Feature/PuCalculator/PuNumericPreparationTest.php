@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\PuCalculator\DTOs\IndexRateRecordOutcome;
 use App\Domain\PuCalculator\DTOs\PuBaselineCandidate;
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuBaselineEvidenceStatus;
@@ -616,6 +617,32 @@ it('treats identical existing CDI snapshots as already present without API or du
         ->and($result->plan->missingRateDates)->toBe([])
         ->and(IndexRate::query()->count())->toBe($before);
     Http::assertNothingSent();
+});
+
+it('routes the snapshot load through the governed recorder and rolls back every row it refuses', function () {
+    $emission = numericPreparationReadyEmission();
+    numericPreparationPersistParameter($emission);
+    $actor = numericPreparationActor([AccessPermission::PuIndexSync->value]);
+    $asOf = CarbonImmutable::parse('2026-08-26');
+    $plan = app(PuNumericPreparationPlanService::class)->plan($emission, $asOf);
+    $lastDate = $plan->requiredRateDates[array_key_last($plan->requiredRateDates)];
+    // A última taxa vem dez vezes maior que a anterior -- unidade trocada. O
+    // normalizador do SGS a aceita; o registro de observações a retém para
+    // confirmação, e as datas anteriores, já gravadas na mesma carga, saem junto.
+    $rows = numericPreparationBcbRows($plan->requiredRateDates);
+    $rows[array_key_last($rows)]['valor'] = '149,00';
+    Http::fake(['api.bcb.gov.br/*' => Http::response($rows, 200)]);
+
+    $result = app(PuIndexSnapshotPreparationService::class)->write($emission, $actor->email, $asOf);
+
+    expect(count($plan->requiredRateDates))->toBeGreaterThan(1)
+        ->and($result->action)->toBe(PuIndexSnapshotPreparationService::ACTION_INVALID_SOURCE_PAYLOAD)
+        ->and($result->reason)->toContain('registro de observações recusou')
+        ->and($result->writes)->toBe(0)
+        ->and($result->details['refused'][0]['date'])->toBe($lastDate)
+        ->and($result->details['refused'][0]['status'])->toBe(IndexRateRecordOutcome::NEEDS_CONFIRMATION)
+        ->and(IndexRate::query()->count())->toBe(0)
+        ->and(Activity::query()->where('description', 'pu_numeric_snapshots_prepared')->exists())->toBeFalse();
 });
 
 it('keeps a missing exact CDI response as a blocker and writes nothing', function () {

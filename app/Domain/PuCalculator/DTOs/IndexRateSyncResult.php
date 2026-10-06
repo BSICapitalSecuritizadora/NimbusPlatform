@@ -16,6 +16,7 @@ final class IndexRateSyncResult
      * @param  list<string>  $errors
      * @param  list<string>  $blockFailures
      * @param  list<string>  $notices
+     * @param  list<array<string, mixed>>  $conflicts
      */
     public function __construct(
         public readonly PuIndexer $indexer,
@@ -33,7 +34,20 @@ final class IndexRateSyncResult
         public int $blocksTotal = 0,
         public array $blockFailures = [],
         public array $notices = [],
+        public array $conflicts = [],
     ) {}
+
+    /**
+     * Data já registrada que a fonte agora informa com outro valor (ou que outra
+     * origem ocupa com valor diferente). Nada é sobrescrito em silêncio: o
+     * conflito fica no resultado, no log e na trilha da sincronização.
+     *
+     * @param  array<string, mixed>  $conflict
+     */
+    public function addConflict(array $conflict): void
+    {
+        $this->conflicts[] = $conflict;
+    }
 
     public function addError(string $message): void
     {
@@ -98,6 +112,7 @@ final class IndexRateSyncResult
             'blocks_failed' => $this->blocksFailed(),
             'block_failures' => $this->blockFailures,
             'notices' => $this->notices,
+            'conflicts' => $this->conflicts,
             'errors' => $this->errors,
         ];
     }

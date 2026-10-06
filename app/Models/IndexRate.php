@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Domain\PuCalculator\Services\IndexRateService;
 use Database\Factories\IndexRateFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -28,6 +29,24 @@ class IndexRate extends Model
         'index_projection_series_id',
         'notes',
     ];
+
+    /**
+     * Toda gravação de índice pelo Eloquent invalida a linha do tempo em memória
+     * deste processo: o cálculo seguinte, no mesmo job ou requisição, já enxerga a
+     * taxa nova. Outros processos não precisam disso -- o serviço é `scoped` e o
+     * worker o descarta antes de cada job.
+     */
+    protected static function booted(): void
+    {
+        $flush = static function (): void {
+            if (app()->resolved(IndexRateService::class)) {
+                app(IndexRateService::class)->flushCache();
+            }
+        };
+
+        static::saved($flush);
+        static::deleted($flush);
+    }
 
     protected function casts(): array
     {

@@ -8,13 +8,18 @@ use App\Domain\PuCalculator\DTOs\PuCurveExtensionResult;
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\Enums\PuCurveReviewStatus;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuDailyCurve;
+use App\Models\EmissionPuParameter;
+use App\Models\IndexRate;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 /**
- * Extensão diária da curva vigente.
+ * Extensão diária da curva com o índice realizado recém-publicado.
  *
  * Em vez de gravar a curva inteira a cada CDI publicado, a rotina recalcula a
  * curva em memória, prova que o trecho já gravado continua idêntico e grava só
@@ -22,7 +27,18 @@ use Illuminate\Support\Facades\DB;
  * anterior --, então anexar em cima de um passado que mudou (CDI corrigido,
  * evento editado, feriado, parâmetro, integralização retroativa) produziria uma
  * curva errada com cara de certa. Por isso a comparação é dia a dia, com a
- * mesma canonicalização do checksum da curva.
+ * mesma canonicalização do checksum da curva. Os dias anexados são só os que o
+ * índice REALIZADO sustenta: a engine para na primeira observação exigida que
+ * ainda não existe, então a extensão nunca grava futuro.
+ *
+ * Duas finalidades, nunca confundidas:
+ *
+ *  - extensão OFICIAL ({@see self::extendOfficial()}): avança a curva
+ *    homologada vigente, a que as outras áreas leem. Uma versão mais nova,
+ *    gerada, validada ou com erro, não a desloca nem a bloqueia;
+ *  - extensão de TRABALHO ({@see self::extendWorking()}): avança a versão
+ *    operacional não homologada mais recente, em revisão. Sem curva oficial, é
+ *    o mesmo comportamento de antes desta separação.
  *
  * Quando o passado diverge:
  *  - numa curva comum, a extensão devolve `diverged` e quem chamou gera a curva
@@ -30,14 +46,26 @@ use Illuminate\Support\Facades\DB;
  *  - numa curva governada (homologada ou promovida pela revisão), nada é trocado:
  *    a divergência fica registrada na versão, a extensão fica suspensa e o
  *    reprocessamento passa a ser decisão humana.
+ *
+ * Uma extensão que não consegue rodar (pré-requisito bloqueado ou erro de
+ * cálculo) fica registrada na própria versão (`extension_failed_at`): é o que
+ * separa "a curva ainda não foi estendida" de "a extensão falhou".
  */
 final class PuCurveExtensionService
 {
+    public const PURPOSE_OFFICIAL = 'official';
+
+    public const PURPOSE_WORKING = 'working';
+
     public const ACTION_EXTENDED = 'extended';
 
     public const ACTION_UP_TO_DATE = 'up_to_date';
 
     public const ACTION_NO_CURRENT_VERSION = 'no_current_version';
+
+    public const ACTION_NO_OFFICIAL_VERSION = 'no_official_version';
+
+    public const ACTION_NO_WORKING_VERSION = 'no_working_version';
 
     public const ACTION_NOT_EXTENDABLE = 'not_extendable';
 
@@ -64,38 +92,121 @@ final class PuCurveExtensionService
         private readonly PuPaymentScheduleService $paymentSchedule,
     ) {}
 
+    /**
+     * A curva oficial quando existe; sem ela, a versão de trabalho -- o mesmo
+     * alvo que a rotina diária escolhe primeiro.
+     */
     public function extend(Emission $emission): PuCurveExtensionResult
     {
-        $version = $emission->currentPuCurveVersion();
+        return $emission->officialPuCurveVersion() instanceof EmissionPuCurveVersion
+            ? $this->extendOfficial($emission)
+            : $this->extendWorking($emission);
+    }
 
-        if (! $version instanceof EmissionPuCurveVersion) {
-            return new PuCurveExtensionResult(self::ACTION_NO_CURRENT_VERSION);
+    /**
+     * Avança a curva homologada vigente com o índice realizado novo. Sem curva
+     * oficial não faz nada: nenhuma rotina torna uma curva oficial.
+     */
+    public function extendOfficial(Emission $emission): PuCurveExtensionResult
+    {
+        $official = $emission->officialPuCurveVersion();
+
+        if (! $official instanceof EmissionPuCurveVersion) {
+            return new PuCurveExtensionResult(
+                action: self::ACTION_NO_OFFICIAL_VERSION,
+                purpose: self::PURPOSE_OFFICIAL,
+            );
         }
 
+        return $this->extendVersion($emission, $official, self::PURPOSE_OFFICIAL);
+    }
+
+    /**
+     * Avança a versão de trabalho (operacional, não homologada, a vigente mais
+     * recente). Nunca toca a oficial: se a vigente é a própria homologada, não há
+     * versão de trabalho a estender.
+     */
+    public function extendWorking(Emission $emission): PuCurveExtensionResult
+    {
+        $current = $emission->currentPuCurveVersion();
+
+        if (! $current instanceof EmissionPuCurveVersion) {
+            return new PuCurveExtensionResult(
+                action: self::ACTION_NO_CURRENT_VERSION,
+                purpose: self::PURPOSE_WORKING,
+            );
+        }
+
+        if ($current->status->isOfficial()) {
+            return new PuCurveExtensionResult(
+                action: self::ACTION_NO_WORKING_VERSION,
+                versionId: $current->id,
+                purpose: self::PURPOSE_WORKING,
+            );
+        }
+
+        return $this->extendVersion($emission, $current, self::PURPOSE_WORKING);
+    }
+
+    /**
+     * A versão de trabalho além da oficial, ou nula.
+     */
+    public function workingVersion(Emission $emission): ?EmissionPuCurveVersion
+    {
+        $current = $emission->currentPuCurveVersion();
+
+        return $current instanceof EmissionPuCurveVersion && ! $current->status->isOfficial()
+            ? $current
+            : null;
+    }
+
+    /**
+     * Homologada ou promovida pela revisão: o conteúdo foi aprovado por alguém e
+     * não pode ser trocado pela rotina.
+     */
+    public function isGoverned(EmissionPuCurveVersion $version): bool
+    {
+        return $version->status === PuCurveStatus::Homologated
+            || $version->review_status === PuCurveReviewStatus::Approved;
+    }
+
+    private function extendVersion(Emission $emission, EmissionPuCurveVersion $version, string $purpose): PuCurveExtensionResult
+    {
         if (! in_array($version->status, self::EXTENDABLE_STATUSES, true)) {
             return new PuCurveExtensionResult(
                 action: self::ACTION_NOT_EXTENDABLE,
                 versionId: $version->id,
                 reason: sprintf('A versão %s está em %s.', $version->calculation_version, $version->status->label()),
+                purpose: $purpose,
             );
         }
 
-        $prerequisites = $this->prerequisites->handle($emission);
+        try {
+            $prerequisites = $this->prerequisites->handle($emission);
 
-        if (! $prerequisites->passes()) {
-            return new PuCurveExtensionResult(
-                action: self::ACTION_PREREQUISITES_BLOCKED,
-                versionId: $version->id,
-                reason: $prerequisites->blockingSummary(),
-            );
+            if (! $prerequisites->passes()) {
+                $reason = $prerequisites->blockingSummary();
+                $this->recordFailure($version, self::ACTION_PREREQUISITES_BLOCKED, $reason, $purpose);
+
+                return new PuCurveExtensionResult(
+                    action: self::ACTION_PREREQUISITES_BLOCKED,
+                    versionId: $version->id,
+                    reason: $reason,
+                    purpose: $purpose,
+                );
+            }
+
+            $computedRows = $this->generator->handle($emission)->rows;
+            $this->operationalProfiles->assertOperational($computedRows, 'a extensão da curva operacional');
+            $persistedRows = $this->checksums->persistedRows($version);
+        } catch (Throwable $exception) {
+            $this->recordFailure($version, 'error', $exception->getMessage(), $purpose);
+
+            throw $exception;
         }
-
-        $computedRows = $this->generator->handle($emission)->rows;
-        $this->operationalProfiles->assertOperational($computedRows, 'a extensão da curva operacional');
-        $persistedRows = $this->checksums->persistedRows($version);
 
         if ($persistedRows === []) {
-            return $this->diverged($version, null, 'A versão vigente não tem linhas gravadas.');
+            return $this->diverged($version, null, 'A versão não tem linhas gravadas.', $purpose);
         }
 
         $lastPersistedDate = $persistedRows[array_key_last($persistedRows)]->date->toDateString();
@@ -113,28 +224,43 @@ final class PuCurveExtensionService
                 $version,
                 $this->firstDivergentDate($persistedRows, $prefix),
                 'O recálculo não reproduz o trecho já gravado da curva.',
+                $purpose,
             );
         }
 
-        if ($version->extension_diverged_at !== null) {
-            $version->forceFill(['extension_diverged_at' => null, 'extension_divergence' => null])->save();
+        if ($version->extension_diverged_at !== null || $version->extension_failed_at !== null) {
+            $version->forceFill([
+                'extension_diverged_at' => null,
+                'extension_divergence' => null,
+                'extension_failed_at' => null,
+                'extension_failure' => null,
+            ])->save();
         }
 
         if ($tail === []) {
-            return new PuCurveExtensionResult(self::ACTION_UP_TO_DATE, $version->id);
+            return new PuCurveExtensionResult(self::ACTION_UP_TO_DATE, $version->id, purpose: $purpose);
         }
 
         // O status visto antes do recálculo não vale como final: sob a trava da
         // emissão a versão é relida, e uma versão invalidada ou substituída no
-        // meio do caminho não recebe dia novo. Anexar não publica nada no legado;
-        // numa curva oficial, os pagamentos dos dias novos são conciliados na
-        // mesma transação -- ou entram as linhas e os pagamentos, ou nada.
-        $extended = DB::transaction(function () use ($emission, $version, $tail): ?EmissionPuCurveVersion {
+        // meio do caminho não recebe dia novo -- nem a oficial que deixou de ser
+        // oficial. Anexar não publica nada no legado; numa curva oficial, os
+        // pagamentos dos dias novos são conciliados na mesma transação -- ou
+        // entram as linhas e os pagamentos, ou nada.
+        $extended = DB::transaction(function () use ($emission, $version, $tail, $purpose): EmissionPuCurveVersion|string {
             $lockedEmission = Emission::query()->whereKey($emission->id)->lockForUpdate()->firstOrFail();
             $locked = EmissionPuCurveVersion::query()->whereKey($version->id)->lockForUpdate()->firstOrFail();
 
             if (! in_array($locked->status, self::EXTENDABLE_STATUSES, true)) {
-                return null;
+                return sprintf('A versão %s mudou para %s durante a extensão.', $locked->calculation_version, $locked->status->label());
+            }
+
+            if ($purpose === self::PURPOSE_OFFICIAL && ! $this->isStillOfficial($locked)) {
+                return sprintf('A versão %s deixou de ser a oficial durante a extensão.', $locked->calculation_version);
+            }
+
+            if (($changedObservation = $this->changedTailObservation($lockedEmission, $tail)) !== null) {
+                return $changedObservation;
             }
 
             $timestamp = now();
@@ -165,12 +291,11 @@ final class PuCurveExtensionService
         });
 
         if (! $extended instanceof EmissionPuCurveVersion) {
-            $current = $version->fresh() ?? $version;
-
             return new PuCurveExtensionResult(
                 action: self::ACTION_NOT_EXTENDABLE,
                 versionId: $version->id,
-                reason: sprintf('A versão %s mudou para %s durante a extensão.', $current->calculation_version, $current->status->label()),
+                reason: $extended,
+                purpose: $purpose,
             );
         }
 
@@ -184,23 +309,104 @@ final class PuCurveExtensionService
             appendedRows: count($tail),
             fromDate: $fromDate,
             toDate: $toDate,
+            purpose: $purpose,
         );
     }
 
     /**
-     * Homologada ou promovida pela revisão: o conteúdo foi aprovado por alguém e
-     * não pode ser trocado pela rotina.
+     * As observações de índice que a cauda calculada usou, relidas sob trava
+     * compartilhada, ainda valem o mesmo? Uma correção que comitou entre o
+     * cálculo e a gravação faria a curva oficial ganhar dias calculados com a taxa
+     * antiga sem que ninguém fosse avisado. Com a trava, a correção concorrente ou
+     * já comitou (e a cauda é recusada nesta rodada) ou espera esta transação e
+     * enxerga as linhas novas como dependentes da observação que corrige.
+     *
+     * @param  list<PuDailyCurveRowData>  $tail
      */
-    public function isGoverned(EmissionPuCurveVersion $version): bool
+    private function changedTailObservation(Emission $emission, array $tail): ?string
     {
-        return $version->status === PuCurveStatus::Homologated
-            || $version->review_status === PuCurveReviewStatus::Approved;
+        $indexer = EmissionPuParameter::query()->where('emission_id', $emission->id)->first()?->indexer_enum;
+
+        if ($indexer !== PuIndexer::Cdi) {
+            return null;
+        }
+
+        $used = [];
+
+        foreach ($tail as $row) {
+            if ($row->indexRateDate !== null && $row->indexRateValue !== null) {
+                $used[$row->indexRateDate->toDateString()] = $row->indexRateValue;
+            }
+        }
+
+        if ($used === []) {
+            return null;
+        }
+
+        ksort($used);
+        $current = IndexRate::query()
+            ->forIndexer($indexer)
+            ->whereBetween('rate_date', [
+                CarbonImmutable::parse(array_key_first($used))->startOfDay(),
+                CarbonImmutable::parse(array_key_last($used))->endOfDay(),
+            ])
+            ->sharedLock()
+            ->get()
+            ->filter(fn (IndexRate $rate): bool => ! $rate->isProjectedRate())
+            ->keyBy(fn (IndexRate $rate): string => (string) $rate->rate_date?->toDateString());
+
+        foreach ($used as $date => $value) {
+            $stored = $current->get($date);
+
+            if (! $stored instanceof IndexRate
+                || bccomp((string) $stored->rate_value, (string) $value, IndexRateObservationRecorder::VALUE_SCALE) !== 0) {
+                return sprintf(
+                    'O índice de %s mudou durante a extensão (calculado com %s, agora %s); nada foi anexado nesta rodada.',
+                    $date,
+                    (string) $value,
+                    $stored instanceof IndexRate ? (string) $stored->rate_value : 'ausente',
+                );
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Relida sob a trava: a versão continua sendo a homologada vigente.
+     */
+    private function isStillOfficial(EmissionPuCurveVersion $locked): bool
+    {
+        return EmissionPuCurveVersion::query()
+            ->where('emission_id', $locked->emission_id)
+            ->official()
+            ->value('id') === $locked->id;
+    }
+
+    /**
+     * A extensão não rodou: fica gravado na versão por quê, até a próxima que
+     * rodar limpar.
+     */
+    private function recordFailure(EmissionPuCurveVersion $version, string $action, string $reason, string $purpose): void
+    {
+        $version->forceFill([
+            'extension_failed_at' => $version->extension_failed_at ?? now(),
+            'extension_failure' => [
+                'action' => $action,
+                'purpose' => $purpose,
+                'reason' => $reason,
+                'checked_at' => now()->toIso8601String(),
+            ],
+        ])->save();
+
+        $this->auditLog->logCurveExtensionFailed($version, $action, $reason, $purpose);
     }
 
     private function diverged(
         EmissionPuCurveVersion $version,
         ?string $firstDivergentDate,
         string $reason,
+        string $purpose,
     ): PuCurveExtensionResult {
         $governed = $this->isGoverned($version);
 
@@ -208,6 +414,7 @@ final class PuCurveExtensionService
             $version->forceFill([
                 'extension_diverged_at' => $version->extension_diverged_at ?? now(),
                 'extension_divergence' => [
+                    ...(is_array($version->extension_divergence) ? $version->extension_divergence : []),
                     'first_divergent_date' => $firstDivergentDate,
                     'reason' => $reason,
                     'checked_at' => now()->toIso8601String(),
@@ -222,6 +429,7 @@ final class PuCurveExtensionService
             versionId: $version->id,
             firstDivergentDate: $firstDivergentDate,
             reason: $reason,
+            purpose: $purpose,
         );
     }
 

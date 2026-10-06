@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Domain\PuCalculator\Contracts\B3DiSource;
 use App\Domain\PuCalculator\Contracts\BusinessDayCalendar;
 use App\Domain\PuCalculator\Contracts\IndexRateProvider;
+use App\Domain\PuCalculator\Contracts\RealizedIndexRateProvider;
 use App\Domain\PuCalculator\Services\B3DiFtpSource;
 use App\Domain\PuCalculator\Services\BusinessCalendarService;
 use App\Domain\PuCalculator\Services\BusinessDayCalendarService;
@@ -93,9 +94,15 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(BusinessDayCalendar::class, BusinessDayCalendarService::class);
         $this->app->bind(B3DiSource::class, B3DiFtpSource::class);
 
-        $this->app->singleton(IndexRateService::class);
+        /**
+         * Scoped, nunca singleton: a linha do tempo de índices fica em memória e o
+         * `queue:work` vive por horas. O worker esquece as instâncias scoped antes
+         * de cada job, então o job seguinte relê o CDI que outro processo gravou.
+         */
+        $this->app->scoped(IndexRateService::class);
         $this->app->alias(IndexRateService::class, IndexRateLookupService::class);
         $this->app->bind(IndexRateProvider::class, IndexRateService::class);
+        $this->app->bind(RealizedIndexRateProvider::class, IndexRateService::class);
 
         $this->app->scoped(LogBatch::class);
 
