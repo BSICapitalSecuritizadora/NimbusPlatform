@@ -3,8 +3,11 @@
 namespace App\Filament\Resources\Operations\RelationManagers;
 
 use App\Concerns\MoneyFormatter;
+use App\DTOs\Measurements\MeasurementPhysicalProgress;
+use App\Filament\Resources\Operations\Schemas\InitialPhysicalProgressFields;
 use App\Models\MeasurementPlanSet;
 use App\Models\User;
+use App\Services\MeasurementPhysicalProgressService;
 use App\Services\OperationContextVisibilityService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -12,6 +15,7 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
@@ -38,6 +42,9 @@ class PlanSetsRelationManager extends RelationManager
     protected static string $relationship = 'planSets';
 
     protected static ?string $title = 'Planos de Medição (Evolução da Obra)';
+
+    /** @var array<int, MeasurementPhysicalProgress>|null */
+    private ?array $physicalProgress = null;
 
     public function form(Schema $schema): Schema
     {
@@ -80,10 +87,13 @@ class PlanSetsRelationManager extends RelationManager
 
                         static::moneyField('construction_fund_amount', 'Fundo de Obra'),
                         static::moneyField('initial_incurred_amount', 'Incorrido Inicial'),
+
+                        static::initialPhysicalProgressField(),
+                        static::initialPhysicalProgressDateField(),
                     ]),
 
                 Section::make('Cronograma físico — Previsto')
-                    ->description('Pré-cadastre as medições previstas para este plano. As realizadas serão lançadas posteriormente em Cronograma (Acompanhamento).')
+                    ->description('Pré-cadastre as medições previstas para este plano. As realizadas serão lançadas posteriormente em Cronograma (Acompanhamento). O acumulado previsto é da obra inteira e parte do avanço físico inicial.')
                     ->contained(false)
                     ->columnSpan(['lg' => 7])
                     ->extraAttributes(['class' => 'bsi-plan-set-schedule'])
@@ -105,11 +115,12 @@ class PlanSetsRelationManager extends RelationManager
                             ->addAction(fn (Action $action): Action => $action->outlined()->icon('heroicon-o-plus')->extraAttributes(['class' => 'bsi-plan-add-line-btn']))
                             ->compact()
                             ->extraAttributes(['class' => 'bsi-plan-lines'])
+                            // O avanço já executado antes do acompanhamento é do
+                            // plano (Avanço físico inicial), não de cada linha.
                             ->table([
                                 TableColumn::make('Medição #')->width(88)->markAsRequired(),
                                 TableColumn::make('Mensal (%)')->width(104),
                                 TableColumn::make('Acum. (%)')->width(104),
-                                TableColumn::make('Realiz. inicial (%)')->width(136),
                                 TableColumn::make('Mês/Ano')->width(124),
                             ])
                             ->schema([
@@ -121,8 +132,6 @@ class PlanSetsRelationManager extends RelationManager
                                     ->required(),
                                 static::percentField('planned_monthly_percent', 'Previsto mensal (%)'),
                                 static::percentField('planned_cumulative_percent', 'Previsto acum. (%)'),
-                                static::percentField('initial_realized_cumulative_percent', 'Realizado acum. inicial (%)')
-                                    ->helperText('Opcional — para obras já em andamento.'),
                                 TextInput::make('measurement_date')
                                     ->label('Data prevista (mês/ano)')
                                     ->type('month')
@@ -162,6 +171,11 @@ class PlanSetsRelationManager extends RelationManager
                     ->label('% Utilizada')
                     ->view('filament.tables.plan-set-utilization')
                     ->extraCellAttributes(['class' => 'bsi-plan-utilization-cell']),
+                TextColumn::make('physical_progress')
+                    ->label('Avanço físico')
+                    ->state(fn (MeasurementPlanSet $record): string => MeasurementPhysicalProgress::format($this->physicalProgressFor($record)->currentBasisPoints()))
+                    ->description(fn (MeasurementPlanSet $record): string => $this->physicalProgressDescription($record))
+                    ->extraCellAttributes(['class' => 'tabular-nums']),
             ])
             ->headerActions([
                 CreateAction::make()
@@ -233,6 +247,41 @@ class PlanSetsRelationManager extends RelationManager
                         ->authorize(fn (): bool => Gate::allows('update', $this->getOwnerRecord())),
                 ]),
             ]);
+    }
+
+    protected static function initialPhysicalProgressField(): TextInput
+    {
+        return InitialPhysicalProgressFields::percent()->disabledOn('edit');
+    }
+
+    protected static function initialPhysicalProgressDateField(): DatePicker
+    {
+        return InitialPhysicalProgressFields::referenceDate()->disabledOn('edit');
+    }
+
+    /**
+     * Uma leitura por operação e por requisição: a tabela pede o progresso de
+     * cada plano, e cada plano depende das medições da operação inteira.
+     */
+    private function physicalProgressFor(MeasurementPlanSet $record): MeasurementPhysicalProgress
+    {
+        $this->physicalProgress ??= app(MeasurementPhysicalProgressService::class)->forOperation((int) $this->getOwnerRecord()->getKey());
+
+        return $this->physicalProgress[(int) $record->getKey()]
+            ?? app(MeasurementPhysicalProgressService::class)->forPlanSet($record);
+    }
+
+    private function physicalProgressDescription(MeasurementPlanSet $record): string
+    {
+        $progress = $this->physicalProgressFor($record);
+        $reference = $progress->initialReferenceDate?->format('d/m/Y');
+
+        return sprintf(
+            'Inicial %s%s · Medido %s',
+            MeasurementPhysicalProgress::format($progress->initialBasisPoints),
+            $reference === null ? '' : " em {$reference}",
+            MeasurementPhysicalProgress::format($progress->measuredBasisPoints()),
+        );
     }
 
     protected static function percentField(string $name, string $label): TextInput

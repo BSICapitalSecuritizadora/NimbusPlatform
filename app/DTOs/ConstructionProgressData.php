@@ -8,6 +8,9 @@ use Carbon\CarbonInterface;
 
 readonly class ConstructionProgressData extends BaseDTO
 {
+    /**
+     * @param  bool  $measuredInMonth  houve medição vigente na competência; sem ela o realizado do mês é "não medido", não 0%
+     */
     public function __construct(
         public ?string $planName,
         public float $plannedMonthlyPercent,
@@ -17,6 +20,7 @@ readonly class ConstructionProgressData extends BaseDTO
         public float $diffPercent,
         public ?string $trend,
         public ?CarbonInterface $measurementDate,
+        public bool $measuredInMonth = true,
     ) {}
 
     /**
@@ -33,6 +37,7 @@ readonly class ConstructionProgressData extends BaseDTO
             'diff_percent' => $this->diffPercent,
             'trend' => $this->trend,
             'measurement_date' => $this->measurementDate?->toDateString(),
+            'measured_in_month' => $this->measuredInMonth,
         ];
     }
 }

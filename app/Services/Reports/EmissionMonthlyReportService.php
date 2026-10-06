@@ -1140,9 +1140,12 @@ class EmissionMonthlyReportService
             'planned_cumulative' => $this->percent($data->plannedCumulativePercent),
             'realized_cumulative' => $this->percent($data->realizedCumulativePercent),
             'planned_monthly' => $this->percent($data->plannedMonthlyPercent),
-            'realized_monthly' => $this->percent($data->realizedMonthlyPercent),
-            'diff' => $this->percent($data->diffPercent),
-            'trend' => $data->trend ?? '—',
+            // Competência sem medição vigente não "mediu 0%": não foi medida. E o
+            // acumulado carregado de um mês anterior contra o previsto deste mês
+            // acusaria um atraso que ninguém mediu.
+            'realized_monthly' => $data->measuredInMonth ? $this->percent($data->realizedMonthlyPercent) : '—',
+            'diff' => $data->measuredInMonth ? $this->percent($data->diffPercent) : '—',
+            'trend' => $data->measuredInMonth ? ($data->trend ?? '—') : '—',
             'measurement_date' => $data->measurementDate?->format('d/m/Y') ?? self::NOT_INFORMED,
             'bar_percent' => round(max(0.0, min(100.0, $data->realizedCumulativePercent)), 2),
         ];

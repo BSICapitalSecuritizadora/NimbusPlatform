@@ -15,16 +15,16 @@
 <div class="fi-activity-timeline-wrapper px-2 py-3 sm:px-6 sm:py-4">
     @if ($items->isEmpty())
         <div class="flex flex-col items-center justify-center py-12 text-center">
-            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-gray-500">
+            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface-ground)] text-[var(--text-muted)]">
                 <x-filament::icon icon="heroicon-o-clock" class="h-6 w-6" />
             </div>
-            <h3 class="mt-3 text-sm font-semibold text-gray-950 dark:text-white">Nenhuma movimentação registrada</h3>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 max-w-sm">
+            <h3 class="mt-3 text-sm font-semibold text-[var(--text-primary)]">Nenhuma movimentação registrada</h3>
+            <p class="mt-1 text-xs text-[var(--text-muted)] max-w-sm">
                 As movimentações e alterações desta operação aparecerão aqui em ordem cronológica.
             </p>
         </div>
     @else
-        <ol aria-label="Linha do tempo da operação" class="relative ms-4 border-s border-gray-200 dark:border-white/10 space-y-6 sm:space-y-7">
+        <ol aria-label="Linha do tempo da operação" class="relative ms-4 border-s border-[var(--border-subtle)] space-y-6 sm:space-y-7">
             @foreach ($items as $item)
                 @php
                     $statusChange = $item->statusChange();
@@ -44,11 +44,11 @@
                     </span>
 
                     {{-- Card do Evento --}}
-                    <div class="fi-activity-card rounded-xl border border-gray-200/80 bg-white p-4 shadow-xs transition-all duration-150 hover:border-gray-300 dark:border-white/10 dark:bg-[#0c222b] dark:hover:border-white/15 dark:hover:bg-[#0e2733]">
+                    <div class="fi-activity-card rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4 shadow-xs transition-all duration-150">
                         {{-- ── Cabeçalho do Evento ── --}}
-                        <div class="flex flex-col gap-y-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-3 dark:border-white/5">
+                        <div class="flex flex-col gap-y-2 sm:flex-row sm:items-center sm:justify-between border-b border-[var(--border-subtle)] pb-3">
                             <div class="flex flex-wrap items-center gap-2">
-                                <h3 class="text-sm font-semibold text-gray-950 dark:text-white">
+                                <h3 class="text-sm font-semibold text-[var(--text-primary)]">
                                     {{ $item->title }}
                                 </h3>
 
@@ -59,7 +59,7 @@
                                 @endif
 
                                 @if ($totalChangesCount > 0)
-                                    <span class="inline-flex items-center rounded-md bg-white/5 px-2 py-0.5 text-[11px] font-medium text-slate-300 ring-1 ring-white/10 tabular-nums">
+                                    <span class="inline-flex items-center rounded-md bg-[var(--surface-ground)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-secondary)] ring-1 ring-[var(--border-subtle)] tabular-nums">
                                         {{ $totalChangesCount }} {{ $totalChangesCount === 1 ? 'alteração' : 'alterações' }}
                                     </span>
                                 @endif
@@ -73,8 +73,8 @@
                             </div>
 
                             {{-- Autor e Data/Hora --}}
-                            <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-                                <div class="inline-flex items-center gap-1.5 font-medium text-gray-700 dark:text-gray-200">
+                            <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--text-muted)]">
+                                <div class="inline-flex items-center gap-1.5 font-medium text-[var(--text-secondary)]">
                                     @if ($item->isSystem())
                                         <span class="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300" aria-hidden="true">
                                             <x-filament::icon icon="heroicon-m-cpu-chip" class="h-3.5 w-3.5" />
@@ -91,19 +91,19 @@
                                     @endif
                                 </div>
 
-                                <span aria-hidden="true" class="text-gray-300 dark:text-gray-600">·</span>
+                                <span aria-hidden="true" class="text-[var(--text-muted)]">·</span>
 
                                 <time
                                     datetime="{{ $item->occurredAt->toIso8601String() }}"
                                     title="{{ $item->occurredAt->format('d/m/Y H:i:s') }}"
-                                    class="font-medium text-gray-600 dark:text-gray-300"
+                                    class="font-medium text-[var(--text-secondary)]"
                                 >
                                     {{ $item->occurredAt->format('d/m/Y \à\s H:i:s') }}
                                 </time>
 
-                                <span aria-hidden="true" class="text-gray-300 dark:text-gray-600">·</span>
+                                <span aria-hidden="true" class="text-[var(--text-muted)]">·</span>
 
-                                <span class="text-gray-400 dark:text-gray-500">
+                                <span class="text-[var(--text-muted)]">
                                     {{ $item->occurredAt->diffForHumans() }}
                                 </span>
                             </div>
@@ -113,8 +113,8 @@
                         <div class="mt-3 space-y-2.5">
                             {{-- 1. Transição de Status --}}
                             @if ($statusChange)
-                                <div class="flex flex-wrap items-center gap-2 rounded-lg bg-gray-50/80 px-3 py-2 text-xs dark:bg-white/[0.03] ring-1 ring-gray-950/5 dark:ring-white/5">
-                                    <span class="font-medium text-gray-500 dark:text-gray-400">{{ $statusChange->label }}:</span>
+                                <div class="flex flex-wrap items-center gap-2 rounded-lg bg-[var(--surface-ground)] px-3 py-2 text-xs ring-1 ring-[var(--border-subtle)]">
+                                    <span class="font-medium text-[var(--text-muted)]">{{ $statusChange->label }}:</span>
 
                                     @if ($statusChange->hasTransition())
                                         <x-filament::badge :color="$statusChange->oldColor ?? 'gray'" size="sm">
@@ -134,8 +134,8 @@
                             @if (count($regularChanges))
                                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
                                     @foreach (array_slice($regularChanges, 0, 6) as $change)
-                                        <div class="rounded-lg border border-gray-100 bg-gray-50/60 p-2.5 dark:border-white/5 dark:bg-white/[0.02]">
-                                            <span class="text-[10.5px] font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400 block mb-1">
+                                        <div class="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-ground)] p-2.5">
+                                            <span class="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-muted)] block mb-1">
                                                 {{ $change->label }}
                                             </span>
 
@@ -145,13 +145,13 @@
                                                         <span class="text-[9px] uppercase font-bold text-gray-400 dark:text-slate-500">De:</span>
                                                         <span class="line-through font-mono truncate">{{ $change->old ?? '—' }}</span>
                                                     </div>
-                                                    <div class="flex items-baseline gap-1 font-medium text-gray-900 dark:text-emerald-300">
-                                                        <span class="text-[9px] uppercase font-bold text-gray-500 dark:text-slate-400">Para:</span>
+                                                    <div class="flex items-baseline gap-1 font-medium text-[var(--text-primary)]">
+                                                        <span class="text-[9px] uppercase font-bold text-[var(--text-muted)]">Para:</span>
                                                         <span class="font-mono font-semibold truncate">{{ $change->new ?? '—' }}</span>
                                                     </div>
                                                 </div>
                                             @else
-                                                <div class="font-medium text-gray-900 dark:text-white font-mono truncate">
+                                                <div class="font-medium text-[var(--text-primary)] font-mono truncate">
                                                     {{ $change->new ?? '—' }}
                                                 </div>
                                             @endif
@@ -160,7 +160,7 @@
                                 </div>
 
                                 @if (count($regularChanges) > 6)
-                                    <div class="text-[11px] text-gray-500 dark:text-slate-400 italic">
+                                    <div class="text-[11px] text-[var(--text-muted)] italic">
                                         + {{ count($regularChanges) - 6 }} outros campos alterados disponíveis nos detalhes técnicos abaixo.
                                     </div>
                                 @endif
@@ -171,9 +171,9 @@
                                 @foreach ($observationChanges as $obs)
                                     <div
                                         x-data="{ expanded: false }"
-                                        class="rounded-lg border-s-2 border-teal-500 bg-gray-50/70 p-3 dark:border-teal-400 dark:bg-white/[0.03] text-xs"
+                                        class="rounded-lg border-s-2 border-teal-500 bg-[var(--surface-ground)] p-3 text-xs"
                                     >
-                                        <div class="flex items-center justify-between font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                        <div class="flex items-center justify-between font-semibold text-[var(--text-primary)] mb-1">
                                             <span class="flex items-center gap-1.5">
                                                 <x-filament::icon icon="heroicon-m-chat-bubble-bottom-center-text" class="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
                                                 {{ $obs->label }}
@@ -185,7 +185,7 @@
                                         </div>
 
                                         <p
-                                            class="text-gray-600 dark:text-gray-300 whitespace-pre-line leading-relaxed"
+                                            class="text-[var(--text-secondary)] whitespace-pre-line leading-relaxed"
                                             :class="!expanded ? 'line-clamp-3' : ''"
                                         >
                                             {{ $obs->new ?? '—' }}
@@ -207,12 +207,12 @@
                         </div>
 
                         {{-- ── Nível 2: Detalhes Técnicos & Auditoria (Expansível / Recolhido por Padrão) ── --}}
-                        <div x-data="{ open: false, copied: false, copiedJson: false }" class="mt-3 pt-2 border-t border-gray-100/80 dark:border-white/5">
+                        <div x-data="{ open: false, copied: false, copiedJson: false }" class="mt-3 pt-2 border-t border-[var(--border-subtle)]">
                             <div class="flex items-center justify-between">
                                 <button
                                     type="button"
                                     x-on:click="open = ! open"
-                                    class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 transition-colors py-1 px-2 -ms-2 rounded-md hover:bg-gray-100 dark:hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-400"
+                                    class="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors py-1 px-2 -ms-2 rounded-md hover:bg-[var(--surface-highlight)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-400"
                                 >
                                     <x-filament::icon
                                         icon="heroicon-m-chevron-right"
@@ -220,14 +220,14 @@
                                         x-bind:class="open && 'rotate-90'"
                                     />
                                     <span x-text="open ? 'Ocultar detalhes técnicos' : 'Ver detalhes técnicos'">Ver detalhes técnicos</span>
-                                    <span class="text-[11px] text-gray-400 dark:text-gray-500">({{ count($item->technicalDetails) }} campos)</span>
+                                    <span class="text-[11px] text-[var(--text-muted)]">({{ count($item->technicalDetails) }} campos)</span>
                                 </button>
 
                                 <div x-show="open" x-cloak class="flex items-center gap-2">
                                     <button
                                         type="button"
                                         x-on:click="navigator.clipboard.writeText($refs.technical.innerText).then(() => { copied = true; setTimeout(() => copied = false, 2000) })"
-                                        class="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                                        class="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
                                         title="Copiar lista de detalhes técnicos"
                                     >
                                         <x-filament::icon icon="heroicon-m-clipboard-document" class="h-3.5 w-3.5" />
@@ -240,31 +240,31 @@
                                 x-show="open"
                                 x-cloak
                                 x-collapse
-                                class="mt-2.5 space-y-3 rounded-lg bg-gray-50/90 p-3.5 text-xs ring-1 ring-gray-950/5 dark:bg-black/30 dark:ring-white/10"
+                                class="mt-2.5 space-y-3 rounded-lg bg-[var(--surface-ground)] p-3.5 text-xs ring-1 ring-[var(--border-subtle)]"
                             >
                                 {{-- A. Tabela Estruturada de Campos Alterados --}}
                                 @if (count($item->changes))
                                     <div class="space-y-1.5">
-                                        <h4 class="font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
-                                            <x-filament::icon icon="heroicon-m-adjustments-horizontal" class="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                                        <h4 class="font-semibold text-[var(--text-primary)] flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
+                                            <x-filament::icon icon="heroicon-m-adjustments-horizontal" class="h-3.5 w-3.5 text-[var(--text-muted)]" />
                                             Campos alterados
                                         </h4>
 
-                                        <div class="overflow-x-auto rounded border border-gray-200/80 bg-white dark:border-white/10 dark:bg-[#07151c] max-h-64 overflow-y-auto">
+                                        <div class="overflow-x-auto rounded border border-[var(--border-subtle)] bg-[var(--surface-card)] max-h-64 overflow-y-auto">
                                             <table class="w-full text-left text-xs">
-                                                <thead class="sticky top-0 bg-gray-50 text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:bg-[#0a1e27] dark:text-gray-400 border-b border-gray-200/70 dark:border-white/5">
+                                                <thead class="sticky top-0 bg-[var(--surface-ground)] text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
                                                     <tr>
                                                         <th class="px-2.5 py-1.5">Campo</th>
                                                         <th class="px-2.5 py-1.5">Valor anterior</th>
                                                         <th class="px-2.5 py-1.5">Novo valor</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody class="divide-y divide-gray-100 dark:divide-white/5">
+                                                <tbody class="divide-y divide-[var(--border-subtle)]">
                                                     @foreach ($item->changes as $change)
                                                         <tr>
-                                                            <td class="px-2.5 py-1.5 font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $change->label }}</td>
-                                                            <td class="px-2.5 py-1.5 text-gray-500 dark:text-gray-400 font-mono text-[11px]">{{ $change->old ?? '—' }}</td>
-                                                            <td class="px-2.5 py-1.5 text-gray-900 dark:text-white font-mono text-[11px] font-medium">{{ $change->new ?? '—' }}</td>
+                                                            <td class="px-2.5 py-1.5 font-medium text-[var(--text-primary)] whitespace-nowrap">{{ $change->label }}</td>
+                                                            <td class="px-2.5 py-1.5 text-[var(--text-muted)] font-mono text-[11px]">{{ $change->old ?? '—' }}</td>
+                                                            <td class="px-2.5 py-1.5 text-[var(--text-primary)] font-mono text-[11px] font-medium">{{ $change->new ?? '—' }}</td>
                                                         </tr>
                                                     @endforeach
                                                 </tbody>
@@ -275,40 +275,40 @@
 
                                 {{-- B. Metadados de Auditoria --}}
                                 <div class="space-y-1.5">
-                                    <h4 class="font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
-                                        <x-filament::icon icon="heroicon-m-shield-check" class="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                                    <h4 class="font-semibold text-[var(--text-primary)] flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
+                                        <x-filament::icon icon="heroicon-m-shield-check" class="h-3.5 w-3.5 text-[var(--text-muted)]" />
                                         Metadados de auditoria
                                     </h4>
 
-                                    <dl class="grid gap-x-4 gap-y-1.5 font-mono text-[11px] sm:grid-cols-[minmax(max-content,14rem)_1fr] rounded border border-gray-200/80 bg-white p-2.5 dark:border-white/10 dark:bg-[#07151c]">
+                                    <dl class="grid gap-x-4 gap-y-1.5 font-mono text-[11px] sm:grid-cols-[minmax(max-content,14rem)_1fr] rounded border border-[var(--border-subtle)] bg-[var(--surface-card)] p-2.5">
                                         @foreach ($item->technicalDetails as $detail)
-                                            <dt class="text-gray-500 dark:text-gray-400">{{ $detail['label'] }}</dt>
-                                            <dd class="break-all text-gray-800 dark:text-gray-200 font-medium">{{ $detail['value'] }}</dd>
+                                            <dt class="text-[var(--text-muted)]">{{ $detail['label'] }}</dt>
+                                            <dd class="break-all text-[var(--text-primary)] font-medium">{{ $detail['value'] }}</dd>
                                         @endforeach
                                     </dl>
                                 </div>
 
                                 {{-- C. Payload Bruto (JSON Prettified em Accordion) --}}
                                 @if ($item->rawJson)
-                                    <details class="group rounded border border-gray-200/80 bg-white dark:border-white/10 dark:bg-[#07151c] p-2.5">
-                                        <summary class="cursor-pointer font-medium text-gray-700 dark:text-gray-300 select-none flex items-center justify-between text-[11px]">
+                                    <details class="group rounded border border-[var(--border-subtle)] bg-[var(--surface-card)] p-2.5">
+                                        <summary class="cursor-pointer font-medium text-[var(--text-secondary)] select-none flex items-center justify-between text-[11px]">
                                             <span class="flex items-center gap-1.5">
-                                                <x-filament::icon icon="heroicon-m-code-bracket" class="h-3.5 w-3.5 text-gray-400" />
+                                                <x-filament::icon icon="heroicon-m-code-bracket" class="h-3.5 w-3.5 text-[var(--text-muted)]" />
                                                 Dados técnicos / Payload JSON completo
                                             </span>
-                                            <span class="text-xs text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                                            <span class="text-xs text-[var(--text-muted)] group-open:rotate-180 transition-transform">▼</span>
                                         </summary>
 
                                         <div class="mt-2 relative">
                                             <button
                                                 type="button"
                                                 x-on:click="navigator.clipboard.writeText($refs.rawJsonPre.innerText).then(() => { copiedJson = true; setTimeout(() => copiedJson = false, 2000) })"
-                                                class="absolute top-2 right-2 rounded bg-gray-200 px-2 py-1 text-[10px] font-medium text-gray-700 hover:bg-gray-300 dark:bg-white/10 dark:text-gray-300 dark:hover:bg-white/20"
+                                                class="absolute top-2 right-2 rounded bg-[var(--surface-highlight)] px-2 py-1 text-[10px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                                             >
                                                 <span x-text="copiedJson ? 'Copiado!' : 'Copiar JSON'">Copiar JSON</span>
                                             </button>
 
-                                            <pre x-ref="rawJsonPre" class="max-h-72 overflow-y-auto rounded bg-gray-100 p-3 font-mono text-[10.5px] leading-relaxed text-gray-800 dark:bg-[#040e13] dark:text-slate-300 whitespace-pre overflow-x-auto border border-white/5"><code>{{ $item->rawJson }}</code></pre>
+                                            <pre x-ref="rawJsonPre" class="max-h-72 overflow-y-auto rounded bg-[var(--surface-ground)] p-3 font-mono text-[10.5px] leading-relaxed text-[var(--text-secondary)] whitespace-pre overflow-x-auto border border-[var(--border-subtle)]"><code>{{ $item->rawJson }}</code></pre>
                                         </div>
                                     </details>
                                 @endif

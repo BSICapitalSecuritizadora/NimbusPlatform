@@ -219,9 +219,11 @@ it('pauses and resumes restoring the previous status', function () {
         ->and($measurement->pauses()->whereNull('resumed_at')->count())->toBe(0);
 });
 
-it('propagates the realized progress reported during validation to the schedule line', function () {
+it('propagates the realized progress reported during validation to the schedule line', function (string $initial, string $cumulative, string $diff) {
     $operation = Operation::factory()->create();
-    $planSet = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
+    $planSet = MeasurementPlanSet::factory()
+        ->withInitialPhysicalProgress($initial)
+        ->create(['operation_id' => $operation->id]);
 
     MeasurementPlanLine::factory()->create([
         'plan_set_id' => $planSet->id,
@@ -242,6 +244,7 @@ it('propagates the realized progress reported during validation to the schedule 
         'measurement_date' => '2026-06-01',
     ]);
 
+    // Valor gravado numa linha que nenhuma medição vigente mediu: não é base.
     MeasurementPlanLine::query()->where('id', $line2->id)->update(['realized_cumulative_percent' => 25]);
 
     $line3 = MeasurementPlanLine::factory()->create([
@@ -272,11 +275,14 @@ it('propagates the realized progress reported during validation to the schedule 
     $line3->refresh();
 
     expect($line3->realized_monthly_percent)->toBe('18.00')
-        ->and($line3->realized_cumulative_percent)->toBe('43.00')
+        ->and($line3->realized_cumulative_percent)->toBe($cumulative)
         ->and($line3->measurement_id)->toBe($measurement->id)
-        ->and($line3->evolution_diff_percent)->toBe('-37.00')
+        ->and($line3->evolution_diff_percent)->toBe($diff)
         ->and($line3->evolution_trend)->toBe(MeasurementPlanLine::TREND_BEHIND);
-});
+})->with([
+    'ignoring the unmeasured previous line' => ['0.00', '18.00', '-62.00'],
+    'starting from the initial physical progress' => ['25.00', '43.00', '-37.00'],
+]);
 
 it('targets the schedule line chosen on each development asset', function () {
     $operation = Operation::factory()->create();

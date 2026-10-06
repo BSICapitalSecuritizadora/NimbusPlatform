@@ -13,6 +13,7 @@ use App\Models\Guarantee;
 use App\Models\GuaranteeSnapshot;
 use App\Models\Measurement;
 use App\Models\MeasurementPayment;
+use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use App\Models\ResponsibilityDelegation;
@@ -242,7 +243,7 @@ it('leaves no measurement-aggregate trail in the disposable bucket', function ()
     ]);
 
     expect(Activity::query()
-        ->whereIn('subject_type', [Measurement::class, MeasurementPayment::class, Operation::class])
+        ->whereIn('subject_type', [Measurement::class, MeasurementPlanSet::class, MeasurementPayment::class, Operation::class])
         ->where(fn ($query) => $query->where('log_name', 'default')->orWhereNull('log_name'))
         ->count())->toBe(0);
 });
@@ -317,6 +318,8 @@ it('protects the category every audited aggregate actually writes to', function 
         ->and(config('audit.protected_logs'))->toContain($logName);
 })->with([
     'Measurement' => [Measurement::class, 'measurements'],
+    'MeasurementPlanSet' => [MeasurementPlanSet::class, 'measurements'],
+    'MeasurementPlanLine' => [MeasurementPlanLine::class, 'measurements'],
     'MeasurementPayment' => [MeasurementPayment::class, 'measurement_payments'],
     'ResponsibilityDelegation' => [ResponsibilityDelegation::class, 'delegations'],
     'Operation' => [Operation::class, 'operations'],

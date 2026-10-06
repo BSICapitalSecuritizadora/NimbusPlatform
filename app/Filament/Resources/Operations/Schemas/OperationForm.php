@@ -5,10 +5,12 @@ namespace App\Filament\Resources\Operations\Schemas;
 use App\Concerns\MoneyFormatter;
 use App\Models\Construction;
 use App\Models\Emission;
+use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use App\Models\User;
 use App\Services\OperationContextVisibilityService;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -52,12 +54,12 @@ class OperationForm
                         ->required()
                         ->live()
                         ->columnSpan(['default' => 12, 'md' => 7])
-                        ->afterStateUpdated(function (Set $set, mixed $state, mixed $old): void {
+                        ->afterStateUpdated(function (Set $set, mixed $state, mixed $old, ?Operation $record): void {
                             if ($state === $old) {
                                 return;
                             }
 
-                            $set('developments', static::developmentsForEmission($state));
+                            $set('developments', static::developmentsForEmission($state, $record));
                             $set('due_date', static::emissionMaturityDate($state));
                         })
                         ->validationMessages([
@@ -109,6 +111,14 @@ class OperationForm
                                 ]),
 
                             static::moneyField('construction_fund_amount', 'Fundo de Obra'),
+
+                            // Só o plano que ainda vai nascer aceita o avanço
+                            // inicial; o de um plano existente aparece, travado.
+                            Hidden::make('has_plan')->dehydrated(false),
+                            InitialPhysicalProgressFields::percent()
+                                ->disabled(fn (Get $get): bool => (bool) $get('has_plan')),
+                            InitialPhysicalProgressFields::referenceDate()
+                                ->disabled(fn (Get $get): bool => (bool) $get('has_plan')),
                         ])
                         ->afterStateHydrated(function (Repeater $component, ?Operation $record): void {
                             if (! $record instanceof Operation) {
@@ -119,10 +129,7 @@ class OperationForm
                                 $record->planSets()
                                     ->whereNotNull('construction_id')
                                     ->get()
-                                    ->map(fn ($plan): array => [
-                                        'construction_id' => $plan->construction_id,
-                                        'construction_fund_amount' => $plan->construction_fund_amount,
-                                    ])
+                                    ->map(fn (MeasurementPlanSet $plan): array => static::developmentRow($plan->construction_id, $plan))
                                     ->all(),
                             );
                         }),
@@ -181,10 +188,12 @@ class OperationForm
     /**
      * Builds one repeater row per development of the emission, with the
      * development pre-filled and the construction fund left blank to edit.
+     * A development that already has a plan in the operation keeps its plan's
+     * values, so its initial physical progress shows up locked.
      *
-     * @return array<int, array{construction_id: int, construction_fund_amount: null}>
+     * @return array<int, array{construction_id: int, construction_fund_amount: mixed, has_plan: bool, initial_physical_progress_percent: mixed, initial_physical_progress_reference_date: string|null}>
      */
-    protected static function developmentsForEmission(mixed $emissionId): array
+    protected static function developmentsForEmission(mixed $emissionId, ?Operation $record = null): array
     {
         if (blank($emissionId)) {
             return [];
@@ -197,15 +206,37 @@ class OperationForm
             return [];
         }
 
+        $plans = $record instanceof Operation
+            ? $record->planSets()->whereNotNull('construction_id')->get()->keyBy('construction_id')
+            : collect();
+
         return app(OperationContextVisibilityService::class)
             ->visibleConstructions($user, $emissionId)
             ->orderBy('development_name')
             ->pluck('id')
-            ->map(fn (int $id): array => [
-                'construction_id' => $id,
-                'construction_fund_amount' => null,
-            ])
+            ->map(fn (int $id): array => static::developmentRow($id, $plans->get($id)))
             ->all();
+    }
+
+    /**
+     * O estado é posto direto no repeater, sem passar pelo formatStateUsing dos
+     * campos: o fundo já sai no formato da máscara ('500.000,00'). Cru
+     * ('500000.00'), a máscara pt-BR lê o ponto como milhar e o valor salvo
+     * sairia cem vezes maior.
+     *
+     * @return array{construction_id: int, construction_fund_amount: string|null, has_plan: bool, initial_physical_progress_percent: mixed, initial_physical_progress_reference_date: string|null}
+     */
+    protected static function developmentRow(int $constructionId, ?MeasurementPlanSet $plan): array
+    {
+        return [
+            'construction_id' => $constructionId,
+            'construction_fund_amount' => blank($plan?->construction_fund_amount)
+                ? null
+                : MoneyFormatter::formatCurrencyForDisplay($plan->construction_fund_amount),
+            'has_plan' => $plan instanceof MeasurementPlanSet,
+            'initial_physical_progress_percent' => $plan?->initial_physical_progress_percent ?? 0,
+            'initial_physical_progress_reference_date' => $plan?->initial_physical_progress_reference_date?->toDateString(),
+        ];
     }
 
     /**

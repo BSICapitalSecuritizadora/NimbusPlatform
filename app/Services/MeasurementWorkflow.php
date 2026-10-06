@@ -918,10 +918,18 @@ class MeasurementWorkflow
      * operação depende de não haver medição aberta. As duas leituras precisam
      * acontecer sob o mesmo lock da operação, senão uma passa entre a
      * verificação e a gravação da outra.
+     *
+     * O lock da Operation é a primeira instrução da transação, com o
+     * `operation_id` já carregado -- ele é imutável (hook do model). No MySQL
+     * em REPEATABLE READ a fotografia da transação nasce na primeira leitura
+     * comum; nascendo depois deste lock, ela já inclui tudo o que a aprovação
+     * anterior da mesma operação commitou ao liberá-lo. É isso que deixa o
+     * progresso físico, o teto de 100% e as guardas da linha lerem o estado
+     * atual sem travar as outras medições.
      */
     private function lockMeasurementWithOperation(Measurement $measurement): Measurement
     {
-        $operationId = Measurement::query()
+        $operationId = $measurement->getAttribute('operation_id') ?? Measurement::query()
             ->whereKey($measurement->getKey())
             ->value('operation_id');
 

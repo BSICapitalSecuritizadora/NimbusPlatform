@@ -80,9 +80,16 @@ class MeasurementPlanLine extends Model
         ];
     }
 
+    /**
+     * A linha guarda o previsto, o que a Engenharia gravou em cada aprovação e o
+     * "Realiz. inicial" que originou o avanço físico inicial dos planos antigos.
+     * Em `default` essa trilha seria descartada em um ano; em `measurements`,
+     * categoria protegida, acompanha o prazo das demais evidências da medição.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('measurements')
             ->logFillable()
             ->logOnlyDirty()
             ->dontLogEmptyChanges();

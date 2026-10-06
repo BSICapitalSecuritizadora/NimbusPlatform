@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Measurements\Pages;
 
 use App\Concerns\MoneyFormatter;
 use App\DTOs\Measurements\MeasurementFinancialReconciliationLine;
+use App\DTOs\Measurements\MeasurementPhysicalProgress;
 use App\Enums\MeasurementReceiptReviewStatus;
 use App\Enums\MeasurementReconciliationStatus;
 use App\Exceptions\MeasurementWorkflowException;
@@ -16,6 +17,7 @@ use App\Models\User;
 use App\Services\MeasurementFinancialReconciliationService;
 use App\Services\MeasurementFinancialRuleService;
 use App\Services\MeasurementPaymentFinancialService;
+use App\Services\MeasurementPhysicalProgressService;
 use App\Services\MeasurementReceiptEvidenceService;
 use App\Services\MeasurementWorkflow;
 use Closure;
@@ -207,33 +209,83 @@ class ViewMeasurement extends ViewRecord
             return $schema;
         }
 
-        $referenceMonth = $this->record->reference_month;
+        $physicalProgress = app(MeasurementPhysicalProgressService::class)
+            ->forOperation((int) $this->record->operation_id, (int) $this->record->getKey());
 
-        $fields = $planSets->map(function ($planSet) use ($referenceMonth): TextInput {
+        // Sem preenchimento: a linha guarda o valor de uma aprovação que pode ter
+        // deixado de valer, e com 0% aceito um padrão viraria aprovação silenciosa.
+        $fields = $planSets->flatMap(function ($planSet) use ($physicalProgress): array {
             $label = $planSet->construction?->development_name ?? $planSet->name;
+            $progress = $physicalProgress[(int) $planSet->id]
+                ?? app(MeasurementPhysicalProgressService::class)->forPlanSet($planSet, (int) $this->record->getKey());
 
-            $currentMonthly = $referenceMonth
-                ? $planSet->lines()
-                    ->whereYear('measurement_date', $referenceMonth->year)
-                    ->whereMonth('measurement_date', $referenceMonth->month)
-                    ->value('realized_monthly_percent')
-                : null;
+            return [
+                Placeholder::make("physical_progress_context.{$planSet->id}")
+                    ->hiddenLabel()
+                    ->content($this->physicalProgressContent($label, $progress)),
+                TextInput::make("realized.{$planSet->id}")
+                    ->label($label)
+                    ->numeric()
+                    ->step('0.01')
+                    ->suffix('%')
+                    ->required()
+                    ->minValue(0)
+                    ->maxValue(100)
+                    ->rule('decimal:0,2')
+                    ->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail) use ($label, $progress): void {
+                        $basisPoints = MeasurementPhysicalProgress::basisPoints($value);
 
-            return TextInput::make("realized.{$planSet->id}")
-                ->label($label)
-                ->numeric()
-                ->suffix('%')
-                ->required()
-                ->minValue(0.01)
-                ->maxValue(100)
-                ->default($currentMonthly !== null ? (float) $currentMonthly : null);
+                        if ($basisPoints !== null && $basisPoints >= 0 && $progress->exceedsLimitWith($basisPoints)) {
+                            $fail($progress->limitExceededMessage($label, $basisPoints));
+                        }
+                    })
+                    ->validationMessages([
+                        'decimal' => 'Informe o percentual realizado com no máximo duas casas decimais.',
+                        'min' => 'O percentual realizado não pode ser negativo. Para corrigir uma medição já aprovada, devolva-a à Engenharia.',
+                    ]),
+            ];
         })->all();
 
         $schema[] = Section::make('Realizado mensal por empreendimento (%)')
-            ->description('Informe o avanço físico realizado no mês de referência. O acumulado e a diferença são calculados automaticamente no cronograma.')
+            ->description('Informe o avanço físico realizado no mês de referência (0% quando a obra não avançou). O avanço do empreendimento — inicial mais as medições com a Engenharia vigente — não pode passar de 100%.')
             ->schema($fields);
 
         return $schema;
+    }
+
+    /**
+     * Onde o empreendimento está antes desta medição: a pessoa vê quanto ainda
+     * cabe até 100% antes de digitar, e não depois de recusada.
+     */
+    private function physicalProgressContent(string $label, MeasurementPhysicalProgress $progress): HtmlString
+    {
+        $initial = MeasurementPhysicalProgress::format($progress->initialBasisPoints);
+
+        if ($progress->initialReferenceDate !== null) {
+            $initial .= ' em '.$progress->initialReferenceDate->format('d/m/Y');
+        }
+
+        $cells = [
+            ['Avanço físico inicial', $initial],
+            ['Medido no sistema', MeasurementPhysicalProgress::format($progress->measuredBasisPoints())],
+            ['Avanço físico atual', MeasurementPhysicalProgress::format($progress->currentBasisPoints())],
+            ['Máximo restante', MeasurementPhysicalProgress::format($progress->remainingBasisPoints())],
+        ];
+
+        $html = collect($cells)
+            ->map(fn (array $cell): string => sprintf(
+                '<div><dt class="text-xs text-gray-500 dark:text-gray-400">%s</dt><dd class="text-sm font-medium text-gray-950 dark:text-white">%s</dd></div>',
+                e($cell[0]),
+                e($cell[1]),
+            ))
+            ->implode('');
+
+        return new HtmlString(sprintf(
+            '<p class="text-sm font-medium text-gray-950 dark:text-white">%s</p><dl class="mt-1 grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="%s">%s</dl>',
+            e($label),
+            e("Progresso físico de {$label}"),
+            $html,
+        ));
     }
 
     /**

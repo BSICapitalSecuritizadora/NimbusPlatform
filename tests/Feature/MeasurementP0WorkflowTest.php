@@ -205,7 +205,7 @@ it('enforces engineering progress, document, plan-line and cumulative prerequisi
     $workflow = app(MeasurementWorkflow::class);
 
     expect(fn () => $workflow->approve($scenario['measurement']->fresh(), $scenario['engineering'], null, [
-        $scenario['planSet']->id => 0,
+        $scenario['planSet']->id => -1,
     ]))->toThrow(ValidationException::class);
 
     Storage::disk('local')->delete($scenario['measurement']->assets()->value('storage_path'));

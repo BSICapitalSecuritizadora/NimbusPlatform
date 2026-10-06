@@ -35,4 +35,15 @@ class MeasurementPlanSetFactory extends Factory
             'name' => 'Plano padrão',
         ]);
     }
+
+    /**
+     * Obra que entrou no sistema já em andamento.
+     */
+    public function withInitialPhysicalProgress(string $percent, string $referenceDate = '2026-04-30'): static
+    {
+        return $this->state(fn (): array => [
+            'initial_physical_progress_percent' => $percent,
+            'initial_physical_progress_reference_date' => $referenceDate,
+        ]);
+    }
 }

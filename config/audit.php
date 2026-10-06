@@ -27,7 +27,7 @@ return [
         'measurement_evidence',      // MeasurementReceiptEvidenceService — versões e decisões documentais
         'measurement_workflow',      // MeasurementWorkflow::audit() — aprovação, recusa, pausa, retomada, pagamento, comprovante, finalização
         'measurement_file_access',   // controllers de download — asset, arquivo da medição e comprovante, com sha256
-        'measurements',              // Measurement (LogsActivity) — situação, etapa e demais colunas
+        'measurements',              // Measurement (LogsActivity) — situação, etapa e demais colunas; MeasurementPlanSet e MeasurementPlanLine (LogsActivity) — plano, fundo, avanço físico inicial e cronograma
         'measurement_payments',      // MeasurementPayment (LogsActivity) — valor, data, comprovante
         'operations',                // Operation (LogsActivity) + OperationLifecycleService — transições de ciclo de vida
         'delegations',               // ResponsibilityDelegation (LogsActivity) + criação/revogação explícitas

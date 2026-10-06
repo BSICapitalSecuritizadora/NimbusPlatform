@@ -203,3 +203,17 @@ it('renders the same derived month in the operations list and detail and sorts b
         ->assertSee('05/2026')
         ->assertDontSee('15/09/2026');
 });
+
+it('skips the competences already covered by the initial physical progress of the plan', function (string $referenceDate, string $expected) {
+    $this->travelTo(now()->setDate(2026, 9, 8));
+    $operation = Operation::factory()->create();
+    $plan = MeasurementPlanSet::factory()->default()->withInitialPhysicalProgress('35.00', $referenceDate)->create(['operation_id' => $operation->id]);
+    makeNextMeasurementLine($plan, 1, '2026-04-01');
+    makeNextMeasurementLine($plan, 2, '2026-05-01');
+    makeNextMeasurementLine($plan, 3, '2026-06-01');
+
+    expect(resolveNextMeasurementMonth($operation))->toBe($expected);
+})->with([
+    'covered through the end of May' => ['2026-05-31', '06/2026'],
+    'mid-May: May still has progress to measure' => ['2026-05-15', '05/2026'],
+])->group('parity');

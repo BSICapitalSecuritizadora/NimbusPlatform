@@ -7,6 +7,7 @@ use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 class OperationNextMeasurementResolver
 {
@@ -43,11 +44,35 @@ class OperationNextMeasurementResolver
             ->whereNull('measurement_id')
             ->whereDoesntHave('assets.measurement', fn (Builder $measurements): Builder => $measurements
                 ->whereIn('status', [...Measurement::OPEN_STATUSES, 'finalized']))
+            ->whereDoesntHave('planSet', fn (Builder $plans): Builder => $this->coveringInitialProgress($plans, $line))
             ->orderBy('sequence_number')
             ->limit(1);
 
         return $operations
             ->addSelect(['next_pending_measurement_at' => $nextDate])
             ->withCasts(['next_pending_measurement_at' => 'date']);
+    }
+
+    /**
+     * O plano cujo avanço físico inicial já cobre a competência da linha: ela
+     * termina até a data a que o avanço inicial se refere, e a Engenharia
+     * recusaria avanço nela (MeasurementPhysicalProgress::initialProgressCovers).
+     * "Termina até a data" é o mesmo que começar antes do mês do dia seguinte à
+     * data de referência.
+     *
+     * @param  Builder<MeasurementPlanSet>  $plans
+     * @return Builder<MeasurementPlanSet>
+     */
+    private function coveringInitialProgress(Builder $plans, MeasurementPlanLine $line): Builder
+    {
+        $reference = $plans->qualifyColumn('initial_physical_progress_reference_date');
+        $firstUncoveredMonth = DB::getDriverName() === 'sqlite'
+            ? "date({$reference}, '+1 day', 'start of month')"
+            : "DATE_FORMAT(DATE_ADD({$reference}, INTERVAL 1 DAY), '%Y-%m-01')";
+
+        return $plans
+            ->where($plans->qualifyColumn('initial_physical_progress_percent'), '>', 0)
+            ->whereNotNull($reference)
+            ->whereRaw("{$line->qualifyColumn('measurement_date')} < {$firstUncoveredMonth}");
     }
 }

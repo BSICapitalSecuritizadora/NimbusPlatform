@@ -101,6 +101,8 @@ function createP02EngineeringScenario(int $planSetCount = 1): array
             'is_default' => $sequence === 1,
             'construction_fund_amount' => 100000 * $sequence,
             'initial_incurred_amount' => 1000 * $sequence,
+            'initial_physical_progress_percent' => 2,
+            'initial_physical_progress_reference_date' => '2026-07-31',
         ]);
         $line = MeasurementPlanLine::factory()->create([
             'operation_id' => $operation->id,

@@ -448,8 +448,8 @@ it('opens event details modal with full information when an event is clicked', f
         ->assertSet('selectedEventId', $eventId)
         ->assertSee('Detalhes da ocorrência')
         // Os cards de KPI também exibem "Valor previsto"/"Valor pago"; a marcação abaixo é só a do modal.
-        ->assertSeeHtml('tracking-wider text-slate-400">Valor previsto</span>')
-        ->assertSeeHtml('tracking-wider text-slate-400">Valor pago</span>')
+        ->assertSeeHtml('tracking-wider text-[var(--text-muted)]">Valor previsto</span>')
+        ->assertSeeHtml('tracking-wider text-[var(--text-muted)]">Valor pago</span>')
         ->assertSee('04/05/2026')
         ->assertSee('05/05/2026')
         ->call('closeEvent')

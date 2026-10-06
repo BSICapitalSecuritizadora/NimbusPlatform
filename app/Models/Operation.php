@@ -219,9 +219,11 @@ class Operation extends Model
     /**
      * Ensures one measurement plan set exists per development, each carrying its
      * own construction fund. Existing plan sets are updated; the first development
-     * becomes the default plan when the operation has none yet.
+     * becomes the default plan when the operation has none yet. The initial
+     * physical progress only goes into a plan being created: an existing plan
+     * keeps its own, which no ordinary write may change.
      *
-     * @param  array<int, array{construction_id?: mixed, construction_fund_amount?: mixed}>  $developments
+     * @param  array<int, array{construction_id?: mixed, construction_fund_amount?: mixed, initial_physical_progress_percent?: mixed, initial_physical_progress_reference_date?: mixed}>  $developments
      */
     public function syncDevelopmentPlans(array $developments, User $actor): void
     {
@@ -254,6 +256,8 @@ class Operation extends Model
                     'name' => $developmentName,
                     'construction_fund_amount' => $fund,
                     'is_default' => ! $hasDefault && $index === 0,
+                    'initial_physical_progress_percent' => $development['initial_physical_progress_percent'] ?? 0,
+                    'initial_physical_progress_reference_date' => $development['initial_physical_progress_reference_date'] ?? null,
                 ]);
             }
 
