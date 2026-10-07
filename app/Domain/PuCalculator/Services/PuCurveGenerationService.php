@@ -10,6 +10,7 @@ use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuCalculationProfile;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
+use App\Domain\PuCalculator\Exceptions\PuCurveInputsException;
 use App\Models\Emission;
 use App\Models\EmissionPuEvent;
 use App\Models\EmissionPuParameter;
@@ -67,6 +68,11 @@ class PuCurveGenerationService
         $startDate = CarbonImmutable::instance($parameter->curve_start_date);
         $endDate = CarbonImmutable::instance($parameter->curve_end_date);
         $eventGroups = $this->groupEventsByDate($emission->puEvents);
+        // Alterações de spread em vigor a partir de um pagamento: o período que
+        // começa nele (e os seguintes) capitaliza o spread novo. Fora do início de um
+        // período, a engine recusa -- não há regra contratual para dividir o período.
+        $spreadAmendments = $this->spreadAmendments($emission->puEvents, $startDate);
+        $periodParameter = $parameter;
         $quantityTimeline = $this->buildQuantityTimeline($emission->integralizationHistories);
         // O prêmio dos Dias Úteis anteriores à integralização é exigência do Termo. O sistema legado
         // de referência não o contempla, então ele é parte da metodologia histórica -- e some apenas
@@ -109,6 +115,7 @@ class PuCurveGenerationService
                 $businessDaysSinceReset = 0;
                 $lastPaymentDate = $rows[array_key_last($rows)]->date;
                 $couponPeriodStartDate = $lastPaymentDate;
+                $periodParameter = $this->parameterForPeriod($parameter, $spreadAmendments, $couponPeriodStartDate);
             }
 
             $isBusinessDay = $this->businessDayCalendar->isBusinessDay($currentDate, $accrualCalendar);
@@ -143,7 +150,7 @@ class PuCurveGenerationService
                 if ($isBusinessDay) {
                     $businessDaysSinceReset++;
                     $factorSpread = $this->factorComposition->spreadFactor(
-                        $parameter,
+                        $periodParameter,
                         $businessDaysSinceReset,
                         $profile,
                     );
@@ -168,7 +175,7 @@ class PuCurveGenerationService
                     $profile,
                 );
                 $factorSpreadUnrounded = $this->factorComposition->unroundedSpreadFactor(
-                    $parameter,
+                    $periodParameter,
                     $businessDaysSinceReset,
                 );
                 $factorSpreadDi = $this->factorComposition->combinedFactor(
@@ -369,6 +376,12 @@ class PuCurveGenerationService
                     ->all(),
             ];
 
+            // Só curvas com alteração de spread ganham a chave: as demais continuam com
+            // a memória de cálculo idêntica à de antes da Fase 4.
+            if ($spreadAmendments !== []) {
+                $calculationMemory['spread_rate_applied'] = (string) $periodParameter->spread_rate;
+            }
+
             $rows[] = new PuDailyCurveRowData(
                 date: $currentDate,
                 isBusinessDay: $isBusinessDay,
@@ -402,15 +415,19 @@ class PuCurveGenerationService
             );
 
             $lastResidualUnitValue = $residualUnitValue;
+
+            if (isset($spreadAmendments[$currentDate->toDateString()])
+                && ! $rows[array_key_last($rows)]->hasUnitPayment()) {
+                throw new PuCurveInputsException(sprintf(
+                    'A alteração de spread de %s não coincide com um pagamento que encerre o período de capitalização; a engine não divide o período e a curva não foi calculada.',
+                    $currentDate->format('d/m/Y'),
+                ));
+            }
         }
 
         return new PuCurveGenerationResult($rows);
     }
 
-    /**
-     * @param  EloquentCollection<int, EmissionPuEvent>  $events
-     * @return array<string, Collection<int, EmissionPuEvent>>
-     */
     /**
      * Calendário que decide o Dia Útil de accrual. Nulo devolve o contratual, e é por isso que a
      * produção inteira -- que nunca informa a hipótese -- continua idêntica.
@@ -424,17 +441,114 @@ class PuCurveGenerationService
         return $override !== '' ? $override : (string) $parameter->calendar_code;
     }
 
+    /**
+     * Pagamentos do cronograma ATIVOS por data efetiva, na ordem canônica (data,
+     * prioridade do tipo, sequência) -- nunca na ordem de inserção. Cancelado não
+     * entra. Evento ativo que esta engine não calcula recusa o cálculo; a alteração
+     * de spread é lida à parte ({@see self::spreadAmendments()}).
+     *
+     * @param  EloquentCollection<int, EmissionPuEvent>  $events
+     * @return array<string, Collection<int, EmissionPuEvent>>
+     */
     private function groupEventsByDate(EloquentCollection $events): array
     {
-        return $events
-            ->sortBy(fn (EmissionPuEvent $event): string => sprintf(
-                '%s|%010d|%010d',
+        $active = $events->filter(fn (EmissionPuEvent $event): bool => $event->isActive());
+
+        foreach ($active as $event) {
+            $type = PuEventType::tryFrom((string) $event->event_type);
+
+            if ($type === PuEventType::SpreadAmendment || ($type?->isScheduledPayment() ?? false)) {
+                continue;
+            }
+
+            throw new PuCurveInputsException(sprintf(
+                'O evento %s de %s tem efeito financeiro que a engine CDI ainda não calcula; a curva não foi calculada.',
+                $type?->label() ?? (string) $event->event_type,
+                CarbonImmutable::instance($event->effective_date)->format('d/m/Y'),
+            ));
+        }
+
+        return $active
+            ->filter(fn (EmissionPuEvent $event): bool => PuEventType::tryFrom((string) $event->event_type)?->isScheduledPayment() ?? false)
+            ->sortBy(fn (EmissionPuEvent $event): string => PuEventType::orderingKey(
                 CarbonImmutable::instance($event->effective_date)->toDateString(),
-                $event->sequence,
-                $event->id,
+                (string) $event->event_type,
+                (int) $event->sequence,
             ))
             ->groupBy(fn (EmissionPuEvent $event): string => CarbonImmutable::instance($event->effective_date)->toDateString())
             ->all();
+    }
+
+    /**
+     * Alterações de spread ativas, por data efetiva, com o novo spread na escala da
+     * coluna. Uma alteração no início da curva é termo de base, não evento.
+     *
+     * @param  EloquentCollection<int, EmissionPuEvent>  $events
+     * @return array<string, string>
+     */
+    private function spreadAmendments(EloquentCollection $events, CarbonImmutable $startDate): array
+    {
+        $amendments = [];
+
+        foreach ($events as $event) {
+            if (! $event->isActive() || PuEventType::tryFrom((string) $event->event_type) !== PuEventType::SpreadAmendment) {
+                continue;
+            }
+
+            $date = CarbonImmutable::instance($event->effective_date)->startOfDay();
+            $rate = is_array($event->financial_effect) ? ($event->financial_effect['spread_rate'] ?? null) : null;
+
+            if (! is_numeric($rate)) {
+                throw new PuCurveInputsException(sprintf('A alteração de spread de %s não informa o novo spread.', $date->format('d/m/Y')));
+            }
+
+            if ($date->lte($startDate)) {
+                throw new PuCurveInputsException(sprintf(
+                    'A alteração de spread de %s vale desde o início da curva: o spread de base é que deve ser alterado.',
+                    $date->format('d/m/Y'),
+                ));
+            }
+
+            if (isset($amendments[$date->toDateString()])) {
+                throw new PuCurveInputsException(sprintf('Há mais de uma alteração de spread ativa em %s.', $date->format('d/m/Y')));
+            }
+
+            $amendments[$date->toDateString()] = bcadd((string) $rate, '0', DecimalRounder::RATE_SCALE);
+        }
+
+        ksort($amendments);
+
+        return $amendments;
+    }
+
+    /**
+     * Parâmetro do período que começa em `$periodStart`: o de base, com o spread da
+     * última alteração em vigor até essa data. Só o spread muda -- base, modo de
+     * busca e defasagem continuam os contratuais.
+     *
+     * @param  array<string, string>  $amendments
+     */
+    private function parameterForPeriod(
+        EmissionPuParameter $parameter,
+        array $amendments,
+        CarbonImmutable $periodStart,
+    ): EmissionPuParameter {
+        $spread = null;
+
+        foreach ($amendments as $date => $rate) {
+            if ($date <= $periodStart->toDateString()) {
+                $spread = $rate;
+            }
+        }
+
+        if ($spread === null) {
+            return $parameter;
+        }
+
+        $amended = clone $parameter;
+        $amended->setAttribute('spread_rate', $spread);
+
+        return $amended;
     }
 
     /**

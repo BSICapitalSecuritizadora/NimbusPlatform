@@ -24,6 +24,8 @@ class PuCurvePrerequisiteService
         private readonly BusinessCalendarCoverageService $calendarCoverage,
         private readonly PuIndexRateRequirementResolver $indexRateRequirementResolver,
         private readonly PuContractualEventScheduleService $contractualEvents,
+        private readonly PuCurveInputSnapshotService $snapshots,
+        private readonly PuCurveInputValidator $inputValidator,
     ) {}
 
     public function handle(Emission $emission): PuCurvePrerequisiteCheckResult
@@ -123,6 +125,21 @@ class PuCurvePrerequisiteService
             $startDate,
         );
 
+        // Fase 4: a coerência dos insumos contratuais e o horizonte canônico vêm do
+        // mesmo retrato que a geração grava. O calendário e o índice são exigidos até
+        // o fim do horizonte -- o pagamento do vencimento deslocado para depois dele
+        // inclusive. Montado das relações já carregadas aqui (nenhuma consulta a mais);
+        // a geração captura de novo do banco e revalida antes de calcular.
+        if ($startDate !== null && $endDate !== null && $endDate->gte($startDate)) {
+            $inputs = $this->snapshots->fromModels($parameter, $emission->puEvents, $emission->integralizationHistories);
+
+            foreach ($this->inputValidator->issues($inputs) as $message) {
+                $issues[] = PuCurvePrerequisiteIssue::blocking('contractual_inputs', $message);
+            }
+
+            $endDate = $inputs->horizonEndDate();
+        }
+
         if ($startDate !== null && $endDate !== null && $endDate->gte($startDate)) {
             $this->validateIntegralizationTimeline($issues, $emission, $endDate);
             $financialRequirementStartDate = $premiumConfigurationIsValid
@@ -165,7 +182,7 @@ class PuCurvePrerequisiteService
             }
         }
 
-        if ($emission->puEvents->isEmpty()) {
+        if ($emission->puEvents->filter(fn (EmissionPuEvent $event): bool => $event->isActive())->isEmpty()) {
             $issues[] = PuCurvePrerequisiteIssue::warning(
                 'pu_events',
                 'Nenhum evento de juros ou amortizacao foi cadastrado. A curva sera gerada sem pagamentos.',
@@ -235,7 +252,7 @@ class PuCurvePrerequisiteService
     private function validateEffectiveDateJustifications(array &$issues, Emission $emission): void
     {
         $unjustified = $emission->puEvents
-            ->filter(fn (EmissionPuEvent $event): bool => $event->hasUnjustifiedDateChange())
+            ->filter(fn (EmissionPuEvent $event): bool => $event->isActive() && $event->hasUnjustifiedDateChange())
             ->sortBy('effective_date')
             ->values();
 
@@ -371,7 +388,7 @@ class PuCurvePrerequisiteService
         }
 
         $firstInterestEvent = $emission->puEvents
-            ->filter(fn ($event): bool => $event->event_type_enum === PuEventType::InterestPayment)
+            ->filter(fn ($event): bool => $event->isActive() && $event->event_type_enum === PuEventType::InterestPayment)
             ->sortBy(fn ($event): string => CarbonImmutable::instance($event->effective_date)->toDateString())
             ->first();
 

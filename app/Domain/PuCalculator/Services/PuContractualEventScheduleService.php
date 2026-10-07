@@ -27,7 +27,10 @@ use Illuminate\Support\Facades\DB;
  * segundo jeito de derivar datas de pagamento.
  *
  * Criar um evento DEPOIS do último dia calculado não altera nenhuma curva
- * persistida, e por isso a criação se limita a esses eventos. Um evento que
+ * persistida, e por isso a criação se limita a esses eventos. Isso não os põe na
+ * curva oficial: desde a Fase 4 a versão homologada só calcula o que aprovou no
+ * retrato de insumos, então ela avança até a véspera do primeiro evento novo e o
+ * aplica só por uma versão nova homologada. Um evento que
  * falta dentro do período já calculado é reportado e nunca criado aqui: a curva
  * gravada o ignorou e precisa ser refeita por decisão explícita. Eventos
  * gravados que divergem do contrato também só são reportados -- nada é
@@ -273,6 +276,7 @@ final class PuContractualEventScheduleService
 
         EmissionPuEvent::query()
             ->whereBelongsTo($emission)
+            ->active()
             ->whereNull('effective_date_reason')
             ->whereNotNull('original_date')
             ->get()

@@ -256,9 +256,13 @@ it('lets the spreadsheet update only the expected value of a calculated payment'
 });
 
 it('brings the new payments of a homologated curve in with the daily extension', function () {
+    // Fase 4: o cupom de 20/03 só chega pela extensão porque a versão homologada já
+    // o aprovou no retrato de insumos. Cadastrado DEPOIS da homologação, ele não
+    // entraria na versão (ver PuContractualLifecycleTest).
     $emission = officialCurveEmission();
-    homologateOfficialCurve($emission);
     officialCurveInterestEvent($emission, '2026-03-20', '2026-03-20');
+    app(GeneratePuDailyCurve::class)->handle($emission->fresh());
+    homologateOfficialCurve($emission, 'v2');
     publishOfficialCurveCdi('2026-03-16', '2026-03-25');
 
     $result = app(PuCurveExtensionService::class)->extend($emission->fresh());

@@ -64,7 +64,7 @@ final class PuBaselineEventRequirementService
             'schedule_supported' => $scheduleSupported,
             'schedule' => $schedule,
             'contractual_event_count' => 0,
-            'persisted_event_count' => $emission->puEvents->count(),
+            'persisted_event_count' => $emission->puEvents->filter(fn (EmissionPuEvent $event): bool => $event->isActive())->count(),
             'required_events' => [],
             'missing_events' => [],
             'required_event_count' => 0,
@@ -90,6 +90,7 @@ final class PuBaselineEventRequirementService
             ->values()
             ->all();
         $persistedKeys = $emission->puEvents
+            ->filter(fn (EmissionPuEvent $event): bool => $event->isActive())
             ->mapWithKeys(fn (EmissionPuEvent $event): array => [$this->eventKey([
                 'event_type' => $event->event_type,
                 'original_date' => $event->original_date?->toDateString(),

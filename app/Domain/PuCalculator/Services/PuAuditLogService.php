@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\DTOs\IndexRateSyncResult;
+use App\Domain\PuCalculator\DTOs\PuCurveChangeAssessment;
 use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
 use App\Domain\PuCalculator\DTOs\PuCurvePrerequisiteCheckResult;
 use App\Domain\PuCalculator\DTOs\PuNumericHomologationComparisonResult;
@@ -761,6 +762,70 @@ class PuAuditLogService
             ])
             ->event('curve_extension_diverged')
             ->log('pu_curve_extension_diverged');
+    }
+
+    /**
+     * A extensão percebeu que os insumos contratuais vivos já não são os aprovados
+     * na versão: o que mudou, desde quando, e o que isso exige (versão nova antes
+     * da data afetada, ou reprocessamento do passado).
+     */
+    public function logContractualChangeDetected(EmissionPuCurveVersion $version, PuCurveChangeAssessment $assessment): void
+    {
+        activity(self::LOG_NAME)
+            ->performedOn($version->emission)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'curve_version_id' => $version->id,
+                'calculation_version' => $version->calculation_version,
+                'version_status' => $version->status->value,
+                ...$assessment->toArray(),
+            ])
+            ->event('contractual_change_detected')
+            ->log('pu_curve_contractual_change_detected');
+    }
+
+    /**
+     * Mudança de um insumo contratual da curva (evento, integralização ou
+     * parâmetros): quem, o que, valor anterior e novo, desde quando vale, o motivo
+     * e documento quando informados, e o impacto em cada versão viva.
+     *
+     * @param  array<string, mixed>  $before
+     * @param  array<string, mixed>  $after
+     * @param  list<array<string, mixed>>  $affectedVersions
+     */
+    public function logContractualInputChanged(
+        Emission $emission,
+        string $input,
+        ?int $inputId,
+        string $action,
+        array $before,
+        array $after,
+        ?string $effectiveDate,
+        ?string $reason,
+        ?string $documentReference,
+        array $affectedVersions,
+        ?int $requestedByUserId,
+    ): void {
+        $logger = activity(self::LOG_NAME)
+            ->performedOn($emission)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'input' => $input,
+                'input_id' => $inputId,
+                'action' => $action,
+                'before' => $before,
+                'after' => $after,
+                'effective_date' => $effectiveDate,
+                'reason' => $reason,
+                'document_reference' => $documentReference,
+                'affected_versions' => $affectedVersions,
+            ]);
+
+        if (($causer = $this->causer($requestedByUserId)) !== null) {
+            $logger->causedBy($causer);
+        }
+
+        $logger->event('contractual_input_changed')->log('pu_contractual_input_changed');
     }
 
     /**

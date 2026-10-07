@@ -22,9 +22,16 @@ class EmissionPuDailyCurve extends Model
      */
     protected static function booted(): void
     {
+        // Linha de versão homologada também é imutável (Fase 4): uma versão oficial
+        // nova a substitui inteira; nenhum parâmetro, evento ou integralização
+        // reescreve o passado aprovado.
         $assertNotCandidate = function (self $row): void {
             if ($row->belongsToCandidateVersion()) {
                 throw new LogicException('Persisted PU candidate rows are immutable.');
+            }
+
+            if ($row->belongsToHomologatedVersion()) {
+                throw new LogicException('Rows of a homologated PU curve version are immutable.');
             }
         };
 
@@ -132,6 +139,18 @@ class EmissionPuDailyCurve extends Model
         }
 
         return $this->curveVersion()->candidate()->exists();
+    }
+
+    public function belongsToHomologatedVersion(): bool
+    {
+        if ($this->curve_version_id === null) {
+            return false;
+        }
+
+        return EmissionPuCurveVersion::query()
+            ->whereKey($this->curve_version_id)
+            ->homologated()
+            ->exists();
     }
 
     /**

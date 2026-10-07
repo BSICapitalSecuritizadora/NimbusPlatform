@@ -192,6 +192,13 @@ class PuOperationalMonitorService
             );
         }
 
+        if (($pending = $this->pendingContractualChangeCount()) > 0) {
+            $issues[] = sprintf(
+                '%d curva(s) oficial(is) com mudanca contratual nao homologada: o PU oficial para na vespera da data afetada ate uma nova versao ser homologada.',
+                $pending,
+            );
+        }
+
         if (($failed = $this->failedOfficialExtensionCount()) > 0) {
             $issues[] = sprintf(
                 '%d curva(s) oficial(is) cuja extensao diaria falhou: o PU oficial nao avanca alem da ultima data realizada gravada.',
@@ -238,6 +245,28 @@ class PuOperationalMonitorService
             ->operational()
             ->homologated()
             ->whereNotNull('extension_failed_at')
+            ->count();
+    }
+
+    /**
+     * Curvas OFICIAIS cuja extensão percebeu insumos contratuais diferentes dos
+     * aprovados só no futuro (o passado divergente já conta em
+     * {@see self::divergedGovernedCurveCount()}). Uma homologada substituída por
+     * outra mais nova não conta: a pendência foi resolvida pela versão nova.
+     */
+    public function pendingContractualChangeCount(): int
+    {
+        $officialIds = EmissionPuCurveVersion::query()
+            ->operational()
+            ->homologated()
+            ->selectRaw('MAX(id) as id')
+            ->groupBy('emission_id')
+            ->pluck('id');
+
+        return EmissionPuCurveVersion::query()
+            ->whereIn('id', $officialIds)
+            ->whereNotNull('contractual_change_detected_at')
+            ->whereNull('extension_diverged_at')
             ->count();
     }
 

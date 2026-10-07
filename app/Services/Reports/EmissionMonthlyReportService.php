@@ -1565,6 +1565,7 @@ class EmissionMonthlyReportService
     private function nextEventDate(Emission $emission, CarbonImmutable $monthStart): ?CarbonImmutable
     {
         $event = $emission->puEvents()
+            ->active()
             ->whereNotNull('effective_date')
             ->where('effective_date', '>=', $monthStart->toDateString())
             ->orderBy('effective_date')
@@ -1574,7 +1575,7 @@ class EmissionMonthlyReportService
             return CarbonImmutable::instance($event->effective_date);
         }
 
-        if ($emission->puEvents()->exists()) {
+        if ($emission->puEvents()->active()->exists()) {
             return null;
         }
 
@@ -1620,6 +1621,7 @@ class EmissionMonthlyReportService
     private function upcomingEventsFrom(Emission $emission, CarbonImmutable $monthStart, int $limit = 6): Collection
     {
         return $emission->puEvents()
+            ->active()
             ->whereNotNull('effective_date')
             ->where('effective_date', '>=', $monthStart->toDateString())
             ->orderBy('effective_date')

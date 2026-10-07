@@ -4,12 +4,15 @@ namespace App\Models;
 
 use App\Actions\Emissions\RecordIntegralizationHistory;
 use App\Enums\IntegralizationSource;
+use App\Observers\PuContractualInputObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Activitylog\Contracts\Activity;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
+#[ObservedBy(PuContractualInputObserver::class)]
 class IntegralizationHistory extends Model
 {
     use LogsActivity;
