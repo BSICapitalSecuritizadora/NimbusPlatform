@@ -9,6 +9,7 @@ use App\Mail\ContactFormMail;
 use App\Models\ContactMessage;
 use App\Models\Document;
 use App\Models\Emission;
+use App\Support\BusinessTime;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -124,8 +125,15 @@ class SiteController extends Controller
             ])
             ->firstOrFail();
 
-        // A curva oficial homologada prevalece; sem ela, o Histórico de PU importado.
-        $puReadings = app(EmissionPuReader::class)->latestReadings($emission, CarbonImmutable::today(), 5);
+        // A curva oficial homologada prevalece; sem ela, o Histórico de PU importado. A data pedida é o
+        // dia de negócio (America/Sao_Paulo), não o dia UTC, e a lista vem vazia quando o PU mais recente
+        // não pode ser apresentado como o atual (curva oficial atrasada, sem índice, com falha ou em
+        // reprocessamento).
+        $puReadings = app(EmissionPuReader::class)->latestReadings(
+            $emission,
+            CarbonImmutable::parse(BusinessTime::dateString())->startOfDay(),
+            5,
+        );
 
         return view('site.emission-detail', compact('emission', 'puReadings'));
     }

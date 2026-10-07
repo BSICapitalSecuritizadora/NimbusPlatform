@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Measurement;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
@@ -14,9 +13,13 @@ class OperationNextMeasurementResolver
     /**
      * Resolve na consulta, sem persistir next_measurement_at nem consultar por registro.
      * O plano segue Operation::defaultPlanSet(): padrão, ou o primeiro cadastrado.
-     * Pendente segue o cronograma: sem realizado mensal/acumulado. O vínculo da
-     * Engenharia consome a linha; assets de medições abertas/finalizadas também
-     * a ocupam. Recusa sem realização permite reapresentação da competência.
+     * Pendente é a linha que ainda pode receber medição
+     * ({@see MeasurementPlanLine::scopeAvailableForMeasurement()}): nem
+     * reivindicada por Engenharia vigente, nem ocupada por outra medição aberta,
+     * finalizada ou com pagamento. As colunas `realized_*`/`measurement_id` da
+     * linha não decidem: elas guardam a última aprovação mesmo depois de ela
+     * deixar de valer, e prendiam para sempre a competência de uma medição
+     * recusada, excluída ou reaprovada em outra linha.
      * A sequência do plano prevalece sobre a data atual, inclusive para atrasos.
      *
      * @param  Builder<Operation>  $operations
@@ -39,11 +42,7 @@ class OperationNextMeasurementResolver
             ->whereColumn($line->qualifyColumn('operation_id'), $operations->getModel()->getQualifiedKeyName())
             ->where('plan_set_id', $defaultPlan)
             ->whereNotNull('measurement_date')
-            ->where('realized_monthly_percent', '<=', 0)
-            ->where('realized_cumulative_percent', '<=', 0)
-            ->whereNull('measurement_id')
-            ->whereDoesntHave('assets.measurement', fn (Builder $measurements): Builder => $measurements
-                ->whereIn('status', [...Measurement::OPEN_STATUSES, 'finalized']))
+            ->availableForMeasurement()
             ->whereDoesntHave('planSet', fn (Builder $plans): Builder => $this->coveringInitialProgress($plans, $line))
             ->orderBy('sequence_number')
             ->limit(1);

@@ -334,20 +334,26 @@ class Operation extends Model
         return $this->responsibleUserIdFor($responsibility) === (int) $user->getKey();
     }
 
+    /**
+     * Participa da operação quem ocupa um dos sete papéis do fluxo.
+     *
+     * A lista "Notificar em caso de recusa" ({@see self::rejectionNotifyUsers()})
+     * fica de fora de propósito: ela só decide quem recebe o aviso de recusa da
+     * Engenharia. Quando contava como participação, quem fora incluído "para ser
+     * avisado" passava a ver e editar a operação, enviar medição, baixar arquivos
+     * e comprovantes e -- com a permissão de gerir responsáveis -- trocar os sete
+     * responsáveis. A mesma regra vale no escopo SQL
+     * ({@see ResponsibilityDelegationService::scopeVisibleOperationsTo()}) e na
+     * classificação direto/delegado do cockpit; as três precisam concordar.
+     */
     public function hasParticipant(User $user): bool
     {
-        $participantIds = [
-            $this->assigned_user_id,
-            $this->responsible_user_id,
-            $this->stage2_reviewer_user_id,
-            $this->stage3_reviewer_user_id,
-            $this->payment_manager_user_id,
-            $this->payment_receipt_uploader_user_id,
-            $this->payment_finalizer_user_id,
-        ];
+        $participantIds = array_map(
+            fn (string $field): int => (int) $this->getAttribute($field),
+            self::RESPONSIBILITY_FIELDS,
+        );
 
-        return in_array((int) $user->getKey(), array_map('intval', array_filter($participantIds)), true)
-            || $this->rejectionNotifyUsers()->whereKey($user->getKey())->exists();
+        return in_array((int) $user->getKey(), array_filter($participantIds), true);
     }
 
     /**

@@ -14,6 +14,7 @@ use App\Models\Emission;
 use App\Models\EmissionPuCurvePromotion;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuExternalBenchmark;
+use App\Models\Measurement;
 use App\Models\MeasurementPayment;
 use App\Models\MeasurementPaymentReceiptEvidence;
 use App\Models\ObligationAnchorEvent;
@@ -124,6 +125,13 @@ class SalesBoardSourceGuard
      * vez de um erro de constraint -- e os quadros entram porque, ao contrário,
      * iriam embora junto.
      *
+     * A medição entra pelo mesmo motivo dos quadros. A cascata do banco desce de
+     * `operations` para `measurements` e daí para análises, arquivos, pausas e
+     * pagamentos sem passar por `Operation::deleting` nem por
+     * `Measurement::deleting`: apagaria em silêncio a medição em análise e até o
+     * pagamento ainda sem comprovante. Qualquer medição basta, como no
+     * `deleting` da operação -- operação com medição se cancela, não se apaga.
+     *
      * @return list<string>
      */
     public function emissionDeletionBlockers(Emission $emission): array
@@ -147,6 +155,7 @@ class SalesBoardSourceGuard
                 ['tem curva de PU gerada', EmissionPuCurvePromotion::query()->where('emission_id', $emissionId)],
                 ['tem validação externa de PU', EmissionPuExternalBenchmark::query()->where('emission_id', $emissionId)],
                 ['tem operação com delegação de responsabilidade', ResponsibilityDelegation::query()->whereIn('scope_operation_id', $operationIds)],
+                ['tem operação com medição registrada', Measurement::query()->whereIn('operation_id', $operationIds)],
                 ['tem operação com comprovante de pagamento de medição', MeasurementPaymentReceiptEvidence::query()->whereIn(
                     'measurement_payment_id',
                     MeasurementPayment::query()->select('id')->whereIn('operation_id', $operationIds),

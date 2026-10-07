@@ -67,6 +67,13 @@ class Measurement extends Model
         'finalized',
     ];
 
+    /**
+     * O pagamento foi registrado para esta competência: movê-la levaria o
+     * pagamento para outra sem justificativa nem aceite, e a competência paga
+     * voltaria a ficar livre para uma nova medição.
+     */
+    public const PAID_COMPETENCE_CHANGE_REFUSAL = 'A competência de uma medição com pagamento registrado não pode ser alterada: o pagamento continua vinculado a ela.';
+
     protected $fillable = [
         'operation_id',
         'plan_set_id',
@@ -114,14 +121,26 @@ class Measurement extends Model
                 ]);
             }
 
+            if ($measurement->exists
+                && $measurement->isDirty('reference_month')
+                && $measurement->payments()->exists()) {
+                throw new MeasurementWorkflowException(self::PAID_COMPETENCE_CHANGE_REFUSAL, [
+                    'measurement_id' => $measurement->getKey(),
+                    'original_reference_month' => $measurement->getRawOriginal('reference_month'),
+                ]);
+            }
+
             if (blank($measurement->filename) && filled($measurement->storage_path)) {
                 $measurement->filename = basename((string) $measurement->storage_path);
             }
         });
 
         static::deleting(function (self $measurement): void {
-            if ($measurement->hasApprovedEngineering()) {
-                throw new MeasurementWorkflowException('Uma medição aprovada pela Engenharia não pode ser excluída.');
+            if ($measurement->hasWorkflowHistory()) {
+                throw new MeasurementWorkflowException('Uma medição que já entrou no fluxo de análise não pode ser excluída: ela é encerrada pelo próprio fluxo.', [
+                    'measurement_id' => $measurement->getKey(),
+                    'status' => $measurement->status,
+                ]);
             }
         });
     }
@@ -220,6 +239,48 @@ class Measurement extends Model
             ->where('stage', 1)
             ->where('status', 'approved')
             ->exists();
+    }
+
+    /**
+     * A medição já entrou no fluxo de análise?
+     *
+     * Finalizada, ou com qualquer análise registrada -- pendente, pausada,
+     * recusada ou aprovada, em qualquer etapa. A criação pela tela abre a
+     * análise da Engenharia na mesma transação, então fica de fora só a medição
+     * que nunca chegou a ser enviada: dado legado ou caminho programático.
+     *
+     * São as cláusulas de integridade de `MeasurementPolicy::delete()`,
+     * repetidas aqui como invariante porque a policy não alcança todo caminho:
+     * o super-admin passa pelo `Gate::before` sem consultá-la, e um `delete()`
+     * Eloquent -- comando, tinker, ação recolocada na tela -- nem pergunta. Sem
+     * o `deleting`, as análises, as pausas e os pagamentos desceriam pela FK em
+     * cascata, sem trilha, inclusive o pagamento de uma medição devolvida da
+     * Finalização à Engenharia, que já não tem a aprovação dela.
+     */
+    public function hasWorkflowHistory(): bool
+    {
+        return $this->status === 'finalized'
+            || $this->reviews()->exists();
+    }
+
+    /**
+     * A medição tem pagamento registrado?
+     *
+     * Pagamento não tem estorno nem exclusão no domínio: a partir dele a
+     * competência, os arquivos e a obra e a linha de cada arquivo ficam presos
+     * ao que foi pago, e a Engenharia passa a conferir só os empreendimentos
+     * dos próprios arquivos.
+     *
+     * Serve à tela, que pergunta isso a cada campo travado: usa a relação já
+     * carregada quando houver e, sem ela, consulta o banco. As guardas dos
+     * models consultam o banco direto -- uma relação carregada antes do
+     * pagamento não pode decidir a gravação.
+     */
+    public function hasRegisteredPayment(): bool
+    {
+        return $this->relationLoaded('payments')
+            ? $this->payments->isNotEmpty()
+            : $this->payments()->exists();
     }
 
     public function getResolvedStorageDiskAttribute(): string

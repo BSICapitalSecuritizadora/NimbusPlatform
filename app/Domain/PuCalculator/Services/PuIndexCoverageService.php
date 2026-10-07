@@ -168,10 +168,11 @@ class PuIndexCoverageService
                 $dateKey = $currentDate->toDateString();
                 $missing[$dateKey] = $dateKey;
                 $missingMessages[$dateKey] = sprintf(
-                    'Nao foi possivel resolver a Taxa DI requerida para a data da curva %s. Modo: %s. Calendario: %s. Lag: %d dia(s) util(eis). Motivo: %s',
+                    'Nao foi possivel resolver a Taxa DI requerida para a data da curva %s. Modo: %s. Calendario: %s. Calendario de divulgacao do CDI: %s. Lag: %d dia(s) util(eis). Motivo: %s',
                     $dateKey,
                     $parameter->index_rate_lookup_mode_enum->name,
                     (string) $parameter->calendar_code,
+                    $this->indexRateRequirementResolver->observationCalendarCode($parameter),
                     (int) $parameter->index_rate_lag_business_days,
                     $exception->getMessage(),
                 );
@@ -189,7 +190,6 @@ class PuIndexCoverageService
 
             if ($snapshot === null) {
                 if ($this->indexRateRequirementResolver->isAwaitingPublication(
-                    $parameter,
                     $rateRequirement,
                     $lastResolvedDate !== null,
                 )) {
@@ -221,10 +221,17 @@ class PuIndexCoverageService
         ];
     }
 
+    /**
+     * Última observação REALIZADA: linha projetada não conta, seja pela marcação
+     * explícita, seja pelo legado `forward_projection`.
+     */
     private function lastAvailableIndexDate(?string $indexer): ?string
     {
         $query = IndexRate::query()
-            ->where('source_reference', '!=', self::PROJECTED_SOURCE_REFERENCE);
+            ->where('is_projected', false)
+            ->where(fn ($realized) => $realized
+                ->whereNull('source_reference')
+                ->orWhere('source_reference', '!=', self::PROJECTED_SOURCE_REFERENCE));
 
         if ($indexer !== null) {
             $query->forIndexer($indexer);

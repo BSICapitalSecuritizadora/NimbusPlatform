@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\Services;
 
+use App\Domain\PuCalculator\DTOs\PuOfficialCurveStatus;
 use App\Domain\PuCalculator\DTOs\PuReading;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
@@ -39,9 +40,33 @@ use Illuminate\Support\Collection;
  *
  * O PU lido é o residual do dia: depois dos pagamentos daquela data, a mesma
  * semântica que a projeção legada gravava no Histórico de PU.
+ *
+ * A curva oficial só tem linhas REALIZADAS: termina no último dia sustentado por
+ * índice divulgado, nunca no vencimento por repetição da última taxa. Daí três
+ * formas de ler, e a diferença entre elas é a política dos consumidores oficiais:
+ *
+ *  - {@see self::officialReadingAt()}: o PU oficial EXATAMENTE da data, ou nada,
+ *    com a situação da curva dizendo por quê. Nunca carrega valor para a frente;
+ *  - {@see self::readingOn()} / {@see self::readingWithin()}: o último PU
+ *    conhecido até a data, com a data a que ele pertence, a data pedida e a
+ *    situação da curva oficial ({@see PuReading::isCarriedForward()},
+ *    {@see PuReading::freshness()}). Quem mostra a posição ao lado do valor
+ *    (relatório mensal) usa assim; quem não mostra (saldo devedor das garantias)
+ *    exige {@see PuReading::standsForRequestedDate()};
+ *  - {@see self::latestReadings()}: a lista do site, que apresenta o primeiro
+ *    como "PU atual" e por isso já vem vazia quando ele não pode responder pela
+ *    data pedida.
+ *
+ * Em todas, a linha que o reprocessamento pôs em dúvida (o passado da curva
+ * oficial mudou a partir de uma data) não é devolvida -- e não cai no Histórico
+ * de PU, que só responde pelas datas que a curva oficial não cobre.
  */
 final class EmissionPuReader
 {
+    public function __construct(
+        private readonly PuOfficialCurveFreshnessService $freshness,
+    ) {}
+
     /**
      * Memo por instância: um relatório lê a mesma emissão várias vezes.
      *
@@ -81,32 +106,113 @@ final class EmissionPuReader
     }
 
     /**
+     * PU OFICIAL exatamente da data: só da curva homologada vigente, só dentro da
+     * fronteira realizada. Fora dela a leitura vem nula, com a situação da curva
+     * oficial explicando por quê (sem curva oficial, índice ainda não divulgado,
+     * índice ausente, curva atrasada, extensão falhou, reprocessamento). Nunca cai
+     * no Histórico de PU nem numa versão não homologada.
+     *
+     * @return array{reading: PuReading|null, status: PuOfficialCurveStatus}
+     */
+    public function officialReadingAt(Emission $emission, CarbonInterface $date, ?CarbonInterface $now = null): array
+    {
+        $status = $this->freshness->status($emission, $now);
+        $version = $this->officialVersion($emission, fresh: true);
+
+        if (! $version instanceof EmissionPuCurveVersion || ! $status->covers($date) || ! $status->isReliableAt($date)) {
+            return ['reading' => null, 'status' => $status];
+        }
+
+        $row = EmissionPuDailyCurve::query()
+            ->where('curve_version_id', $version->id)
+            ->whereDate('curve_date', $date->toDateString())
+            ->first(['curve_date', 'residual_unit_value']);
+
+        return [
+            'reading' => $row instanceof EmissionPuDailyCurve
+                ? new PuReading(
+                    date: CarbonImmutable::parse((string) $row->curve_date)->startOfDay(),
+                    unitValue: (string) $row->residual_unit_value,
+                    source: PuReading::SOURCE_OFFICIAL_CURVE,
+                    calculationVersion: $version->calculation_version,
+                    requestedDate: CarbonImmutable::parse($date->toDateString())->startOfDay(),
+                    officialStatus: $status,
+                )
+                : null,
+            'status' => $status,
+        ];
+    }
+
+    /**
+     * Situação da curva oficial frente ao índice realizado.
+     */
+    public function officialStatus(Emission $emission, ?CarbonInterface $now = null): PuOfficialCurveStatus
+    {
+        return $this->freshness->status($emission, $now);
+    }
+
+    /**
      * Último PU conhecido até a data (inclusive).
      */
-    public function readingOn(Emission $emission, CarbonInterface $date): ?PuReading
+    public function readingOn(Emission $emission, CarbonInterface $date, ?CarbonInterface $now = null): ?PuReading
     {
-        return $this->readingWithin($emission, null, $date);
+        return $this->readingWithin($emission, null, $date, $now);
     }
 
     /**
      * Último PU dentro do intervalo; sem início, qualquer data até o fim serve.
+     *
+     * A leitura da curva oficial pode ser CARREGADA de uma data anterior ao fim
+     * do intervalo e traz a situação da curva: quem não mostra a posição ao lado
+     * do valor confere {@see PuReading::standsForRequestedDate()}. Linha que o
+     * reprocessamento pôs em dúvida não volta -- nem é trocada pelo Histórico.
      */
-    public function readingWithin(Emission $emission, ?CarbonInterface $from, CarbonInterface $to): ?PuReading
-    {
-        return $this->curveReadings($emission, $from, $to, 1)->first()
-            ?? $this->historyReadings($emission, $from, $to, 1)->first();
+    public function readingWithin(
+        Emission $emission,
+        ?CarbonInterface $from,
+        CarbonInterface $to,
+        ?CarbonInterface $now = null,
+    ): ?PuReading {
+        $curve = $this->curveReadings($emission, $from, $to, 1, requested: $to, now: $now);
+
+        if ($curve->isNotEmpty()) {
+            $reading = $curve->first();
+
+            return $reading->officialStatus?->isReliableAt($reading->date) === true ? $reading : null;
+        }
+
+        return $this->historyReadings($emission, $from, $to, 1, requested: $to)->first();
     }
 
     /**
-     * Os últimos PUs até a data, do mais recente para o mais antigo.
+     * Os últimos PUs até a data, do mais recente para o mais antigo -- a lista
+     * pública, cujo primeiro é apresentado como "PU atual" sem a data ao lado.
+     *
+     * Da curva oficial, a lista só sai quando o mais recente pode responder pela
+     * data pedida ({@see PuReading::standsForRequestedDate()}) e o valor dele
+     * continua valendo; senão ela vem vazia, e o PU fica indisponível em vez de
+     * aparecer como atual sem ser. Cada leitura mantém a própria data.
      *
      * @return Collection<int, PuReading>
      */
-    public function latestReadings(Emission $emission, CarbonInterface $until, int $limit): Collection
+    public function latestReadings(Emission $emission, CarbonInterface $until, int $limit, ?CarbonInterface $now = null): Collection
     {
-        $curve = $this->curveReadings($emission, null, $until, $limit);
+        $curve = $this->curveReadings($emission, null, $until, $limit, requested: $until, now: $now);
 
-        return $curve->isNotEmpty() ? $curve : $this->historyReadings($emission, null, $until, $limit);
+        if ($curve->isEmpty()) {
+            return $this->historyReadings($emission, null, $until, $limit, requested: $until);
+        }
+
+        /** @var PuReading $latest */
+        $latest = $curve->first();
+
+        if (! $latest->standsForRequestedDate() || $latest->officialStatus?->isReliableAt($latest->date) !== true) {
+            return collect();
+        }
+
+        return $curve
+            ->filter(fn (PuReading $reading): bool => $reading->officialStatus?->isReliableAt($reading->date) === true)
+            ->values();
     }
 
     /**
@@ -126,26 +232,43 @@ final class EmissionPuReader
     /**
      * @return Collection<int, PuReading>
      */
-    private function curveReadings(Emission $emission, ?CarbonInterface $from, CarbonInterface $to, int $limit): Collection
-    {
+    private function curveReadings(
+        Emission $emission,
+        ?CarbonInterface $from,
+        CarbonInterface $to,
+        int $limit,
+        ?CarbonInterface $requested = null,
+        ?CarbonInterface $now = null,
+    ): Collection {
         $version = $this->officialVersion($emission);
 
         if (! $version instanceof EmissionPuCurveVersion) {
             return collect();
         }
 
-        return EmissionPuDailyCurve::query()
+        $rows = EmissionPuDailyCurve::query()
             ->where('curve_version_id', $version->id)
             ->when($from !== null, fn ($query) => $query->whereDate('curve_date', '>=', $from->toDateString()))
             ->whereDate('curve_date', '<=', $to->toDateString())
             ->orderByDesc('curve_date')
             ->limit($limit)
-            ->get(['curve_date', 'residual_unit_value'])
+            ->get(['curve_date', 'residual_unit_value']);
+
+        if ($rows->isEmpty()) {
+            return collect();
+        }
+
+        // Uma situação por leitura, tirada no mesmo instante para todas as linhas.
+        $status = $this->freshness->status($emission, $now);
+
+        return $rows
             ->map(fn (EmissionPuDailyCurve $row): PuReading => new PuReading(
                 date: CarbonImmutable::parse((string) $row->curve_date)->startOfDay(),
                 unitValue: (string) $row->residual_unit_value,
                 source: PuReading::SOURCE_OFFICIAL_CURVE,
                 calculationVersion: $version->calculation_version,
+                requestedDate: $requested !== null ? CarbonImmutable::parse($requested->toDateString())->startOfDay() : null,
+                officialStatus: $status,
             ))
             ->values();
     }
@@ -153,8 +276,13 @@ final class EmissionPuReader
     /**
      * @return Collection<int, PuReading>
      */
-    private function historyReadings(Emission $emission, ?CarbonInterface $from, CarbonInterface $to, int $limit): Collection
-    {
+    private function historyReadings(
+        Emission $emission,
+        ?CarbonInterface $from,
+        CarbonInterface $to,
+        int $limit,
+        ?CarbonInterface $requested = null,
+    ): Collection {
         $governedSince = $this->governedSince($emission);
 
         return PuHistory::query()
@@ -177,6 +305,7 @@ final class EmissionPuReader
                 date: CarbonImmutable::parse((string) $history->date)->startOfDay(),
                 unitValue: (string) $history->unit_value,
                 source: PuReading::SOURCE_PU_HISTORY,
+                requestedDate: $requested !== null ? CarbonImmutable::parse($requested->toDateString())->startOfDay() : null,
             ))
             ->values();
     }

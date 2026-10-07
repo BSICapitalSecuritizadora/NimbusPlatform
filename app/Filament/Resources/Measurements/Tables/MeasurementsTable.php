@@ -11,9 +11,7 @@ use App\Services\MeasurementOperationalReadModel;
 use App\Services\MeasurementSlaService;
 use App\Services\MeasurementWorkflow;
 use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
@@ -49,6 +47,15 @@ class MeasurementsTable
         return $tableFilters;
     }
 
+    /**
+     * A listagem não exclui medições, nem em massa nem por linha. A exclusão
+     * física levaria junto, pela FK em cascata, as análises, as pausas, os
+     * alertas de SLA, os pagamentos e o registro dos arquivos -- que ficariam
+     * órfãos no storage --, sem passar pelos models nem pela trilha. Medição
+     * enviada por engano se encerra pelo próprio fluxo, não se apaga: o
+     * `deleting` do model recusa a que já entrou nele, inclusive para o
+     * super-admin, e a policy nega o `deleteAny`.
+     */
     public static function configure(Table $table): Table
     {
         return $table
@@ -257,11 +264,6 @@ class MeasurementsTable
                     ->label('Visualizar')
                     ->color('info')
                     ->icon('heroicon-m-eye'),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
             ]);
     }
 

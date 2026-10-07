@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -18,6 +19,25 @@ class MeasurementAsset extends Model
 {
     /** @use HasFactory<MeasurementAssetFactory> */
     use DerivesStoredFileMetadata, HasFactory;
+
+    /**
+     * O pagamento é registrado sobre o contexto que a Engenharia aprovou a
+     * partir destes arquivos, e a medição paga devolvida à Engenharia só sai
+     * pela reaprovação -- que confere justamente os empreendimentos dos
+     * arquivos dela (`MeasurementEngineeringService::validateAndRecord()`).
+     * Remover um arquivo deixaria a medição sem saída: o Editar não acrescenta
+     * arquivo, a recusa terminal não vale com pagamento e a Engenharia passaria
+     * a conferir uma cobertura que o pagamento não tem.
+     */
+    public const PAID_FILE_REMOVAL_REFUSAL = 'O arquivo de uma medição com pagamento registrado não pode ser removido: o pagamento depende dele.';
+
+    /**
+     * Trocar a obra ou a linha do arquivo pago levaria o pagamento para outra
+     * competência sem justificativa nem aceite, e liberaria a linha paga para
+     * uma nova medição -- a mesma competência paga duas vezes. Trocar o arquivo
+     * na mesma linha continua sendo a correção da Engenharia.
+     */
+    public const PAID_CONTEXT_CHANGE_REFUSAL = 'A obra e a linha do cronograma de uma medição com pagamento registrado não podem ser alteradas: o pagamento continua vinculado a elas.';
 
     protected $attributes = [
         'storage_disk' => DocumentStorageService::DEFAULT_PRIVATE_DISK,
@@ -56,15 +76,17 @@ class MeasurementAsset extends Model
                     ]);
                 }
 
-                if ($newFile) {
-                    $validation->validateAsset(
-                        (string) $asset->storage_path,
-                        $asset->resolved_storage_disk,
-                    );
+                if ($asset->exists
+                    && $asset->isDirty(['plan_set_id', 'plan_line_id'])
+                    && $measurement?->payments()->exists()) {
+                    throw new MeasurementWorkflowException(self::PAID_CONTEXT_CHANGE_REFUSAL, [
+                        'measurement_id' => $measurement->getKey(),
+                        'asset_id' => $asset->getKey(),
+                    ]);
+                }
 
-                    if (! is_string($asset->sha256) || strlen($asset->sha256) !== 64) {
-                        throw ValidationException::withMessages(['asset' => 'Não foi possível calcular o SHA-256 do arquivo da medição.']);
-                    }
+                if ($newFile) {
+                    $asset->validateNewFile($validation);
                 }
             } catch (Throwable $exception) {
                 if ($newFile) {
@@ -88,6 +110,13 @@ class MeasurementAsset extends Model
 
             if ($measurement?->hasApprovedEngineering()) {
                 throw new MeasurementWorkflowException('Um arquivo aprovado pela Engenharia não pode ser removido sem devolver a medição à Engenharia.', [
+                    'measurement_id' => $measurement->getKey(),
+                    'asset_id' => $asset->getKey(),
+                ]);
+            }
+
+            if ($measurement?->payments()->exists()) {
+                throw new MeasurementWorkflowException(self::PAID_FILE_REMOVAL_REFUSAL, [
                     'measurement_id' => $measurement->getKey(),
                     'asset_id' => $asset->getKey(),
                 ]);
@@ -164,6 +193,63 @@ class MeasurementAsset extends Model
     protected function storedFileMetadataDisk(): string
     {
         return $this->resolved_storage_disk;
+    }
+
+    /**
+     * Confere o arquivo novo -- armazenamento, tipo real, tamanho, antivírus e
+     * SHA-256 -- e recusa dizendo de qual empreendimento ele é.
+     *
+     * O envio grava um arquivo por empreendimento, e a recusa sai com a chave
+     * `asset`, que não é campo do formulário: vira uma notificação só. Numa
+     * operação com Torre Alfa e Torre Beta, "O arquivo foi bloqueado pelo
+     * antivírus" não diz qual trocar, e a recusa descarta todos os arquivos da
+     * tentativa. O registro crítico do antivírus, feito pelo serviço, leva a
+     * medição e o plano no contexto do log enquanto este arquivo é conferido.
+     */
+    private function validateNewFile(MeasurementFileValidationService $validation): void
+    {
+        $logContext = [
+            'measurement_id' => $this->measurement_id,
+            'plan_set_id' => $this->plan_set_id,
+        ];
+
+        Log::withContext($logContext);
+
+        try {
+            $validation->validateAsset((string) $this->storage_path, $this->resolved_storage_disk);
+
+            if (! is_string($this->sha256) || strlen($this->sha256) !== 64) {
+                throw ValidationException::withMessages(['asset' => 'Não foi possível calcular o SHA-256 do arquivo da medição.']);
+            }
+        } catch (ValidationException $exception) {
+            throw $this->withDevelopmentLabel($exception);
+        } finally {
+            Log::withoutContext(array_keys($logContext));
+        }
+    }
+
+    /**
+     * A recusa com o empreendimento na frente de cada mensagem, quando a
+     * operação tem mais de um -- com um só, não há o que distinguir e a frase
+     * fica como sempre foi.
+     */
+    private function withDevelopmentLabel(ValidationException $exception): ValidationException
+    {
+        $planSet = filled($this->plan_set_id)
+            ? MeasurementPlanSet::query()->with('construction')->find($this->plan_set_id)
+            : null;
+
+        if (! $planSet instanceof MeasurementPlanSet
+            || MeasurementPlanSet::query()->where('operation_id', $planSet->operation_id)->count() < 2) {
+            return $exception;
+        }
+
+        $label = $planSet->construction?->development_name ?? $planSet->name;
+
+        return ValidationException::withMessages(array_map(
+            fn (array $messages): array => array_map(fn (string $message): string => "{$label}: {$message}", $messages),
+            $exception->errors(),
+        ));
     }
 
     private function auditAssetChange(string $event, ?string $oldHash): void

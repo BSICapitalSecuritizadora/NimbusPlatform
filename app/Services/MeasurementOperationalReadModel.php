@@ -489,13 +489,20 @@ class MeasurementOperationalReadModel
         return $query;
     }
 
-    /** @param Builder<Operation> $query */
+    /**
+     * Participação direta = um dos sete papéis do fluxo, a mesma regra de
+     * {@see Operation::hasParticipant()}.
+     *
+     * A lista "Notificar em caso de recusa" não conta. Além de não ser
+     * participação, ela distorcia a atribuição: "delegada" é "visível e não
+     * direta", e um delegado que também estava na lista aparecia como direto no
+     * filtro e sumia da contagem de delegadas do cockpit.
+     *
+     * @param  Builder<Operation>  $query
+     */
     private function applyDirectParticipation(Builder $query, User $user): Builder
     {
-        return $query->where(function (Builder $direct) use ($user): void {
-            $this->applyResponsibilityColumns($direct, (int) $user->getKey());
-            $direct->orWhereHas('rejectionNotifyUsers', fn (Builder $users): Builder => $users->whereKey($user->getKey()));
-        });
+        return $query->where(fn (Builder $direct): Builder => $this->applyResponsibilityColumns($direct, (int) $user->getKey()));
     }
 
     private function loadOperationalDelegations(User $viewer): void

@@ -428,7 +428,18 @@ class ResponsibilityDelegationService
         };
     }
 
-    /** @param Builder<Operation> $query */
+    /**
+     * Operações que o usuário enxerga: as que ele ocupa em um dos sete papéis do
+     * fluxo, mais as cobertas por delegação efetiva.
+     *
+     * Estar na lista "Notificar em caso de recusa" não entra: a lista só define
+     * quem recebe o aviso, e este escopo alimenta as telas, os relatórios, o
+     * cockpit e os seletores do formulário. É a mesma regra de
+     * {@see Operation::hasParticipant()}; se as duas divergirem, a policy nega o
+     * que a lista mostra (ou o contrário).
+     *
+     * @param  Builder<Operation>  $query
+     */
     public function scopeVisibleOperationsTo(Builder $query, User $user): Builder
     {
         if ($user->hasAnyRole(['super-admin', 'admin'])) {
@@ -440,14 +451,11 @@ class ResponsibilityDelegationService
 
         return $query->where(function (Builder $visible) use ($user, $operationTable, $permittedResponsibilities): void {
             $visible->where(function (Builder $direct) use ($user): void {
-                $direct->where('assigned_user_id', $user->getKey())
-                    ->orWhere('responsible_user_id', $user->getKey())
-                    ->orWhere('stage2_reviewer_user_id', $user->getKey())
-                    ->orWhere('stage3_reviewer_user_id', $user->getKey())
-                    ->orWhere('payment_manager_user_id', $user->getKey())
-                    ->orWhere('payment_receipt_uploader_user_id', $user->getKey())
-                    ->orWhere('payment_finalizer_user_id', $user->getKey())
-                    ->orWhereHas('rejectionNotifyUsers', fn (Builder $users): Builder => $users->whereKey($user->getKey()));
+                foreach (Operation::RESPONSIBILITY_FIELDS as $index => $column) {
+                    $index === 0
+                        ? $direct->where($column, $user->getKey())
+                        : $direct->orWhere($column, $user->getKey());
+                }
             });
 
             if ($permittedResponsibilities === []) {

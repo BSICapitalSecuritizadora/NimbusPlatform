@@ -69,11 +69,16 @@ class PortalDocumentForm
                                     ->rows(3)
                                     ->columnSpanFull(),
 
+                                // O disco privado é o mesmo da Medição e dos
+                                // documentos gerais: só valem o caminho já gravado
+                                // e o upload novo, nunca um caminho trocado no
+                                // payload -- o portal entregaria o arquivo alheio.
                                 FileUpload::make('file_path')
                                     ->label('Arquivo')
                                     ->required()
                                     ->disk(DocumentStorageService::privateDisk())
                                     ->directory(DocumentStorageService::PRIVATE_PREFIX.'/portal-documents')
+                                    ->preventFilePathTampering()
                                     ->maxSize($maxKb)
                                     ->helperText("Formatos aceitos: PDF, DOCX, XLSX, PNG, JPG e ZIP. Tamanho máximo: {$maxMb} MB.")
                                     ->acceptedFileTypes([

@@ -375,7 +375,8 @@ it('keeps old Measurements on A B C while new Measurements can approve D and pay
         'amount' => 1000,
         'financial_justification' => 'Pagamento parcial previsto para esta medição.',
     ]);
-    $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
+    // Os planos B e C ficam sem pagamento nesta competência: a etapa exige a justificativa.
+    $workflow->approve($scenario['measurement']->fresh(), $scenario['actor'], 'Planos B e C sem pagamento nesta competência.');
     $workflow->attachReceipt($payment, $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
     MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['actor']);
     $workflow->finalize($scenario['measurement']->fresh(), $scenario['actor'], acceptFinancialExceptions: true);

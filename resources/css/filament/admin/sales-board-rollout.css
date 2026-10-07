@@ -1,22 +1,12 @@
 .bsi-sales-board-rollout-manage-page {
-    --rollout-surface: #fbfaf8;
-    --rollout-inset: #f8f7f4;
-    --rollout-hover: #efede9;
-    --rollout-text: #16313b;
-    --rollout-muted: #52646b;
-    --rollout-border: rgb(9 27 35 / 0.13);
-    --rollout-gold: #a06e28;
-    --rollout-gold-soft: #ba8b46;
-}
-
-.dark .bsi-sales-board-rollout-manage-page {
-    --rollout-surface: #091b23;
-    --rollout-inset: #0d2530;
-    --rollout-hover: #12313b;
-    --rollout-text: #e6e4e4;
-    --rollout-muted: #a4b7bf;
-    --rollout-border: rgb(164 183 191 / 0.16);
-    background: #06151c;
+    --rollout-surface: var(--surface-card);
+    --rollout-inset: var(--surface-ground);
+    --rollout-hover: var(--surface-highlight);
+    --rollout-text: var(--text-primary);
+    --rollout-muted: var(--text-secondary);
+    --rollout-border: var(--border-subtle);
+    --rollout-gold: var(--accent);
+    --rollout-gold-soft: var(--accent-subtle);
 }
 
 .bsi-sales-board-rollout-manage-page .fi-page,
@@ -237,17 +227,17 @@
 }
 
 .bsi-sales-board-rollout-manage-page :is(.bsi-rollout-mode-actions, .bsi-rollout-empty-action) .fi-btn.fi-color-primary {
-    background: #a06e28;
-    color: #fff;
+    background: var(--accent);
+    color: var(--accent-foreground);
 }
 
 .bsi-sales-board-rollout-manage-page :is(.bsi-rollout-mode-actions, .bsi-rollout-empty-action) .fi-btn.fi-color-primary:hover:not(:disabled) {
-    background: #8b5e21;
+    background: var(--accent-hover);
 }
 
 .bsi-sales-board-rollout-manage-page .bsi-rollout-recipients .fi-btn.fi-color-gray,
 .bsi-sales-board-rollout-manage-page .bsi-rollout-draft-actions .fi-btn.fi-color-gray {
-    border: 1px solid rgb(160 110 40 / 0.45);
+    border: 1px solid var(--border-subtle);
     background: transparent;
     color: var(--rollout-text);
     box-shadow: none;
@@ -256,7 +246,7 @@
 .bsi-sales-board-rollout-manage-page .bsi-rollout-recipients .fi-btn.fi-color-gray:hover:not(:disabled),
 .bsi-sales-board-rollout-manage-page .bsi-rollout-draft-actions .fi-btn.fi-color-gray:hover:not(:disabled) {
     background: var(--rollout-hover);
-    border-color: rgb(160 110 40 / 0.7);
+    border-color: var(--accent);
     color: var(--rollout-text);
 }
 

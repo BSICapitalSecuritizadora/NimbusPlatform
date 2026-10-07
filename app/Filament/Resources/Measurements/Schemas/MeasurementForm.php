@@ -8,7 +8,9 @@ use App\Models\MeasurementAsset;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
+use App\Models\User;
 use App\Services\DocumentStorageService;
+use App\Services\MeasurementAuthorizationService;
 use App\Services\MeasurementFileValidationService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -25,6 +27,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\HtmlString;
+use League\Flysystem\UnableToCheckFileExistence;
+use League\Flysystem\UnableToRetrieveMetadata;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class MeasurementForm
@@ -49,26 +53,33 @@ class MeasurementForm
                             ->label('Operação')
                             ->extraAttributes(['class' => static::OPERATION_SELECT_CLASS])
                             ->placeholder('Selecione a operação...')
-                            // Só operação em andamento recebe medição nova, mas a
-                            // que já está gravada continua listada: sem isso,
-                            // abrir uma medição antiga de operação encerrada
-                            // mostraria o campo vazio, como se ela tivesse
-                            // perdido a operação. O backend recusa o payload
-                            // manipulado de qualquer forma.
+                            // Só a operação que aceitaria a medição nova desta
+                            // pessoa entra (scopeOpenToNewMeasurementBy()), mas
+                            // a que já está gravada continua listada: sem
+                            // isso, abrir uma medição antiga de operação
+                            // encerrada mostraria o campo vazio, como se ela
+                            // tivesse perdido a operação. O backend recusa o
+                            // payload manipulado de qualquer forma.
                             ->relationship(
                                 'operation',
                                 'title',
-                                modifyQueryUsing: fn (Builder $query, ?Measurement $record): Builder => auth()->user() === null
-                                    ? $query->whereRaw('1 = 0')
-                                    : $query->visibleTo(auth()->user())->where(
+                                modifyQueryUsing: function (Builder $query, ?Measurement $record): Builder {
+                                    $user = auth()->user();
+
+                                    if (! $user instanceof User) {
+                                        return $query->whereRaw('1 = 0');
+                                    }
+
+                                    return $query->visibleTo($user)->where(
                                         fn (Builder $eligible): Builder => $eligible
-                                            ->where('operations.status', OperationStatus::Active->value)
+                                            ->where(fn (Builder $open): Builder => static::scopeOpenToNewMeasurementBy($open, $user))
                                             ->when(
                                                 filled($record?->operation_id),
                                                 fn (Builder $existing): Builder => $existing
                                                     ->orWhere('operations.id', $record->operation_id),
                                             ),
-                                    ),
+                                    );
+                                },
                             )
                             ->getOptionLabelFromRecordUsing(fn (Operation $record): string => trim(($record->code ? $record->code.' — ' : '').$record->title))
                             ->searchable(['title', 'code'])
@@ -86,13 +97,19 @@ class MeasurementForm
                                 'required' => 'Selecione uma operação.',
                             ]),
 
+                        // Com pagamento registrado, a competência fica presa ao
+                        // que foi pago (Measurement::PAID_COMPETENCE_CHANGE_REFUSAL):
+                        // o campo travado diz isso antes de a gravação recusar.
                         DatePicker::make('reference_month')
                             ->label('Competência')
                             ->placeholder('mm/aaaa')
                             ->displayFormat('m/Y')
                             ->native(false)
                             ->closeOnDateSelection()
-                            ->helperText('Preenchida automaticamente pela medição selecionada no cronograma.')
+                            ->disabled(fn (?Model $record): bool => static::hasRegisteredPayment($record))
+                            ->helperText(fn (?Model $record): string => static::hasRegisteredPayment($record)
+                                ? 'Travada: esta medição tem pagamento registrado, e o pagamento continua vinculado a esta competência.'
+                                : 'Preenchida automaticamente pela medição selecionada no cronograma.')
                             ->validationMessages([
                                 'required' => 'Informe a competência de referência.',
                             ]),
@@ -125,7 +142,11 @@ class MeasurementForm
                             ]))
                             ->hiddenLabel()
                             ->addable(false)
-                            ->deletable(true)
+                            // O arquivo de medição paga não sai mais
+                            // (MeasurementAsset::PAID_FILE_REMOVAL_REFUSAL): a
+                            // Engenharia dela confere justamente os
+                            // empreendimentos destes arquivos.
+                            ->deletable(fn (?Model $record): bool => ! static::hasRegisteredPayment($record))
                             ->deleteAction(fn (Action $action) => $action->tooltip('Remover empreendimento deste envio'))
                             ->reorderable(false)
                             ->minItems(1)
@@ -148,11 +169,17 @@ class MeasurementForm
                                 Select::make('plan_line_id')
                                     ->label('Medição do cronograma')
                                     ->placeholder('Selecione a medição prevista...')
-                                    ->options(fn (Get $get): array => static::scheduleOptionsForPlanSet($get('plan_set_id')))
+                                    ->options(fn (Get $get, ?Model $record): array => static::scheduleOptionsForPlanSet(
+                                        $get('plan_set_id'),
+                                        $record instanceof MeasurementAsset ? $record : null,
+                                    ))
                                     ->searchable()
                                     ->preload()
                                     ->live()
                                     ->required()
+                                    // A linha do arquivo pago também fica presa
+                                    // (MeasurementAsset::PAID_CONTEXT_CHANGE_REFUSAL).
+                                    ->disabled(fn (?Model $record): bool => static::hasRegisteredPayment($record))
                                     ->afterStateUpdated(function (Set $set, ?string $state): void {
                                         $date = filled($state)
                                             ? static::visiblePlanLinesQuery()->whereKey($state)->value('measurement_date')
@@ -162,7 +189,9 @@ class MeasurementForm
                                             $set('../../reference_month', Carbon::parse($date)->toDateString());
                                         }
                                     })
-                                    ->helperText('Selecione a medição prevista à qual este arquivo corresponde.')
+                                    ->helperText(fn (?Model $record): string => static::hasRegisteredPayment($record)
+                                        ? 'Travada: esta medição tem pagamento registrado, e o pagamento continua vinculado a esta linha.'
+                                        : 'Selecione a medição prevista à qual este arquivo corresponde.')
                                     ->validationMessages([
                                         'required' => 'Selecione a medição do cronograma correspondente.',
                                     ]),
@@ -175,16 +204,115 @@ class MeasurementForm
                                         : DocumentStorageService::privateDisk())
                                     ->directory(DocumentStorageService::PRIVATE_PREFIX.'/measurements/assets')
                                     ->saveUploadedFileUsing(fn (TemporaryUploadedFile $file): string => app(MeasurementFileValidationService::class)->storeAsset($file))
+                                    // O caminho no estado do Livewire é controlado por quem
+                                    // envia a requisição: sem esta trava, trocá-lo vinculava a
+                                    // esta medição o arquivo de outra operação ou de outro
+                                    // módulo do mesmo disco. Vale o caminho já gravado no
+                                    // arquivo e o que esta requisição acabou de gravar -- o
+                                    // Repeater com relationship valida o item de novo depois do
+                                    // upload, e a trava sem exceção recusaria o envio legítimo.
+                                    ->preventFilePathTampering(
+                                        allowFilePathUsing: fn (string $file): bool => app(MeasurementFileValidationService::class)->wasStoredDuringThisRequest($file),
+                                    )
+                                    ->getUploadedFileUsing(fn (FileUpload $component, string $file, string|array|null $storedFileNames, ?Model $record): ?array => static::uploadedFileForBrowser($component, $file, $storedFileNames, $record))
                                     ->acceptedFileTypes((array) config('uploads.measurement.allowed_mimes', ['application/pdf']))
                                     ->maxSize((int) config('uploads.measurement.max_kb', 51200))
                                     ->required()
                                     ->helperText('Formato PDF ou documento aprovado (máx. 50 MB).')
                                     ->validationMessages([
                                         'required' => 'Envie o arquivo da medição deste empreendimento.',
+                                        'tampered' => 'O arquivo informado não pertence a esta medição. Envie o arquivo novamente.',
                                     ]),
                             ]),
                     ]),
             ]);
+    }
+
+    /**
+     * Operações em que a pessoa pode enviar medição nova: em andamento e com
+     * participação direta dela -- um dos sete papéis da operação --, ou
+     * administrador do fluxo.
+     *
+     * É a regra de {@see MeasurementAuthorizationService::canCreateMeasurement()}
+     * em SQL. Ver a operação por delegação não basta: o envio é de quem
+     * participa diretamente, e o seletor oferecia ao delegado a operação que o
+     * envio recusaria.
+     *
+     * @param  Builder<Operation>  $query
+     * @return Builder<Operation>
+     */
+    protected static function scopeOpenToNewMeasurementBy(Builder $query, User $user): Builder
+    {
+        $query->where('operations.status', OperationStatus::Active->value);
+
+        if (app(MeasurementAuthorizationService::class)->isWorkflowAdministrator($user)) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $participation) use ($user): void {
+            foreach (Operation::RESPONSIBILITY_FIELDS as $field) {
+                $participation->orWhere("operations.{$field}", $user->getKey());
+            }
+        });
+    }
+
+    /**
+     * A medição do formulário -- ou a dona do arquivo do item -- já tem
+     * pagamento registrado? Na criação não há registro, e a resposta é não.
+     */
+    protected static function hasRegisteredPayment(?Model $record): bool
+    {
+        $measurement = match (true) {
+            $record instanceof Measurement => $record,
+            $record instanceof MeasurementAsset => $record->measurement,
+            default => null,
+        };
+
+        return $measurement instanceof Measurement
+            && $measurement->exists
+            && $measurement->hasRegisteredPayment();
+    }
+
+    /**
+     * O que o campo de upload entrega ao navegador sobre um arquivo do estado.
+     *
+     * O padrão do Filament monta o endereço pelo disco: no disco privado com
+     * URL temporária (Azure Blob) sai um link SAS válido até o fim da hora
+     * seguinte, transferível e sem trilha; no legado público, a URL de
+     * `/storage`. O arquivo da Medição só sai pelo controller da medição, que
+     * autoriza, registra o acesso e aplica a CSP de download -- então o
+     * endereço é a rota autorizada do próprio arquivo e nenhum outro, e o disco
+     * nunca é consultado para montar URL. Um caminho que não é o gravado no
+     * registro (o recém-enviado, ainda não salvo) fica sem endereço.
+     *
+     * @param  string|array<string, string>|null  $storedFileNames
+     * @return array{name: string, size: int, type: string|null, url: string|null}|null
+     */
+    protected static function uploadedFileForBrowser(FileUpload $component, string $file, string|array|null $storedFileNames, ?Model $record): ?array
+    {
+        $size = 0;
+        $type = null;
+
+        if ($component->shouldFetchFileInformation()) {
+            try {
+                $storage = $component->getDisk();
+                $size = $storage->size($file);
+                $type = $storage->mimeType($file) ?: null;
+            } catch (UnableToRetrieveMetadata|UnableToCheckFileExistence) {
+                return null;
+            }
+        }
+
+        $isSavedFile = $record instanceof MeasurementAsset
+            && $record->exists
+            && $file === $record->storage_path;
+
+        return [
+            'name' => (is_array($storedFileNames) ? ($storedFileNames[$file] ?? null) : $storedFileNames) ?? basename($file),
+            'size' => $size,
+            'type' => $type,
+            'url' => $isSavedFile ? route('admin.measurements.assets.download', $record) : null,
+        ];
     }
 
     /**
@@ -212,20 +340,38 @@ class MeasurementForm
     }
 
     /**
-     * Lists the scheduled measurements of a single development (plan set) keyed by
-     * line id, so each uploaded file can be tied to that development's measurement.
+     * Medições previstas de um empreendimento (plano) que ainda podem receber o
+     * arquivo, indexadas pelo id da linha.
+     *
+     * Só entram as linhas que a Engenharia ainda aceitaria
+     * ({@see MeasurementPlanLine::scopeAvailableForMeasurement()}): a linha
+     * reivindicada por outra aprovação vigente, ou ocupada por outra medição,
+     * seria recusada lá na frente. Como o Select valida o valor contra estas
+     * opções, a linha que saiu da lista também é recusada no envio. Na edição,
+     * os arquivos da própria medição não ocupam a linha, e a que já está gravada
+     * no item continua listada -- o mesmo cuidado do select de Operação.
+     *
+     * A competência coberta pelo avanço físico inicial continua oferecida: nela
+     * a Engenharia aceita 0%, e numa operação com vários empreendimentos esse 0%
+     * é o que deixa medir os demais.
      *
      * @return array<int, string>
      */
-    protected static function scheduleOptionsForPlanSet(mixed $planSetId): array
+    protected static function scheduleOptionsForPlanSet(mixed $planSetId, ?MeasurementAsset $asset = null): array
     {
         if (blank($planSetId)) {
             return [];
         }
 
+        $editedMeasurementId = filled($asset?->measurement_id) ? (int) $asset->measurement_id : null;
+        $savedLineId = $asset?->plan_line_id;
+
         return static::visiblePlanLinesQuery()
             ->where('plan_set_id', $planSetId)
             ->whereNotNull('measurement_date')
+            ->where(fn (Builder $lines): Builder => $lines
+                ->where(fn (Builder $available): Builder => $available->availableForMeasurement($editedMeasurementId))
+                ->when(filled($savedLineId), fn (Builder $saved): Builder => $saved->orWhereKey($savedLineId)))
             ->orderBy('sequence_number')
             ->get()
             ->mapWithKeys(function (MeasurementPlanLine $line): array {

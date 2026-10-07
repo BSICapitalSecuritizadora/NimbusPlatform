@@ -437,7 +437,7 @@ class EmissionMonthlyReportService
             'identifier' => $this->text($emission->isin_code ?? $emission->if_code),
             'offer' => $this->text($emission->type ?? $emission->offer_type),
             'debt_balance' => $this->resumoDebtBalance($pu, $integralizedQuantity),
-            'debt_position' => $monthEnd->format('d/m/Y'),
+            'debt_position' => $this->debtPosition($pu, $monthEnd),
             'circulating_quantity' => $this->integer($emission->integralized_quantity ?: $emission->issued_quantity),
             'remuneration' => $this->text($emission->formatted_remuneration),
             'current_pu' => $pu !== null ? $this->pu((float) $pu->unitValue) : self::NOT_INFORMED,
@@ -558,15 +558,26 @@ class EmissionMonthlyReportService
      */
     private function buildDebtBalance(Emission $emission, CarbonImmutable $monthEnd): array
     {
-        $unitValue = $this->debtBalanceUnitValue($emission, $monthEnd);
+        $reading = $this->puReader->readingOn($emission, $monthEnd);
+        $unitValue = $this->debtBalanceUnitValue($emission, $reading);
         $debt = $this->debtBalanceValue($emission, $unitValue);
 
         return [
             ['label' => 'Quantidade em circulação', 'value' => $this->integer($emission->integralized_quantity ?: $emission->issued_quantity)],
             ['label' => 'Preço unitário (emissão)', 'value' => $unitValue !== null ? $this->pu((float) $unitValue) : self::NOT_AVAILABLE],
             ['label' => 'Saldo devedor do CRI', 'value' => $debt !== null ? $this->money($debt) : self::NOT_AVAILABLE],
-            ['label' => 'Posição em', 'value' => $monthEnd->format('d/m/Y')],
+            ['label' => 'Posição em', 'value' => $this->debtPosition($reading, $monthEnd)],
         ];
+    }
+
+    /**
+     * Data a que o saldo devedor pertence. Curva oficial que ainda não chega ao fim
+     * do mês: a posição é a data do PU realizado, nunca a data-base -- o valor não
+     * pertence a ela.
+     */
+    private function debtPosition(?PuReading $pu, CarbonImmutable $monthEnd): string
+    {
+        return ($pu?->fromOfficialCurve() && $pu->isCarriedForward() ? $pu->date : $monthEnd)->format('d/m/Y');
     }
 
     /**
@@ -1652,9 +1663,9 @@ class EmissionMonthlyReportService
      * cadastrado na emissão -- só para emissão legada (sem curva de PU): numa
      * governada ele pode ter vindo de uma curva nunca homologada.
      */
-    private function debtBalanceUnitValue(Emission $emission, CarbonImmutable $monthEnd): ?string
+    private function debtBalanceUnitValue(Emission $emission, ?PuReading $reading): ?string
     {
-        return $this->puReader->readingOn($emission, $monthEnd)?->unitValue
+        return $reading?->unitValue
             ?? $this->puReader->legacyCurrentUnitValue($emission);
     }
 

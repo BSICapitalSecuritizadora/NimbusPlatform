@@ -144,7 +144,8 @@ function advanceP01ToDocumentedFinalization(array $scenario): void
         'financial_justification' => 'Pagamento parcial previsto para esta medição.',
         'plan_set_id' => $scenario['planSets']->first()->id,
     ]);
-    $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
+    // Só o primeiro plano é pago: os demais exigem a justificativa da etapa.
+    $workflow->approve($scenario['measurement']->fresh(), $scenario['actor'], 'Demais planos sem pagamento nesta competência: retenção contratual.');
     $workflow->attachReceipt($payment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
     MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['actor']);
 }
@@ -259,10 +260,13 @@ it('finalizes with complete three-plan coverage and records the effective actor'
     advanceP01ToDocumentedFinalization($scenario);
 
     app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
+    $finalization = Activity::query()->where('description', 'measurement_finalized')->latest('id')->firstOrFail();
 
     expect($scenario['measurement']->fresh()->status)->toBe('finalized')
         ->and($scenario['measurement']->fresh()->engineering_snapshot['plan_sets'])->toHaveCount(3)
-        ->and($scenario['measurement']->fresh()->reviewForStage(5)?->reviewer_user_id)->toBe($scenario['actor']->id);
+        ->and($scenario['measurement']->fresh()->reviewForStage(5)?->reviewer_user_id)->toBe($scenario['actor']->id)
+        ->and(collect($finalization->properties->get('unpaid_plan_sets_accepted'))->pluck('plan_set_id')->all())
+        ->toBe($scenario['planSets']->slice(1)->pluck('id')->values()->all());
 });
 
 it('blocks finalization when snapshot coverage is missing or points to the wrong plan set', function (string $tamper) {

@@ -46,11 +46,15 @@ class GeneralDocumentForm
                             ->placeholder('Resumo do conteúdo e da finalidade do documento.')
                             ->rows(3)
                             ->columnSpanFull(),
+                        // O disco privado é o mesmo da Medição e do portal: só
+                        // valem o caminho já gravado e o upload novo, nunca um
+                        // caminho trocado no payload.
                         FileUpload::make('file_path')
                             ->label('Arquivo')
                             ->required()
                             ->disk(DocumentStorageService::privateDisk())
                             ->directory(DocumentStorageService::PRIVATE_PREFIX.'/general-documents')
+                            ->preventFilePathTampering()
                             ->maxSize((int) config('uploads.document.max_kb', 102400))
                             ->helperText('Tamanho máximo permitido: '.(int) ceil(config('uploads.document.max_kb', 102400) / 1024).' MB.')
                             ->acceptedFileTypes([

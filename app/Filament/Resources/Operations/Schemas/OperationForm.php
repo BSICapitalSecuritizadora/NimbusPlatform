@@ -3,30 +3,40 @@
 namespace App\Filament\Resources\Operations\Schemas;
 
 use App\Concerns\MoneyFormatter;
+use App\Exceptions\OperationLifecycleException;
+use App\Filament\Support\DetectsConcurrentUpdates;
 use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use App\Models\User;
 use App\Services\OperationContextVisibilityService;
+use App\Services\OperationResponsibilityService;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Support\Exceptions\Halt;
 use Filament\Support\RawJs;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class OperationForm
 {
+    use DetectsConcurrentUpdates;
+
     /**
      * Marcador dos selects pesquisáveis de "Responsáveis pelo Fluxo de Medição"
      * (as seis etapas, a coordenação e a notificação de recusa). O tema trata o
@@ -174,11 +184,88 @@ class OperationForm
                                             ->orWhereIn('users.id', $record?->rejectionNotifyUsers()->select('users.id') ?? []),
                                     ),
                                 )
+                                // A lista não dá acesso à operação, mas decide
+                                // quem recebe os dados dela por e-mail: grava
+                                // pelo serviço, com permissão, situação da
+                                // operação e registro no log da operação. A
+                                // recusa é deste campo, e só aparece nele com
+                                // o caminho completo do estado.
+                                //
+                                // O serviço trava a Operation, que o registro
+                                // de pagamento e a Finalização seguram durante
+                                // o antivírus e os checksums: a espera pode
+                                // estourar (1205) ou fechar ciclo (1213). Nada
+                                // da lista foi gravado; vai para o log e a
+                                // pessoa lê o aviso, não um erro de servidor.
+                                // Na edição a gravação inteira para -- a lista
+                                // é gravada antes da operação. Na criação sem
+                                // transação de página a operação já existe:
+                                // ela segue sem a lista, com o aviso, porque
+                                // "tentar de novo" criaria outra operação.
+                                ->saveRelationshipsUsing(static function (Select $component, Operation $record, string $operation): void {
+                                    $actor = auth()->user();
+                                    abort_unless($actor instanceof User, 403);
+
+                                    try {
+                                        app(OperationResponsibilityService::class)->syncRejectionRecipients(
+                                            $actor,
+                                            $record,
+                                            array_values(Arr::wrap($component->getState())),
+                                            onCreation: $operation === 'create',
+                                        );
+                                    } catch (OperationLifecycleException|ValidationException $exception) {
+                                        throw ValidationException::withMessages([
+                                            $component->getStatePath() => $exception instanceof ValidationException
+                                                ? array_values(array_unique(Arr::flatten($exception->errors())))
+                                                : [$exception->getMessage()],
+                                        ]);
+                                    } catch (Throwable $exception) {
+                                        if (! self::isConcurrentUpdate($exception)) {
+                                            throw $exception;
+                                        }
+
+                                        report($exception);
+
+                                        $page = $component->getLivewire();
+
+                                        if (($operation === 'create') && method_exists($page, 'hasDatabaseTransactions') && (! $page->hasDatabaseTransactions())) {
+                                            Notification::make()
+                                                ->warning()
+                                                ->title('Lista de notificação de recusa não gravada.')
+                                                ->body('A operação foi criada, mas outra pessoa estava atualizando-a e a lista "Notificar em caso de recusa" ficou vazia. Edite a operação para incluir os usuários.')
+                                                ->persistent()
+                                                ->send();
+
+                                            return;
+                                        }
+
+                                        Notification::make()
+                                            ->danger()
+                                            ->title($operation === 'create' ? 'Operação não criada.' : 'Operação não atualizada.')
+                                            ->body(self::CONCURRENT_OPERATION_UPDATE_MESSAGE)
+                                            ->persistent()
+                                            ->send();
+
+                                        throw (new Halt)->rollBackDatabaseTransaction();
+                                    }
+
+                                    $record->unsetRelation('rejectionNotifyUsers');
+                                })
+                                // Mesmo gate dos responsáveis. Desabilitado, o
+                                // campo não grava nada, nem com payload
+                                // forjado. Na criação vale a permissão de
+                                // classe -- quem cria ainda não participa da
+                                // operação nova --, também depois que o
+                                // registro já existe e o pivot é gravado.
+                                ->disabled(fn (string $operation, ?Operation $record): bool => ! Gate::allows(
+                                    'manageResponsibilities',
+                                    $operation === 'create' ? Operation::class : ($record ?? Operation::class),
+                                ))
                                 ->multiple()
                                 ->searchable()
                                 ->preload()
                                 ->placeholder('Selecione os usuários a notificar...')
-                                ->helperText('Usuários que receberão alerta automático em caso de recusa.'),
+                                ->helperText('Recebem o aviso quando a Engenharia recusa uma medição. Estar na lista não dá acesso à operação.'),
                         ])
                         ->columnSpanFull(),
                 ]),

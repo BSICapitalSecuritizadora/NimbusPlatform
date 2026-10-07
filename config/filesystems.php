@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Support\Env;
+
 /*
 |--------------------------------------------------------------------------
 | Storage Roots
@@ -41,6 +43,81 @@ $storageRootsOverlap = static function (string $first, string $second): bool {
 };
 
 $privateStorageRoot = $resolveStorageRoot('PRIVATE_STORAGE_ROOT', storage_path('app/private'));
+
+/*
+|--------------------------------------------------------------------------
+| Raiz privada obrigatória em produção
+|--------------------------------------------------------------------------
+|
+| Fora de produção o padrão da aplicação basta. Em produção ele fica dentro de
+| /home/site/wwwroot, que o deploy substitui: documentos de operações,
+| medições, currículos, exportações e os envios temporários do Livewire iriam
+| para lá e sumiriam no deploy seguinte -- em silêncio, porque o startup.sh só
+| avisava. Nesse caso a configuração falha na carga e o startup.sh para antes
+| de qualquer migração -- no `config:clear` que precede o `migrate`, ou no
+| próprio `migrate` --, com a mensagem dizendo o que configurar.
+|
+| A guarda confere o mesmo valor que o disco `local` usa, sem aparar nada: um
+| espaço no começo ou no fim faria o disco gravar num diretório novo, separado
+| dos documentos já enviados, então ele é recusado. E só em forma direta, sem
+| '//', '.' ou '..': a comparação com a pasta de deploy é textual, e esses
+| trechos a enganariam.
+|
+| No Azure App Service (WEBSITE_INSTANCE_ID ou WEBSITE_SITE_NAME presentes) só
+| /home persiste entre reinícios do contêiner -- /tmp ou /data somem no próximo
+| restart --, e /home não diferencia maiúsculas de minúsculas: lá a raiz
+| precisa estar em /home, e a comparação com a pasta de deploy também ignora a
+| caixa (/home/site/WWWROOT é a própria pasta de deploy).
+|
+| A condição lê o APP_ENV cru e exige 'production' exato: o build do CI roda o
+| `package:discover` sem `.env`, e o padrão 'production' do `config/app.php`
+| faria o build exigir uma variável que só existe no App Service.
+|
+*/
+
+if (Env::get('APP_ENV') === 'production') {
+    $configuredPrivateStorageRoot = (string) Env::get('PRIVATE_STORAGE_ROOT', '');
+    $deploymentRoot = rtrim(base_path(), '/');
+    $runsOnAppService = filled(Env::get('WEBSITE_INSTANCE_ID')) || filled(Env::get('WEBSITE_SITE_NAME'));
+    $comparablePath = static fn (string $path): string => $runsOnAppService ? mb_strtolower($path) : $path;
+
+    if (trim($configuredPrivateStorageRoot) === '') {
+        throw new RuntimeException(
+            "PRIVATE_STORAGE_ROOT não está definida. Em produção ela precisa apontar para um diretório persistente fora da pasta de deploy ({$deploymentRoot}), por exemplo /home/data/private: sem ela os documentos privados ficariam dentro da pasta de deploy e seriam apagados no próximo deploy."
+        );
+    }
+
+    if ($configuredPrivateStorageRoot !== trim($configuredPrivateStorageRoot)) {
+        throw new RuntimeException(
+            "PRIVATE_STORAGE_ROOT='{$configuredPrivateStorageRoot}' começa ou termina com espaço. O espaço faz parte do caminho: os documentos privados iriam para outro diretório, separado dos já enviados. Remova o espaço da variável."
+        );
+    }
+
+    if (! str_starts_with($configuredPrivateStorageRoot, '/')) {
+        throw new RuntimeException(
+            "PRIVATE_STORAGE_ROOT='{$configuredPrivateStorageRoot}' não é um caminho absoluto. Em produção use um diretório persistente fora da pasta de deploy ({$deploymentRoot}), por exemplo /home/data/private."
+        );
+    }
+
+    if (array_intersect(explode('/', substr($privateStorageRoot, 1)), ['', '.', '..']) !== []) {
+        throw new RuntimeException(
+            "PRIVATE_STORAGE_ROOT='{$configuredPrivateStorageRoot}' não é um caminho direto: tem '//', '.' ou '..'. Escreva o diretório sem esses trechos, por exemplo /home/data/private; com eles não dá para conferir se ele fica fora da pasta de deploy ({$deploymentRoot})."
+        );
+    }
+
+    if ($runsOnAppService && ! str_starts_with($privateStorageRoot.'/', '/home/')) {
+        throw new RuntimeException(
+            "PRIVATE_STORAGE_ROOT='{$configuredPrivateStorageRoot}' fica fora de /home. No Azure App Service só /home persiste: fora dele os documentos privados seriam apagados no próximo reinício do contêiner. Use um diretório em /home fora da pasta de deploy ({$deploymentRoot}), por exemplo /home/data/private."
+        );
+    }
+
+    if ($storageRootsOverlap($comparablePath($privateStorageRoot), $comparablePath($deploymentRoot))) {
+        throw new RuntimeException(
+            "PRIVATE_STORAGE_ROOT='{$configuredPrivateStorageRoot}' se sobrepõe à pasta de deploy ({$deploymentRoot}), que o deploy substitui. Em produção use um diretório persistente fora dela, por exemplo /home/data/private."
+                .($runsOnAppService ? ' No App Service, /home não diferencia maiúsculas de minúsculas.' : '')
+        );
+    }
+}
 
 $publicStorageRoot = $resolveStorageRoot('PUBLIC_STORAGE_ROOT', storage_path('app/public'));
 

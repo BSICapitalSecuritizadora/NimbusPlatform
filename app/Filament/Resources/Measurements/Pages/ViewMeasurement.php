@@ -9,6 +9,8 @@ use App\Enums\MeasurementReceiptReviewStatus;
 use App\Enums\MeasurementReconciliationStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Filament\Resources\Measurements\MeasurementResource;
+use App\Filament\Support\DetectsConcurrentUpdates;
+use App\Filament\Support\SurfacesUnplacedValidationErrors;
 use App\Models\Measurement;
 use App\Models\MeasurementPayment;
 use App\Models\MeasurementPaymentReceiptEvidence;
@@ -37,16 +39,45 @@ use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Support\Exceptions\Cancel;
 use Filament\Support\Exceptions\Halt;
 use Filament\Support\RawJs;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Throwable;
 
 class ViewMeasurement extends ViewRecord
 {
+    use DetectsConcurrentUpdates;
+    use SurfacesUnplacedValidationErrors;
+
+    /**
+     * Título de toda recusa que a pessoa lê nesta página. Os textos abaixo
+     * respondem ao que o domínio não explica: a ação que deixou de valer entre
+     * abrir e enviar o modal, a autorização perdida (cuja mensagem padrão é em
+     * inglês) e as falhas da aplicação, cujo texto técnico nunca chega à pessoa.
+     */
+    private const REFUSAL_TITLE = 'Ação não concluída.';
+
+    private const UNAVAILABLE_ACTION_MESSAGE = 'A medição mudou depois que esta janela foi aberta e esta ação não está mais disponível para você. Atualize a página.';
+
+    private const LOST_AUTHORIZATION_MESSAGE = 'Você não tem permissão para concluir esta ação nesta medição. Atualize a página para ver a situação atual.';
+
+    private const CONCURRENT_UPDATE_MESSAGE = 'A medição está sendo atualizada por outra pessoa. Tente novamente em instantes.';
+
+    private const UNEXPECTED_FAILURE_MESSAGE = 'Não foi possível concluir a ação agora. Atualize a página para conferir a situação da medição antes de tentar de novo.';
+
+    /**
+     * O que falta para aprovar a etapa Pagamento quando não há pagamento
+     * válido: a justificativa da ausência não substitui o pagamento.
+     */
+    private const PAYMENT_REQUIRED_MESSAGE = 'Cadastre ao menos um pagamento antes de aprovar a etapa Pagamento.';
+
     protected static string $resource = MeasurementResource::class;
 
     protected static ?string $title = 'Medição';
@@ -130,38 +161,99 @@ class ViewMeasurement extends ViewRecord
     }
 
     /**
-     * Executa a ação do fluxo devolvendo a recusa como mensagem, não como erro.
+     * Envio de um modal cuja ação deixou de valer para quem o abriu.
      *
-     * `MeasurementWorkflowException` já carrega texto de operador -- "A etapa
-     * desta medição foi alterada por outra ação. Atualize a página." é a proteção
-     * contra submissão obsoleta da P0 falando. Só que ninguém a lia: a exceção
-     * subia sem tratamento e a pessoa via um erro genérico da página, sem
-     * entender que outra pessoa tinha decidido a etapa primeiro.
+     * Entre abrir o modal e enviar, outra pessoa pode decidir, pausar, pagar,
+     * finalizar ou conferir: a ação fica oculta (ou desabilitada) para o
+     * registro recarregado, e o Filament descartava o envio em silêncio -- o
+     * modal ficava aberto e o botão não fazia nada. A pessoa agora lê o motivo
+     * e o modal fecha. É também o que responde a um envio forjado de ação
+     * desabilitada, como a recusa que encerraria uma medição paga.
      *
-     * A recusa é do domínio e não é falha da aplicação, então a página não
-     * quebra: notifica, recarrega o registro para a tela refletir o estado que
-     * passou a valer, e interrompe a ação.
+     * @param  array<string, mixed>  $arguments
+     */
+    public function callMountedAction(array $arguments = []): mixed
+    {
+        $action = $this->getMountedAction();
+
+        if (($action instanceof Action) && $action->isDisabled()) {
+            Notification::make()
+                ->danger()
+                ->title(self::REFUSAL_TITLE)
+                ->body(self::UNAVAILABLE_ACTION_MESSAGE)
+                ->persistent()
+                ->send();
+
+            $this->unmountAction();
+
+            return null;
+        }
+
+        return parent::callMountedAction($arguments);
+    }
+
+    /**
+     * Executa a ação do fluxo e devolve toda recusa como algo que a pessoa lê.
+     *
+     * - `ValidationException`: o erro que um campo visível do modal desenha
+     *   fica nele; o resto -- chave sem campo, como `payments` na etapa
+     *   Pagamento ou o arquivo da Engenharia que sumiu do armazenamento -- vira
+     *   uma notificação ({@see SurfacesUnplacedValidationErrors}).
+     * - `MeasurementWorkflowException`: o texto já é de operador -- "A etapa
+     *   desta medição foi alterada por outra ação. Atualize a página." é a
+     *   proteção contra submissão obsoleta falando. Recarrega o registro, para
+     *   a tela refletir o estado que passou a valer.
+     * - `AuthorizationException`: algumas saem do domínio sem mensagem, e o
+     *   texto padrão seria em inglês; a pessoa lê sempre o mesmo aviso.
+     * - Qualquer outra falha é da aplicação, não da regra: vai para o log e a
+     *   pessoa recebe um aviso sem o texto técnico. Deadlock (1213, SQLSTATE
+     *   40001) e espera por lock estourada (1205) só pedem uma nova tentativa
+     *   ({@see DetectsConcurrentUpdates}, o mesmo detector das demais telas).
+     *   `Halt`, `Cancel` e as respostas HTTP seguem o caminho do Filament.
+     *
+     * A ação para com o modal aberto e nada fica gravado: cada serviço do fluxo
+     * desfaz a própria transação antes de a exceção chegar aqui.
      */
     private function guarded(Closure $operation): void
     {
         try {
             $operation();
         } catch (ValidationException $exception) {
-            $prefix = $this->getMountedActionSchema()->getStatePath();
-            throw ValidationException::withMessages(collect($exception->errors())
-                ->mapWithKeys(fn (array $messages, string $field): array => [str_starts_with($field, $prefix.'.') ? $field : $prefix.'.'.$field => $messages])->all());
+            throw $this->placeValidationErrors($exception, $this->getMountedActionSchema(), self::REFUSAL_TITLE) ?? new Halt;
         } catch (MeasurementWorkflowException $exception) {
-            Notification::make()
-                ->danger()
-                ->title('Ação não concluída.')
-                ->body($exception->getMessage())
-                ->persistent()
-                ->send();
+            $this->refuse($exception->getMessage(), refreshRecord: true);
+        } catch (AuthorizationException) {
+            $this->refuse(self::LOST_AUTHORIZATION_MESSAGE, refreshRecord: true);
+        } catch (Halt|Cancel|HttpExceptionInterface $exception) {
+            throw $exception;
+        } catch (Throwable $exception) {
+            report($exception);
 
-            $this->record->refresh();
-
-            throw new Halt;
+            $this->refuse(static::isConcurrentUpdate($exception) ? self::CONCURRENT_UPDATE_MESSAGE : self::UNEXPECTED_FAILURE_MESSAGE);
         }
+    }
+
+    /**
+     * Notifica a recusa e interrompe a ação, com o modal aberto.
+     *
+     * Só a recusa do domínio recarrega o registro: depois de uma falha
+     * inesperada a própria leitura pode falhar de novo, e nada mudou -- a
+     * transação já foi desfeita.
+     */
+    private function refuse(string $message, bool $refreshRecord = false): never
+    {
+        Notification::make()
+            ->danger()
+            ->title(self::REFUSAL_TITLE)
+            ->body($message)
+            ->persistent()
+            ->send();
+
+        if ($refreshRecord) {
+            $this->record->refresh();
+        }
+
+        throw new Halt;
     }
 
     private function approveAction(): Action
@@ -196,8 +288,13 @@ class ViewMeasurement extends ViewRecord
         $schema = [
             Hidden::make('expected_stage')->default(fn (): int => $this->stage()),
             Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),
-            Textarea::make('notes')->label('Comentário (opcional)')->rows(3),
         ];
+
+        if ($this->stage() === MeasurementWorkflow::STAGE_PAYMENT) {
+            return [...$schema, ...$this->paymentStageApprovalFields()];
+        }
+
+        $schema[] = Textarea::make('notes')->label('Comentário (opcional)')->rows(3);
 
         if ($this->record->current_stage !== self::ENGINEERING_STAGE) {
             return $schema;
@@ -251,6 +348,77 @@ class ViewMeasurement extends ViewRecord
             ->schema($fields);
 
         return $schema;
+    }
+
+    /**
+     * Comentário da aprovação da etapa Pagamento -- ou a justificativa da
+     * ausência de pagamento, quando ela é exigida.
+     *
+     * Empreendimento que a Engenharia aprovou com valor a pagar e ficou sem
+     * pagamento nesta medição só passa pela etapa com o porquê na nota da
+     * aprovação, que o Finalizador vai aceitar expressamente
+     * ({@see MeasurementPaymentFinancialService::unpaidRequiredPlanSets()}). A
+     * pessoa vê a lista antes de enviar, e o campo obrigatório responde com a
+     * mesma frase do domínio. A chave continua `notes`: é nela que o domínio
+     * devolve a recusa e é ela que vira a nota da aprovação.
+     *
+     * Sem nenhum pagamento válido a etapa não é aprovada de jeito nenhum
+     * ({@see MeasurementWorkflow::hasValidPayment()}): o modal listava todos
+     * os empreendimentos, mandava justificar a ausência e o domínio recusava a
+     * justificativa. Aí ele só diz o que falta, sem oferecer a justificativa
+     * como saída.
+     *
+     * @return array<int, Component>
+     */
+    private function paymentStageApprovalFields(): array
+    {
+        if (! $this->workflow()->hasValidPayment($this->record)) {
+            return [
+                Placeholder::make('payment_required')
+                    ->hiddenLabel()
+                    ->content(new HtmlString('<p class="text-sm text-gray-600 dark:text-gray-300">'.e(self::PAYMENT_REQUIRED_MESSAGE).'</p>')),
+            ];
+        }
+
+        $financial = app(MeasurementPaymentFinancialService::class);
+        $unpaid = $financial->unpaidRequiredPlanSets($this->record);
+
+        if ($unpaid === []) {
+            return [Textarea::make('notes')->label('Comentário (opcional)')->rows(3)];
+        }
+
+        return [
+            Placeholder::make('unpaid_plan_sets')
+                ->label('Empreendimentos sem pagamento nesta competência')
+                ->content($this->unpaidPlanSetsContent($unpaid)),
+            Textarea::make('notes')
+                ->label('Justificativa da ausência de pagamento')
+                ->helperText('Explique por que estes empreendimentos ficam sem pagamento nesta competência. O Finalizador precisará aceitar a ausência expressamente.')
+                ->required()
+                ->rows(3)
+                ->validationMessages([
+                    'required' => 'Justifique a ausência de pagamento nesta competência de: '.$financial->describeUnpaidPlanSets($unpaid).'; o Finalizador precisará aceitar expressamente.',
+                ]),
+        ];
+    }
+
+    /**
+     * @param  list<MeasurementFinancialReconciliationLine>  $unpaid
+     */
+    private function unpaidPlanSetsContent(array $unpaid): HtmlString
+    {
+        $items = collect($unpaid)
+            ->map(fn (MeasurementFinancialReconciliationLine $line): string => sprintf(
+                '<li><span class="font-medium text-gray-950 dark:text-white">%s</span> · valor esperado %s</li>',
+                e($line->label),
+                e(MeasurementFinancialReconciliationService::formatCurrency($line->expectedAmount)),
+            ))
+            ->implode('');
+
+        return new HtmlString(
+            '<p class="text-sm text-gray-600 dark:text-gray-300">A Engenharia aprovou valor a pagar para estes empreendimentos e nenhum pagamento foi registrado nesta medição. Registre o pagamento ou justifique a ausência abaixo.</p>'
+            .'<ul class="mt-2 list-disc space-y-1 ps-5 text-sm text-gray-700 dark:text-gray-200">'.$items.'</ul>'
+        );
     }
 
     /**
@@ -323,6 +491,13 @@ class ViewMeasurement extends ViewRecord
             ->all();
     }
 
+    /**
+     * A recusa na Engenharia encerra a medição, e medição com pagamento
+     * registrado só termina finalizada. O botão continua à vista de quem decide
+     * a etapa, mas desabilitado com o motivo do domínio: a pessoa lê, antes de
+     * tentar, por que precisa corrigir e aprovar em vez de recusar. O servidor
+     * não monta a ação desabilitada e o domínio recusa de novo, sob lock.
+     */
     private function rejectAction(): Action
     {
         return Action::make('reject')
@@ -333,6 +508,8 @@ class ViewMeasurement extends ViewRecord
                 ? 'Recusar na Engenharia encerra a medição e notifica os responsáveis por recusa.'
                 : 'A medição voltará para a etapa anterior para correção.')
             ->visible(fn (): bool => $this->workflow()->canReject($this->record, $this->actor()))
+            ->disabled(fn (): bool => $this->workflow()->terminalRejectionBlockReason($this->record) !== null)
+            ->tooltip(fn (): ?string => $this->workflow()->terminalRejectionBlockReason($this->record))
             ->schema([
                 Hidden::make('expected_stage')->default(fn (): int => $this->stage()),
                 Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),
@@ -441,13 +618,7 @@ class ViewMeasurement extends ViewRecord
                             expectedRevision: (int) $data['expected_revision'],
                         );
                     } catch (ValidationException $exception) {
-                        $keys = collect($rows)->filter(fn (array $row): bool => filled($row['amount']))->keys()->all();
-                        throw ValidationException::withMessages(collect($exception->errors())
-                            ->mapWithKeys(function (array $messages, string $field) use ($keys): array {
-                                $path = preg_replace_callback('/^payments\.(\d+)\./', fn (array $match): string => 'payments.'.($keys[(int) $match[1]] ?? $match[1]).'.', $field);
-
-                                return [$path => $messages];
-                            })->all());
+                        throw $this->onPaymentRepeaterItems($exception, $rows);
                     }
 
                     if ($created->isEmpty()) {
@@ -464,6 +635,48 @@ class ViewMeasurement extends ViewRecord
     }
 
     /**
+     * Leva os erros por linha do domínio para os itens reais do Repeater.
+     *
+     * O domínio numera as linhas com valor na ordem em que chegaram (0, 1...),
+     * mas o Repeater identifica cada item por uma chave própria (UUID): com o
+     * número, o erro não casava com campo nenhum e o envio parecia não fazer
+     * nada. A posição original da linha é a posição do item no estado do
+     * modal -- o Repeater não adiciona, não exclui e não reordena. Data e
+     * método são campos únicos do modal, valem para todas as linhas e recebem
+     * o erro de qualquer uma. O que ainda assim não casar vira notificação no
+     * {@see self::guarded()}.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     */
+    private function onPaymentRepeaterItems(ValidationException $exception, array $rows): ValidationException
+    {
+        $positions = collect($rows)->filter(fn (array $row): bool => filled($row['amount'] ?? null))->keys()->all();
+        $rawState = $this->getMountedActionSchema()?->getRawState();
+        $itemKeys = array_keys(is_array($rawState) && is_array($rawState['payments'] ?? null) ? $rawState['payments'] : []);
+        $errors = [];
+
+        foreach ($exception->errors() as $field => $messages) {
+            if (! preg_match('/^payments\.(\d+)\.(.+)$/', (string) $field, $match)) {
+                $errors[$field] = $messages;
+
+                continue;
+            }
+
+            if (in_array($match[2], ['pay_date', 'method'], true)) {
+                $errors[$match[2]] = $messages;
+
+                continue;
+            }
+
+            $position = $positions[(int) $match[1]] ?? null;
+            $itemKey = ($position === null) ? null : ($itemKeys[$position] ?? null);
+            $errors[($itemKey === null) ? $field : "payments.{$itemKey}.{$match[2]}"] = $messages;
+        }
+
+        return ValidationException::withMessages($errors);
+    }
+
+    /**
      * @return array<int, Component>
      */
     private function registerPaymentSchema(): array
@@ -475,10 +688,12 @@ class ViewMeasurement extends ViewRecord
             ->values()
             ->all();
 
+        // Método e valor respondem no próprio campo, com o texto do campo: a
+        // mesma regra no domínio só aparecia depois, numerada pela linha.
         return [
             Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),
             DatePicker::make('pay_date')->label('Data do pagamento')->required()->default(now())->live(),
-            TextInput::make('method')->label('Método')->placeholder('TED, PIX, Boleto...'),
+            TextInput::make('method')->label('Método')->placeholder('TED, PIX, Boleto...')->maxLength(255),
             Repeater::make('payments')
                 ->label('Pagamento por empreendimento')
                 ->addable(false)
@@ -502,6 +717,11 @@ class ViewMeasurement extends ViewRecord
                         ->prefix('R$')
                         ->live(onBlur: true)
                         ->mask(RawJs::make('$money($input, \',\', \'.\')'))
+                        ->mutateStateForValidationUsing(fn (mixed $state): ?float => blank($state) ? null : MoneyFormatter::normalizeDecimalValue($state))
+                        ->rules(['numeric', 'gt:0'])
+                        ->validationMessages([
+                            'gt' => 'O valor do pagamento deve ser maior que zero.',
+                        ])
                         ->dehydrateStateUsing(fn (mixed $state): ?float => blank($state) ? null : MoneyFormatter::normalizeDecimalValue($state)),
                     Placeholder::make('reconciliation_divergence')
                         ->label('Conciliação')
@@ -556,8 +776,9 @@ class ViewMeasurement extends ViewRecord
     /**
      * Divergência entre o valor informado e o saldo esperado.
      *
-     * Nesta V1 a divergência avisa e não bloqueia: o texto é neutro porque
-     * pagar a menos ou a mais pode ter motivo legítimo.
+     * A divergência não impede o registro: exige a justificativa do pagamento
+     * e o aceite expresso do Finalizador. O texto é neutro porque pagar a menos
+     * ou a mais pode ter motivo legítimo.
      */
     private function paymentDivergenceContent(mixed $planSetId, mixed $amount): HtmlString
     {
@@ -624,7 +845,11 @@ class ViewMeasurement extends ViewRecord
                     ->mapWithKeys(fn ($rule): array => [$rule->id => $rule->name.' · versão '.$rule->version])->all()),
             Textarea::make('financial_justification')->label('Justificativa da divergência')->rows(3)->maxLength(5000)
                 ->helperText('Obrigatória quando o pagamento for diferente do saldo esperado, inclusive nos casos previstos por uma regra.')->columnSpanFull(),
+            // O campo só recebe arquivo enviado agora; um caminho escrito no
+            // estado do modal é recusado no próprio campo, em vez de chegar ao
+            // domínio no lugar do arquivo.
             FileUpload::make('financial_support')->label('Documento de suporte')->storeFiles(false)
+                ->preventFilePathTampering()
                 ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png'])->maxSize(10240)
                 ->helperText('PDF, JPG ou PNG de até 10 MB. Obrigatório quando exigido pela regra.')->columnSpanFull(),
         ];
@@ -687,8 +912,11 @@ class ViewMeasurement extends ViewRecord
                         $payment = $this->record->payments()->with('currentReceiptEvidence')->find($state);
                         $set('expected_evidence_id', $payment?->currentReceiptEvidence?->getKey());
                     }),
+                // Sem a trava, uma string escrita no estado do modal chegava ao
+                // serviço no lugar do arquivo e virava erro de servidor (TypeError).
                 FileUpload::make('receipt')
                     ->label('Comprovante')->required()->storeFiles(false)
+                    ->preventFilePathTampering()
                     ->acceptedFileTypes((array) config('uploads.measurement_receipt.allowed_mimes', []))
                     ->maxSize((int) config('uploads.measurement_receipt.max_kb', 10240)),
                 Textarea::make('correction_reason')
@@ -793,7 +1021,10 @@ class ViewMeasurement extends ViewRecord
                     ->label('Li as regras, justificativas e documentos e aceito expressamente as divergências financeiras.')
                     ->default(false)
                     ->visible(fn (): bool => app(MeasurementPaymentFinancialService::class)->requiresAcceptance($this->record))
-                    ->accepted(fn (): bool => app(MeasurementPaymentFinancialService::class)->requiresAcceptance($this->record)),
+                    ->accepted(fn (): bool => app(MeasurementPaymentFinancialService::class)->requiresAcceptance($this->record))
+                    ->validationMessages([
+                        'accepted' => fn (): string => $this->financialAcceptanceRefusal(),
+                    ]),
             ])
             ->action(function (array $data): void {
                 $this->guarded(function () use ($data): void {
@@ -807,6 +1038,29 @@ class ViewMeasurement extends ViewRecord
                     $this->notify('Medição finalizada.');
                 });
             });
+    }
+
+    /**
+     * A frase com que a Finalização recusa a falta do aceite expresso.
+     *
+     * A regra `accepted` do campo responde antes do domínio, e a mensagem
+     * padrão montava o rótulo inteiro do checkbox numa frase sem sentido, sem
+     * dizer o que estava sendo aceito. Com empreendimento sem pagamento, a
+     * frase nomeia cada um com o valor esperado, como a do domínio
+     * ({@see MeasurementPaymentFinancialService::acceptUnpaidPlanSetsForFinalization()});
+     * senão, é a das divergências
+     * ({@see MeasurementPaymentFinancialService::acceptForFinalization()}).
+     */
+    private function financialAcceptanceRefusal(): string
+    {
+        $financial = app(MeasurementPaymentFinancialService::class);
+        $unpaid = $financial->unpaidRequiredPlanSets($this->record);
+
+        if ($unpaid !== []) {
+            return 'Confirme expressamente o aceite da ausência de pagamento justificada na etapa Pagamento: '.$financial->describeUnpaidPlanSets($unpaid).'.';
+        }
+
+        return 'Confirme expressamente o aceite das divergências e justificativas financeiras.';
     }
 
     private function returnToStageAction(): Action

@@ -513,7 +513,15 @@ it('persists clean engineering uploads and rolls back rejected uploads through t
         return;
     }
 
-    $component->assertHasErrors(['asset']);
-    expect($operation->measurements()->count())->toBe(0)
+    // A chave `asset` não é campo do formulário: no bag ela não aparecia em
+    // lugar nenhum. A recusa chega como notificação, e o bag fica vazio.
+    $refusal = collect(session()->get('filament.claimed_notifications') ?? session()->get('filament.notifications') ?? [])
+        ->firstWhere('title', 'Medição não enviada.');
+
+    expect($component->errors()->keys())->toBe([])
+        ->and((string) ($refusal['body'] ?? ''))->toBe($scanResult === ClamAvFileScanner::RESULT_INFECTED
+            ? 'O arquivo foi bloqueado pelo antivírus. Envie um arquivo seguro.'
+            : 'Não foi possível verificar a segurança do arquivo. Tente novamente quando o antivírus estiver disponível.')
+        ->and($operation->measurements()->count())->toBe(0)
         ->and(Storage::disk($disk)->allFiles('nimbus_docs/measurements/assets'))->toBeEmpty();
 })->with(['local', 'private'])->with([ClamAvFileScanner::RESULT_CLEAN, ClamAvFileScanner::RESULT_INFECTED, ClamAvFileScanner::RESULT_UNAVAILABLE]);

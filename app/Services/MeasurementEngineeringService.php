@@ -9,6 +9,7 @@ use App\Models\MeasurementAsset;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class MeasurementEngineeringService
@@ -69,13 +70,13 @@ class MeasurementEngineeringService
             $errors['reference_month'] = 'Informe a competência da medição antes de aprovar a Engenharia.';
         }
 
-        $planSets = $measurement->operation?->planSets()
-            ->orderBy('id')
-            ->lockForUpdate()
-            ->get() ?? collect();
+        $coversOwnFilesOnly = $measurement->payments()->exists();
+        $planSets = $this->requiredPlanSets($measurement, $coversOwnFilesOnly);
 
         if ($planSets->isEmpty()) {
-            $errors['plan'] = 'A operação precisa possuir ao menos um plano de medição.';
+            $errors['plan'] = $coversOwnFilesOnly
+                ? 'Os arquivos desta medição não correspondem a nenhum empreendimento da operação.'
+                : 'A operação precisa possuir ao menos um plano de medição.';
         }
 
         $constructions = $this->lockConstructions($planSets);
@@ -92,7 +93,9 @@ class MeasurementEngineeringService
 
         if ($assets->count() !== $planSets->count()
             || $assetsByPlanSet->count() !== $planSets->count()) {
-            $errors['assets.coverage'] = 'Envie exatamente um arquivo para cada empreendimento da operação.';
+            $errors['assets.coverage'] = $coversOwnFilesOnly
+                ? 'Cada arquivo desta medição precisa corresponder a um empreendimento da operação, um arquivo por empreendimento.'
+                : 'Envie exatamente um arquivo para cada empreendimento da operação.';
         }
 
         foreach ($planSets as $planSet) {
@@ -114,12 +117,14 @@ class MeasurementEngineeringService
 
             try {
                 $this->fileValidation->validateStoredAsset($asset->storage_path, $asset->resolved_storage_disk);
-            } catch (ValidationException) {
+            } catch (ValidationException $refusal) {
                 $errors["assets.{$planSet->getKey()}"] = "O arquivo de medição de {$label} não foi encontrado no armazenamento.";
+                $this->logIntegrityRefusal($measurement, $asset, 'arquivo_ausente_ou_invalido', $refusal);
             }
 
             if (! is_string($asset->sha256) || mb_strlen($asset->sha256) !== 64) {
                 $errors["assets.{$planSet->getKey()}.sha256"] = "O arquivo de medição de {$label} não possui SHA-256 válido.";
+                $this->logIntegrityRefusal($measurement, $asset, 'sha256_invalido');
             }
 
             if (! is_string($asset->mime_type)
@@ -127,6 +132,7 @@ class MeasurementEngineeringService
                 || ! is_int($asset->size)
                 || $asset->size < 1) {
                 $errors["assets.{$planSet->getKey()}.metadata"] = "O arquivo de medição de {$label} não possui MIME e tamanho válidos.";
+                $this->logIntegrityRefusal($measurement, $asset, 'metadados_invalidos');
             }
 
             $line = MeasurementPlanLine::query()
@@ -205,6 +211,71 @@ class MeasurementEngineeringService
                 ->values()
                 ->all(),
         ];
+    }
+
+    /**
+     * Os empreendimentos que esta aprovação precisa cobrir, um arquivo para
+     * cada, travados em ordem de id.
+     *
+     * Sem pagamento, todos os planos atuais da operação: a Engenharia confirma
+     * a competência da obra inteira, e a obra que entrou depois do envio pede o
+     * arquivo dela -- a medição sem pagamento ainda pode ser recusada e
+     * reenviada.
+     *
+     * Com pagamento, só os empreendimentos dos arquivos da própria medição. O
+     * pagamento foi registrado sobre esse contexto, os arquivos dele não podem
+     * mais sair ({@see MeasurementAsset::PAID_FILE_REMOVAL_REFUSAL}) e a
+     * medição paga devolvida à Engenharia não tem recusa terminal: exigir a
+     * obra que entrou na operação depois a deixaria sem saída, porque o Editar
+     * não acrescenta arquivo. A obra nova é medida pelas medições seguintes.
+     *
+     * A leitura dos arquivos acontece sob o lock da Operation e da medição que
+     * a aprovação já detém ({@see MeasurementWorkflow::approve()}); os arquivos
+     * são travados logo depois, e a cobertura confere os dois lados.
+     *
+     * @return Collection<int, MeasurementPlanSet>
+     */
+    private function requiredPlanSets(Measurement $measurement, bool $coversOwnFilesOnly): Collection
+    {
+        $planSets = $measurement->operation?->planSets();
+
+        if ($planSets === null) {
+            return new Collection;
+        }
+
+        if ($coversOwnFilesOnly) {
+            $planSets->whereKey($measurement->assets()
+                ->whereNotNull('plan_set_id')
+                ->distinct()
+                ->pluck('plan_set_id')
+                ->map(fn (mixed $planSetId): int => (int) $planSetId)
+                ->all());
+        }
+
+        return $planSets->orderBy('id')->lockForUpdate()->get();
+    }
+
+    /**
+     * A recusa de integridade de um arquivo da Engenharia vai para o log.
+     *
+     * A pessoa lê a recusa no modal, mas ela é uma `ValidationException`, que
+     * não é reportada: um arquivo que some do armazenamento -- blob apagado,
+     * volume que não montou -- ou cujos metadados não conferem só aparecia
+     * pela reclamação de quem não consegue aprovar. É sinal de incidente de
+     * infraestrutura, não erro de quem envia; o registro leva o que a operação
+     * precisa para achar o arquivo.
+     */
+    private function logIntegrityRefusal(Measurement $measurement, MeasurementAsset $asset, string $reason, ?ValidationException $refusal = null): void
+    {
+        Log::warning('Arquivo de medição recusado na conferência de integridade da Engenharia.', [
+            'reason' => $reason,
+            'measurement_id' => (int) $measurement->getKey(),
+            'asset_id' => (int) $asset->getKey(),
+            'plan_set_id' => $asset->plan_set_id === null ? null : (int) $asset->plan_set_id,
+            'disk' => $asset->resolved_storage_disk,
+            'relative_path' => $asset->storage_path,
+            'validation' => $refusal === null ? null : collect($refusal->errors())->flatten()->first(),
+        ]);
     }
 
     /**

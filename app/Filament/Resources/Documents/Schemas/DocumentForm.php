@@ -104,12 +104,17 @@ class DocumentForm
                         ->visible(fn (?Document $record): bool => (bool) $record?->file_path)
                         ->columnSpanFull(),
 
+                    // O disco `local` também guarda os arquivos da Medição e do
+                    // Nimbus: sem a trava, um caminho trocado no payload faria
+                    // este documento servir o arquivo de outro módulo. Só valem
+                    // o caminho já gravado no documento e o upload novo.
                     FileUpload::make('file_path')
                         ->label(fn (string $operation): string => $operation === 'edit' ? 'Substituir arquivo' : 'Arquivo')
                         ->required(fn (string $operation): bool => $operation === 'create')
                         ->disk('local')
                         ->visibility('private')
                         ->directory('documents')
+                        ->preventFilePathTampering()
                         ->acceptedFileTypes([
                             'application/pdf',
                             'image/jpeg',

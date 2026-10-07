@@ -65,6 +65,21 @@ class MeasurementPolicy
     }
 
     /**
+     * Não existe exclusão em massa de medições; a regra de exclusão é
+     * individual e está em {@see self::delete()}.
+     *
+     * O método existe para fechar a porta: no Filament 5 a DeleteBulkAction é
+     * autorizada só por `deleteAny`, e a policy sem ele fazia o painel tratar a
+     * ausência como "liberado" para qualquer um que abrisse a lista. O
+     * super-admin continua passando pelo `Gate::before`; quem o segura é o
+     * `deleting` do model ({@see Measurement::hasWorkflowHistory()}).
+     */
+    public function deleteAny(User $user): bool
+    {
+        return false;
+    }
+
+    /**
      * Determine whether the user can restore the model.
      */
     public function restore(User $user, Measurement $measurement): bool

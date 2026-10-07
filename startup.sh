@@ -164,6 +164,14 @@ mkdir -p \
     storage/logs
 chown -R www-data:www-data storage/framework storage/logs 2>/dev/null || true
 
+# Um bootstrap/cache/config.php deixado pelo `optimize` de um boot anterior
+# faria o `migrate` ler a configuração do cache, sem avaliar
+# config/filesystems.php: a recusa de produção sem PRIVATE_STORAGE_ROOT
+# persistente só viria no `optimize`, com as migrations já aplicadas. Sem o
+# cache, ela vem antes de qualquer migração: no próprio `config:clear`, que
+# carrega a configuração quando não há cache, ou no `migrate` logo abaixo.
+# Por isso a linha não leva `|| true` -- a falha precisa parar o script.
+php artisan config:clear
 php artisan migrate --force --isolated --no-interaction
 php artisan optimize
 

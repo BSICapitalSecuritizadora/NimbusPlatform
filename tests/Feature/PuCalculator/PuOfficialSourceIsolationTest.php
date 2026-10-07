@@ -203,6 +203,9 @@ it('never projects an unhomologated curve into the legacy tables through the dai
 });
 
 it('makes the curve official exactly when it is homologated', function () {
+    // Com a curva oficial em dia (16/03, CDI até 13/03): o PU carregado de 16/03
+    // responde pelo mês no saldo devedor e pelo dia no site.
+    $this->travelTo(CarbonImmutable::parse('2026-03-16 10:00', 'America/Sao_Paulo'));
     $emission = isolationEmission();
     $version = isolationGenerate($emission);
     $curveValue = isolationLastCurveValue($version);

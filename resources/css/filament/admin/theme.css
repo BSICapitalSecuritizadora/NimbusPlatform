@@ -5324,7 +5324,7 @@ select.fi-select-input {
 .bsi-receivables-list-page .fi-header-subheading {
     font-size: 0.8125rem !important;
     line-height: 1.35 !important;
-    color: rgba(251, 250, 248, 0.72) !important;
+    color: var(--text-secondary) !important;
     margin-top: 0.125rem !important;
     max-width: 90ch !important;
 }
@@ -5639,11 +5639,23 @@ select.fi-select-input {
 .bsi-portal-users-list-page .fi-ta-empty-state-icon-bg,
 .bsi-access-tokens-list-page .fi-ta-empty-state-icon-bg,
 .bsi-index-rates-list-page .fi-ta-empty-state-icon-bg,
-.bsi-index-projection-series-list-page .fi-ta-empty-state-icon-bg,
-.bsi-announcements-list-page .fi-ta-empty-state-icon-bg,
-.bsi-notification-outboxes-list-page .fi-ta-empty-state-icon-bg,
-.bsi-receivables-list-page .fi-ta-empty-state-icon-bg {
+.bsi-index-projection-series-list-page .fi-ta-empty-state-icon-bg {
     color: #64748b !important;
+    margin-bottom: 0.75rem !important;
+}
+
+.bsi-announcements-list-page .fi-ta-empty-state-icon-bg {
+    color: var(--text-muted) !important;
+    margin-bottom: 0.75rem !important;
+}
+
+.bsi-notification-outboxes-list-page .fi-ta-empty-state-icon-bg {
+    color: var(--text-muted) !important;
+    margin-bottom: 0.75rem !important;
+}
+
+.bsi-receivables-list-page .fi-ta-empty-state-icon-bg {
+    color: var(--text-muted) !important;
     margin-bottom: 0.75rem !important;
 }
 
@@ -5685,10 +5697,7 @@ select.fi-select-input {
 .dark .bsi-portal-users-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-access-tokens-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-index-rates-list-page .fi-ta-empty-state-icon-bg,
-.dark .bsi-index-projection-series-list-page .fi-ta-empty-state-icon-bg,
-.dark .bsi-announcements-list-page .fi-ta-empty-state-icon-bg,
-.dark .bsi-notification-outboxes-list-page .fi-ta-empty-state-icon-bg,
-.bsi-receivables-list-page .fi-ta-empty-state-icon-bg {
+.dark .bsi-index-projection-series-list-page .fi-ta-empty-state-icon-bg {
     color: rgba(251, 250, 248, 0.4) !important;
 }
 
@@ -16296,14 +16305,14 @@ body.bsi-negotiation-view-page,
 }
 
 .bsi-business-holidays-list-page .fi-header-heading {
-    color: #fbfaf8 !important;
+    color: var(--text-primary) !important;
     font-weight: 700 !important;
     font-size: 1.625rem !important;
     letter-spacing: -0.02em !important;
 }
 
 .bsi-business-holidays-list-page .fi-header-subheading {
-    color: rgba(251, 250, 248, 0.65) !important;
+    color: var(--text-secondary) !important;
     font-size: 0.875rem !important;
     max-width: 85ch !important;
     line-height: 1.5 !important;
@@ -16334,31 +16343,31 @@ body.bsi-negotiation-view-page,
 /* Header Actions: Botão Primário Dourado e Secundários em Superfície Neutra */
 .bsi-business-holidays-list-page .fi-header-actions button[wire\:click*="importAnbimaUrl"],
 .bsi-business-holidays-list-page .fi-header-actions .fi-btn-color-primary {
-    background: #b7832f !important;
-    color: #06151c !important;
+    background: var(--accent) !important;
+    color: var(--accent-foreground) !important;
     font-weight: 600 !important;
-    border: 1px solid #d8a94f !important;
+    border: 1px solid var(--accent) !important;
     box-shadow: 0 2px 8px rgba(183, 131, 47, 0.25) !important;
 }
 
 .bsi-business-holidays-list-page .fi-header-actions button[wire\:click*="importAnbimaUrl"]:hover,
 .bsi-business-holidays-list-page .fi-header-actions .fi-btn-color-primary:hover {
-    background: #c9933b !important;
-    border-color: #f3d48d !important;
+    background: var(--accent-hover) !important;
+    border-color: var(--accent) !important;
 }
 
 .bsi-business-holidays-list-page .fi-header-actions .fi-btn-color-gray,
 .bsi-business-holidays-list-page .fi-header-actions .fi-ac-action-group .fi-btn {
-    background: #0d252e !important;
-    border: 1px solid rgba(148, 163, 184, 0.2) !important;
-    color: rgba(251, 250, 248, 0.85) !important;
+    background: var(--surface-card) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: var(--text-primary) !important;
 }
 
 .bsi-business-holidays-list-page .fi-header-actions .fi-btn-color-gray:hover,
 .bsi-business-holidays-list-page .fi-header-actions .fi-ac-action-group .fi-btn:hover {
-    background: #12313b !important;
-    border-color: rgba(183, 131, 47, 0.4) !important;
-    color: #ffffff !important;
+    background: var(--surface-highlight) !important;
+    border-color: var(--accent) !important;
+    color: var(--text-primary) !important;
 }
 
 /* Widget Overview Container */
@@ -16368,65 +16377,57 @@ body.bsi-negotiation-view-page,
 
 /* Accordions de Mapeamentos e Fontes */
 .bsi-business-holidays-list-page .bsi-calendar-accordion.fi-section {
-    background: #0d252e !important;
-    border: 1px solid rgba(148, 163, 184, 0.16) !important;
+    background: var(--surface-card) !important;
+    border: 1px solid var(--border-subtle) !important;
     border-radius: 12px !important;
-    box-shadow: 0 4px 12px rgba(4, 14, 19, 0.2) !important;
+    box-shadow: 0 4px 12px rgba(4, 14, 19, 0.08) !important;
     overflow: hidden !important;
 }
 
 .bsi-business-holidays-list-page .bsi-calendar-accordion .fi-section-header {
-    background: #0a2028 !important;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+    background: var(--surface-ground) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
     padding: 0.75rem 1.25rem !important;
 }
 
 .bsi-business-holidays-list-page .bsi-calendar-accordion .fi-section-header-heading {
-    color: #fbfaf8 !important;
+    color: var(--text-primary) !important;
     font-size: 0.9375rem !important;
     font-weight: 600 !important;
 }
 
 .bsi-business-holidays-list-page .bsi-calendar-accordion .fi-section-header-description {
-    color: rgba(251, 250, 248, 0.6) !important;
+    color: var(--text-secondary) !important;
     font-size: 0.75rem !important;
 }
 
-/* Tabela de Feriados: Container Integrado em Dark Teal */
+/* Tabela de Feriados: Container Integrado */
 .bsi-business-holidays-list-page .fi-ta {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
 }
 
-.bsi-business-holidays-list-page .fi-ta-ctn {
-    background: #0d252e !important;
-    border: 1px solid rgba(148, 163, 184, 0.16) !important;
-    border-radius: 14px !important;
-    box-shadow: 0 10px 30px rgba(4, 14, 19, 0.35) !important;
-    overflow: hidden !important;
-}
-
 .bsi-business-holidays-list-page .fi-ta-header {
-    background: #0a2028 !important;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+    background: var(--surface-ground) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
     padding: 1rem 1.25rem !important;
 }
 
 .bsi-business-holidays-list-page .fi-ta-header-heading {
-    color: #fbfaf8 !important;
+    color: var(--text-primary) !important;
     font-size: 1.125rem !important;
     font-weight: 600 !important;
 }
 
 .bsi-business-holidays-list-page .fi-ta-header-description {
-    color: rgba(251, 250, 248, 0.65) !important;
+    color: var(--text-secondary) !important;
     font-size: 0.8125rem !important;
 }
 
 .bsi-business-holidays-list-page .fi-ta-header-toolbar {
-    background: #0a2028 !important;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+    background: var(--surface-ground) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
     padding: 0.625rem 1rem !important;
     min-height: 3.375rem !important;
     display: flex !important;
@@ -16448,40 +16449,37 @@ body.bsi-negotiation-view-page,
 }
 
 .bsi-business-holidays-list-page .fi-ta-header-toolbar .fi-input-wrp {
-    background: #06151c !important;
-    border: 1px solid rgba(148, 163, 184, 0.2) !important;
+    background: var(--surface-card) !important;
+    border: 1px solid var(--border-subtle) !important;
     border-radius: 8px !important;
     min-height: 2.375rem !important;
     width: clamp(16rem, 24vw, 24rem) !important;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25) !important;
     transition: all 150ms ease-out !important;
 }
 
 .bsi-business-holidays-list-page .fi-ta-header-toolbar .fi-input-wrp:hover {
-    border-color: rgba(148, 163, 184, 0.35) !important;
+    border-color: var(--border-strong) !important;
 }
 
 .bsi-business-holidays-list-page .fi-ta-header-toolbar .fi-input-wrp:focus-within {
-    background: #06151c !important;
-    border-color: #b7832f !important;
-    box-shadow:
-        inset 0 1px 2px rgba(0, 0, 0, 0.25),
-        0 0 0 2px rgba(183, 131, 47, 0.25) !important;
+    background: var(--surface-card) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 2px var(--accent-subtle) !important;
 }
 
 .bsi-business-holidays-list-page .fi-ta-header-toolbar .fi-input-wrp input.fi-input {
-    color: #fbfaf8 !important;
-    caret-color: #b7832f !important;
+    color: var(--text-primary) !important;
+    caret-color: var(--accent) !important;
     font-size: 0.8125rem !important;
     padding-block: 0.375rem !important;
 }
 
 .bsi-business-holidays-list-page .fi-ta-header-toolbar .fi-input-wrp input.fi-input::placeholder {
-    color: rgba(251, 250, 248, 0.5) !important;
+    color: var(--text-muted) !important;
 }
 
 .bsi-business-holidays-list-page .fi-ta-header-toolbar .fi-input-wrp .fi-icon {
-    color: rgba(251, 250, 248, 0.55) !important;
+    color: var(--text-muted) !important;
 }
 
 /* Botões de Ação na Toolbar */
@@ -16505,9 +16503,9 @@ body.bsi-negotiation-view-page,
     max-height: 2.375rem !important;
     box-sizing: border-box !important;
     border-radius: 8px !important;
-    border: 1px solid rgba(148, 163, 184, 0.16) !important;
-    background: transparent !important;
-    color: rgba(251, 250, 248, 0.72) !important;
+    border: 1px solid var(--border-subtle) !important;
+    background: var(--surface-card) !important;
+    color: var(--text-secondary) !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -16531,81 +16529,22 @@ body.bsi-negotiation-view-page,
 
 .bsi-business-holidays-list-page .fi-ta-header-toolbar .fi-icon-btn:hover,
 .bsi-business-holidays-list-page .fi-ta-header-toolbar button.fi-btn:hover {
-    background: rgba(18, 49, 59, 0.7) !important;
-    border-color: rgba(183, 131, 47, 0.35) !important;
-    color: #fbfaf8 !important;
+    background: var(--surface-highlight) !important;
+    border-color: var(--accent) !important;
+    color: var(--text-primary) !important;
 }
 
 .bsi-business-holidays-list-page .fi-ta-header-toolbar .fi-icon-btn:focus-visible,
 .bsi-business-holidays-list-page .fi-ta-header-toolbar button.fi-btn:focus-visible {
-    outline: 2px solid #b7832f !important;
+    outline: 2px solid var(--accent) !important;
     outline-offset: 2px !important;
 }
 
-/* Table Header, Rows & Cells */
-.dark .bsi-business-holidays-list-page thead.fi-ta-header {
-    background: #0f2a35 !important;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.16) !important;
-}
-
-.dark .bsi-business-holidays-list-page thead.fi-ta-header th {
-    color: rgba(251, 250, 248, 0.75) !important;
-    font-size: 0.75rem !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.04em !important;
-    text-transform: uppercase !important;
-    padding-block: 0.75rem !important;
-    padding-inline: 1rem !important;
-}
-
-.dark .bsi-business-holidays-list-page thead.fi-ta-header th .fi-icon {
-    opacity: 0.4;
-    transition: opacity 150ms ease-out;
-}
-
-.dark .bsi-business-holidays-list-page thead.fi-ta-header th.fi-ta-header-cell-sorted .fi-icon {
-    opacity: 1 !important;
-    color: #d8a94f !important;
-}
-
-.dark .bsi-business-holidays-list-page .fi-ta-table td {
-    padding-block: 0.75rem !important;
-    padding-inline: 1rem !important;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.08) !important;
-    color: rgba(251, 250, 248, 0.85) !important;
-    font-size: 0.8125rem !important;
-    vertical-align: middle !important;
-}
-
-.bsi-business-holidays-list-page tr.fi-ta-row {
-    transition: background-color 150ms ease-out !important;
-}
-
-.dark .bsi-business-holidays-list-page tr.fi-ta-row:hover {
-    background-color: rgba(18, 49, 59, 0.55) !important;
-}
-
-.dark .bsi-business-holidays-list-page .fi-ta-cell-name .fi-ta-text-item-label {
-    font-weight: 600 !important;
-    color: #fbfaf8 !important;
-    font-size: 0.875rem !important;
-}
-
-.dark .bsi-business-holidays-list-page tr.fi-ta-row:hover .fi-ta-cell-name .fi-ta-text-item-label {
-    color: #ffffff !important;
-}
-
-.dark .bsi-business-holidays-list-page .fi-ta-cell-holiday_date .fi-ta-text-item-label {
+/* Page-specific column formatting */
+.bsi-business-holidays-list-page .fi-ta-cell-holiday_date .fi-ta-text-item-label {
     font-variant-numeric: tabular-nums !important;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
     font-weight: 600 !important;
-    color: #fbfaf8 !important;
-}
-
-.dark .bsi-business-holidays-list-page .fi-ta-pagination {
-    background: #0a2028 !important;
-    border-top: 1px solid rgba(148, 163, 184, 0.12) !important;
-    padding: 0.625rem 1rem !important;
 }
 
 /* ── Central de Candidaturas (Recrutamento): Dark Teal, KPIs, Abas Integradas, Toolbar & Tabela ── */
@@ -16624,14 +16563,14 @@ body.bsi-negotiation-view-page,
 }
 
 .bsi-job-applications-list-page .fi-header-heading {
-    color: #fbfaf8 !important;
+    color: var(--text-primary) !important;
     font-weight: 700 !important;
     font-size: 1.625rem !important;
     letter-spacing: -0.02em !important;
 }
 
 .bsi-job-applications-list-page .fi-header-subheading {
-    color: rgba(251, 250, 248, 0.65) !important;
+    color: var(--text-secondary) !important;
     font-size: 0.875rem !important;
     max-width: 85ch !important;
     line-height: 1.5 !important;
@@ -16648,8 +16587,8 @@ body.bsi-negotiation-view-page,
 
 /* Abas de Status (Tabs): Design Integrado com a Tabela */
 .bsi-job-applications-list-page .fi-tabs {
-    background: #0a2028 !important;
-    border: 1px solid rgba(148, 163, 184, 0.16) !important;
+    background: var(--surface-ground) !important;
+    border: 1px solid var(--border-subtle) !important;
     border-bottom: none !important;
     border-top-left-radius: 14px !important;
     border-top-right-radius: 14px !important;
@@ -16659,7 +16598,7 @@ body.bsi-negotiation-view-page,
 }
 
 .bsi-job-applications-list-page .fi-tabs-item {
-    color: rgba(251, 250, 248, 0.65) !important;
+    color: var(--text-secondary) !important;
     font-size: 0.8125rem !important;
     font-weight: 500 !important;
     padding: 0.625rem 1rem !important;
@@ -16670,16 +16609,16 @@ body.bsi-negotiation-view-page,
 }
 
 .bsi-job-applications-list-page .fi-tabs-item:hover {
-    color: #fbfaf8 !important;
-    background: rgba(18, 49, 59, 0.5) !important;
+    color: var(--text-primary) !important;
+    background: var(--surface-highlight) !important;
 }
 
 .bsi-job-applications-list-page .fi-tabs-item[aria-selected="true"],
 .bsi-job-applications-list-page .fi-tabs-item.fi-active {
-    color: #fbfaf8 !important;
+    color: var(--text-primary) !important;
     font-weight: 600 !important;
-    background: #0d252e !important;
-    border-bottom: 2px solid #b7832f !important;
+    background: var(--surface-card) !important;
+    border-bottom: 2px solid var(--accent) !important;
 }
 
 .bsi-job-applications-list-page .fi-tabs-item .fi-badge {
@@ -16688,7 +16627,7 @@ body.bsi-negotiation-view-page,
     border-radius: 9999px !important;
 }
 
-/* Tabela de Candidaturas: Container Integrado em Dark Teal */
+/* Tabela de Candidaturas: Container Integrado */
 .bsi-job-applications-list-page .fi-ta {
     background: transparent !important;
     border: none !important;
@@ -16696,18 +16635,18 @@ body.bsi-negotiation-view-page,
 }
 
 .bsi-job-applications-list-page .fi-ta-ctn {
-    background: #0d252e !important;
-    border: 1px solid rgba(148, 163, 184, 0.16) !important;
+    background: var(--surface-card) !important;
+    border: 1px solid var(--border-subtle) !important;
     border-bottom-left-radius: 14px !important;
     border-bottom-right-radius: 14px !important;
-    box-shadow: 0 10px 30px rgba(4, 14, 19, 0.35) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
     overflow: hidden !important;
 }
 
 /* Toolbar da Tabela: Grupo Esquerdo (Ações em Lote) e Grupo Direito (Busca, Filtros, Colunas, Exportação) */
 .bsi-job-applications-list-page .fi-ta-header-toolbar {
-    background: #0a2028 !important;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+    background: var(--surface-ground) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
     padding: 0.75rem 1.25rem !important;
     min-height: 3.75rem !important;
     display: flex !important;
@@ -16777,34 +16716,34 @@ body.bsi-negotiation-view-page,
 
 /* Padronização de Altura (40px / 2.5rem) no Input de Busca */
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-input-wrp {
-    background: #06151c !important;
-    border: 1px solid rgba(148, 163, 184, 0.2) !important;
+    background: var(--surface-card) !important;
+    border: 1px solid var(--border-subtle) !important;
     border-radius: 8px !important;
     height: 2.5rem !important;
     min-height: 2.5rem !important;
     max-height: 2.5rem !important;
     width: clamp(14rem, 20vw, 22rem) !important;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25) !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05) !important;
     display: flex !important;
     align-items: center !important;
     transition: all 150ms ease-out !important;
 }
 
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-input-wrp:hover {
-    border-color: rgba(148, 163, 184, 0.35) !important;
+    border-color: var(--border-strong) !important;
 }
 
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-input-wrp:focus-within {
-    background: #06151c !important;
-    border-color: #b7832f !important;
+    background: var(--surface-card) !important;
+    border-color: var(--accent) !important;
     box-shadow:
-        inset 0 1px 2px rgba(0, 0, 0, 0.25),
-        0 0 0 2px rgba(183, 131, 47, 0.25) !important;
+        inset 0 1px 2px rgba(0, 0, 0, 0.05),
+        0 0 0 2px var(--accent-subtle) !important;
 }
 
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-input-wrp input.fi-input {
-    color: #fbfaf8 !important;
-    caret-color: #b7832f !important;
+    color: var(--text-primary) !important;
+    caret-color: var(--accent) !important;
     font-size: 0.8125rem !important;
     height: 100% !important;
     padding-block: 0 !important;
@@ -16812,11 +16751,11 @@ body.bsi-negotiation-view-page,
 }
 
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-input-wrp input.fi-input::placeholder {
-    color: rgba(251, 250, 248, 0.5) !important;
+    color: var(--text-muted) !important;
 }
 
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-input-wrp .fi-icon {
-    color: rgba(251, 250, 248, 0.55) !important;
+    color: var(--text-muted) !important;
     width: 1.125rem !important;
     height: 1.125rem !important;
 }
@@ -16859,52 +16798,51 @@ body.bsi-negotiation-view-page,
 /* Botão Operacional: Alterar status em lote (Neutro / Outline com Padding Confortável) */
 .bsi-job-applications-list-page .fi-ta-header-toolbar button[wire\:click*="bulk_change_status"],
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-ta-bulk-actions .fi-btn {
-    background: #0d252e !important;
-    border: 1px solid rgba(148, 163, 184, 0.22) !important;
-    color: rgba(251, 250, 248, 0.9) !important;
+    background: var(--surface-card) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: var(--text-secondary) !important;
     padding: 0 1rem !important;
 }
 
 .bsi-job-applications-list-page .fi-ta-header-toolbar button[wire\:click*="bulk_change_status"]:hover,
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-ta-bulk-actions .fi-btn:hover {
-    background: #12313b !important;
-    border-color: rgba(183, 131, 47, 0.35) !important;
-    color: #ffffff !important;
+    background: var(--surface-highlight) !important;
+    border-color: var(--accent) !important;
+    color: var(--text-primary) !important;
 }
 
 /* Botão Operacional: Exportar CSV (Bulk) */
 .bsi-job-applications-list-page .fi-ta-header-toolbar button[wire\:click*="export"]:not([wire\:click*="Filtradas"]) {
-    background: #0d252e !important;
-    border: 1px solid rgba(148, 163, 184, 0.22) !important;
-    color: rgba(251, 250, 248, 0.85) !important;
+    background: var(--surface-card) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: var(--text-secondary) !important;
     padding: 0 0.875rem !important;
 }
 
 .bsi-job-applications-list-page .fi-ta-header-toolbar button[wire\:click*="export"]:not([wire\:click*="Filtradas"]):hover {
-    background: #12313b !important;
-    border-color: rgba(183, 131, 47, 0.35) !important;
-    color: #ffffff !important;
+    background: var(--surface-highlight) !important;
+    border-color: var(--accent) !important;
+    color: var(--text-primary) !important;
 }
 
-/* Botão de Destaque Secundário: Exportar Filtradas (Accent Dourado Discreto + Azul-Petróleo) */
+/* Botão de Destaque Secundário: Exportar Filtradas (Accent Semântico) */
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-ta-actions button,
 .bsi-job-applications-list-page .fi-ta-header-toolbar button[wire\:click*="exportAction"],
 .bsi-job-applications-list-page .fi-ta-header-toolbar button[wire\:click*="Filtradas"] {
-    background: #0d252e !important;
-    border: 1px solid rgba(183, 131, 47, 0.45) !important;
-    color: #fbfaf8 !important;
+    background: var(--surface-card) !important;
+    border: 1px solid var(--accent) !important;
+    color: var(--accent) !important;
     font-weight: 600 !important;
     padding: 0 0.875rem !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
 }
 
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-ta-actions button:hover,
 .bsi-job-applications-list-page .fi-ta-header-toolbar button[wire\:click*="exportAction"]:hover,
 .bsi-job-applications-list-page .fi-ta-header-toolbar button[wire\:click*="Filtradas"]:hover {
-    background: #12313b !important;
-    border-color: #d8a94f !important;
-    color: #ffffff !important;
-    box-shadow: 0 2px 8px rgba(183, 131, 47, 0.25) !important;
+    background: var(--surface-highlight) !important;
+    border-color: var(--accent-hover) !important;
+    color: var(--accent-hover) !important;
 }
 
 /* Botões Utilitários Independentes na Toolbar (Filtro e Colunas): 40px x 40px, Borda Completa, Não-Agrupados */
@@ -16935,16 +16873,16 @@ body.bsi-negotiation-view-page,
     box-sizing: border-box !important;
     border-radius: 8px !important;
     -webkit-border-radius: 8px !important;
-    border: 1px solid rgba(148, 163, 184, 0.22) !important;
-    background: #0d252e !important;
-    color: rgba(251, 250, 248, 0.8) !important;
+    border: 1px solid var(--border-subtle) !important;
+    background: var(--surface-card) !important;
+    color: var(--text-secondary) !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     padding: 0 !important;
     margin: 0 !important;
     flex-shrink: 0 !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
     transition: all 150ms ease-out !important;
     isolation: isolate !important;
 }
@@ -16974,10 +16912,9 @@ body.bsi-negotiation-view-page,
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-ta-col-manager-modal > .fi-modal-trigger > button:hover,
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-ta-col-toggle button:hover,
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-icon-btn:hover {
-    background: #12313b !important;
-    border-color: rgba(183, 131, 47, 0.4) !important;
-    color: #ffffff !important;
-    box-shadow: 0 2px 6px rgba(4, 14, 19, 0.3) !important;
+    background: var(--surface-highlight) !important;
+    border-color: var(--accent) !important;
+    color: var(--text-primary) !important;
 }
 
 /* Estado Ativo / Dropdown Aberto / Focus */
@@ -16986,25 +16923,25 @@ body.bsi-negotiation-view-page,
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-ta-col-toggle button[aria-expanded="true"],
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-icon-btn[aria-expanded="true"],
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-icon-btn.fi-active {
-    background: #12313b !important;
-    border-color: #b7832f !important;
-    color: #ffffff !important;
+    background: var(--surface-highlight) !important;
+    border-color: var(--accent) !important;
+    color: var(--text-primary) !important;
     box-shadow:
-        0 1px 3px rgba(0, 0, 0, 0.3),
-        0 0 0 2px rgba(183, 131, 47, 0.25) !important;
+        0 1px 3px rgba(0, 0, 0, 0.08),
+        0 0 0 2px var(--accent-subtle) !important;
 }
 
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-icon-btn:focus-visible,
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-btn:focus-visible {
-    outline: 2px solid #b7832f !important;
+    outline: 2px solid var(--accent) !important;
     outline-offset: 2px !important;
 }
 
 /* Badge indicador no botão de filtro */
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-icon-btn-badge-ctn,
 .bsi-job-applications-list-page .fi-ta-header-toolbar .fi-ta-filters-dropdown .fi-badge {
-    background: #b7832f !important;
-    color: #06151c !important;
+    background: var(--accent) !important;
+    color: var(--accent-contrast, #ffffff) !important;
     font-weight: 700 !important;
     font-size: 0.625rem !important;
     border-radius: 9999px !important;
@@ -17037,67 +16974,23 @@ body.bsi-negotiation-view-page,
     }
 }
 
-/* Table Header, Rows & Cells */
-.dark .bsi-job-applications-list-page thead.fi-ta-header {
-    background: #0f2a35 !important;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.16) !important;
-}
-
-.dark .bsi-job-applications-list-page thead.fi-ta-header th {
-    color: rgba(251, 250, 248, 0.75) !important;
-    font-size: 0.75rem !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.04em !important;
-    text-transform: uppercase !important;
-    padding-block: 0.75rem !important;
-    padding-inline: 1rem !important;
-}
-
-.dark .bsi-job-applications-list-page thead.fi-ta-header th.fi-ta-header-cell-sorted .fi-icon {
-    opacity: 1 !important;
-    color: #d8a94f !important;
-}
-
-.dark .bsi-job-applications-list-page .fi-ta-table td {
-    padding-block: 0.75rem !important;
-    padding-inline: 1rem !important;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.08) !important;
-    color: rgba(251, 250, 248, 0.85) !important;
-    font-size: 0.8125rem !important;
-    vertical-align: middle !important;
-}
-
-.bsi-job-applications-list-page tr.fi-ta-row {
-    transition: background-color 150ms ease-out !important;
-}
-
-.dark .bsi-job-applications-list-page tr.fi-ta-row:hover {
-    background-color: rgba(18, 49, 59, 0.55) !important;
-}
-
-.dark .bsi-job-applications-list-page .fi-ta-cell-name .fi-ta-text-item-label {
+/* Page Column Formatting — Retained for layout, colors inherited from Phase 3 */
+.bsi-job-applications-list-page .fi-ta-cell-name .fi-ta-text-item-label {
     font-weight: 700 !important;
-    color: #fbfaf8 !important;
     font-size: 0.875rem !important;
 }
 
-.dark .bsi-job-applications-list-page tr.fi-ta-row:hover .fi-ta-cell-name .fi-ta-text-item-label {
-    color: #ffffff !important;
-}
-
-.dark .bsi-job-applications-list-page .fi-ta-cell-name .fi-ta-text-item-description {
-    color: rgba(251, 250, 248, 0.55) !important;
+.bsi-job-applications-list-page .fi-ta-cell-name .fi-ta-text-item-description {
     font-size: 0.75rem !important;
 }
 
-.dark .bsi-job-applications-list-page .fi-ta-cell-reviewed_at .fi-ta-text-item-label,
-.dark .bsi-job-applications-list-page .fi-ta-cell-created_at .fi-ta-text-item-label {
+.bsi-job-applications-list-page .fi-ta-cell-reviewed_at .fi-ta-text-item-label,
+.bsi-job-applications-list-page .fi-ta-cell-created_at .fi-ta-text-item-label {
     font-variant-numeric: tabular-nums !important;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
 }
 
-.dark .bsi-job-applications-list-page .fi-ta-cell-reviewed_at .fi-ta-text-item-description {
-    color: rgba(251, 250, 248, 0.5) !important;
+.bsi-job-applications-list-page .fi-ta-cell-reviewed_at .fi-ta-text-item-description {
     font-size: 0.6875rem !important;
 }
 
@@ -17105,24 +16998,24 @@ body.bsi-negotiation-view-page,
 .bsi-job-applications-list-page .fi-ta-empty-state {
     padding: 3.5rem 1.5rem !important;
     text-align: center !important;
-    background: #0d252e !important;
+    background: var(--surface-card) !important;
 }
 
 .bsi-job-applications-list-page .fi-ta-empty-state-icon-bg {
-    background: #0a2028 !important;
-    border: 1px solid rgba(148, 163, 184, 0.16) !important;
-    color: #d8a94f !important;
+    background: var(--surface-ground) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: var(--accent) !important;
 }
 
 .bsi-job-applications-list-page .fi-ta-empty-state-heading {
-    color: #fbfaf8 !important;
+    color: var(--text-primary) !important;
     font-size: 1.0625rem !important;
     font-weight: 600 !important;
     margin-top: 1rem !important;
 }
 
 .bsi-job-applications-list-page .fi-ta-empty-state-description {
-    color: rgba(251, 250, 248, 0.65) !important;
+    color: var(--text-secondary) !important;
     font-size: 0.8125rem !important;
     max-width: 55ch !important;
     margin: 0.375rem auto 1.25rem auto !important;
@@ -17130,25 +17023,17 @@ body.bsi-negotiation-view-page,
 }
 
 .bsi-job-applications-list-page .fi-ta-empty-state .fi-btn.fi-btn-color-primary {
-    background: #b7832f !important;
-    color: #06151c !important;
+    background: var(--accent) !important;
+    color: var(--accent-contrast, #ffffff) !important;
     font-weight: 600 !important;
-    border: 1px solid #d8a94f !important;
-    box-shadow: 0 2px 8px rgba(183, 131, 47, 0.25) !important;
+    border: 1px solid var(--accent) !important;
     border-radius: 8px !important;
     padding: 0.5rem 1.125rem !important;
 }
 
 .bsi-job-applications-list-page .fi-ta-empty-state .fi-btn.fi-btn-color-primary:hover {
-    background: #c9933b !important;
-    border-color: #f3d48d !important;
-}
-
-/* Pagination */
-.dark .bsi-job-applications-list-page .fi-ta-pagination {
-    background: #0a2028 !important;
-    border-top: 1px solid rgba(148, 163, 184, 0.12) !important;
-    padding: 0.625rem 1rem !important;
+    background: var(--accent-hover) !important;
+    border-color: var(--accent-hover) !important;
 }
 
 /* Responsividade dos Dropdowns de Filtros e Colunas */

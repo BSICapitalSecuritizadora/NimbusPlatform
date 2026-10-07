@@ -165,10 +165,18 @@ it('treats a calendar covered by official year as covered even though only its e
     $to = CarbonImmutable::parse('2026-05-29');
 
     $result = app(PuCurvePrerequisiteService::class)->handle($emission->fresh());
+    $calendarIssues = collect($result->blockingIssues())
+        ->where('key', 'business_calendar_dates')
+        ->pluck('message');
 
+    // O calendário nacional, coberto pelo ano oficial, não bloqueia. O CDI, porém,
+    // é observado no calendário de divulgação (bancário) -- feriados nacionais não
+    // sabem de Carnaval nem de Corpus Christi --, e sem o ano oficial dele a
+    // geração é barrada pelo nome dele, nunca segue de segunda a sexta (Fase 3.1).
     expect(coverageService()->missingDates(BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS, $from, $to))->not->toBe([])
         ->and(coverageService()->uncoveredDates(BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS, $from, $to))->toBe([])
-        ->and(array_map(fn ($issue): string => $issue->key, $result->blockingIssues()))->not->toContain('business_calendar_dates');
+        ->and($calendarIssues->filter(fn (string $message): bool => str_contains($message, BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS))->all())->toBe([])
+        ->and($calendarIssues->filter(fn (string $message): bool => str_contains($message, BusinessCalendarRegistry::CDI_PUBLICATION_CALENDAR))->count())->toBe(1);
 });
 
 it('blocks the curve on a year the official exception calendar never covered', function () {

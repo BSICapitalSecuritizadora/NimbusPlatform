@@ -2,24 +2,45 @@
 
 namespace App\Services;
 
+use App\Concerns\ScansUploadedFile;
 use App\Models\Measurement;
 use App\Models\MeasurementAsset;
 use App\Models\MeasurementPayment;
 use App\Models\MeasurementPaymentReceiptEvidence;
 use App\Services\Security\ClamAvFileScanner;
+use Illuminate\Container\Attributes\Scoped;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
+/**
+ * Gravação, validação e compensação dos arquivos da Medição.
+ *
+ * A instância vive a requisição inteira -- `#[Scoped]`: o worker da fila a
+ * descarta entre um job e outro, e nenhuma requisição herda a anterior --
+ * porque guarda os caminhos que a própria requisição gravou
+ * ({@see self::wasStoredDuringThisRequest()}). Uma flag estática vazaria entre
+ * jobs do mesmo worker. Pelo mesmo motivo o antivírus não fica preso ao
+ * construtor: é resolvido a cada varredura, e a primeira resolução do serviço
+ * não decide sozinha qual scanner vale para o resto da requisição.
+ */
+#[Scoped]
 class MeasurementFileValidationService
 {
+    /**
+     * Caminhos gravados por {@see self::storeAsset()} nesta requisição.
+     *
+     * @var array<string, true>
+     */
+    private array $storedAssetPaths = [];
+
     public function __construct(
         private DocumentStorageService $storage,
-        private ClamAvFileScanner $scanner,
     ) {}
 
     public function storeAsset(UploadedFile $file): string
@@ -41,7 +62,24 @@ class MeasurementFileValidationService
             throw $exception;
         }
 
+        $this->storedAssetPaths[$path] = true;
+
         return $path;
+    }
+
+    /**
+     * O caminho saiu de {@see self::storeAsset()} nesta mesma requisição?
+     *
+     * É o único caminho novo que o formulário de Enviar/Editar aceita além do
+     * que já está gravado no arquivo. O Repeater com relationship valida cada
+     * item de novo depois do upload, quando o estado já traz o caminho recém-
+     * gravado -- que ainda não é o original do registro. Um caminho digitado no
+     * payload nunca passa por aqui: é isso que impede vincular à medição o
+     * arquivo de outra operação ou de outro módulo do mesmo disco.
+     */
+    public function wasStoredDuringThisRequest(string $path): bool
+    {
+        return isset($this->storedAssetPaths[$path]);
     }
 
     public function compensateAssetOnRollback(string $path, string $disk): void
@@ -100,17 +138,28 @@ class MeasurementFileValidationService
         $this->validate($path, $disk, 'measurement_receipt', 'receipt', allowLegacyPublic: true);
     }
 
+    /**
+     * Varre o arquivo gravado e recusa o que não sair limpo.
+     *
+     * Toda recusa vai para o log como crítica, como em
+     * {@see ScansUploadedFile::rejectUploadedFile()}: com o antivírus fora do
+     * ar, todo envio da Medição falha, e sem o registro a operação só
+     * descobriria pela reclamação de quem não consegue enviar.
+     */
     private function scanStoredFile(string $path, string $disk, string $errorKey): void
     {
-        if (! $this->scanner->isEnabled()) {
+        $scanner = app(ClamAvFileScanner::class);
+
+        if (! $scanner->isEnabled()) {
             return;
         }
 
         $stream = rescue(fn () => Storage::disk($disk)->readStream($path), null, report: false);
+        $readable = is_resource($stream);
 
         try {
-            $result = is_resource($stream)
-                ? rescue(fn (): string => $this->scanner->scanStream($stream), ClamAvFileScanner::RESULT_UNAVAILABLE)
+            $result = $readable
+                ? rescue(fn (): string => $scanner->scanStream($stream), ClamAvFileScanner::RESULT_UNAVAILABLE)
                 : ClamAvFileScanner::RESULT_UNAVAILABLE;
         } finally {
             if (is_resource($stream)) {
@@ -119,6 +168,17 @@ class MeasurementFileValidationService
         }
 
         if ($result !== ClamAvFileScanner::RESULT_CLEAN) {
+            Log::critical('Upload bloqueado pela varredura antivírus.', [
+                'reason' => match (true) {
+                    $result === ClamAvFileScanner::RESULT_INFECTED => 'malware_detectado',
+                    ! $readable => 'arquivo_ilegivel_para_varredura',
+                    default => 'antivirus_indisponivel',
+                },
+                'field' => $errorKey,
+                'disk' => $disk,
+                'relative_path' => $path,
+            ]);
+
             throw ValidationException::withMessages([
                 $errorKey => $result === ClamAvFileScanner::RESULT_INFECTED
                     ? 'O arquivo foi bloqueado pelo antivírus. Envie um arquivo seguro.'

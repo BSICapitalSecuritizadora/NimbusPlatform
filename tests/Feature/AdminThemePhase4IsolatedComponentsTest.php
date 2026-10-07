@@ -91,6 +91,7 @@ it('ensures Expense Calendar consumes semantic tokens and has no white text on l
     expect($calendarView)->not->toContain('#0d252e')
         ->and($calendarView)->not->toContain('bsi-navy-900')
         ->and($calendarView)->not->toContain('text-slate-400')
+        ->and($calendarView)->toContain('text-[var(--text-secondary)]')
         ->and($calendarView)->toContain('var(--surface-card)')
         ->and($calendarView)->toContain('var(--surface-ground)')
         ->and($calendarView)->toContain('var(--border-subtle)')

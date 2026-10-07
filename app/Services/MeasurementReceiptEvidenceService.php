@@ -13,6 +13,7 @@ use App\Support\Delegations\ResponsibilityAuthorization;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -248,9 +249,27 @@ class MeasurementReceiptEvidenceService
         }
     }
 
+    /**
+     * Confere que o comprovante ainda está num armazenamento permitido e bate
+     * com o SHA-256 gravado no envio -- na conferência documental, na
+     * Finalização e no download.
+     *
+     * A recusa continua chegando à pessoa como antes, e agora vai também para
+     * o log como aviso: comprovante que some do armazenamento ou muda de
+     * conteúdo é incidente de infraestrutura, e sem o registro a operação só o
+     * descobria pela reclamação de quem não conseguia conferir ou finalizar.
+     *
+     * @throws ValidationException
+     */
     public function ensureIntegrity(MeasurementPaymentReceiptEvidence $evidence, bool $allowMissingLegacyHash = false): void
     {
-        $this->validation->validateStoredReceipt($evidence->storage_path, $evidence->resolved_storage_disk);
+        try {
+            $this->validation->validateStoredReceipt($evidence->storage_path, $evidence->resolved_storage_disk);
+        } catch (ValidationException $exception) {
+            $this->logIntegrityRefusal($evidence, 'arquivo_ausente_ou_invalido');
+
+            throw $exception;
+        }
 
         if ($allowMissingLegacyHash && $evidence->sha256 === null && $evidence->original_filename === null
             && $evidence->version === 1 && $evidence->supersedes_id === null && ! $evidence->is_post_finalization) {
@@ -261,8 +280,32 @@ class MeasurementReceiptEvidenceService
 
         if (! is_string($evidence->sha256) || mb_strlen($evidence->sha256) !== 64
             || ! is_string($actualHash) || ! hash_equals($evidence->sha256, $actualHash)) {
+            $this->logIntegrityRefusal($evidence, match (true) {
+                ! is_string($evidence->sha256) || mb_strlen($evidence->sha256) !== 64 => 'sha256_ausente',
+                ! is_string($actualHash) => 'arquivo_ausente_ou_ilegivel',
+                default => 'sha256_divergente',
+            });
+
             throw ValidationException::withMessages(['receipt' => 'O comprovante está ausente, sem SHA-256 ou não corresponde ao conteúdo auditado.']);
         }
+    }
+
+    /**
+     * O que a operação precisa para achar o comprovante: a medição, o
+     * pagamento, a versão, o disco e o caminho relativo -- nunca o caminho
+     * absoluto nem o conteúdo.
+     */
+    private function logIntegrityRefusal(MeasurementPaymentReceiptEvidence $evidence, string $reason): void
+    {
+        Log::warning('Comprovante de pagamento recusado na conferência de integridade.', [
+            'reason' => $reason,
+            'measurement_id' => $evidence->payment()->value('measurement_id'),
+            'payment_id' => $evidence->measurement_payment_id,
+            'evidence_id' => $evidence->getKey(),
+            'version' => $evidence->version,
+            'disk' => $evidence->resolved_storage_disk,
+            'relative_path' => $evidence->storage_path,
+        ]);
     }
 
     public function documentaryStatus(Measurement $measurement): string

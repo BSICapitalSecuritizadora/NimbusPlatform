@@ -29,7 +29,7 @@ return [
         'measurement_file_access',   // controllers de download — asset, arquivo da medição e comprovante, com sha256
         'measurements',              // Measurement (LogsActivity) — situação, etapa e demais colunas; MeasurementPlanSet e MeasurementPlanLine (LogsActivity) — plano, fundo, avanço físico inicial e cronograma
         'measurement_payments',      // MeasurementPayment (LogsActivity) — valor, data, comprovante
-        'operations',                // Operation (LogsActivity) + OperationLifecycleService — transições de ciclo de vida
+        'operations',                // Operation (LogsActivity) + OperationLifecycleService — transições de ciclo de vida; OperationResponsibilityService::syncRejectionRecipients() — quem é notificado em caso de recusa
         'delegations',               // ResponsibilityDelegation (LogsActivity) + criação/revogação explícitas
         'areas',                     // AreaResponsibilityService — quem responde por cada área (habilita a auto-homologação do PU)
         'nimbus',                    // portal: documentos, arquivos de submissão, tokens de acesso

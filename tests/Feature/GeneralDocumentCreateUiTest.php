@@ -2,6 +2,7 @@
 
 use App\Filament\Resources\Nimbus\GeneralDocuments\GeneralDocumentResource;
 use App\Filament\Resources\Nimbus\GeneralDocuments\Pages\CreateGeneralDocument;
+use App\Filament\Resources\Nimbus\GeneralDocuments\Pages\EditGeneralDocument;
 use App\Models\Nimbus\DocumentCategory;
 use App\Models\Nimbus\GeneralDocument;
 use App\Services\DocumentStorageService;
@@ -10,6 +11,7 @@ use Filament\Support\Enums\Alignment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -125,4 +127,62 @@ it('keeps category, title and file required', function () {
         ->assertHasFormErrors(['nimbus_category_id', 'title', 'file_path']);
 
     $this->assertDatabaseCount('nimbus_general_documents', 0);
+});
+
+/**
+ * Arquivo de medição gravado no mesmo disco privado dos documentos do Nimbus.
+ */
+function generalDocumentForeignFile(): string
+{
+    $path = DocumentStorageService::PRIVATE_PREFIX.'/measurements/assets/'.Str::uuid().'/'.Str::random(40).'.pdf';
+    Storage::disk(DocumentStorageService::privateDisk())->put($path, '%PDF-1.7 arquivo de medição de outra operação');
+
+    return $path;
+}
+
+it('refuses a document whose file path was forged to another module file', function () {
+    $category = DocumentCategory::query()->create(['name' => 'Institucional']);
+    $foreign = generalDocumentForeignFile();
+
+    Livewire::test(CreateGeneralDocument::class)
+        ->fillForm([
+            'nimbus_category_id' => $category->id,
+            'title' => 'Documento forjado',
+        ])
+        ->set('data.file_path', [(string) Str::uuid() => $foreign])
+        ->call('create')
+        ->assertHasFormErrors(['file_path']);
+
+    $this->assertDatabaseCount('nimbus_general_documents', 0);
+    Storage::disk(DocumentStorageService::privateDisk())->assertExists($foreign);
+});
+
+it('keeps the stored file of an edited document and refuses a forged file path', function () {
+    $category = DocumentCategory::query()->create(['name' => 'Institucional']);
+    $storedPath = DocumentStorageService::PRIVATE_PREFIX.'/general-documents/regulamento.pdf';
+    Storage::disk(DocumentStorageService::privateDisk())->put($storedPath, "%PDF-1.4\nRegulamento Interno 2026");
+    $document = GeneralDocument::query()->create([
+        'nimbus_category_id' => $category->id,
+        'title' => 'Regulamento Interno 2026',
+        'file_path' => $storedPath,
+        'file_original_name' => 'regulamento.pdf',
+        'file_size' => 1,
+        'file_mime' => 'application/pdf',
+        'is_active' => true,
+    ]);
+
+    Livewire::test(EditGeneralDocument::class, ['record' => $document->getRouteKey()])
+        ->set('data.file_path', [(string) Str::uuid() => generalDocumentForeignFile()])
+        ->call('save')
+        ->assertHasFormErrors(['file_path']);
+
+    expect($document->fresh()->file_path)->toBe($storedPath);
+
+    Livewire::test(EditGeneralDocument::class, ['record' => $document->getRouteKey()])
+        ->fillForm(['title' => 'Regulamento Interno revisado'])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($document->fresh()->title)->toBe('Regulamento Interno revisado')
+        ->and($document->fresh()->file_path)->toBe($storedPath);
 });

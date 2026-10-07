@@ -2,15 +2,20 @@
 
 namespace App\Services;
 
+use App\Concerns\ScansUploadedFile;
+use App\DTOs\Measurements\MeasurementFinancialReconciliationLine;
 use App\Enums\MeasurementReconciliationStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Models\Measurement;
 use App\Models\MeasurementFinancialRule;
 use App\Models\MeasurementPayment;
+use App\Models\MeasurementReview;
 use App\Services\Security\ClamAvFileScanner;
 use App\Support\Uploads\LocalUploadedFile;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -24,7 +29,11 @@ class MeasurementPaymentFinancialService
     ) {}
 
     /**
-     * Called with the measurement locked inside the workflow transaction.
+     * Chamado dentro da transação do fluxo, sob o lock de quem chama: o
+     * registro de pagamento já travou a Operation, a medição e os planos, nessa
+     * ordem; a reavaliação travou a medição e o pagamento. Daqui em diante só
+     * a regra financeira é travada -- depois deles, como manda a ordem
+     * canônica de {@see MeasurementWorkflow}.
      *
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
@@ -110,11 +119,133 @@ class MeasurementPaymentFinancialService
         return true;
     }
 
+    /**
+     * Se a Finalização exige o aceite expresso do Finalizador: há pagamento com
+     * divergência justificada ou empreendimento exigido sem pagamento
+     * ({@see self::unpaidRequiredPlanSets()}). É o que mostra e torna
+     * obrigatória a confirmação no modal; a Finalização confere de novo.
+     */
     public function requiresAcceptance(Measurement $measurement): bool
     {
-        return $measurement->payments()->get()->contains(
+        $payments = $measurement->payments()->get();
+
+        return $payments->contains(
             fn (MeasurementPayment $payment): bool => (bool) ($payment->financial_assessment['requires_acceptance'] ?? false),
-        );
+        ) || $this->unpaidRequiredPlanSetsAmong($measurement, $payments) !== [];
+    }
+
+    /**
+     * Empreendimentos que a Engenharia aprovou com valor esperado a pagar e que
+     * não têm nenhum pagamento DESTA medição.
+     *
+     * A justificativa e o aceite de divergência ficam em cada pagamento, então
+     * quem não recebeu nada não tinha onde guardá-los e passava pela etapa
+     * Pagamento e pela Finalização sem justificativa nem aceite. O universo é
+     * o `engineering_snapshot` -- conferido contra os arquivos e os planos na
+     * Finalização --, e a conta é a da conciliação, sem fórmula própria.
+     *
+     * Não é exigido o empreendimento sem referência financeira (sem fundo de
+     * obra no snapshot) nem o de valor esperado zero (0% realizado, fundo zero
+     * ou valor arredondado a zero): como em {@see self::assess()}, nada ali
+     * pede aceite. Quem recebeu parte do valor também não entra: a diferença é
+     * divergência do próprio pagamento, já justificada e aceita por ele.
+     *
+     * Relê os pagamentos sem alterar a medição recebida -- a página passa o
+     * próprio registro, com relações carregadas que ela continua usando.
+     *
+     * @return list<MeasurementFinancialReconciliationLine>
+     */
+    public function unpaidRequiredPlanSets(Measurement $measurement): array
+    {
+        return $this->unpaidRequiredPlanSetsAmong($measurement, $measurement->payments()->get());
+    }
+
+    /**
+     * Os empreendimentos omitidos como a pessoa lê: nome e valor esperado.
+     *
+     * @param  list<MeasurementFinancialReconciliationLine>  $lines
+     */
+    public function describeUnpaidPlanSets(array $lines): string
+    {
+        return collect($lines)
+            ->map(fn (MeasurementFinancialReconciliationLine $line): string => sprintf(
+                '%s (%s)',
+                $line->label,
+                MeasurementFinancialReconciliationService::formatCurrency($line->expectedAmount),
+            ))
+            ->implode(', ');
+    }
+
+    /**
+     * Confere, na Finalização, a ausência de pagamento justificada na etapa
+     * Pagamento e devolve o que foi aceito, para a auditoria congelar.
+     *
+     * Roda depois de {@see self::acceptForFinalization()} e das conferências de
+     * integridade. A justificativa é a nota da aprovação da etapa Pagamento;
+     * em branco -- aprovação anterior a esta regra -- a medição precisa voltar
+     * àquela etapa, porque o Finalizador não aceita o que ninguém justificou.
+     *
+     * @return list<array{plan_set_id: int, reference: array<string, mixed>, justification: string, justified_by: int|null, justified_at: string|null}>
+     */
+    public function acceptUnpaidPlanSetsForFinalization(Measurement $measurement, bool $accepted): array
+    {
+        $unpaid = $this->unpaidRequiredPlanSets($measurement);
+
+        if ($unpaid === []) {
+            return [];
+        }
+
+        $paymentReview = $measurement->reviews()
+            ->where('stage', MeasurementWorkflow::STAGE_PAYMENT)
+            ->where('status', 'approved')
+            ->first();
+        $justification = trim((string) $paymentReview?->notes);
+
+        if (! $paymentReview instanceof MeasurementReview || $justification === '') {
+            throw new MeasurementWorkflowException(
+                'Há empreendimento sem pagamento nesta competência e sem justificativa da etapa Pagamento: '.$this->describeUnpaidPlanSets($unpaid).'. Devolva à etapa Pagamento para registrar o pagamento ou justificar a ausência.',
+                [
+                    'measurement_id' => $measurement->getKey(),
+                    'unpaid_plan_set_ids' => array_map(fn (MeasurementFinancialReconciliationLine $line): int => $line->planSetId, $unpaid),
+                ],
+            );
+        }
+
+        if (! $accepted) {
+            throw ValidationException::withMessages([
+                'accept_financial_exceptions' => 'Confirme expressamente o aceite da ausência de pagamento justificada na etapa Pagamento: '.$this->describeUnpaidPlanSets($unpaid).'.',
+            ]);
+        }
+
+        return array_map(fn (MeasurementFinancialReconciliationLine $line): array => [
+            'plan_set_id' => $line->planSetId,
+            'reference' => $line->toArray(),
+            'justification' => $justification,
+            'justified_by' => $paymentReview->reviewer_user_id === null ? null : (int) $paymentReview->reviewer_user_id,
+            'justified_at' => $paymentReview->reviewed_at?->toIso8601String(),
+        ], $unpaid);
+    }
+
+    /**
+     * @param  Collection<int, MeasurementPayment>  $payments
+     * @return list<MeasurementFinancialReconciliationLine>
+     */
+    private function unpaidRequiredPlanSetsAmong(Measurement $measurement, Collection $payments): array
+    {
+        $paidPlanSetIds = $payments
+            ->pluck('plan_set_id')
+            ->filter()
+            ->map(fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->all();
+        $current = $measurement->withoutRelations()->setRelation('payments', $payments);
+
+        return array_values(array_filter(
+            $this->reconciliation->forMeasurement($current)->lines,
+            fn (MeasurementFinancialReconciliationLine $line): bool => $line->hasFinancialReference()
+                && bccomp((string) $line->expectedBalance, '0', MeasurementFinancialReconciliationService::MONEY_SCALE) > 0
+                && ! in_array($line->planSetId, $paidPlanSetIds, true),
+        ));
     }
 
     /** @return list<array<string, mixed>> */
@@ -155,7 +286,14 @@ class MeasurementPaymentFinancialService
         return hash('sha256', json_encode($measurement->engineering_snapshot, JSON_THROW_ON_ERROR));
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * Toda recusa do antivírus vai para o log como crítica, como em
+     * {@see ScansUploadedFile::rejectUploadedFile()}: a falha da
+     * varredura é engolida sem relatório, e o antivírus fora do ar bloqueia
+     * todo pagamento com documento de suporte sem deixar rastro.
+     *
+     * @return array<string, mixed>
+     */
     private function storeSupport(UploadedFile $file): array
     {
         $scanner = app(ClamAvFileScanner::class);
@@ -171,6 +309,12 @@ class MeasurementPaymentFinancialService
             )
             : ClamAvFileScanner::RESULT_CLEAN;
         if ($scanResult !== ClamAvFileScanner::RESULT_CLEAN) {
+            Log::critical('Upload bloqueado pela varredura antivírus.', [
+                'reason' => $scanResult === ClamAvFileScanner::RESULT_INFECTED ? 'malware_detectado' : 'antivirus_indisponivel',
+                'field' => 'financial_support',
+                'original_filename' => $file->getClientOriginalName(),
+            ]);
+
             throw ValidationException::withMessages(['financial_support' => 'O documento não passou na verificação de segurança ou o antivírus está indisponível.']);
         }
         $stored = $this->storage->storePrivateFile($file, 'measurements/financial-support');

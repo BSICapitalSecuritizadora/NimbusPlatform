@@ -10,7 +10,6 @@ use App\Domain\PuCalculator\DTOs\PuCurvePrerequisiteIssue;
 use App\Domain\PuCalculator\Enums\IpcaProjectionPolicy;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Enums\PuIndexer;
-use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Models\Emission;
 use App\Models\EmissionPuEvent;
@@ -255,16 +254,23 @@ class PuCurvePrerequisiteService
     }
 
     /**
-     * Calendário de divulgação do CDI, quando ele difere do calendário da curva.
-     * A defasagem é contada nele, então ele também precisa cobrir o período.
+     * Calendário EFETIVO de divulgação do CDI, quando ele difere do calendário da
+     * curva -- o explícito da configuração ou, sem ele, o canônico de divulgação
+     * para um contrato cujo calendário não é de divulgação
+     * ({@see PuIndexRateRequirementResolver::observationCalendarCode()}). A data
+     * de observação é resolvida nele, então ele também precisa cobrir o período:
+     * sem cobertura oficial a geração é bloqueada com o nome do calendário, e
+     * nunca segue presumindo segunda a sexta.
      */
     private function distinctIndexRateCalendarCode(EmissionPuParameter $parameter): ?string
     {
-        $code = trim((string) $parameter->index_rate_calendar_code);
+        if ($parameter->indexer_enum !== PuIndexer::Cdi) {
+            return null;
+        }
 
-        if ($parameter->indexer_enum !== PuIndexer::Cdi
-            || $code === ''
-            || BusinessCalendarRegistry::normalize($code) === BusinessCalendarRegistry::normalize((string) $parameter->calendar_code)) {
+        $code = $this->indexRateRequirementResolver->observationCalendarCode($parameter);
+
+        if (BusinessCalendarRegistry::normalize($code) === BusinessCalendarRegistry::normalize((string) $parameter->calendar_code)) {
             return null;
         }
 
@@ -594,15 +600,17 @@ class PuCurvePrerequisiteService
         for ($currentDate = $startDate->addDay(); $currentDate->lte($endDate); $currentDate = $currentDate->addDay()) {
             try {
                 $rateRequirement = $this->indexRateRequirementResolver->resolve($parameter, $currentDate);
-            } catch (\Throwable) {
+            } catch (\Throwable $exception) {
                 $issues[] = PuCurvePrerequisiteIssue::blocking(
                     'index_rates',
                     sprintf(
-                        'Nao foi possivel resolver a Taxa DI requerida para a data da curva %s. Modo: %s. Calendario: %s. Lag: %d dia(s) util(eis). Revise o calendario e as taxas disponiveis.',
+                        'Nao foi possivel resolver a Taxa DI requerida para a data da curva %s. Modo: %s. Calendario: %s. Calendario de divulgacao do CDI: %s. Lag: %d dia(s) util(eis). Motivo: %s Revise o calendario e as taxas disponiveis.',
                         $currentDate->toDateString(),
                         $parameter->index_rate_lookup_mode_enum->name,
                         (string) $parameter->calendar_code,
+                        $this->indexRateRequirementResolver->observationCalendarCode($parameter),
                         (int) $parameter->index_rate_lag_business_days,
+                        $exception->getMessage(),
                     ),
                 );
 
@@ -622,17 +630,14 @@ class PuCurvePrerequisiteService
                 continue;
             }
 
-            // Offset exato do CDI: a data-alvo além do último CDI publicado é a "cauda futura" da curva.
-            // Não bloqueia — a curva é gerada apenas na parte realizada e a parte futura entra sozinha na
-            // próxima sincronização. Um buraco DENTRO do período já publicado continua sendo bloqueante.
-            if (
-                $parameter->index_rate_lookup_mode_enum === PuIndexRateLookupMode::BusinessDayLagExact
-                && $this->indexRateRequirementResolver->isAwaitingPublication(
-                    $parameter,
-                    $rateRequirement,
-                    $lastResolvedDate !== null,
-                )
-            ) {
+            // A data-alvo além do último CDI publicado é a "cauda futura" da curva, em qualquer modo de
+            // busca. Não bloqueia — a curva é gerada apenas na parte realizada e a parte futura entra
+            // sozinha quando o índice for divulgado; nenhum modo a completa com a última taxa conhecida.
+            // Um buraco DENTRO do período já publicado continua sendo bloqueante.
+            if ($this->indexRateRequirementResolver->isAwaitingPublication(
+                $rateRequirement,
+                $lastResolvedDate !== null,
+            )) {
                 $issues[] = PuCurvePrerequisiteIssue::warning(
                     'index_rates',
                     sprintf(

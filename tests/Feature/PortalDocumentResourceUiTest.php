@@ -6,6 +6,7 @@ use App\Filament\Resources\Nimbus\PortalDocuments\Schemas\PortalDocumentForm;
 use App\Models\Nimbus\PortalDocument;
 use App\Models\Nimbus\PortalUser;
 use App\Models\User;
+use App\Services\DocumentStorageService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -18,6 +19,8 @@ use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
@@ -140,4 +143,72 @@ it('renders the edit portal document page with full-width cockpit layout and act
         ->assertSee('Salvar alterações')
         ->assertSee('Cancelar')
         ->assertSee('Excluir');
+});
+
+/**
+ * Arquivo de medição gravado no mesmo disco privado dos documentos do portal.
+ */
+function portalDocumentForeignFile(): string
+{
+    $path = DocumentStorageService::PRIVATE_PREFIX.'/measurements/assets/'.Str::uuid().'/'.Str::random(40).'.pdf';
+    Storage::disk(DocumentStorageService::privateDisk())->put($path, '%PDF-1.7 arquivo de medição de outra operação');
+
+    return $path;
+}
+
+function portalDocumentRecipient(): PortalUser
+{
+    return PortalUser::query()->create([
+        'full_name' => 'Investidor Silva',
+        'email' => 'investidor.silva@example.com',
+        'document_number' => '123.456.789-01',
+    ]);
+}
+
+it('refuses a portal document whose file path was forged to another module file', function (): void {
+    $this->actingAs(portalDocumentUiUser('nimbus.portal-documents.view', 'nimbus.portal-documents.create'));
+    $foreign = portalDocumentForeignFile();
+
+    Livewire::test(CreatePortalDocument::class)
+        ->fillForm([
+            'nimbus_portal_user_id' => portalDocumentRecipient()->id,
+            'title' => 'Documento forjado',
+        ])
+        ->set('data.file_path', [(string) Str::uuid() => $foreign])
+        ->call('create')
+        ->assertHasFormErrors(['file_path']);
+
+    expect(PortalDocument::query()->count())->toBe(0);
+    Storage::disk(DocumentStorageService::privateDisk())->assertExists($foreign);
+});
+
+it('keeps the stored file of an edited portal document and refuses a forged file path', function (): void {
+    $user = portalDocumentUiUser('nimbus.portal-documents.view', 'nimbus.portal-documents.update');
+    $this->actingAs($user);
+    $storedPath = DocumentStorageService::PRIVATE_PREFIX.'/portal-documents/contrato.pdf';
+    Storage::disk(DocumentStorageService::privateDisk())->put($storedPath, "%PDF-1.4\nContrato Social Registrado");
+    $document = PortalDocument::query()->create([
+        'nimbus_portal_user_id' => portalDocumentRecipient()->id,
+        'title' => 'Contrato Social Registrado',
+        'file_path' => $storedPath,
+        'file_original_name' => 'contrato.pdf',
+        'file_size' => 1,
+        'file_mime' => 'application/pdf',
+        'created_by_user_id' => $user->id,
+    ]);
+
+    Livewire::test(EditPortalDocument::class, ['record' => $document->getRouteKey()])
+        ->set('data.file_path', [(string) Str::uuid() => portalDocumentForeignFile()])
+        ->call('save')
+        ->assertHasFormErrors(['file_path']);
+
+    expect($document->fresh()->file_path)->toBe($storedPath);
+
+    Livewire::test(EditPortalDocument::class, ['record' => $document->getRouteKey()])
+        ->fillForm(['title' => 'Contrato Social Atualizado'])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($document->fresh()->title)->toBe('Contrato Social Atualizado')
+        ->and($document->fresh()->file_path)->toBe($storedPath);
 });

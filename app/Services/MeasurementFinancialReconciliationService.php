@@ -19,8 +19,12 @@ use App\Models\MeasurementPayment;
  * aprovação não pode reescrever retroativamente a referência de uma medição
  * já aprovada, e é por isso que o serviço não consulta `MeasurementPlanSet`.
  *
- * Nesta V1 a divergência é informativa: nada aqui bloqueia registro,
- * aprovação ou finalização.
+ * O serviço só calcula; quem decide é o fluxo. A divergência não impede o
+ * pagamento, mas exige justificativa no registro e o aceite expresso do
+ * Finalizador ({@see MeasurementPaymentFinancialService::assess()}). O
+ * empreendimento com valor esperado que ficou sem pagamento exige a
+ * justificativa na aprovação da etapa Pagamento e o mesmo aceite
+ * ({@see MeasurementPaymentFinancialService::unpaidRequiredPlanSets()}).
  */
 class MeasurementFinancialReconciliationService
 {

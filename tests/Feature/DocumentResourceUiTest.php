@@ -11,8 +11,12 @@ use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
+use Filament\Actions\Testing\TestAction;
 use Filament\Tables\Table;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -211,4 +215,98 @@ it('validates required fields with specific friendly error messages on document 
             'category' => 'Selecione a categoria.',
             'file_path' => 'Selecione um arquivo.',
         ]);
+});
+
+/**
+ * Arquivo de outra área do mesmo disco -- um arquivo de medição --, que um
+ * documento só passaria a apontar com o caminho forjado no payload.
+ */
+function documentUiForeignFile(): string
+{
+    $path = 'nimbus_docs/measurements/assets/'.Str::uuid().'/'.Str::random(40).'.pdf';
+    Storage::disk('local')->put($path, '%PDF-1.7 arquivo de medição de outra operação');
+
+    return $path;
+}
+
+function documentUiStoredDocument(): Document
+{
+    Storage::disk('local')->put('documents/original.pdf', '%PDF-1.4 versão original');
+
+    return Document::factory()->create([
+        'file_path' => 'documents/original.pdf',
+        'file_name' => 'original.pdf',
+        'storage_disk' => 'local',
+    ]);
+}
+
+it('refuses a document created with a file path forged to another module file', function (): void {
+    $this->actingAs(documentUiUser('documents.view', 'documents.create'));
+    $foreign = documentUiForeignFile();
+
+    Livewire::test(CreateDocument::class)
+        ->fillForm(['title' => 'Documento forjado', 'category' => 'governanca'])
+        ->set('data.file_path', [(string) Str::uuid() => $foreign])
+        ->call('create')
+        ->assertHasFormErrors(['file_path']);
+
+    expect(Document::query()->count())->toBe(0);
+    Storage::disk('local')->assertExists($foreign);
+});
+
+it('keeps the stored file when an edited document arrives with a forged file path', function (): void {
+    $this->actingAs(documentUiUser('documents.view', 'documents.update'));
+    $document = documentUiStoredDocument();
+
+    Livewire::test(EditDocument::class, ['record' => $document->getRouteKey()])
+        ->set('data.file_path', [(string) Str::uuid() => documentUiForeignFile()])
+        ->call('save')
+        ->assertHasFormErrors(['file_path']);
+
+    expect($document->fresh()->file_path)->toBe('documents/original.pdf');
+});
+
+it('saves an edited document that keeps its stored file', function (): void {
+    $this->actingAs(documentUiUser('documents.view', 'documents.update'));
+    $document = documentUiStoredDocument();
+
+    Livewire::test(EditDocument::class, ['record' => $document->getRouteKey()])
+        ->fillForm(['title' => 'Regulamento revisado'])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($document->fresh()->title)->toBe('Regulamento revisado')
+        ->and($document->fresh()->file_path)->toBe('documents/original.pdf');
+});
+
+it('refuses a new document version whose file path was forged', function (): void {
+    $this->actingAs(documentUiUser('documents.view', 'documents.update'));
+    $document = documentUiStoredDocument();
+    $foreign = documentUiForeignFile();
+
+    Livewire::test(ListDocuments::class)
+        ->mountAction(TestAction::make('new_version')->table($document))
+        ->set('mountedActions.0.data.file_path', [(string) Str::uuid() => $foreign])
+        ->callMountedAction()
+        ->assertHasActionErrors(['file_path']);
+
+    expect(Document::query()->where('file_path', $foreign)->exists())->toBeFalse()
+        ->and($document->fresh()->replaced_at)->toBeNull();
+});
+
+it('creates a new document version from a fresh upload', function (): void {
+    $this->actingAs(documentUiUser('documents.view', 'documents.update'));
+    $document = documentUiStoredDocument();
+
+    Livewire::test(ListDocuments::class)
+        ->callAction(TestAction::make('new_version')->table($document), data: [
+            'file_path' => UploadedFile::fake()->createWithContent('versao-2.pdf', '%PDF-1.4 versão 2'),
+        ])
+        ->assertHasNoActionErrors();
+
+    $newVersion = Document::query()->where('parent_document_id', $document->id)->sole();
+
+    expect($newVersion->version)->toBe($document->fresh()->version + 1)
+        ->and(Storage::disk('local')->get($newVersion->file_path))->toBe('%PDF-1.4 versão 2')
+        ->and($document->fresh()->replaced_at)->not->toBeNull();
 });

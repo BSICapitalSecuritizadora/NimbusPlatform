@@ -3,10 +3,12 @@
 use App\Enums\OperationStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Models\Measurement;
+use App\Models\MeasurementPayment;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use App\Models\User;
+use App\Notifications\MeasurementWorkflowNotification;
 use App\Services\MeasurementWorkflow;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -247,6 +249,131 @@ it('terminates an engineering rejection and records its reason', function () {
 
     expect($scenario['measurement']->fresh()->status)->toBe('rejected')
         ->and($scenario['measurement']->fresh()->reviewForStage(1)?->notes)->toBe('Arquivo técnico inconsistente');
+});
+
+/**
+ * Pagamento registrado na etapa Pagamento de uma medição já avançada até lá.
+ *
+ * @param  array<string, mixed>  $scenario
+ */
+function registerP0Payment(array $scenario): MeasurementPayment
+{
+    return app(MeasurementWorkflow::class)->registerPayment($scenario['measurement']->fresh(), $scenario['payment'], [
+        'plan_set_id' => $scenario['planSet']->id,
+        'pay_date' => '2026-08-20',
+        'amount' => 1000,
+        'financial_justification' => 'Pagamento parcial previsto para esta medição.',
+    ]);
+}
+
+/**
+ * Recusas encadeadas da etapa Pagamento até a Engenharia: cada recusa
+ * intermediária só devolve a medição à etapa anterior.
+ *
+ * @param  array<string, mixed>  $scenario
+ */
+function rejectP0BackToEngineering(array $scenario): void
+{
+    $workflow = app(MeasurementWorkflow::class);
+    $workflow->reject($scenario['measurement']->fresh(), $scenario['payment'], 'Rever o enquadramento do pagamento.');
+    $workflow->reject($scenario['measurement']->fresh(), $scenario['compliance'], 'Rever a documentação.');
+    $workflow->reject($scenario['measurement']->fresh(), $scenario['management'], 'Rever o percentual medido.');
+}
+
+it('refuses to close at Engineering a paid measurement that Finalization returned', function (string $receipt) {
+    $scenario = createP0Scenario();
+    advanceP0ToStage($scenario, 4);
+    $workflow = app(MeasurementWorkflow::class);
+    $payment = registerP0Payment($scenario);
+    $workflow->approve($scenario['measurement']->fresh(), $scenario['payment']);
+
+    if ($receipt !== 'no receipt') {
+        $workflow->attachReceipt($payment->fresh(), $scenario['receipt'], MeasurementReceiptEvidenceScenario::file());
+    }
+
+    if ($receipt === 'approved receipt') {
+        MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
+    }
+
+    $workflow->returnToStage(
+        $scenario['measurement']->fresh(),
+        $scenario['finalizer'],
+        MeasurementWorkflow::STAGE_ENGINEERING,
+        'Rever o percentual medido.',
+    );
+    $returned = $scenario['measurement']->fresh();
+    $receiptStatus = $payment->fresh()->currentReceiptEvidence?->review_status;
+    $rejectionsBefore = Activity::query()->where('description', 'measurement_stage_rejected')->count();
+
+    expect(fn () => $workflow->reject($returned, $scenario['engineering'], 'Medição indevida.'))
+        ->toThrow(MeasurementWorkflowException::class, MeasurementWorkflow::TERMINAL_REJECTION_WITH_PAYMENTS);
+
+    $measurement = $scenario['measurement']->fresh();
+
+    expect($measurement->status)->toBe('in_review')
+        ->and($measurement->current_stage)->toBe(MeasurementWorkflow::STAGE_ENGINEERING)
+        ->and($measurement->reviewForStage(1)?->status)->toBe('pending')
+        ->and($measurement->reviewForStage(1)?->reviewer_user_id)->toBeNull()
+        ->and($measurement->workflow_revision)->toBe($returned->workflow_revision)
+        ->and($payment->fresh()?->amount)->toBe('1000.00')
+        ->and($payment->fresh()->currentReceiptEvidence?->review_status)->toBe($receiptStatus)
+        ->and(Activity::query()->where('description', 'measurement_stage_rejected')->count())->toBe($rejectionsBefore);
+
+    Notification::assertNotSentTo(
+        $scenario['assigned'],
+        MeasurementWorkflowNotification::class,
+        fn (MeasurementWorkflowNotification $notification): bool => $notification->event === 'rejected',
+    );
+})->with(['no receipt', 'pending receipt', 'approved receipt']);
+
+it('refuses the terminal rejection of a paid measurement rejected back stage by stage and lets Engineering correct it', function () {
+    $scenario = createP0Scenario();
+    advanceP0ToStage($scenario, 4);
+    $workflow = app(MeasurementWorkflow::class);
+    $payment = registerP0Payment($scenario);
+
+    rejectP0BackToEngineering($scenario);
+    $returned = $scenario['measurement']->fresh();
+
+    expect($returned->current_stage)->toBe(MeasurementWorkflow::STAGE_ENGINEERING)
+        ->and($returned->status)->toBe('in_review')
+        ->and($returned->engineering_snapshot)->toBeNull();
+
+    expect(fn () => $workflow->reject($returned, $scenario['engineering'], 'Medição indevida.'))
+        ->toThrow(MeasurementWorkflowException::class, MeasurementWorkflow::TERMINAL_REJECTION_WITH_PAYMENTS);
+
+    expect($scenario['measurement']->fresh()->status)->toBe('in_review')
+        ->and($scenario['measurement']->fresh()->current_stage)->toBe(MeasurementWorkflow::STAGE_ENGINEERING)
+        ->and($payment->fresh()?->amount)->toBe('1000.00')
+        ->and(Activity::query()->where('description', 'measurement_stage_rejected')->count())->toBe(3);
+
+    $workflow->approve($scenario['measurement']->fresh(), $scenario['engineering'], 'Percentual corrigido.', [
+        $scenario['planSet']->id => 5,
+    ]);
+
+    expect($scenario['measurement']->fresh()->current_stage)->toBe(2)
+        ->and($scenario['measurement']->fresh()->engineering_snapshot['plan_sets'][0]['realized_monthly_percent'])->toBe('5.00')
+        ->and($scenario['measurement']->fresh()->payments()->pluck('id')->all())->toBe([$payment->id]);
+});
+
+it('tells the interface why a paid measurement back at Engineering cannot be closed by rejection', function () {
+    $scenario = createP0Scenario();
+    $workflow = app(MeasurementWorkflow::class);
+
+    expect($workflow->terminalRejectionBlockReason($scenario['measurement']->fresh()))->toBeNull();
+
+    advanceP0ToStage($scenario, 4);
+    registerP0Payment($scenario);
+
+    // Na etapa Pagamento a recusa só devolve à Compliance: não encerra nada.
+    expect($workflow->terminalRejectionBlockReason($scenario['measurement']->fresh()))->toBeNull();
+
+    rejectP0BackToEngineering($scenario);
+    $returned = $scenario['measurement']->fresh();
+
+    expect($workflow->terminalRejectionBlockReason($returned))->toBe(MeasurementWorkflow::TERMINAL_REJECTION_WITH_PAYMENTS)
+        ->and($workflow->terminalRejectionBlockReason($returned->load('payments')))->toBe(MeasurementWorkflow::TERMINAL_REJECTION_WITH_PAYMENTS)
+        ->and($workflow->canReject($returned, $scenario['engineering']))->toBeTrue();
 });
 
 it('allows finalization to return to an earlier stage only with persisted evidence', function () {

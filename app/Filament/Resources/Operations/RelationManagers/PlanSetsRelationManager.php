@@ -4,8 +4,10 @@ namespace App\Filament\Resources\Operations\RelationManagers;
 
 use App\Concerns\MoneyFormatter;
 use App\DTOs\Measurements\MeasurementPhysicalProgress;
+use App\Exceptions\MeasurementWorkflowException;
 use App\Filament\Resources\Operations\Schemas\InitialPhysicalProgressFields;
 use App\Models\MeasurementPlanSet;
+use App\Models\Operation;
 use App\Models\User;
 use App\Services\MeasurementPhysicalProgressService;
 use App\Services\OperationContextVisibilityService;
@@ -33,9 +35,14 @@ use Filament\Support\RawJs;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\LazyCollection;
+use Throwable;
 
 class PlanSetsRelationManager extends RelationManager
 {
@@ -239,14 +246,115 @@ class PlanSetsRelationManager extends RelationManager
                             ->send();
                     }),
                 DeleteAction::make()
-                    ->authorize(fn (): bool => Gate::allows('update', $this->getOwnerRecord())),
+                    ->authorize(fn (): bool => Gate::allows('update', $this->getOwnerRecord()))
+                    ->using(fn (MeasurementPlanSet $record): bool => $this->deleteUnderOperationLock($record)),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
-                        ->authorize(fn (): bool => Gate::allows('update', $this->getOwnerRecord())),
+                        ->authorize(fn (): bool => Gate::allows('update', $this->getOwnerRecord()))
+                        ->using(fn (DeleteBulkAction $action, EloquentCollection|Collection|LazyCollection $records) => $this->deleteSelectedUnderOperationLock($action, $records)),
                 ]),
             ]);
+    }
+
+    /**
+     * Chama a ação montada e mostra a recusa do domínio da Medição.
+     *
+     * Os ganchos dos planos e das linhas recusam com
+     * `MeasurementWorkflowException` -- plano coberto por Engenharia aprovada,
+     * linha medida, plano com histórico de medição. Ela não é reportada e, sem
+     * tratamento, virava o aviso genérico de erro: a pessoa não sabia por que
+     * o fundo não mudou ou o plano não saiu. A recusa pode nascer na gravação
+     * das linhas do modal, que o Filament faz antes da própria ação, por isso
+     * é tratada aqui, e não em cada ação. O modal fica aberto, como num
+     * `halt()`. A edição do plano não ganhou transação nem lock da Operation:
+     * linha que não estava travada e já foi gravada antes da recusa continua
+     * gravada, como sempre foi -- a exclusão é que passa pela Operation
+     * ({@see self::deleteUnderOperationLock()}).
+     *
+     * @param  array<string, mixed>  $arguments
+     */
+    public function callMountedAction(array $arguments = []): mixed
+    {
+        $actionName = $this->getMountedAction()?->getName();
+
+        try {
+            return parent::callMountedAction($arguments);
+        } catch (MeasurementWorkflowException $refusal) {
+            Notification::make()
+                ->danger()
+                ->title(match ($actionName) {
+                    'delete' => 'Plano não excluído.',
+                    'edit' => 'Plano não atualizado.',
+                    default => 'Ação não concluída.',
+                })
+                ->body($refusal->getMessage())
+                ->persistent()
+                ->send();
+
+            return null;
+        }
+    }
+
+    /**
+     * Exclui o plano com a Operation travada antes, relendo-o sob o lock.
+     *
+     * A guarda do plano ({@see MeasurementPlanSet::hasMeasurementHistory()})
+     * é leitura comum. Sem a Operation à frente, a exclusão lia "sem medição"
+     * enquanto o envio, a aprovação da Engenharia ou o pagamento -- que travam
+     * a Operation primeiro -- gravavam o vínculo, e a cascata o apagava logo
+     * depois. Com o lock, a guarda reavalia com o que já foi gravado; o plano
+     * é relido porque pode ter mudado entre a listagem e o clique. Plano que
+     * outra pessoa já excluiu não é recusa: o pedido está cumprido.
+     */
+    private function deleteUnderOperationLock(MeasurementPlanSet $record): bool
+    {
+        $operationId = $this->getOwnerRecord()->getKey();
+
+        return DB::transaction(function () use ($operationId, $record): bool {
+            Operation::query()->whereKey($operationId)->lockForUpdate()->firstOrFail();
+
+            $planSet = MeasurementPlanSet::query()
+                ->where('operation_id', $operationId)
+                ->find($record->getKey());
+
+            return ! $planSet instanceof MeasurementPlanSet || (bool) $planSet->delete();
+        });
+    }
+
+    /**
+     * A exclusão em massa, um plano por transação, cada uma com a Operation
+     * travada antes ({@see self::deleteUnderOperationLock()}).
+     *
+     * O Filament conta a recusa por registro e só dizia "N não pôde(m) ser
+     * excluído(s)"; agora o motivo do domínio vai na notificação de falha.
+     * Falha inesperada continua contada sem texto técnico e vai para o log, a
+     * primeira só, como no Filament.
+     *
+     * @param  EloquentCollection<int, MeasurementPlanSet>|Collection<int, MeasurementPlanSet>|LazyCollection<int, MeasurementPlanSet>  $records
+     */
+    private function deleteSelectedUnderOperationLock(DeleteBulkAction $action, EloquentCollection|Collection|LazyCollection $records): void
+    {
+        $isFirstUnexpectedFailure = true;
+
+        $records->each(function (MeasurementPlanSet $record) use ($action, &$isFirstUnexpectedFailure): void {
+            try {
+                if (! $this->deleteUnderOperationLock($record)) {
+                    $action->reportBulkProcessingFailure();
+                }
+            } catch (MeasurementWorkflowException $refusal) {
+                $action->reportBulkProcessingFailure($refusal->getMessage(), e($refusal->getMessage()));
+            } catch (Throwable $exception) {
+                $action->reportBulkProcessingFailure();
+
+                if ($isFirstUnexpectedFailure) {
+                    report($exception);
+
+                    $isFirstUnexpectedFailure = false;
+                }
+            }
+        });
     }
 
     protected static function initialPhysicalProgressField(): TextInput

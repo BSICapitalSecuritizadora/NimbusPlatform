@@ -159,12 +159,16 @@ class DocumentsTable
                     ->color('info')
                     ->visible(fn (Document $record): bool => auth()->user()->can('documents.update') && ! $record->replaced_at)
                     ->form([
+                        // A nova versão só pode nascer de um upload: um caminho
+                        // trocado no payload apontaria para o arquivo de outro
+                        // módulo do mesmo disco (Medição, Nimbus).
                         FileUpload::make('file_path')
                             ->label('Novo Arquivo')
                             ->required()
                             ->disk('local')
                             ->visibility('private')
                             ->directory('documents')
+                            ->preventFilePathTampering()
                             ->acceptedFileTypes((array) config('uploads.document.allowed_mimes', []))
                             ->maxSize((int) config('uploads.document.max_kb', 102400))
                             ->helperText('Tamanho máximo por arquivo: '.(int) ceil(config('uploads.document.max_kb', 102400) / 1024).' MB.')

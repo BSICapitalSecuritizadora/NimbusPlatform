@@ -20,6 +20,12 @@ class MeasurementPlanSet extends Model
     /** @use HasFactory<MeasurementPlanSetFactory> */
     use HasFactory, LogsActivity;
 
+    /**
+     * Por que o plano que já recebeu medição não pode ser excluído
+     * ({@see self::hasMeasurementHistory()}).
+     */
+    public const MEASUREMENT_HISTORY_DELETION_REFUSAL = 'Este plano já tem medição registrada (arquivo, pagamento ou linha medida) e não pode ser excluído: o histórico da medição depende dele.';
+
     protected $fillable = [
         'operation_id',
         'construction_id',
@@ -85,6 +91,12 @@ class MeasurementPlanSet extends Model
                     'plan_set_id' => $planSet->getKey(),
                 ]);
             }
+
+            if ($planSet->hasMeasurementHistory()) {
+                throw new MeasurementWorkflowException(self::MEASUREMENT_HISTORY_DELETION_REFUSAL, [
+                    'plan_set_id' => $planSet->getKey(),
+                ]);
+            }
         });
     }
 
@@ -139,6 +151,26 @@ class MeasurementPlanSet extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(MeasurementPayment::class, 'plan_set_id');
+    }
+
+    /**
+     * O plano já recebeu alguma medição, em qualquer situação dela?
+     *
+     * Arquivo de medição, pagamento ou linha do cronograma gravada por uma
+     * aprovação da Engenharia. A exclusão do plano desce pela FK: as linhas vão
+     * em cascata, sem passar pelo `deleting` delas, e o `plan_set_id` e o
+     * `plan_line_id` dos arquivos e o `plan_set_id` dos pagamentos viram nulos.
+     * A medição em análise perderia o vínculo com o empreendimento, e a paga e
+     * devolvida à Engenharia ficaria sem saída: sem recusa terminal (há
+     * pagamento) e sem a etapa Pagamento, que não aceita pagamento sem plano.
+     * Plano cadastrado por engano, ainda sem nenhuma medição, continua
+     * excluível.
+     */
+    public function hasMeasurementHistory(): bool
+    {
+        return $this->assets()->exists()
+            || $this->payments()->exists()
+            || $this->lines()->whereNotNull('measurement_id')->exists();
     }
 
     public function getIncurredAmountAttribute(): float

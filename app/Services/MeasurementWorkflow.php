@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\DTOs\Measurements\MeasurementFinancialReconciliationLine;
 use App\Enums\MeasurementResponsibility;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Models\Construction;
@@ -22,6 +23,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -52,6 +54,15 @@ class MeasurementWorkflow
         4 => 'success',
         5 => 'gray',
     ];
+
+    /**
+     * Por que a Engenharia não pode encerrar por recusa uma medição paga.
+     *
+     * A mesma frase serve à recusa do domínio e ao motivo exibido no botão
+     * desabilitado: a pessoa lê, antes de tentar, exatamente o que o domínio
+     * responderia.
+     */
+    public const TERMINAL_REJECTION_WITH_PAYMENTS = 'Esta medição tem pagamento registrado e não pode ser encerrada por recusa. Corrija os dados e aprove a Engenharia: o pagamento continua vinculado a esta medição.';
 
     public function __construct(
         private MeasurementAuthorizationService $authorization,
@@ -108,6 +119,34 @@ class MeasurementWorkflow
     public function canReject(Measurement $measurement, User $actor): bool
     {
         return $this->canApprove($measurement, $actor);
+    }
+
+    /**
+     * Por que a recusa não pode encerrar esta medição, ou `null` quando pode.
+     *
+     * Só a recusa na Engenharia encerra a medição ('rejected'); nas demais
+     * etapas ela devolve à etapa anterior. Medição com pagamento registrado só
+     * termina 'finalized': o pagamento não tem estorno nem cancelamento no
+     * domínio e já conta como custo incorrido do plano, então uma medição
+     * encerrada por recusa deixaria esse dinheiro fora de qualquer fluxo -- sem
+     * pendência, sem conferência de comprovante, sem Finalização. A correção
+     * continua aberta: a Engenharia corrige e aprova de novo.
+     *
+     * Serve à interface, que mantém o botão visível e o desabilita com este
+     * motivo; usa a relação já carregada pela página e só consulta o banco sem
+     * ela. A recusa em si confere de novo, sob o lock da medição.
+     */
+    public function terminalRejectionBlockReason(Measurement $measurement): ?string
+    {
+        if ($this->unifiedStage($measurement) !== self::STAGE_ENGINEERING) {
+            return null;
+        }
+
+        $hasPayment = $measurement->relationLoaded('payments')
+            ? $measurement->payments->isNotEmpty()
+            : $measurement->payments()->exists();
+
+        return $hasPayment ? self::TERMINAL_REJECTION_WITH_PAYMENTS : null;
     }
 
     public function canPause(Measurement $measurement, User $actor): bool
@@ -256,8 +295,11 @@ class MeasurementWorkflow
                 ]);
             }
 
+            $unpaidPlanSets = [];
+
             if ($stage === self::STAGE_PAYMENT) {
                 $this->ensureValidPaymentExists($locked);
+                $unpaidPlanSets = $this->ensureUnpaidPlanSetsAreJustified($locked, $notes);
             }
 
             $fromStatus = $locked->status;
@@ -312,14 +354,20 @@ class MeasurementWorkflow
 
             $this->advanceRevision($locked);
 
-            $this->audit($locked, $actor, 'measurement_stage_approved', [
+            $approval = [
                 'stage' => $stage,
                 'from_status' => $fromStatus,
                 'to_status' => $toStatus,
                 'notes' => $notes,
                 'responsibility' => $this->authorization->responsibilityForStage($stage),
                 'expected_responsible_user_id' => $locked->operation->stageResponsibleId($stage),
-            ]);
+            ];
+
+            if ($stage === self::STAGE_PAYMENT) {
+                $approval['unpaid_plan_sets'] = $unpaidPlanSets;
+            }
+
+            $this->audit($locked, $actor, 'measurement_stage_approved', $approval);
 
             return [
                 'measurement' => $locked,
@@ -346,6 +394,16 @@ class MeasurementWorkflow
         $this->notifyUsers($locked, $event, [$locked->operation->stageResponsibleId($result['next_stage'])]);
     }
 
+    /**
+     * Recusa a etapa pendente: na Engenharia encerra a medição; nas demais,
+     * devolve à etapa anterior.
+     *
+     * A recusa que encerra é negada a medição com pagamento registrado
+     * ({@see self::terminalRejectionBlockReason()}). A leitura dos pagamentos
+     * sob o lock da medição basta: pagamento só nasce em
+     * {@see self::registerPayments()}, sob esse mesmo lock e com a medição na
+     * etapa Pagamento -- nunca na Engenharia que está sendo recusada.
+     */
     public function reject(
         Measurement $measurement,
         User $actor,
@@ -370,6 +428,11 @@ class MeasurementWorkflow
 
             $this->authorizeStageDecision($locked, $actor, $stage);
             $review = $this->lockPendingReview($locked, $stage);
+
+            if ($stage === self::STAGE_ENGINEERING && $locked->payments()->exists()) {
+                throw $this->invalidState($locked, self::TERMINAL_REJECTION_WITH_PAYMENTS);
+            }
+
             $fromStatus = $locked->status;
 
             $review->forceFill([
@@ -645,6 +708,17 @@ class MeasurementWorkflow
     }
 
     /**
+     * Registra os pagamentos da etapa Pagamento.
+     *
+     * Trava a Operation antes da medição ({@see self::lockMeasurementWithOperation()}):
+     * o registro trava os planos aprovados e insere `measurement_payments`, filho
+     * de `operations` -- a chave estrangeira pede lock na operação no INSERT.
+     * Travando só a medição, o pedido da Operation chegava por último, depois
+     * da avaliação financeira, e fechava ciclo com quem a trava primeiro: a
+     * aprovação da Engenharia de outra medição (Operation, depois os planos), o
+     * encerramento da operação (Operation, depois as medições) e o envio de
+     * medição (Operation, depois os arquivos que referenciam os planos).
+     *
      * @param  array<int, array{pay_date: mixed, amount: mixed, method?: ?string, notes?: ?string, plan_set_id?: ?int}>  $rows
      * @return Collection<int, MeasurementPayment>
      */
@@ -657,7 +731,7 @@ class MeasurementWorkflow
         $expectedRevision ??= (int) $measurement->workflow_revision;
 
         $created = DB::transaction(function () use ($measurement, $actor, $expectedRevision, $rows): Collection {
-            $locked = $this->lockMeasurement($measurement);
+            $locked = $this->lockMeasurementWithOperation($measurement);
 
             $this->assertExpectedState($locked, $expectedRevision, self::STAGE_PAYMENT, 'awaiting_payment');
 
@@ -680,6 +754,8 @@ class MeasurementWorkflow
                 throw ValidationException::withMessages(['payments' => 'Informe ao menos um pagamento válido.']);
             }
 
+            // Os nomes vão para a mensagem: sem eles a pessoa lia a chave
+            // técnica ("O campo payments.0.amount deve ser maior que 0.").
             $validated = Validator::make(['payments' => $rows], [
                 'payments' => ['required', 'array', 'min:1'],
                 'payments.*.pay_date' => ['required', 'date'],
@@ -690,6 +766,16 @@ class MeasurementWorkflow
                 'payments.*.financial_rule_id' => ['nullable', 'integer'],
                 'payments.*.financial_justification' => ['nullable', 'string', 'max:5000'],
                 'payments.*.financial_support' => ['nullable', 'file', 'max:10240'],
+            ], [], [
+                'payments' => 'pagamentos',
+                'payments.*.pay_date' => 'data do pagamento',
+                'payments.*.amount' => 'valor do pagamento',
+                'payments.*.method' => 'método',
+                'payments.*.notes' => 'observações',
+                'payments.*.plan_set_id' => 'empreendimento',
+                'payments.*.financial_rule_id' => 'regra financeira',
+                'payments.*.financial_justification' => 'justificativa da divergência',
+                'payments.*.financial_support' => 'documento de suporte',
             ])->validate()['payments'];
 
             $snapshotPlanSets = collect($locked->engineering_snapshot['plan_sets'] ?? []);
@@ -819,6 +905,18 @@ class MeasurementWorkflow
         throw new MeasurementWorkflowException('Comprovantes não podem ser excluídos. Envie uma nova versão com justificativa.');
     }
 
+    /**
+     * Encerra a medição depois de reconferir aprovações, comprovantes, o
+     * contexto da Engenharia, a integridade dos arquivos e o enquadramento
+     * financeiro -- inclusive a ausência justificada de pagamento de algum
+     * empreendimento, que exige o mesmo aceite expresso das divergências.
+     *
+     * Trava a Operation antes da medição ({@see self::lockMeasurementWithOperation()}):
+     * a conferência trava planos, obras e linhas, os mesmos que a aprovação da
+     * Engenharia de outra medição trava depois da Operation. Sem a Operation à
+     * frente, a ordem entre planos e entre linhas dependeria do plano de
+     * execução do banco, e as duas podiam se travar em ciclo.
+     */
     public function finalize(
         Measurement $measurement,
         User $actor,
@@ -830,7 +928,7 @@ class MeasurementWorkflow
         $expectedStatus ??= (string) $measurement->status;
 
         $locked = DB::transaction(function () use ($measurement, $actor, $expectedRevision, $expectedStatus, $acceptFinancialExceptions): Measurement {
-            $locked = $this->lockMeasurement($measurement);
+            $locked = $this->lockMeasurementWithOperation($measurement);
 
             $this->assertExpectedState($locked, $expectedRevision, self::STAGE_FINALIZATION, $expectedStatus);
 
@@ -859,7 +957,9 @@ class MeasurementWorkflow
             $this->ensureEngineeringCoverageIsIntact($locked);
             $this->ensureStoredFilesAreIntact($locked);
 
-            $financialExceptions = app(MeasurementPaymentFinancialService::class)->acceptForFinalization($locked, $acceptFinancialExceptions);
+            $financial = app(MeasurementPaymentFinancialService::class);
+            $financialExceptions = $financial->acceptForFinalization($locked, $acceptFinancialExceptions);
+            $unpaidPlanSetsAccepted = $financial->acceptUnpaidPlanSetsForFinalization($locked, $acceptFinancialExceptions);
 
             $fromStatus = $locked->status;
             $locked->reviews()->updateOrCreate(
@@ -881,6 +981,7 @@ class MeasurementWorkflow
 
             $this->audit($locked, $actor, 'measurement_finalized', [
                 'financial_exceptions_accepted' => $financialExceptions,
+                'unpaid_plan_sets_accepted' => $unpaidPlanSetsAccepted,
                 'stage' => self::STAGE_FINALIZATION,
                 'from_status' => $fromStatus,
                 'to_status' => 'finalized',
@@ -894,6 +995,14 @@ class MeasurementWorkflow
         $this->notifyUsers($locked, 'finalized', [$locked->uploaded_by, $locked->operation->assigned_user_id]);
     }
 
+    /**
+     * Trava só a medição, para os caminhos que não pedem nada à operação:
+     * aprovações das etapas 2 a 4, recusas, devoluções, pausas, retomadas e a
+     * reavaliação de pagamento. Nenhum deles trava plano, obra ou linha nem
+     * insere linha filha de `operations`, então não fecham ciclo com quem trava
+     * a Operation primeiro. Um caminho que passe a fazer isso usa
+     * {@see self::lockMeasurementWithOperation()}.
+     */
     private function lockMeasurement(Measurement $measurement): Measurement
     {
         $locked = Measurement::query()
@@ -910,9 +1019,37 @@ class MeasurementWorkflow
     }
 
     /**
-     * Engineering approval and the start of a review share this deterministic
-     * lock order with material Operation mutation and with the operation
-     * lifecycle: Operation, Measurement, review, then snapshot rows.
+     * Trava a Operation e depois a medição: o começo da ordem canônica de locks
+     * do módulo, a mesma do lifecycle da operação, da mutação de contexto, do
+     * envio e da edição de medição e das delegações com escopo na operação --
+     *
+     *   Operation (X) → medições por id → revisões e pausas → planos → obras
+     *   → { linhas, arquivos da medição } → pagamentos → regra financeira →
+     *   evidências.
+     *
+     * Linhas e arquivos da medição só são travados por quem já segura a
+     * Operation, e por isso a ordem entre eles é indiferente: a aprovação da
+     * Engenharia trava os arquivos e depois a linha de cada um, a Finalização
+     * trava as linhas e depois os arquivos, e as duas nunca correm juntas na
+     * mesma operação. É a Operation que serializa; quem não a segura não está
+     * protegido por esta ordem.
+     *
+     * Quem trava plano, obra, linha ou arquivo da medição, ou insere linha
+     * filha de `operations` (pagamentos, planos, linhas, medições,
+     * destinatários de recusa, delegações), trava a Operation antes -- o
+     * INSERT do filho pede lock na operação pela chave estrangeira. Aqui isso
+     * vale para o início da análise, a aprovação da Engenharia, o registro de
+     * pagamento e a Finalização; a edição da medição trava as duas na própria
+     * página, no `beforeValidate()` de Editar Medição, antes de gravar os
+     * arquivos; o resto do fluxo usa {@see self::lockMeasurement()}. Não há
+     * retry: a ordem é a defesa, e uma repetição esconderia a regressão que a
+     * quebrar.
+     *
+     * Ainda fora da regra, até serem corrigidos -- travam plano, linha ou obra
+     * sem a Operation e por isso ainda podem se cruzar com a aprovação da
+     * Engenharia: a edição de planos e de linhas nas abas da operação
+     * (EditAction, addLines e editPlanned), o `syncDevelopmentPlans` da
+     * gravação da operação e as escritas de Construction (obra).
      *
      * O envio da medição depende da situação da operação, e a situação da
      * operação depende de não haver medição aberta. As duas leituras precisam
@@ -951,7 +1088,7 @@ class MeasurementWorkflow
         }
 
         if ((int) $locked->operation_id !== (int) $operation->getKey()) {
-            throw $this->invalidState($locked, 'A operação da medição foi alterada durante a aprovação da Engenharia.');
+            throw $this->invalidState($locked, 'A operação da medição foi alterada durante esta ação.');
         }
 
         $locked->setRelation('operation', $operation);
@@ -1066,15 +1203,28 @@ class MeasurementWorkflow
         }
     }
 
-    private function ensureValidPaymentExists(Measurement $measurement): void
+    /**
+     * Se a medição tem o pagamento que a aprovação da etapa Pagamento exige:
+     * ao menos um, e todos com valor positivo e data.
+     *
+     * É a mesma conta da recusa em {@see self::ensureValidPaymentExists()},
+     * exposta para o modal da etapa: sem pagamento válido, a justificativa da
+     * ausência não resolve, e a tela não deve oferecê-la como saída.
+     */
+    public function hasValidPayment(Measurement $measurement): bool
     {
         $paymentCount = $measurement->payments()->count();
-        $validPaymentCount = $measurement->payments()
-            ->where('amount', '>', 0)
-            ->whereNotNull('pay_date')
-            ->count();
 
-        if ($paymentCount < 1 || $paymentCount !== $validPaymentCount) {
+        return $paymentCount > 0
+            && $paymentCount === $measurement->payments()
+                ->where('amount', '>', 0)
+                ->whereNotNull('pay_date')
+                ->count();
+    }
+
+    private function ensureValidPaymentExists(Measurement $measurement): void
+    {
+        if (! $this->hasValidPayment($measurement)) {
             throw ValidationException::withMessages([
                 'payments' => 'Cadastre ao menos um pagamento válido antes de aprovar a etapa Pagamento.',
             ]);
@@ -1096,6 +1246,50 @@ class MeasurementWorkflow
         }
     }
 
+    /**
+     * Empreendimento que a Engenharia mediu com valor esperado e que ficou sem
+     * pagamento nesta competência só passa pela etapa Pagamento com a
+     * justificativa de quem decidiu não pagar, na nota da própria aprovação.
+     *
+     * A justificativa e o aceite de divergência moram em cada pagamento; um
+     * empreendimento sem pagamento não tem onde guardá-los, e por isso
+     * atravessava a etapa e a Finalização em silêncio. Reter o pagamento pode
+     * ser legítimo (fundo esgotado, retenção contratual, pendência documental),
+     * então a etapa não bloqueia: exige o porquê, que o Finalizador precisará
+     * aceitar expressamente. A lista volta para a auditoria da aprovação.
+     *
+     * Leitura simples, sob o lock da medição que a aprovação já detém: o
+     * pagamento só nasce sob esse mesmo lock, e nenhum lock novo entra aqui.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function ensureUnpaidPlanSetsAreJustified(Measurement $measurement, ?string $notes): array
+    {
+        $financial = app(MeasurementPaymentFinancialService::class);
+        $unpaid = $financial->unpaidRequiredPlanSets($measurement);
+
+        if ($unpaid !== [] && blank($notes)) {
+            throw ValidationException::withMessages([
+                'notes' => 'Justifique a ausência de pagamento nesta competência de: '.$financial->describeUnpaidPlanSets($unpaid).'; o Finalizador precisará aceitar expressamente.',
+            ]);
+        }
+
+        return array_map(
+            fn (MeasurementFinancialReconciliationLine $line): array => $line->toArray(),
+            $unpaid,
+        );
+    }
+
+    /**
+     * Confere, na Finalização, que cada arquivo e cada comprovante ainda estão
+     * no armazenamento e batem com o SHA-256 auditado.
+     *
+     * Toda recusa vai também para o log, como aviso: a pessoa lê a notificação,
+     * mas arquivo que some do armazenamento ou muda de conteúdo é incidente de
+     * infraestrutura -- sem o registro, a operação só o descobria pela
+     * reclamação de quem não conseguia finalizar. A recusa do comprovante é
+     * registrada por {@see MeasurementReceiptEvidenceService::ensureIntegrity()}.
+     */
     private function ensureStoredFilesAreIntact(Measurement $measurement): void
     {
         $files = collect();
@@ -1106,6 +1300,7 @@ class MeasurementWorkflow
                 'disk' => $measurement->resolved_storage_disk,
                 'hash' => $measurement->sha256,
                 'label' => 'arquivo principal da medição',
+                'asset_id' => null,
             ]);
         }
 
@@ -1113,6 +1308,8 @@ class MeasurementWorkflow
             try {
                 $this->fileValidation->validateStoredAsset($asset->storage_path, $asset->resolved_storage_disk);
             } catch (ValidationException) {
+                $this->logFileIntegrityRefusal($measurement, 'arquivo_ausente_ou_invalido', $asset->getKey(), $asset->resolved_storage_disk, $asset->storage_path);
+
                 throw $this->invalidState($measurement, "O arquivo de medição #{$asset->getKey()} é inválido ou está ausente.");
             }
 
@@ -1121,6 +1318,7 @@ class MeasurementWorkflow
                 'disk' => $asset->resolved_storage_disk,
                 'hash' => $asset->sha256,
                 'label' => "arquivo de medição #{$asset->getKey()}",
+                'asset_id' => $asset->getKey(),
             ]);
         });
 
@@ -1148,12 +1346,42 @@ class MeasurementWorkflow
                 || mb_strlen($hash) !== 64
                 || ! is_string($actualHash)
                 || ! hash_equals($hash, $actualHash)) {
+                $this->logFileIntegrityRefusal(
+                    $measurement,
+                    match (true) {
+                        ! is_string($hash) || mb_strlen($hash) !== 64 => 'sha256_ausente',
+                        ! is_string($actualHash) => 'arquivo_ausente_ou_ilegivel',
+                        default => 'sha256_divergente',
+                    },
+                    $file['asset_id'],
+                    $file['disk'],
+                    $file['path'],
+                );
+
                 throw $this->invalidState(
                     $measurement,
                     "O {$file['label']} está ausente, sem SHA-256 ou não corresponde ao conteúdo auditado.",
                 );
             }
         }
+    }
+
+    /**
+     * Registra no log a recusa de integridade de um arquivo de medição na
+     * Finalização, com o que a operação precisa para achar o arquivo: a
+     * medição, o arquivo (sem id no arquivo principal legado), o disco e o
+     * caminho relativo -- nunca o caminho absoluto nem o conteúdo.
+     */
+    private function logFileIntegrityRefusal(Measurement $measurement, string $reason, mixed $assetId, ?string $disk, ?string $relativePath): void
+    {
+        Log::warning('Arquivo de medição recusado na conferência de integridade da Finalização.', [
+            'reason' => $reason,
+            'measurement_id' => $measurement->getKey(),
+            'operation_id' => $measurement->operation_id,
+            'asset_id' => $assetId,
+            'disk' => $disk,
+            'relative_path' => $relativePath,
+        ]);
     }
 
     private function ensureEngineeringCoverageIsIntact(Measurement $measurement): void

@@ -8,7 +8,8 @@ namespace App\Enums;
  * O estado não é persistido: nasce da comparação entre o valor esperado --
  * ancorado no snapshot da Engenharia -- e o que foi registrado/informado.
  * Os rótulos são deliberadamente neutros porque uma divergência pode ter
- * motivo legítimo, e nesta V1 ela avisa sem bloquear.
+ * motivo legítimo: ela não impede o fluxo, mas exige justificativa e o
+ * aceite expresso do Finalizador.
  */
 enum MeasurementReconciliationStatus: string
 {

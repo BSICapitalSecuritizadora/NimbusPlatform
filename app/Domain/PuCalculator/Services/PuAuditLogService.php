@@ -23,6 +23,7 @@ use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuExternalBenchmark;
 use App\Models\EmissionPuExternalValidation;
 use App\Models\EmissionPuParameter;
+use App\Models\IndexRateCorrection;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Spatie\Activitylog\Models\Activity;
@@ -531,6 +532,60 @@ class PuAuditLogService
     }
 
     /**
+     * Correção de observação histórica: valor e origem anteriores e novos, motivo,
+     * ator e as versões de curva que usavam a observação. O registro durável é o
+     * livro `index_rate_corrections`; esta é a trilha na linha do tempo do PU.
+     */
+    public function logIndexRateCorrected(IndexRateCorrection $correction): void
+    {
+        $logger = activity(self::LOG_NAME)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'index_rate_correction_id' => $correction->id,
+                'index_rate_id' => $correction->index_rate_id,
+                'indexer' => $correction->indexer,
+                'rate_date' => $correction->rate_date?->toDateString(),
+                'origin' => $correction->origin,
+                'previous_rate_value' => (string) $correction->previous_rate_value,
+                'new_rate_value' => (string) $correction->new_rate_value,
+                'previous_source' => $correction->previous_source,
+                'new_source' => $correction->new_source,
+                'reason' => $correction->reason,
+                'affected_curve_versions' => $correction->affected_curve_versions ?? [],
+            ]);
+
+        if ($correction->indexRate !== null) {
+            $logger->performedOn($correction->indexRate);
+        }
+
+        if (($causer = $this->causer($correction->corrected_by)) !== null) {
+            $logger->causedBy($causer);
+        }
+
+        $logger->event('index_rate_corrected')->log('pu_index_rate_corrected');
+    }
+
+    /**
+     * Importação de observações por planilha: quem importou, de que origem, e o
+     * desfecho de cada data (criada, idêntica, em conflito, recusada).
+     *
+     * @param  array<string, mixed>  $summary
+     */
+    public function logIndexRatesImported(array $summary, ?int $requestedByUserId): void
+    {
+        $logger = activity(self::LOG_NAME)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+            ] + $summary);
+
+        if (($causer = $this->causer($requestedByUserId)) !== null) {
+            $logger->causedBy($causer);
+        }
+
+        $logger->event('index_rates_imported')->log('pu_index_rates_imported');
+    }
+
+    /**
      * @param  array{from:?string,to:?string}  $requestedWindow
      * @param  list<string>  $requiredDates
      * @param  list<string>  $insertedDates
@@ -708,6 +763,30 @@ class PuAuditLogService
             ->log('pu_curve_extension_diverged');
     }
 
+    /**
+     * A extensão diária não rodou sobre a versão: pré-requisito bloqueado ou erro
+     * de cálculo. Fica separada da divergência -- aqui nada mudou no passado.
+     */
+    public function logCurveExtensionFailed(
+        EmissionPuCurveVersion $version,
+        string $action,
+        string $reason,
+        string $purpose,
+    ): void {
+        activity(self::LOG_NAME)
+            ->performedOn($version->emission)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'curve_version_id' => $version->id,
+                'calculation_version' => $version->calculation_version,
+                'purpose' => $purpose,
+                'action' => $action,
+                'reason' => $reason,
+            ])
+            ->event('curve_extension_failed')
+            ->log('pu_curve_extension_failed');
+    }
+
     public function logHomologationReportDownloaded(Emission $emission, ?string $calculationVersion, ?int $requestedByUserId): void
     {
         $logger = activity(self::LOG_NAME)
@@ -753,6 +832,9 @@ class PuAuditLogService
             'pu_curve_invalidated' => 'Curva invalidada',
             'pu_homologation_report_downloaded' => 'PDF de homologacao baixado',
             'pu_index_synced' => 'Indices sincronizados (Banco Central)',
+            'pu_index_rates_imported' => 'Indices importados (CSV)',
+            'pu_index_rate_corrected' => 'Indice historico corrigido',
+            'pu_curve_extension_failed' => 'Falha na extensao diaria',
             'pu_numeric_snapshots_prepared' => 'Snapshots numéricos preparados',
             'pu_numeric_events_prepared' => 'Eventos numéricos preparados',
             'pu_parameters_updated' => 'Parametros atualizados',

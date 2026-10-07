@@ -160,7 +160,7 @@
         </div>
 
         <p class="max-w-4xl text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
-            * Valores esperados baseados no snapshot congelado da Engenharia. A divergência é estritamente informativa e não bloqueia o fluxo.
+            * Valores esperados baseados no snapshot congelado da Engenharia. A divergência não impede o registro do pagamento: exige justificativa na etapa Pagamento e o aceite expresso do Finalizador, inclusive quando um empreendimento fica sem pagamento nesta competência.
         </p>
     @endif
 </div>

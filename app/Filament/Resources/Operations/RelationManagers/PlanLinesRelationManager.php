@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operations\RelationManagers;
 
 use App\DTOs\Measurements\MeasurementPhysicalProgress;
 use App\DTOs\Measurements\MeasurementPhysicalProgressContribution;
+use App\Exceptions\MeasurementWorkflowException;
 use App\Filament\Resources\Measurements\MeasurementResource;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
@@ -152,6 +153,34 @@ class PlanLinesRelationManager extends RelationManager
                         ? MeasurementResource::getUrl('view', ['record' => $record->measurement_id])
                         : null),
             ]);
+    }
+
+    /**
+     * Chama a ação montada e mostra a recusa do domínio da Medição.
+     *
+     * A linha usada por uma Engenharia aprovada recusa a alteração do previsto
+     * com `MeasurementWorkflowException`, que não é reportada: sem tratamento,
+     * a pessoa via o aviso genérico de erro e o percentual não mudava sem
+     * explicação. O modal fica aberto, como num `halt()`, e nada é gravado.
+     *
+     * @param  array<string, mixed>  $arguments
+     */
+    public function callMountedAction(array $arguments = []): mixed
+    {
+        $actionName = $this->getMountedAction()?->getName();
+
+        try {
+            return parent::callMountedAction($arguments);
+        } catch (MeasurementWorkflowException $refusal) {
+            Notification::make()
+                ->danger()
+                ->title($actionName === 'editPlanned' ? 'Previsto não atualizado.' : 'Ação não concluída.')
+                ->body($refusal->getMessage())
+                ->persistent()
+                ->send();
+
+            return null;
+        }
     }
 
     /**

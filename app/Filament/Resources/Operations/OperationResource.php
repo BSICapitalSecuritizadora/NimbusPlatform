@@ -15,6 +15,7 @@ use App\Filament\Resources\Operations\RelationManagers\PlanSetsRelationManager;
 use App\Filament\Resources\Operations\Schemas\OperationForm;
 use App\Filament\Resources\Operations\Schemas\OperationInfolist;
 use App\Filament\Resources\Operations\Tables\OperationsTable;
+use App\Filament\Support\DetectsConcurrentUpdates;
 use App\Models\Operation;
 use App\Services\MeasurementAuthorizationService;
 use App\Services\OperationLifecycleService;
@@ -32,10 +33,13 @@ use Filament\Tables\Table;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Throwable;
 use UnitEnum;
 
 class OperationResource extends Resource
 {
+    use DetectsConcurrentUpdates;
+
     protected static ?string $model = Operation::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingOffice2;
@@ -127,6 +131,13 @@ class OperationResource extends Resource
      * A recusa do lifecycle é esperada, não falha: a operação com medição aberta
      * não encerra, e quem clicou precisa ler por quê. Sem isto a exceção
      * atravessaria a ação e viraria erro de servidor numa regra de negócio.
+     *
+     * A espera pela Operation também: o registro de pagamento e a Finalização
+     * a seguram durante o antivírus e os checksums, e a transição pode estourar
+     * o tempo de espera por lock (1205) ou fechar ciclo (1213). A transação já
+     * foi desfeita e nada mudou; a falha vai para o log e a pessoa lê que deve
+     * tentar de novo em instantes. O `Halt` pede o rollback de qualquer
+     * transação que a ação tenha aberto por fora.
      */
     private static function guarded(Closure $transition): void
     {
@@ -141,6 +152,21 @@ class OperationResource extends Resource
                 ->send();
 
             throw new Halt;
+        } catch (Throwable $exception) {
+            if (! self::isConcurrentUpdate($exception)) {
+                throw $exception;
+            }
+
+            report($exception);
+
+            Notification::make()
+                ->danger()
+                ->title('Situação não alterada.')
+                ->body(self::CONCURRENT_OPERATION_UPDATE_MESSAGE)
+                ->persistent()
+                ->send();
+
+            throw (new Halt)->rollBackDatabaseTransaction();
         }
     }
 

@@ -18,13 +18,17 @@ use App\Services\ResponsibilityDelegationService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Forms\Components\Select;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\DatabaseConcurrencyFailure;
 
 uses(RefreshDatabase::class);
 
@@ -704,3 +708,50 @@ it('offers only active operations as a new delegation scope', function () {
             return true;
         });
 });
+
+it('asks to try again when the database refuses a lifecycle transition because of a concurrent update', function (string $failure) {
+    Exceptions::fake();
+    $admin = lifecycleAdmin();
+    $operation = lifecycleOperation(OperationStatus::Active, $admin);
+    $this->actingAs($admin);
+    $exception = DatabaseConcurrencyFailure::make($failure);
+    $page = Livewire::test(ViewOperation::class, ['record' => $operation->getKey()]);
+    $transitionLevel = DB::transactionLevel() + 1;
+    $failed = false;
+
+    // A falha nasce no lock da Operation, a primeira instrução da transação da
+    // transição -- a espera que o registro de pagamento ou a Finalização,
+    // segurando a Operation, fazem estourar.
+    DB::listen(function (QueryExecuted $query) use ($exception, $transitionLevel, &$failed): void {
+        if ($failed || (DB::transactionLevel() < $transitionLevel) || ! str_starts_with($query->sql, 'select * from "operations"')) {
+            return;
+        }
+
+        $failed = true;
+
+        throw $exception;
+    });
+
+    if (! DatabaseConcurrencyFailure::isConcurrency($failure)) {
+        expect(fn () => $page->callAction('complete_operation'))->toThrow(QueryException::class);
+
+        return;
+    }
+
+    $page->callAction('complete_operation');
+
+    $notifications = array_map(
+        fn (array $notification): array => ['title' => (string) $notification['title'], 'body' => (string) $notification['body']],
+        array_values(session()->get('filament.claimed_notifications') ?? session()->get('filament.notifications') ?? []),
+    );
+
+    expect($notifications)->toBe([[
+        'title' => 'Situação não alterada.',
+        'body' => 'Outra pessoa está atualizando esta operação. Tente novamente em instantes.',
+    ]])
+        ->and($failed)->toBeTrue()
+        ->and($operation->fresh()->status)->toBe(OperationStatus::Active)
+        ->and(Activity::query()->where('description', 'operation_lifecycle_transition')->count())->toBe(0);
+
+    expect(collect(Exceptions::reported())->contains(fn (Throwable $reported): bool => ($reported === $exception) || ($reported->getPrevious() === $exception)))->toBeTrue();
+})->with(DatabaseConcurrencyFailure::CASES);

@@ -41,6 +41,33 @@ final class BusinessCalendarRegistry
     public const MARKET_CALENDAR = self::BR_BANKING_ANBIMA;
 
     /**
+     * Calendário em que o CDI é DIVULGADO: a Taxa DI só existe nos dias úteis
+     * bancários (ANBIMA). Feriado bancário que não é feriado nacional legal --
+     * Carnaval, Corpus Christi -- não tem CDI, e um calendário que o trate como
+     * útil faz a curva esperar uma observação que nunca virá ou, pior, contar a
+     * defasagem num dia sem divulgação.
+     *
+     * É o padrão do calendário de observação do CDI quando a configuração não
+     * informa um explícito e o calendário do contrato não é de divulgação
+     * ({@see self::isCdiPublicationCalendar()}).
+     */
+    public const CDI_PUBLICATION_CALENDAR = self::BR_BANKING_ANBIMA;
+
+    /**
+     * O calendário decide os mesmos dias que o divulgador do CDI: o bancário
+     * ANBIMA e o código legado que guarda os dados históricos da ANBIMA
+     * (`legacy_alias_of`). Feriados nacionais legais, sessões da B3, o
+     * consolidado e calendários de homologação não respondem pela divulgação.
+     */
+    public static function isCdiPublicationCalendar(string $calendarCode): bool
+    {
+        $normalized = self::normalize($calendarCode);
+
+        return $normalized === self::CDI_PUBLICATION_CALENDAR
+            || (self::definitions()[$normalized]['legacy_alias_of'] ?? null) === self::CDI_PUBLICATION_CALENDAR;
+    }
+
+    /**
      * @return array<string, array{label:string, meaning:string, legacy:bool, legacy_alias_of:?string, accepts_anbima:bool}>
      */
     public static function definitions(): array

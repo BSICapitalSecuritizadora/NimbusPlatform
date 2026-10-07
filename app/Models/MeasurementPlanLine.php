@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Exceptions\MeasurementWorkflowException;
 use Database\Factories\MeasurementPlanLineFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -113,6 +114,51 @@ class MeasurementPlanLine extends Model
     public function assets(): HasMany
     {
         return $this->hasMany(MeasurementAsset::class, 'plan_line_id');
+    }
+
+    /**
+     * Linha do cronograma que ainda pode receber o arquivo de uma medição.
+     *
+     * `measurement_id` e `realized_*` são o retrato da última aprovação da
+     * Engenharia gravada na linha, e nada os desfaz quando ela deixa de valer
+     * -- devolução, recusa, exclusão, troca de linha. Decidir por essas colunas
+     * consumia a competência para sempre. A decisão é por quem ainda está de pé:
+     *
+     * - reivindicada: arquivo de medição com a Engenharia vigente (revisão da
+     *   etapa 1 aprovada, o mesmo predicado das guardas do módulo) ou, nas
+     *   aprovações anteriores ao snapshot, a própria linha gravada por uma
+     *   medição vigente sem snapshot -- é o único registro do que ela aprovou;
+     * - ocupada: arquivo de outra medição aberta ou finalizada;
+     * - presa a pagamento: arquivo de outra medição que tenha pagamento, mesmo
+     *   recusada (estado legado). Reapresentar a competência abriria caminho
+     *   para pagar duas vezes o mesmo avanço.
+     *
+     * Nada é anulado: a linha e o arquivo da medição invalidada continuam como
+     * histórico. `$measurementId` é a medição em edição: os arquivos dela não
+     * tornam a linha indisponível para ela mesma.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeAvailableForMeasurement(Builder $query, ?int $measurementId = null): Builder
+    {
+        $currentEngineering = fn (Builder $reviews): Builder => $reviews
+            ->where($reviews->qualifyColumn('stage'), 1)
+            ->where($reviews->qualifyColumn('status'), 'approved');
+
+        return $query
+            ->whereDoesntHave('assets', fn (Builder $assets): Builder => $assets
+                ->when($measurementId !== null, fn (Builder $others): Builder => $others
+                    ->where($assets->qualifyColumn('measurement_id'), '!=', $measurementId))
+                ->whereHas('measurement', fn (Builder $measurements): Builder => $measurements->where(
+                    fn (Builder $holding): Builder => $holding
+                        ->whereIn($measurements->qualifyColumn('status'), [...Measurement::OPEN_STATUSES, 'finalized'])
+                        ->orWhereHas('reviews', $currentEngineering)
+                        ->orWhereHas('payments'),
+                )))
+            ->whereDoesntHave('measurement', fn (Builder $measurements): Builder => $measurements
+                ->whereNull($measurements->qualifyColumn('engineering_snapshot'))
+                ->whereHas('reviews', $currentEngineering));
     }
 
     public static function resolveTrend(float $diff): string

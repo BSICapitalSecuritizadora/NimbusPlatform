@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Filament\Resources\Measurements\MeasurementResource;
 use App\Models\Measurement;
+use App\Models\User;
 use App\Services\MeasurementWorkflow;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -121,7 +122,7 @@ class MeasurementWorkflowNotification extends Notification implements ShouldQueu
                 'reference' => $reference,
                 'stageLabel' => MeasurementWorkflow::STAGE_LABELS[$stage] ?? '—',
                 'filename' => $this->measurement->filename ?? '—',
-                'url' => $this->resolveUrl(),
+                'url' => $this->urlFor($notifiable),
             ]);
     }
 
@@ -136,6 +137,25 @@ class MeasurementWorkflowNotification extends Notification implements ShouldQueu
             'event' => $this->event,
             'title' => self::EVENT_LABELS[$this->event] ?? 'Atualização de medição',
         ];
+    }
+
+    /**
+     * O botão "abrir a medição" só vai para quem consegue abri-la.
+     *
+     * Quem está só na lista "Notificar em caso de recusa" recebe o aviso, mas
+     * não participa da operação: o link o levaria a uma página que não existe
+     * para ele. A decisão é por destinatário e na hora do envio -- a
+     * notificação é enfileirada, e quem perdeu o acesso entre a recusa e o
+     * envio também não recebe o link. O modelo do e-mail já omite o botão
+     * quando a URL é nula.
+     */
+    private function urlFor(object $notifiable): ?string
+    {
+        if (! $notifiable instanceof User || ! $notifiable->can('view', $this->measurement)) {
+            return null;
+        }
+
+        return $this->resolveUrl();
     }
 
     private function resolveUrl(): ?string

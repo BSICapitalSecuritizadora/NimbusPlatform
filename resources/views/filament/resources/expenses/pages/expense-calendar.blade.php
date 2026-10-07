@@ -359,12 +359,12 @@
                         </div>
 
                         <div>
-                            <span class="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Valor previsto</span>
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Valor previsto</span>
                             <p class="mt-1.5 font-semibold text-[var(--text-primary)] tabular-nums">{{ $selectedEvent['expected_amount_label'] }}</p>
                         </div>
 
                         <div>
-                            <span class="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Valor pago</span>
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Valor pago</span>
                             <p class="mt-1.5 font-semibold tabular-nums {{ $selectedEvent['paid_amount_label'] !== '—' ? 'text-emerald-500 dark:text-emerald-400' : 'text-[var(--text-muted)]' }}">
                                 {{ $selectedEvent['paid_amount_label'] }}
                             </p>

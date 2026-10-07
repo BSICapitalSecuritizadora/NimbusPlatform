@@ -162,6 +162,10 @@ it('keeps a generated curve away from the other areas until it is homologated', 
 });
 
 it('feeds the monthly report, the guarantee balance and the public site from the official curve', function () {
+    // Segunda, 16/03, 10:00 em Brasília: a curva realizada chega a 16/03 com o CDI
+    // até 13/03 e está em dia. O PU de 16/03 responde pelo dia no site e, carregado,
+    // pelo mês de março no saldo devedor, cujo PU de fim de mês ainda não existe.
+    $this->travelTo(CarbonImmutable::parse('2026-03-16 10:00', 'America/Sao_Paulo'));
     $emission = officialCurveEmission();
     homologateOfficialCurve($emission);
     $lastRow = $emission->currentPuCurveVersion()->dailyCurves()->orderByDesc('curve_date')->first();
