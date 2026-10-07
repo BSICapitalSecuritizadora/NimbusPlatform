@@ -26,7 +26,8 @@ use Tests\Support\SalesBoards\RolloutFixture;
  *
  * Nenhuma das correções usa `:not(.dark)`, que casa também no modo escuro: a
  * cor vale nos dois temas quando o fundo é escuro nos dois, e o gêmeo `.dark`
- * leva a cor clara quando só o modo escuro a pede.
+ * leva a cor clara quando só o modo escuro a pede. Nos campos do wizard, os
+ * tokens semânticos adaptam o fundo e o texto ao tema ativo.
  */
 uses(RefreshDatabase::class);
 
@@ -116,13 +117,15 @@ it('keeps the outlined actions of the dark cycle header on the dark-mode shade i
     }
 });
 
-it('paints the text of the non-native date picker light on the petrol wizard field in both themes', function () {
+it('keeps the non-native date picker readable with semantic surface and text tokens in both themes', function () {
     $stylesheet = 'css/filament/admin/theme.css';
+    $field = '.bsi-cockpit-page .fi-sc-wizard .fi-input-wrp';
     $picker = '.bsi-cockpit-page .fi-sc-wizard input.fi-fo-date-time-picker-display-text-input';
 
-    expect(readabilityCssDeclarations($stylesheet, '.bsi-cockpit-page .fi-sc-wizard .fi-input-wrp'))->toMatchArray(['background' => 'rgba(6, 21, 28, 0.7)'])
-        ->and(readabilityCssDeclarations($stylesheet, $picker))->toMatchArray(['color' => '#fbfaf8'])
-        ->and(readabilityCssDeclarations($stylesheet, '.dark '.$picker))->toMatchArray(['color' => '#fbfaf8'])
+    expect(readabilityCssDeclarations($stylesheet, $field))->toMatchArray(['background' => 'var(--surface-card)'])
+        ->and(readabilityCssDeclarations($stylesheet, '.dark '.$field))->toMatchArray(['background' => 'var(--surface-card)'])
+        ->and(readabilityCssDeclarations($stylesheet, $picker))->toMatchArray(['color' => 'var(--text-primary)'])
+        ->and(readabilityCssDeclarations($stylesheet, '.dark '.$picker))->toMatchArray(['color' => 'var(--text-primary)'])
         ->and(readabilityCssDeclarations($stylesheet, ':not(.dark) '.$picker))->toBe([]);
 });
 
