@@ -38,6 +38,7 @@ final class IndexRateCorrectionService
         private readonly IndexRateObservationRecorder $recorder,
         private readonly PuCurveExtensionService $extensions,
         private readonly PuAuditLogService $auditLog,
+        private readonly PuFinancialObligationService $obligations,
     ) {}
 
     public function correct(
@@ -211,6 +212,10 @@ final class IndexRateCorrectionService
                     'checked_at' => now()->toIso8601String(),
                 ],
             ])->save();
+
+            // Depois do commit da correção (que segura a trava do índice): o
+            // esperado das obrigações calculado sobre o CDI antigo fica em dúvida.
+            $this->obligations->refreshAfterCommit((int) $version->emission_id, 'index_rate_corrected');
         }
     }
 

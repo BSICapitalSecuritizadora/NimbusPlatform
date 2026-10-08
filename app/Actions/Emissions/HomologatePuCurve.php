@@ -11,7 +11,7 @@ use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Domain\PuCalculator\Services\PuCurveChangeImpactClassifier;
 use App\Domain\PuCalculator\Services\PuCurveInputSnapshotService;
 use App\Domain\PuCalculator\Services\PuCurveVersionService;
-use App\Domain\PuCalculator\Services\PuPaymentScheduleService;
+use App\Domain\PuCalculator\Services\PuFinancialObligationService;
 use App\Enums\BusinessArea;
 use App\Enums\PuSourceChange;
 use App\Events\PuCalculator\EmissionPuSourceChanged;
@@ -26,8 +26,9 @@ use Illuminate\Support\Facades\DB;
  * Age sobre a versão NOMEADA por quem homologa -- nunca sobre "a vigente" no
  * momento da execução -- e numa única transação: trava a emissão e a versão,
  * relê o status, aplica maker/checker e justificativa, marca a versão, registra
- * a auditoria e concilia o Cronograma de Pagamentos. Se qualquer passo falha,
- * nada disso fica gravado e nenhum consumidor vê a curva como oficial.
+ * a auditoria e atualiza as obrigações financeiras (o esperado oficial, nunca a
+ * liquidação). Se qualquer passo falha, nada disso fica gravado e nenhum
+ * consumidor vê a curva como oficial.
  *
  * Fase 4: homologar aprova também o RETRATO de insumos da versão. Se os insumos
  * contratuais vivos (relidos sob trava compartilhada) já mudaram em algum dia que
@@ -42,7 +43,7 @@ class HomologatePuCurve
         private readonly PuCurveVersionService $versionService,
         private readonly PuAuditLogService $auditLogService,
         private readonly AreaResponsibilityService $areaResponsibilities,
-        private readonly PuPaymentScheduleService $paymentSchedule,
+        private readonly PuFinancialObligationService $obligations,
         private readonly PuCurveInputSnapshotService $snapshots,
         private readonly PuCurveChangeImpactClassifier $classifier,
     ) {}
@@ -92,10 +93,12 @@ class HomologatePuCurve
                 $previousStatus->value,
             );
 
-            // A versão homologada passa a ser a curva oficial das outras áreas: os
-            // pagamentos que ela calculou substituem o previsto. Dentro da mesma
-            // transação: se a conciliação falha, a homologação não acontece.
-            $this->paymentSchedule->reconcile($lockedEmission, $requestedByUserId);
+            // A versão homologada passa a ser a curva oficial das outras áreas: o
+            // valor esperado das obrigações vem dela (cálculo novo, o anterior fica
+            // rastreável) e a conciliação é refeita contra a liquidação, que não
+            // muda. Na mesma transação: se a atualização falha, a homologação não
+            // acontece.
+            $this->obligations->refresh($lockedEmission, 'curve_homologated', $requestedByUserId);
 
             // O saldo devedor das garantias passa a vir dela: as competências cujo
             // saldo gravado mudou ficam marcadas (depois do commit).

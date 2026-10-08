@@ -7,6 +7,7 @@ use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\DTOs\PuIndexRateRequirement;
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
+use App\Domain\PuCalculator\Enums\PuCalculationMethod;
 use App\Domain\PuCalculator\Enums\PuCalculationProfile;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
@@ -29,6 +30,7 @@ class PuCurveGenerationService
         private readonly FirstCouponPreIntegralizationPremiumCalculator $openingPremiumCalculator,
         private readonly DecimalRounder $rounder,
         private readonly PuPrecisionPolicy $precision,
+        private readonly PuFinancialEffectSupport $effectSupport,
     ) {}
 
     /**
@@ -212,10 +214,26 @@ class PuCurveGenerationService
             $groupedEvents = $eventGroups[$currentDate->toDateString()] ?? collect();
             $openingPremiumAppliedOnCurrentRow = false;
             $factorSpreadDiBeforeOpeningPremium = null;
+            $extraordinaryAmortizations = [];
+            $earlyMaturityEvent = null;
+            $earlyMaturityPrincipalUnitValue = null;
+            $hasInterestPayment = false;
 
             if ($groupedEvents->isNotEmpty()) {
                 $hasInterestPayment = $groupedEvents
                     ->contains(fn (EmissionPuEvent $event): bool => $event->event_type_enum === PuEventType::InterestPayment);
+                // Vencimento antecipado (Fase 5): a regra declarada paga os juros
+                // ordinários pro rata até a data e acelera o saldo inteiro. Sem ele,
+                // tudo abaixo é exatamente o caminho de antes.
+                $earlyMaturityEvent = $groupedEvents
+                    ->first(fn (EmissionPuEvent $event): bool => $event->event_type_enum === PuEventType::EarlyMaturity);
+
+                if ($earlyMaturityEvent !== null && ! $hasInterestPayment && $openingPremium !== null && ! $openingPremiumApplied) {
+                    throw new PuCurveInputsException(sprintf(
+                        'O vencimento antecipado de %s cai antes do primeiro pagamento de juros, que carrega o prêmio de primeiro cupom; não há regra para esse prêmio no vencimento antecipado e a curva não foi calculada.',
+                        $currentDate->format('d/m/Y'),
+                    ));
+                }
 
                 if ($hasInterestPayment && $openingPremium !== null && ! $openingPremiumApplied) {
                     $factorSpreadDiBeforeOpeningPremium = $factorSpreadDi;
@@ -247,7 +265,7 @@ class PuCurveGenerationService
                     $openingPremiumAppliedOnCurrentRow = true;
                 }
 
-                $interestPaymentUnitValue = $hasInterestPayment
+                $interestPaymentUnitValue = $hasInterestPayment || $earlyMaturityEvent !== null
                     ? $interestRealUnitValue
                     : $this->rounder->normalize('0', DecimalRounder::CALCULATION_SCALE);
 
@@ -257,17 +275,31 @@ class PuCurveGenerationService
 
                 /** @var EmissionPuEvent $event */
                 foreach ($groupedEvents as $event) {
-                    if ($event->event_type_enum !== PuEventType::Amortization) {
+                    $eventType = $event->event_type_enum;
+
+                    if ($eventType !== PuEventType::Amortization && $eventType !== PuEventType::ExtraordinaryAmortization) {
                         continue;
                     }
 
-                    $resolvedAmortization = $this->resolveAmortizationUnitValue(
-                        event: $event,
-                        baseUnitValue: $baseUnitValue,
-                        remainingResidualUnitValue: $this->precision->unitValue(
-                            bcsub($remainingAfterInterest, $amortizationUnitValue, DecimalRounder::CALCULATION_SCALE + 4),
-                        ),
+                    $remainingResidual = $this->precision->unitValue(
+                        bcsub($remainingAfterInterest, $amortizationUnitValue, DecimalRounder::CALCULATION_SCALE + 4),
                     );
+
+                    if ($eventType === PuEventType::ExtraordinaryAmortization) {
+                        // Mesmo resolvedor da ordinária, mas sem teto silencioso: a
+                        // amortização extraordinária acima do saldo é recusada.
+                        $resolvedAmortization = $this->extraordinaryAmortizationUnitValue($event, $baseUnitValue, $remainingResidual, $currentDate);
+                        $extraordinaryAmortizations[] = [
+                            'sequence' => (int) $event->sequence,
+                            'unit_value_raw' => $resolvedAmortization,
+                        ];
+                    } else {
+                        $resolvedAmortization = $this->resolveAmortizationUnitValue(
+                            event: $event,
+                            baseUnitValue: $baseUnitValue,
+                            remainingResidualUnitValue: $remainingResidual,
+                        );
+                    }
 
                     // AMi: 8 casas, sem arredondamento. Cada parcela já vem quantizada de
                     // `resolveAmortizationUnitValue()`, e a soma de valores de 8 casas continua
@@ -276,9 +308,33 @@ class PuCurveGenerationService
                         bcadd($amortizationUnitValue, $resolvedAmortization, DecimalRounder::CALCULATION_SCALE + 4),
                     );
 
-                    if ($event->amortization_type_enum === PuAmortizationType::Percentage && $event->amortization_value !== null) {
+                    if ($eventType === PuEventType::Amortization
+                        && $event->amortization_type_enum === PuAmortizationType::Percentage
+                        && $event->amortization_value !== null) {
                         $amortizationRatio = $this->rounder->round((string) $event->amortization_value, DecimalRounder::UNIT_SCALE);
                     }
+                }
+
+                if ($earlyMaturityEvent !== null) {
+                    // Principal acelerado: todo o saldo que resta depois dos juros e das
+                    // amortizações da data. A operação termina nesta linha.
+                    $earlyMaturityPrincipalUnitValue = $this->precision->unitValue(
+                        bcsub($remainingAfterInterest, $amortizationUnitValue, DecimalRounder::CALCULATION_SCALE + 4),
+                    );
+
+                    if (bccomp($earlyMaturityPrincipalUnitValue, '0', DecimalRounder::UNIT_SCALE) < 0) {
+                        $earlyMaturityPrincipalUnitValue = $this->precision->unitValue('0');
+                    }
+
+                    $amortizationUnitValue = $this->precision->unitValue(
+                        bcadd($amortizationUnitValue, $earlyMaturityPrincipalUnitValue, DecimalRounder::CALCULATION_SCALE + 4),
+                    );
+                }
+
+                // Razão de amortização de linha com parcela extraordinária ou acelerada:
+                // a do total amortizado, nunca só a do evento ordinário.
+                if ($extraordinaryAmortizations !== [] || $earlyMaturityEvent !== null) {
+                    $amortizationRatio = $this->rounder->normalize('0', DecimalRounder::UNIT_SCALE);
                 }
 
                 if (bccomp($baseUnitValue, '0', DecimalRounder::UNIT_SCALE) === 1 && bccomp($amortizationUnitValue, '0', DecimalRounder::UNIT_SCALE) === 1 && bccomp($amortizationRatio, '0', DecimalRounder::UNIT_SCALE) === 0) {
@@ -382,6 +438,21 @@ class PuCurveGenerationService
                 $calculationMemory['spread_rate_applied'] = (string) $periodParameter->spread_rate;
             }
 
+            // Fase 5: a parcela de cada componente que a obrigação precisa separar.
+            // Só linhas com amortização extraordinária ou vencimento antecipado ganham
+            // as chaves; as demais têm a memória idêntica à de antes.
+            if ($extraordinaryAmortizations !== []) {
+                $calculationMemory['extraordinary_amortizations'] = $extraordinaryAmortizations;
+            }
+
+            if ($earlyMaturityEvent !== null) {
+                $calculationMemory['early_maturity'] = [
+                    'sequence' => (int) $earlyMaturityEvent->sequence,
+                    'accelerated_principal_unit_value_raw' => $earlyMaturityPrincipalUnitValue,
+                    'interest_paid_by' => $hasInterestPayment ? 'interest_payment_event' : 'early_maturity',
+                ];
+            }
+
             $rows[] = new PuDailyCurveRowData(
                 date: $currentDate,
                 isBusinessDay: $isBusinessDay,
@@ -423,6 +494,11 @@ class PuCurveGenerationService
                     $currentDate->format('d/m/Y'),
                 ));
             }
+
+            // A operação venceu antecipadamente: não há dia de curva depois disso.
+            if ($earlyMaturityEvent !== null) {
+                break;
+            }
         }
 
         return new PuCurveGenerationResult($rows);
@@ -442,10 +518,12 @@ class PuCurveGenerationService
     }
 
     /**
-     * Pagamentos do cronograma ATIVOS por data efetiva, na ordem canônica (data,
-     * prioridade do tipo, sequência) -- nunca na ordem de inserção. Cancelado não
-     * entra. Evento ativo que esta engine não calcula recusa o cálculo; a alteração
-     * de spread é lida à parte ({@see self::spreadAmendments()}).
+     * Eventos ATIVOS que a linha da data efetiva aplica -- pagamentos do cronograma,
+     * amortização extraordinária e vencimento antecipado --, na ordem canônica
+     * (data, prioridade do tipo, sequência), nunca na ordem de inserção. Cancelado
+     * não entra; waiver declarado sem efeito no PU também não. Evento ativo cujo
+     * efeito esta engine não calcula ({@see PuFinancialEffectSupport}) recusa o
+     * cálculo; a alteração de spread é lida à parte ({@see self::spreadAmendments()}).
      *
      * @param  EloquentCollection<int, EmissionPuEvent>  $events
      * @return array<string, Collection<int, EmissionPuEvent>>
@@ -453,12 +531,23 @@ class PuCurveGenerationService
     private function groupEventsByDate(EloquentCollection $events): array
     {
         $active = $events->filter(fn (EmissionPuEvent $event): bool => $event->isActive());
+        $canonical = $active->map(fn (EmissionPuEvent $event): array => PuFinancialEffectSupport::fromModel($event))->values()->all();
 
         foreach ($active as $event) {
             $type = PuEventType::tryFrom((string) $event->event_type);
 
             if ($type === PuEventType::SpreadAmendment || ($type?->isScheduledPayment() ?? false)) {
                 continue;
+            }
+
+            if (in_array($type, [PuEventType::ExtraordinaryAmortization, PuEventType::EarlyMaturity, PuEventType::Waiver], true)) {
+                $issues = $this->effectSupport->issues(PuFinancialEffectSupport::fromModel($event), $canonical, PuCalculationMethod::CdiSpread);
+
+                if ($issues === []) {
+                    continue;
+                }
+
+                throw new PuCurveInputsException($issues[0]);
             }
 
             throw new PuCurveInputsException(sprintf(
@@ -469,7 +558,13 @@ class PuCurveGenerationService
         }
 
         return $active
-            ->filter(fn (EmissionPuEvent $event): bool => PuEventType::tryFrom((string) $event->event_type)?->isScheduledPayment() ?? false)
+            ->filter(function (EmissionPuEvent $event): bool {
+                $type = PuEventType::tryFrom((string) $event->event_type);
+
+                return ($type?->isScheduledPayment() ?? false)
+                    || $type === PuEventType::ExtraordinaryAmortization
+                    || $type === PuEventType::EarlyMaturity;
+            })
             ->sortBy(fn (EmissionPuEvent $event): string => PuEventType::orderingKey(
                 CarbonImmutable::instance($event->effective_date)->toDateString(),
                 (string) $event->event_type,
@@ -704,6 +799,41 @@ class PuCurveGenerationService
         }
 
         return $resolvedValue;
+    }
+
+    /**
+     * AMi da amortização extraordinária: valor por unidade ou percentual do VNb, nas
+     * mesmas 8 casas sem arredondamento da ordinária. O valor é o do evento
+     * contratual -- nunca o que foi liquidado -- e, ao contrário da ordinária, não
+     * é cortado em silêncio no saldo: acima dele a curva é recusada.
+     */
+    private function extraordinaryAmortizationUnitValue(
+        EmissionPuEvent $event,
+        string $baseUnitValue,
+        string $remainingResidualUnitValue,
+        CarbonImmutable $date,
+    ): string {
+        $requested = match ($event->amortization_type_enum) {
+            PuAmortizationType::Percentage => $this->precision->unitValue(
+                bcmul($baseUnitValue, (string) ($event->amortization_value ?? '0'), DecimalRounder::CALCULATION_SCALE + 4),
+            ),
+            PuAmortizationType::UnitValue => $this->precision->unitValue((string) ($event->amortization_value ?? '0')),
+            default => throw new PuCurveInputsException(sprintf(
+                'A amortização extraordinária de %s não informa valor por unidade nem percentual; a curva não foi calculada.',
+                $date->format('d/m/Y'),
+            )),
+        };
+
+        if (bccomp($requested, $remainingResidualUnitValue, DecimalRounder::CALCULATION_SCALE) === 1) {
+            throw new PuCurveInputsException(sprintf(
+                'A amortização extraordinária de %s (%s por unidade) é maior que o saldo disponível na data (%s por unidade); a curva não foi calculada.',
+                $date->format('d/m/Y'),
+                $requested,
+                $remainingResidualUnitValue,
+            ));
+        }
+
+        return $requested;
     }
 
     /**

@@ -28,9 +28,17 @@ use Carbon\CarbonImmutable;
  *
  * É a mesma lista nos pré-requisitos (mensagem para quem configura) e na geração
  * (recusa antes de gravar qualquer linha).
+ *
+ * Fase 5: se o tipo é suportado, o efeito DECLARADO do evento também precisa ser
+ * ({@see PuFinancialEffectSupport}) -- amortização extraordinária e vencimento
+ * antecipado só com a regra explícita, waiver só sem efeito no PU.
  */
 final class PuCurveInputValidator
 {
+    public function __construct(
+        private readonly PuFinancialEffectSupport $support,
+    ) {}
+
     /**
      * @return list<string>
      */
@@ -51,18 +59,10 @@ final class PuCurveInputValidator
             $effective = (string) $event['effective_date'];
             $label = sprintf('%s de %s', $type?->label() ?? (string) $event['event_type'], $this->brazilian($effective));
 
+            $issues = [...$issues, ...$this->support->issues($event, $events, $method)];
+
             if (! $type instanceof PuEventType) {
-                $issues[] = sprintf('O evento %s tem um tipo desconhecido: a curva não pode ser gerada até ele ser corrigido ou cancelado.', $label);
-
                 continue;
-            }
-
-            if ($method instanceof PuCalculationMethod && ! $type->isSupportedBy($method)) {
-                $issues[] = sprintf(
-                    'O evento %s tem efeito financeiro que a engine %s ainda não calcula: a curva não pode ser gerada enquanto ele estiver ativo. Cancele-o ou aguarde a regra de cálculo.',
-                    $label,
-                    $method->label(),
-                );
             }
 
             $until = $event['effective_until'] ?? null;
@@ -124,7 +124,8 @@ final class PuCurveInputValidator
 
     /**
      * Datas em que um período de capitalização termina e o seguinte começa:
-     * pagamento de juros ou amortização com valor.
+     * pagamento de juros, amortização (ordinária ou extraordinária) com valor ou
+     * vencimento antecipado.
      *
      * @param  list<array<string, mixed>>  $events
      * @return array<string, true>
@@ -136,7 +137,8 @@ final class PuCurveInputValidator
         foreach ($events as $event) {
             $type = PuEventType::tryFrom((string) $event['event_type']);
             $resets = $type === PuEventType::InterestPayment
-                || ($type === PuEventType::Amortization
+                || $type === PuEventType::EarlyMaturity
+                || (in_array($type, [PuEventType::Amortization, PuEventType::ExtraordinaryAmortization], true)
                     && PuAmortizationType::tryFrom((string) ($event['amortization_type'] ?? '')) !== PuAmortizationType::None);
 
             if ($resets) {

@@ -4,11 +4,13 @@ use App\Actions\Emissions\GeneratePuDailyCurve;
 use App\Actions\Emissions\HomologatePuCurve;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
+use App\Domain\PuCalculator\Enums\PuObligationComponent;
 use App\Domain\PuCalculator\Services\DecimalRounder;
 use App\Domain\PuCalculator\Services\PuCurveGenerationService;
 use App\Domain\PuCalculator\Services\PuCurvePrerequisiteService;
 use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
+use App\Models\EmissionPuObligation;
 use App\Models\IndexRate;
 use App\Models\Payment;
 use App\Models\PuHistory;
@@ -86,11 +88,13 @@ it('generates a deterministic zero-rate curve that publishes nothing until it is
 
     app(HomologatePuCurve::class)->handle($emission->fresh(), 'v1', User::factory()->create()->id, 'Curva de referência conferida.');
 
-    $payment = Payment::query()->where('emission_id', $emission->id)->sole();
+    // Fase 5: o esperado oficial vive na obrigação; o cronograma informado não é escrito.
+    $calculation = EmissionPuObligation::query()->where('emission_id', $emission->id)->sole()->currentCalculation;
 
-    expect($payment->interest_value)->toBe('0.00')
-        ->and($payment->amortization_value)->toBe('10000.00')
-        ->and($payment->isCalculatedByOfficialCurve())->toBeTrue()
+    expect($calculation->componentAmount(PuObligationComponent::OrdinaryInterest))->toBe('0.00')
+        ->and($calculation->componentAmount(PuObligationComponent::OrdinaryAmortization))->toBe('10000.00')
+        ->and((string) $calculation->total_amount)->toBe('10000.00')
+        ->and(Payment::query()->where('emission_id', $emission->id)->count())->toBe(0)
         ->and(PuHistory::query()->where('emission_id', $emission->id)->count())->toBe(0)
         ->and($emission->fresh()->getRawOriginal('current_pu'))->toBe($currentPuBefore);
 });

@@ -3,14 +3,19 @@
 namespace App\Actions\Emissions;
 
 use App\Models\Emission;
-use App\Models\EmissionPuEvent;
 use App\Models\Payment;
 use Carbon\Carbon;
-use Carbon\CarbonImmutable;
 use DateTimeInterface;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\SimpleExcel\SimpleExcelReader;
 
+/**
+ * Importa o Cronograma de Pagamentos INFORMADO (planilha). Grava só o informado:
+ * desde a Fase 5 o valor calculado pela curva oficial e a liquidação vivem nas
+ * obrigações financeiras e nunca são escritos ou lidos daqui. A importação é uma
+ * transação só, e as obrigações da emissão são refeitas uma vez depois do commit.
+ */
 class ImportPaymentsFromSpreadsheet
 {
     protected const PAYMENT_FIELDS = [
@@ -45,6 +50,15 @@ class ImportPaymentsFromSpreadsheet
             array_shift($rows);
         }
 
+        return DB::transaction(fn (): int => $this->importRows($rows, $columnMap, $emission));
+    }
+
+    /**
+     * @param  list<array<int, mixed>>  $rows
+     * @param  array{has_header: bool, columns: array<string, int>}  $columnMap
+     */
+    protected function importRows(array $rows, array $columnMap, Emission $emission): int
+    {
         $importedPayments = 0;
 
         foreach ($rows as $row) {
@@ -58,29 +72,10 @@ class ImportPaymentsFromSpreadsheet
             $payment = Payment::query()
                 ->where('emission_id', $emission->id)
                 ->whereDate('payment_date', $paymentDate)
-                ->first()
-                ?? $this->paymentMovedByCalendar($emission, $paymentDate);
+                ->first();
 
             if ($payment) {
-                // Pagamento já calculado pela curva oficial: nos componentes da
-                // curva a planilha só atualiza o previsto guardado ao lado do
-                // valor calculado; prêmio e amortização extraordinária não são
-                // da curva e seguem a planilha.
-                if ($payment->isCalculatedByOfficialCurve()) {
-                    foreach ($paymentValues['values'] as $field => $value) {
-                        if (in_array($field, Payment::CURVE_OWNED_FIELDS, true)) {
-                            $payment->{'expected_'.$field} = $value;
-
-                            continue;
-                        }
-
-                        $payment->{$field} = $value;
-                        $payment->{'expected_'.$field} = null;
-                    }
-                } else {
-                    $payment->fill($paymentValues['values']);
-                }
-
+                $payment->fill($paymentValues['values']);
                 $payment->save();
 
                 $importedPayments++;
@@ -99,32 +94,6 @@ class ImportPaymentsFromSpreadsheet
         }
 
         return $importedPayments;
-    }
-
-    /**
-     * A planilha traz a data do cronograma do Termo; se o calendário adiou esse
-     * evento e a curva oficial já calculou o pagamento na data efetiva, é essa
-     * a linha -- não uma duplicata na data original.
-     */
-    protected function paymentMovedByCalendar(Emission $emission, mixed $paymentDate): ?Payment
-    {
-        $originalDate = CarbonImmutable::parse($paymentDate)->toDateString();
-        $event = EmissionPuEvent::query()
-            ->where('emission_id', $emission->id)
-            ->whereDate('original_date', $originalDate)
-            ->whereDate('effective_date', '!=', $originalDate)
-            ->orderBy('effective_date')
-            ->first();
-
-        if (! $event instanceof EmissionPuEvent) {
-            return null;
-        }
-
-        return Payment::query()
-            ->where('emission_id', $emission->id)
-            ->whereDate('payment_date', $event->effective_date->toDateString())
-            ->where('value_source', Payment::SOURCE_OFFICIAL_CURVE)
-            ->first();
     }
 
     /**

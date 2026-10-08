@@ -205,6 +205,10 @@ enum AccessPermission: string
     case PuCalendarHomologationExecute = 'pu.calendar-homologation.execute';
     case PuCalendarHomologationReview = 'pu.calendar-homologation.review';
     case PuCalendarHomologationApply = 'pu.calendar-homologation.apply';
+    case PuSettlementRecord = 'pu.settlement.record';
+    case PuSettlementCorrect = 'pu.settlement.correct';
+    case PuReconciliationView = 'pu.reconciliation.view';
+    case PuReconciliationExport = 'pu.reconciliation.export';
     case ContactMessagesView = 'contact-messages.view';
     case ContactMessagesUpdate = 'contact-messages.update';
     case ReminderLogsView = 'reminder-logs.view';
@@ -460,6 +464,10 @@ enum AccessPermission: string
             self::PuCalendarHomologationExecute => 'Homologação de calendário CDI: executar',
             self::PuCalendarHomologationReview => 'Homologação de calendário CDI: revisar',
             self::PuCalendarHomologationApply => 'Homologação de calendário CDI: aplicar configuração futura',
+            self::PuSettlementRecord => 'Liquidação do PU: registrar liquidação',
+            self::PuSettlementCorrect => 'Liquidação do PU: corrigir, estornar e decidir conflitos',
+            self::PuReconciliationView => 'Liquidação do PU: visualizar conciliação',
+            self::PuReconciliationExport => 'Liquidação do PU: exportar conciliação',
             self::ContactMessagesView => 'Mensagens de contato: visualizar',
             self::ContactMessagesUpdate => 'Mensagens de contato: registrar atendimento',
             self::ReminderLogsView => 'Auditoria de lembretes: visualizar',

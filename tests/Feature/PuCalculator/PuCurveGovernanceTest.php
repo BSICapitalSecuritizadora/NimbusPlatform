@@ -20,6 +20,8 @@ use App\Jobs\GeneratePuDailyCurveJob;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuEvent;
+use App\Models\EmissionPuObligation;
+use App\Models\EmissionPuObligationCalculation;
 use App\Models\IndexRate;
 use App\Models\Payment;
 use App\Models\User;
@@ -128,12 +130,13 @@ function governanceChecker(): User
 }
 
 /**
- * Faz a conciliação falhar no meio, ao gravar o primeiro pagamento: o mesmo
- * efeito de um erro de banco depois de a versão já ter mudado de status.
+ * Faz a atualização das obrigações falhar no meio, ao gravar o cálculo esperado
+ * (Fase 5): o mesmo efeito de um erro de banco depois de a versão já ter mudado
+ * de status.
  */
-function governanceFailPaymentWrites(): void
+function governanceFailObligationWrites(): void
 {
-    Payment::saving(function (): never {
+    EmissionPuObligationCalculation::saving(function (): never {
         throw new RuntimeException('Falha na conciliação.');
     });
 }
@@ -507,7 +510,7 @@ it('lets only the first of two homologations of the same version through', funct
         ->and(Activity::query()->where('description', 'pu_curve_homologated')->count())->toBe(1);
 });
 
-it('rolls the homologation back when the payment reconciliation fails', function () {
+it('rolls the homologation back when the obligation update fails', function () {
     $emission = governanceEmission();
     $version = governanceGenerate($emission);
     Payment::query()->create([
@@ -518,7 +521,7 @@ it('rolls the homologation back when the payment reconciliation fails', function
         'amortization_value' => '0.00',
         'extra_amortization_value' => '0.00',
     ]);
-    governanceFailPaymentWrites();
+    governanceFailObligationWrites();
 
     expect(fn () => app(HomologatePuCurve::class)->handle($emission, 'v1', governanceChecker()->id, 'Conferida.'))
         ->toThrow(RuntimeException::class, 'Falha na conciliação.');
@@ -529,23 +532,23 @@ it('rolls the homologation back when the payment reconciliation fails', function
         ->and($version->fresh()->homologated_at)->toBeNull()
         ->and($emission->fresh()->officialPuCurveVersion())->toBeNull()
         ->and(Activity::query()->where('description', 'pu_curve_homologated')->exists())->toBeFalse()
-        ->and($payment->value_source)->toBeNull()
+        ->and(EmissionPuObligation::query()->where('emission_id', $emission->id)->exists())->toBeFalse()
         ->and((string) $payment->interest_value)->toBe('999.00');
 });
 
-it('rolls the invalidation back when the payment reconciliation fails', function () {
+it('rolls the invalidation back when the obligation update fails', function () {
     $emission = governanceEmission();
     $version = governanceGenerate($emission);
     app(HomologatePuCurve::class)->handle($emission, 'v1', governanceChecker()->id, 'Conferida.');
-    $payment = Payment::query()->whereBelongsTo($emission)->sole();
-    $calculated = (string) $payment->interest_value;
-    governanceFailPaymentWrites();
+    $obligation = EmissionPuObligation::query()->where('emission_id', $emission->id)->sole();
+    $calculation = $obligation->currentCalculation;
+    governanceFailObligationWrites();
 
     expect(fn () => app(InvalidatePuCurve::class)->handle($emission, 'v1', governanceChecker()->id))
         ->toThrow(RuntimeException::class, 'Falha na conciliação.');
 
-    expect($payment->fresh()->isCalculatedByOfficialCurve())->toBeTrue()
-        ->and((string) $payment->fresh()->interest_value)->toBe($calculated)
+    expect($calculation->fresh()->superseded_at)->toBeNull()
+        ->and($obligation->fresh()->current_calculation_id)->toBe($calculation->id)
         ->and($version->fresh()->status)->toBe(PuCurveStatus::Homologated)
         ->and($emission->fresh()->officialPuCurveVersion()?->id)->toBe($version->id)
         ->and(Activity::query()->where('description', 'pu_curve_invalidated')->exists())->toBeFalse();

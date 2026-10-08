@@ -323,6 +323,15 @@ class Emission extends Model
         return $this->hasMany(Payment::class);
     }
 
+    /**
+     * Obrigações financeiras do PU (Fase 5): o cronograma contratual aprovado na
+     * curva oficial, com o esperado versionado e a liquidação à parte.
+     */
+    public function puObligations(): HasMany
+    {
+        return $this->hasMany(EmissionPuObligation::class);
+    }
+
     public function expenses(): HasMany
     {
         return $this->hasMany(Expense::class);

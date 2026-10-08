@@ -23,20 +23,24 @@ class PuCurveEventSupport
 {
     public function __construct(
         private readonly DecimalRounder $rounder,
+        private readonly PuFinancialEffectSupport $effectSupport,
     ) {}
 
     /**
      * Pagamentos do cronograma ATIVOS, agrupados pela data efetiva e na ordem
-     * canônica ({@see PuEventType::orderingKey()}). Evento cancelado não entra; evento
-     * ativo de um tipo que estas engines não calculam (alteração de spread, regimes,
-     * vencimento antecipado...) recusa o cálculo em vez de sumir.
+     * canônica ({@see PuEventType::orderingKey()}). Evento cancelado não entra, nem o
+     * waiver declarado sem efeito no PU (Fase 5); evento ativo de um tipo que estas
+     * engines não calculam (alteração de spread, amortização extraordinária,
+     * regimes, vencimento antecipado...) recusa o cálculo em vez de sumir.
      *
      * @param  EloquentCollection<int, EmissionPuEvent>  $events
      * @return array<string, Collection<int, EmissionPuEvent>>
      */
     public function groupEventsByDate(EloquentCollection $events): array
     {
-        $active = $events->filter(fn (EmissionPuEvent $event): bool => $event->isActive());
+        $active = $events
+            ->filter(fn (EmissionPuEvent $event): bool => $event->isActive())
+            ->reject(fn (EmissionPuEvent $event): bool => $this->effectSupport->isInert(PuFinancialEffectSupport::fromModel($event)));
 
         foreach ($active as $event) {
             $type = PuEventType::tryFrom((string) $event->event_type);

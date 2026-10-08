@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Site;
 
 use App\Domain\PuCalculator\Services\EmissionPuReader;
+use App\Domain\PuCalculator\Services\PuObligationReader;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Site\ContactFormRequest;
 use App\Mail\ContactFormMail;
@@ -124,6 +125,19 @@ class SiteController extends Controller
                 },
             ])
             ->firstOrFail();
+
+        // Emissão governada pela curva oficial: o histórico de pagamentos é o valor
+        // esperado OFICIAL das obrigações (Fase 5) -- nunca a liquidação nem a
+        // conciliação, que não são públicas. Sem curva oficial, segue o cronograma
+        // informado carregado acima.
+        $officialPayments = app(PuObligationReader::class)->officialPaymentHistory(
+            $emission,
+            CarbonImmutable::parse(BusinessTime::dateString())->startOfDay(),
+        );
+
+        if ($officialPayments !== null) {
+            $emission->setRelation('payments', $officialPayments);
+        }
 
         // A curva oficial homologada prevalece; sem ela, o Histórico de PU importado. A data pedida é o
         // dia de negócio (America/Sao_Paulo), não o dia UTC, e a lista vem vazia quando o PU mais recente

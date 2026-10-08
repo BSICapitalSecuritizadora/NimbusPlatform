@@ -14,6 +14,7 @@ use App\Domain\PuCalculator\Enums\PuEventStatus;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
+use App\Domain\PuCalculator\Enums\PuObligationCalculationState;
 use App\Domain\PuCalculator\Enums\PuOfficialCurveFreshness;
 use App\Domain\PuCalculator\Exceptions\PuCurveGovernanceException;
 use App\Domain\PuCalculator\Exceptions\PuCurveInputsException;
@@ -39,6 +40,7 @@ use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuDailyCurve;
 use App\Models\EmissionPuEvent;
+use App\Models\EmissionPuObligation;
 use App\Models\IndexRate;
 use App\Models\Payment;
 use App\Models\User;
@@ -364,7 +366,7 @@ it('P1-04: never lets a future event recorded after homologation enter the homol
     expect($extended->action)->toBeIn([PuCurveExtensionService::ACTION_EXTENDED, PuCurveExtensionService::ACTION_UP_TO_DATE])
         ->and($couponRow)->not->toBeNull()
         ->and(bccomp((string) $couponRow->interest_payment_unit_value, '0', 8))->toBe(1)
-        ->and(Payment::query()->whereBelongsTo($emission)->whereDate('payment_date', '2026-03-20')->sole()->isCalculatedByOfficialCurve())->toBeTrue()
+        ->and(EmissionPuObligation::query()->where('emission_id', $emission->id)->whereDate('due_date', '2026-03-20')->sole()->calculation_state)->toBe(PuObligationCalculationState::Calculated)
         ->and(p4lRow($official->fresh(), '2026-03-20'))->toBeNull()
         // A pendência era da v1; com a v2 oficial, o monitor não a conta mais.
         ->and(app(PuOperationalMonitorService::class)->pendingContractualChangeCount())->toBe(0);
@@ -446,7 +448,7 @@ it('applies a future event already approved in the homologated version without a
         ->and($official->fresh()->contractual_change_detected_at)->toBeNull()
         ->and($row?->calculation_memory['event_types'])->toBe(['interest_payment', 'amortization'])
         ->and(bccomp((string) $row->amortization_unit_value, '99.99', 2))->toBe(1)
-        ->and(Payment::query()->whereBelongsTo($emission)->whereDate('payment_date', '2026-03-20')->sole()->isCalculatedByOfficialCurve())->toBeTrue();
+        ->and(EmissionPuObligation::query()->where('emission_id', $emission->id)->whereDate('due_date', '2026-03-20')->sole()->calculation_state)->toBe(PuObligationCalculationState::Calculated);
 });
 
 it('keeps the approved snapshot of an event edited after homologation and requires a new version', function () {
@@ -807,8 +809,15 @@ it('keeps the event catalog explicit about effect, duration, ordering and engine
     $durations = collect(PuEventType::cases())->filter->supportsDuration()->map->value->values()->all();
     $priorities = collect(PuEventType::cases())->map->applicationPriority();
 
-    expect($supported)->toBe(['interest_payment', 'amortization', 'spread_amendment'])
+    // Fase 5: amortização extraordinária e vencimento antecipado (só CDI) e waiver
+    // entram no catálogo suportado -- mas só com o efeito declarado suportado
+    // (PuFinancialEffectSupport); sem ele continuam bloqueando a curva.
+    expect($supported)->toBe(['interest_payment', 'amortization', 'extraordinary_amortization', 'spread_amendment', 'waiver', 'early_maturity'])
         ->and(PuEventType::SpreadAmendment->supportedBy())->toBe([PuCalculationMethod::CdiSpread])
+        ->and(PuEventType::ExtraordinaryAmortization->supportedBy())->toBe([PuCalculationMethod::CdiSpread])
+        ->and(PuEventType::EarlyMaturity->supportedBy())->toBe([PuCalculationMethod::CdiSpread])
+        ->and(PuEventType::ExtraordinaryAmortization->isScheduledPayment())->toBeFalse()
+        ->and(PuEventType::ExtraordinaryAmortization->effectClass())->toBe(PuEventType::Amortization->effectClass())
         ->and($durations)->toBe(['waiver', 'grace_period', 'deferral', 'default'])
         ->and($priorities->unique()->count())->toBe(count(PuEventType::cases()))
         ->and(PuEventType::InterestPayment->applicationPriority())->toBeLessThan(PuEventType::Amortization->applicationPriority())
