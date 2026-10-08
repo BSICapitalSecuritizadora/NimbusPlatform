@@ -28,18 +28,18 @@
     >
         @if($details['total'] === 0)
             <div class="flex flex-col items-center justify-center py-8 text-center">
-                <div class="flex size-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500">
+                <div class="flex size-11 items-center justify-center rounded-full bg-[var(--surface-ground)] text-[var(--text-muted)] border border-[var(--border-subtle)]">
                     <x-heroicon-o-folder-open class="size-6" aria-hidden="true" />
                 </div>
-                <p class="mt-3 text-sm font-semibold text-gray-950 dark:text-white">Nenhuma proposta na carteira no momento.</p>
-                <p class="mt-1 max-w-xs text-xs text-gray-500 dark:text-gray-400">As entradas recebidas serão distribuídas automaticamente pelos estágios operacionais.</p>
+                <p class="mt-3 text-sm font-semibold text-[var(--text-primary)]">Nenhuma proposta na carteira no momento.</p>
+                <p class="mt-1 max-w-xs text-xs text-[var(--text-secondary)]">As entradas recebidas serão distribuídas automaticamente pelos estágios operacionais.</p>
             </div>
         @else
             <div class="flex flex-col justify-between flex-1 h-full">
                 @if($details['dominant_item'] && count($details['active_items']) > 1)
-                    <div class="mb-2.5 flex items-center justify-between rounded-lg bg-gray-50/80 px-2.5 py-1.5 text-xs dark:bg-[#06161d]/75 border border-gray-200/50 dark:border-white/[0.05]">
-                        <span class="text-gray-500 dark:text-gray-400">Maior concentração:</span>
-                        <span class="font-semibold text-gray-900 dark:text-white">
+                    <div class="mb-2.5 flex items-center justify-between rounded-lg bg-[var(--surface-ground)] px-2.5 py-1.5 text-xs border border-[var(--border-subtle)]">
+                        <span class="text-[var(--text-secondary)]">Maior concentração:</span>
+                        <span class="font-semibold text-[var(--text-primary)]">
                             {{ $details['dominant_item']['label'] }} ({{ $details['dominant_item']['percentage'] }}%)
                         </span>
                     </div>
@@ -56,7 +56,7 @@
                                     cachedData: @js($this->getCachedData()),
                                     options: @js($this->getOptions()),
                                     type: @js($type),
-                                })"
+                                    })"
                         {{
                             (new FilamentComponentAttributeBag)
                                 ->color(ChartWidgetComponent::class, $color)
@@ -82,41 +82,44 @@
                             ])
                         ></canvas>
 
-                        <span x-ref="backgroundColorElement" class="fi-wi-chart-bg-color"></span>
-                        <span x-ref="borderColorElement" class="fi-wi-chart-border-color"></span>
-                        <span x-ref="gridColorElement" class="fi-wi-chart-grid-color"></span>
-                        <span x-ref="textColorElement" class="fi-wi-chart-text-color"></span>
+                        <span aria-hidden="true" x-ref="backgroundColorElement" class="fi-wi-chart-bg-color"></span>
+                        <span aria-hidden="true" x-ref="borderColorElement" class="fi-wi-chart-border-color"></span>
+                        <span aria-hidden="true" x-ref="gridColorElement" class="fi-wi-chart-grid-color"></span>
+                        <span aria-hidden="true" x-ref="textColorElement" class="fi-wi-chart-text-color"></span>
+                        <span aria-hidden="true" x-ref="tooltipBackgroundColorElement" class="fi-wi-chart-tooltip-bg-color"></span>
+                        <span aria-hidden="true" x-ref="tooltipTextColorElement" class="fi-wi-chart-tooltip-text-color"></span>
+                        <span aria-hidden="true" x-ref="tooltipBorderColorElement" class="fi-wi-chart-tooltip-border-color"></span>
                     </div>
 
                     {{-- Informação Central do Donut --}}
                     <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-                        <span class="text-2xl font-bold tabular-nums leading-none tracking-tight text-gray-950 dark:text-white">
+                        <span class="text-2xl font-bold tabular-nums leading-none tracking-tight text-[var(--text-primary)]">
                             {{ $details['total'] }}
                         </span>
-                        <span class="mt-1 text-[0.625rem] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        <span class="mt-1 text-[0.625rem] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
                             {{ $details['total'] === 1 ? 'Em Carteira' : 'Em Carteira' }}
                         </span>
                     </div>
                 </div>
 
                 {{-- Lista de Distribuição Executiva com Barras Proporcionais --}}
-                <div class="mt-auto space-y-1.5 border-t border-gray-200/50 pt-2.5 dark:border-white/[0.06]">
+                <div class="mt-auto space-y-1.5 border-t border-[var(--border-subtle)] pt-2.5">
                     @foreach($details['active_items'] as $item)
                         <a
                             href="{{ $proposalsUrl }}"
-                            class="group flex flex-col gap-1 rounded-lg px-2.5 py-1.5 transition-colors duration-150 hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
+                            class="group flex flex-col gap-1 rounded-lg px-2.5 py-1.5 transition-colors duration-150 hover:bg-[var(--surface-highlight)]"
                             title="Ver propostas com status {{ $item['label'] }}"
                         >
                             <div class="flex items-center justify-between gap-2 text-xs">
-                                <span class="flex items-center gap-2 min-w-0 font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-950 dark:group-hover:text-white">
+                                <span class="flex items-center gap-2 min-w-0 font-medium text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">
                                     <span class="size-2 shrink-0 rounded-full" style="background-color: {{ $item['color_hex'] }};"></span>
                                     <span class="truncate">{{ $item['label'] }}</span>
                                 </span>
-                                <span class="shrink-0 font-semibold tabular-nums text-gray-950 dark:text-white">
-                                    {{ $item['count'] }} <span class="font-normal text-gray-500 dark:text-gray-400">({{ $item['percentage'] }}%)</span>
+                                <span class="shrink-0 font-semibold tabular-nums text-[var(--text-primary)]">
+                                    {{ $item['count'] }} <span class="font-normal text-[var(--text-secondary)]">({{ $item['percentage'] }}%)</span>
                                 </span>
                             </div>
-                            <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-200/60 dark:bg-gray-800">
+                            <div class="h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-highlight)]">
                                 <div
                                     class="h-full rounded-full transition-all duration-300"
                                     style="width: {{ $item['percentage'] }}%; background-color: {{ $item['color_hex'] }};"
@@ -126,12 +129,12 @@
                     @endforeach
 
                     @if($details['inactive_items_count'] > 0)
-                        <div class="flex items-center justify-between px-2.5 pt-1 text-[0.6875rem] text-gray-500 dark:text-gray-400">
+                        <div class="flex items-center justify-between px-2.5 pt-1 text-[0.6875rem] text-[var(--text-secondary)]">
                             <div class="flex items-center gap-1.5 min-w-0">
-                                <span class="size-1.5 shrink-0 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                                <span class="size-1.5 shrink-0 rounded-full bg-[var(--text-muted)]"></span>
                                 <span class="truncate">{{ $details['inactive_items_count'] }} {{ $details['inactive_items_count'] === 1 ? 'outro estágio sem propostas ativas' : 'outros estágios sem propostas ativas' }}</span>
                             </div>
-                            <span class="shrink-0 font-medium tabular-nums text-gray-400 dark:text-gray-500">0</span>
+                            <span class="shrink-0 font-medium tabular-nums text-[var(--text-muted)]">0</span>
                         </div>
                     @endif
                 </div>

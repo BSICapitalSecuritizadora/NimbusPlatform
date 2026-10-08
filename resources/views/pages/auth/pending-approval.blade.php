@@ -13,7 +13,7 @@
             </div>
         </div>
 
-        <div class="rounded-lg border border-zinc-200 bg-zinc-50 p-5 text-sm leading-relaxed text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+        <div class="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-card)] p-5 text-sm leading-relaxed text-[var(--text-secondary)]">
             <p>{{ __('Obrigado por realizar seu cadastro no portal BSI Capital. Sua conta foi criada com sucesso e está aguardando a aprovação da equipe responsável.') }}</p>
             <p class="mt-3">{{ __('Assim que seu acesso for aprovado, você receberá uma notificação no e-mail cadastrado. Esse processo costuma ser concluído em até um dia útil.') }}</p>
             <p class="mt-3">{{ __('Caso tenha dúvidas, entre em contato com a equipe BSI Capital pelo canal de suporte oficial.') }}</p>

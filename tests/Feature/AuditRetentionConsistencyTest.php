@@ -15,6 +15,7 @@ use App\Models\Measurement;
 use App\Models\MeasurementPayment;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
+use App\Models\MeasurementPlanVersion;
 use App\Models\Operation;
 use App\Models\ResponsibilityDelegation;
 use App\Models\SalesBoard;
@@ -319,6 +320,7 @@ it('protects the category every audited aggregate actually writes to', function 
 })->with([
     'Measurement' => [Measurement::class, 'measurements'],
     'MeasurementPlanSet' => [MeasurementPlanSet::class, 'measurements'],
+    'MeasurementPlanVersion' => [MeasurementPlanVersion::class, 'measurements'],
     'MeasurementPlanLine' => [MeasurementPlanLine::class, 'measurements'],
     'MeasurementPayment' => [MeasurementPayment::class, 'measurement_payments'],
     'ResponsibilityDelegation' => [ResponsibilityDelegation::class, 'delegations'],

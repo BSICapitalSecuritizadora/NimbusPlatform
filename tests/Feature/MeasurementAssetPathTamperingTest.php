@@ -27,6 +27,7 @@ use Spatie\Permission\PermissionRegistrar;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Tests\Support\ForgedLivewireRequest;
+use Tests\Support\MeasurementPlanVersionFixture;
 
 uses(RefreshDatabase::class);
 
@@ -95,6 +96,9 @@ function pathTamperingScenario(int $developments = 1): array
         $freeLines[] = MeasurementPlanLine::factory()->create([
             'plan_set_id' => $planSet->id, 'operation_id' => $operation->id, 'sequence_number' => 2, 'measurement_date' => '2026-10-01',
         ]);
+        // O cronograma entra no rascunho da V1, e o plano só recebe medição
+        // depois de vigente: a versão é ativada antes do envio.
+        MeasurementPlanVersionFixture::activate($planSet);
         $ownBytes[] = "%PDF-1.7 arquivo legítimo {$development} da operação A";
         $assets[] = $measurement->assets()->create([
             'plan_set_id' => $planSet->id,

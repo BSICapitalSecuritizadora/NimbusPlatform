@@ -36,8 +36,10 @@ final class PuEventPlanService
         CarbonImmutable $homologationEndDate,
     ): array {
         usort($requirements, fn (array $left, array $right): int => $this->eventSortKey($left) <=> $this->eventSortKey($right));
+        // Cancelado não conta como presente: o contrato não o tem mais.
         $existingModels = EmissionPuEvent::query()
             ->whereBelongsTo($emission)
+            ->active()
             ->orderBy('effective_date')
             ->orderBy('event_type')
             ->orderBy('sequence')

@@ -2,7 +2,9 @@
 
 use App\Actions\Emissions\GeneratePuDailyCurve;
 use App\Actions\Emissions\HomologatePuCurve;
+use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Enums\PuOfficialCurveFreshness;
@@ -10,10 +12,13 @@ use App\Domain\PuCalculator\Services\BusinessDayCalendarService;
 use App\Domain\PuCalculator\Services\EmissionPuReader;
 use App\Domain\PuCalculator\Services\IndexRateSyncService;
 use App\Domain\PuCalculator\Services\PuCurveVersionService;
+use App\Jobs\GeneratePuDailyCurveJob;
 use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
+use App\Models\EmissionPuEvent;
 use App\Models\IndexRate;
+use App\Models\Payment;
 use App\Models\User;
 use App\Services\Guarantees\OutstandingBalanceResolver;
 use Carbon\CarbonImmutable;
@@ -350,4 +355,185 @@ it('runs the clean-slate workflow in D-1 mode across a national holiday, never p
         ->and(IndexRate::query()->where('is_projected', true)->exists())->toBeFalse()
         ->and(IndexRate::query()->whereDate('rate_date', P31G_HOLIDAY)->exists())->toBeFalse()
         ->and($emission->fresh()->puDailyCurves()->whereDate('curve_date', '>', '2026-09-09')->exists())->toBeFalse();
+});
+
+/*
+ * Fase 4 -- o mesmo primeiro uso, agora com o contrato mudando depois da
+ * homologação. O CDI novo estende a oficial; o evento contratual que a oficial não
+ * aprovou não entra nela: ela para na véspera, uma versão nova é gerada e
+ * homologada, e só ela aplica o evento. Uma integralização retroativa depois disso
+ * suspende a oficial nova para reprocessamento. Nenhuma versão homologada é
+ * reescrita em momento algum.
+ */
+function p4gCalendar(): void
+{
+    for ($date = CarbonImmutable::parse('2026-07-27'); $date->lte(CarbonImmutable::parse('2027-08-13')); $date = $date->addDay()) {
+        BusinessCalendarDate::query()->create([
+            'calendar_code' => 'B3',
+            'calendar_date' => $date->toDateString(),
+            'is_business_day' => ! $date->isWeekend(),
+            'description' => null,
+        ]);
+    }
+
+    app(BusinessDayCalendarService::class)->flushCache();
+}
+
+/**
+ * @return list<array{data: string, valor: string}>
+ */
+function p4gPublishedPayload(string $publishedThrough): array
+{
+    $rows = [];
+
+    for ($date = CarbonImmutable::parse('2026-07-27'); $date->lte(CarbonImmutable::parse($publishedThrough)); $date = $date->addDay()) {
+        if (! $date->isWeekend()) {
+            $rows[] = ['data' => $date->format('d/m/Y'), 'valor' => '14.90'];
+        }
+    }
+
+    return $rows;
+}
+
+function p4gMorning(string $date, string $publishedThrough): void
+{
+    test()->travelTo(CarbonImmutable::parse($date.' 07:15', 'America/Sao_Paulo'));
+    config(['phase4_greenfield.published_through' => $publishedThrough]);
+    Http::preventStrayRequests();
+    Http::fake(['api.bcb.gov.br/dados/serie/bcdata.sgs.4389/*' => fn () => Http::response(
+        p4gPublishedPayload((string) config('phase4_greenfield.published_through')),
+        200,
+    )]);
+
+    app(IndexRateSyncService::class)->sync(PuIndexer::Cdi, CarbonImmutable::parse('2026-07-27'), CarbonImmutable::parse($date));
+    test()->artisan('pu:curves:generate-realized')->assertSuccessful();
+}
+
+/**
+ * @return array<int, string>
+ */
+function p4gRows(EmissionPuCurveVersion $version): array
+{
+    return $version->dailyCurves()
+        ->orderBy('id')
+        ->get()
+        ->mapWithKeys(fn ($row): array => [$row->id => implode('|', [
+            CarbonImmutable::parse((string) $row->curve_date)->toDateString(),
+            (string) $row->residual_unit_value,
+            (string) $row->quantity,
+            (string) $row->getRawOriginal('updated_at'),
+        ])])
+        ->all();
+}
+
+it('governs a contractual change after the first homologation from candidate to a new official version', function () {
+    // 1-2. Emissão de CDI e a integralização inicial.
+    p4gCalendar();
+    $emission = Emission::factory()->active()->create(['type' => 'CRI', 'issued_quantity' => 1000]);
+    $emission->integralizationHistories()->create([
+        'date' => '2026-08-03',
+        'quantity' => '100.0000',
+        'unit_value' => '1000.00000000',
+        'financial_value' => '100000.00',
+        'investor_fund' => 'Head Invest',
+    ]);
+    $emission->puParameter()->create([
+        'curve_start_date' => '2026-08-03',
+        'curve_end_date' => '2027-08-02',
+        'initial_unit_value' => '1000.0000000000000000',
+        'spread_rate' => '6.00000000',
+        'indexer' => PuIndexer::Cdi->value,
+        'business_day_basis' => 252,
+        'calendar_code' => 'B3',
+        'index_rate_lookup_mode' => PuIndexRateLookupMode::PreviousAvailableBusinessDay->value,
+        'index_rate_lag_business_days' => 1,
+        'legacy_projection_enabled' => false,
+    ]);
+    $reader = app(EmissionPuReader::class);
+    $maker = User::factory()->create();
+    $checker = User::factory()->create();
+
+    // 3-5. A rotina gera a candidata v1; validação e homologação explícitas.
+    p4gMorning('2026-08-25', '2026-08-24');
+    $v1 = $emission->fresh()->puCurveVersions()->sole();
+    app(PuCurveVersionService::class)->markValidated($v1->fresh(), true, ['source' => 'conferência manual'], $maker->id);
+    app(HomologatePuCurve::class)->handle($emission->fresh(), $v1->calculation_version, $checker->id, 'Primeira curva oficial, conferida contra o sistema antigo.');
+
+    // 6. O CDI novo estende a oficial, sem mudança contratual nenhuma.
+    p4gMorning('2026-08-26', '2026-08-25');
+
+    expect($v1->fresh()->status)->toBe(PuCurveStatus::Homologated)
+        ->and(p3gLastDate($v1))->toBe('2026-08-25')
+        ->and($v1->fresh()->curve_inputs_fingerprint)->not->toBeNull()
+        ->and($reader->officialStatus($emission->fresh())->freshness)->toBe(PuOfficialCurveFreshness::Current);
+
+    // 7. Amortização extraordinária de 10% em 01/09, com o cupom, cadastrada depois da homologação.
+    EmissionPuEvent::query()->create(['emission_id' => $emission->id, 'event_type' => PuEventType::InterestPayment->value, 'original_date' => '2026-09-01', 'effective_date' => '2026-09-01', 'amortization_type' => PuAmortizationType::None->value, 'sequence' => 1]);
+    EmissionPuEvent::query()->create(['emission_id' => $emission->id, 'event_type' => PuEventType::Amortization->value, 'original_date' => '2026-09-01', 'effective_date' => '2026-09-01', 'amortization_type' => PuAmortizationType::Percentage->value, 'amortization_value' => '0.1000000000000000', 'sequence' => 1, 'document_reference' => 'Ata da AGT de 26/08/2026']);
+
+    // 8. A v1 avança até a véspera e para: não absorve o evento que não aprovou.
+    p4gMorning('2026-08-27', '2026-08-26');
+    p4gMorning('2026-08-28', '2026-08-27');
+    p4gMorning('2026-08-31', '2026-08-28');
+    p4gMorning('2026-09-01', '2026-08-31');
+    p4gMorning('2026-09-02', '2026-09-01');
+    $v1Rows = p4gRows($v1);
+    $v1Inputs = $v1->fresh()->curve_inputs;
+    $pending = $reader->officialStatus($emission->fresh());
+
+    expect(p3gLastDate($v1))->toBe('2026-08-31')
+        ->and($v1->fresh()->dailyCurves()->whereDate('curve_date', '>=', '2026-09-01')->exists())->toBeFalse()
+        ->and($pending->freshness)->toBe(PuOfficialCurveFreshness::NewVersionRequired)
+        ->and($pending->contractualChangeFrom?->toDateString())->toBe('2026-09-01')
+        ->and(Payment::query()->whereBelongsTo($emission)->whereDate('payment_date', '2026-09-01')->exists())->toBeFalse();
+
+    // 9-10. "Gerar Curva PU" por uma pessoa, homologação por outra.
+    GeneratePuDailyCurveJob::dispatchSync($emission->id, $maker->id, true);
+    $v2 = $emission->fresh()->puCurveVersions()->where('id', '>', $v1->id)->sole();
+
+    expect($v2->status)->toBe(PuCurveStatus::Generated)
+        ->and($v2->predecessor_version_id)->toBe($v1->id)
+        ->and($v2->generation_context['reason'])->toBe('contractual_input_changed')
+        ->and($v2->generation_context['earliest_affected_date'])->toBe('2026-09-01')
+        ->and($emission->fresh()->officialPuCurveVersion()?->id)->toBe($v1->id);
+
+    app(HomologatePuCurve::class)->handle($emission->fresh(), $v2->calculation_version, $checker->id);
+
+    // 11-12. A v2 aplica o evento na data efetiva, e o pagamento vem dela.
+    p4gMorning('2026-09-03', '2026-09-02');
+    $eventRow = $v2->fresh()->dailyCurves()->whereDate('curve_date', '2026-09-01')->sole();
+    $v2Rows = p4gRows($v2);
+    $v2Inputs = $v2->fresh()->curve_inputs;
+
+    expect($emission->fresh()->officialPuCurveVersion()?->id)->toBe($v2->id)
+        ->and($eventRow->calculation_memory['event_types'])->toBe(['interest_payment', 'amortization'])
+        ->and((string) $eventRow->amortization_ratio)->toBe('0.1000000000000000')
+        ->and(p3gLastDate($v2))->toBe('2026-09-02')
+        ->and(Payment::query()->whereBelongsTo($emission)->whereDate('payment_date', '2026-09-01')->sole()->isCalculatedByOfficialCurve())->toBeTrue()
+        ->and($reader->officialStatus($emission->fresh())->freshness)->toBe(PuOfficialCurveFreshness::Current);
+
+    // 13-14. Integralização retroativa: reprocessamento exigido, nada anexado.
+    $emission->integralizationHistories()->create([
+        'date' => '2026-08-10',
+        'quantity' => '20.0000',
+        'unit_value' => '1000.00000000',
+        'financial_value' => '20000.00',
+        'investor_fund' => 'Fundo B',
+    ]);
+    p4gMorning('2026-09-04', '2026-09-03');
+    $reprocess = $reader->officialStatus($emission->fresh());
+
+    expect($reprocess->freshness)->toBe(PuOfficialCurveFreshness::ReprocessingRequired)
+        ->and($reprocess->reprocessingFrom?->toDateString())->toBe('2026-08-10')
+        ->and($v2->fresh()->extension_diverged_at)->not->toBeNull()
+        ->and(p3gLastDate($v2))->toBe('2026-09-02');
+
+    // 15. Nenhuma versão homologada foi reescrita: linhas e retrato intactos.
+    expect(p4gRows($v1))->toBe($v1Rows)
+        ->and($v1->fresh()->curve_inputs)->toBe($v1Inputs)
+        ->and($v1->fresh()->status)->toBe(PuCurveStatus::Homologated)
+        ->and(p4gRows($v2))->toBe($v2Rows)
+        ->and($v2->fresh()->curve_inputs)->toBe($v2Inputs)
+        ->and($v2->fresh()->status)->toBe(PuCurveStatus::Homologated)
+        ->and(IndexRate::query()->where('is_projected', true)->exists())->toBeFalse();
 });

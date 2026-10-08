@@ -15,6 +15,10 @@ use App\Models\User;
  *
  * Sem esta policy o Filament liberava as ações padrão da tabela para qualquer um
  * que abrisse a edição da Emissão.
+ *
+ * Fase 4: evento cancelado é evidência e não se edita; evento que já entrou no
+ * retrato de uma versão de curva não se exclui -- cancela-se, com motivo. O model
+ * recusa o mesmo, por qualquer caminho.
  */
 class EmissionPuEventPolicy
 {
@@ -35,12 +39,14 @@ class EmissionPuEventPolicy
 
     public function update(User $user, EmissionPuEvent $event): bool
     {
-        return $user->can(AccessPermission::PuParametersConfigure->value);
+        return $user->can(AccessPermission::PuParametersConfigure->value)
+            && $event->isActive();
     }
 
     public function delete(User $user, EmissionPuEvent $event): bool
     {
-        return $user->can(AccessPermission::PuParametersConfigure->value);
+        return $user->can(AccessPermission::PuParametersConfigure->value)
+            && ! $event->isGoverned();
     }
 
     public function deleteAny(User $user): bool

@@ -94,6 +94,19 @@ enum OperationStatus: string
     }
 
     /**
+     * Plano de medição novo, revisão, rascunho e ativação preparam trabalho:
+     * valem em `draft` e `active`. Nos terminais não há mais o que planejar
+     * até a reabertura -- o histórico das versões continua legível.
+     */
+    public function allowsPlanChanges(): bool
+    {
+        return match ($this) {
+            self::Draft, self::Active => true,
+            self::Completed, self::Canceled => false,
+        };
+    }
+
+    /**
      * @return list<self>
      */
     public function allowedTransitions(): array

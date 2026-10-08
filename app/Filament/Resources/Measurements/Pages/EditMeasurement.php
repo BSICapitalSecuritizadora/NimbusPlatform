@@ -13,6 +13,7 @@ use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\Component;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -134,6 +135,12 @@ class EditMeasurement extends EditRecord
             }
         } catch (MeasurementWorkflowException $exception) {
             $this->refuse($exception->getMessage());
+        } catch (UniqueConstraintViolationException $exception) {
+            if (! str_contains($exception->getMessage(), 'line_claim')) {
+                throw $exception;
+            }
+
+            $this->refuse('A medição prevista escolhida acabou de ser ocupada por outra medição. Recarregue a página e escolha outra.');
         } catch (Throwable $exception) {
             if (! static::isConcurrentUpdate($exception)) {
                 throw $exception;

@@ -100,7 +100,7 @@
     <div class="container position-relative z-1">
         <div class="row align-items-center g-4">
             <div class="col-lg-6">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Ecossistema institucional</span>
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent); letter-spacing: 0.1em; font-weight: 600;">Ecossistema institucional</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
                     Parcerias estratégicas para <span style="color: var(--gold);">originação e estruturação de operações</span>
                 </h1>
@@ -264,7 +264,7 @@
     <div class="container py-lg-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91,0.05); letter-spacing: 0.1em; font-weight: 600;">Atuação próxima e criteriosa</span>
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: color-mix(in srgb, var(--brand) 5%, transparent); letter-spacing: 0.1em; font-weight: 600;">Atuação próxima e criteriosa</span>
                 <h2 class="h3 fw-bold text-dark mb-4">Por que parceiros estruturam com a BSI Capital?</h2>
                 <p class="text-muted mb-4">No mercado de capitais, proximidade técnica na originação e governança documental são diferenciais. Oferecemos interlocução direta com equipe técnica para discussões de viabilidade desde o início da tese.</p>
                 <div class="row g-4">

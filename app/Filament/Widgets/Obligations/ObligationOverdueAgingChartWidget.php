@@ -88,8 +88,7 @@ class ObligationOverdueAgingChartWidget extends ChartWidget
                 },
                 y: {
                     beginAtZero: true,
-                    ticks: { precision: 0, font: { size: 11 } },
-                    grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                    ticks: { precision: 0, font: { size: 11 } }
                 }
             },
             plugins: {

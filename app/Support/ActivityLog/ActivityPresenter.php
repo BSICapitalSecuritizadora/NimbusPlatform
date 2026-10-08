@@ -419,6 +419,12 @@ final class ActivityPresenter
             'submitted_for_review' => 'Envio para análise',
             'reopened' => 'Reabertura',
             'comment_added' => 'Comentário',
+            'plan_version_created' => 'Versão do plano criada',
+            'plan_version_activated' => 'Versão do plano ativada',
+            'plan_version_superseded' => 'Versão do plano substituída',
+            'plan_version_cancelled' => 'Versão do plano cancelada',
+            'plan_version_backfilled' => 'Versão do plano registrada na migração',
+            'plan_versions_deleted_with_plan' => 'Versões excluídas com o plano',
             null, '' => 'Sistema',
             default => Str::headline(str_replace('_', ' ', $event)),
         };

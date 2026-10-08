@@ -8426,6 +8426,40 @@ html:not(.dark) .bsi-index-projection-series-list-page tr.fi-ta-row:hover {
     box-shadow: 0 10px 26px rgb(4 14 19 / 0.45);
 }
 
+/* ── Filament ChartWidgets: Semantic Architecture Stabilization (Phase 6) ── */
+.fi-wi-chart {
+    --chart-tooltip-corner-radius: 8px;
+    --chart-tooltip-border-width: 1px;
+}
+
+.fi-wi-chart .fi-wi-chart-bg-color {
+    color: var(--surface-card);
+}
+
+.fi-wi-chart .fi-wi-chart-border-color {
+    color: var(--border-subtle);
+}
+
+.fi-wi-chart .fi-wi-chart-grid-color {
+    color: var(--border-subtle);
+}
+
+.fi-wi-chart .fi-wi-chart-text-color {
+    color: var(--text-secondary);
+}
+
+.fi-wi-chart .fi-wi-chart-tooltip-bg-color {
+    color: var(--surface-elevated);
+}
+
+.fi-wi-chart .fi-wi-chart-tooltip-text-color {
+    color: var(--text-primary);
+}
+
+.fi-wi-chart .fi-wi-chart-tooltip-border-color {
+    color: var(--border-subtle);
+}
+
 /* ── Gráficos da Carteira (Grid unificado e altura uniforme) ── */
 .bsi-obligation-dashboard .fi-wi-chart {
     height: 100% !important;
@@ -8434,8 +8468,8 @@ html:not(.dark) .bsi-index-projection-series-list-page tr.fi-ta-row:hover {
 }
 
 .bsi-obligation-dashboard .fi-wi-chart > .fi-section {
-    background: #fbfaf8 !important;
-    border: 1px solid #dbd5d3 !important;
+    background: var(--surface-card) !important;
+    border: 1px solid var(--border-subtle) !important;
     border-radius: 14px !important;
     height: 100% !important;
     min-height: 440px !important;
@@ -8448,8 +8482,8 @@ html:not(.dark) .bsi-index-projection-series-list-page tr.fi-ta-row:hover {
 }
 
 .dark .bsi-obligation-dashboard .fi-wi-chart > .fi-section {
-    background: #0d252e !important;
-    border-color: rgba(183, 131, 47, 0.22) !important;
+    background: var(--surface-card) !important;
+    border-color: var(--border-subtle) !important;
     box-shadow: 0 4px 20px rgb(4 14 19 / 0.25) !important;
 }
 
@@ -8459,8 +8493,8 @@ html:not(.dark) .bsi-index-projection-series-list-page tr.fi-ta-row:hover {
     min-height: 5.25rem !important;
     max-height: 5.25rem !important;
     padding: 0.75rem 1.25rem !important;
-    background: #f8f7f4;
-    border-bottom: 1px solid #dbd5d3;
+    background: var(--surface-ground) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
@@ -8471,8 +8505,8 @@ html:not(.dark) .bsi-index-projection-series-list-page tr.fi-ta-row:hover {
 }
 
 .dark .bsi-obligation-dashboard .fi-wi-chart .fi-section-header {
-    background: #0a2028;
-    border-bottom: 1px solid rgba(183, 131, 47, 0.18);
+    background: var(--surface-ground) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
 }
 
 .bsi-obligation-dashboard .fi-wi-chart .fi-section-header .fi-section-header-text-ctn {
@@ -8486,12 +8520,14 @@ html:not(.dark) .bsi-index-projection-series-list-page tr.fi-ta-row:hover {
     font-size: 0.9375rem !important;
     line-height: 1.25rem !important;
     font-weight: 600 !important;
+    color: var(--text-primary) !important;
     margin: 0 !important;
 }
 
 .bsi-obligation-dashboard .fi-wi-chart .fi-section-header .fi-section-header-description {
     font-size: 0.8125rem !important;
     line-height: 1.125rem !important;
+    color: var(--text-secondary) !important;
     margin: 0 !important;
     display: -webkit-box !important;
     -webkit-line-clamp: 2 !important;
@@ -8674,45 +8710,25 @@ html:not(.dark) .bsi-index-projection-series-list-page tr.fi-ta-row:hover {
 
 /* Seletor de Período ("Últimos 6 meses") */
 .bsi-proposal-volume-widget .fi-wi-chart-filter.fi-input-wrp {
+    background-color: var(--surface-card) !important;
+    border: 1px solid var(--border-subtle) !important;
     border-radius: 8px !important;
     overflow: hidden !important;
     box-sizing: border-box !important;
     display: inline-flex !important;
     align-items: center !important;
+    box-shadow: 0 1px 2px rgba(9, 27, 35, 0.04) !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
     transition: border-color 150ms ease, box-shadow 150ms ease !important;
 }
 
-:not(.dark) .bsi-proposal-volume-widget .fi-wi-chart-filter.fi-input-wrp {
-    background-color: #ffffff !important;
-    border: 1px solid #dbd5d3 !important;
-    box-shadow: 0 1px 2px rgba(9, 27, 35, 0.04) !important;
-    --tw-ring-shadow: 0 0 #0000 !important;
+.bsi-proposal-volume-widget .fi-wi-chart-filter.fi-input-wrp:hover {
+    border-color: var(--accent) !important;
 }
 
-:not(.dark) .bsi-proposal-volume-widget .fi-wi-chart-filter.fi-input-wrp:hover {
-    border-color: #c4bbb8 !important;
-}
-
-:not(.dark) .bsi-proposal-volume-widget .fi-wi-chart-filter.fi-input-wrp:focus-within {
-    border-color: #b7832f !important;
-    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.2) !important;
-    --tw-ring-shadow: 0 0 #0000 !important;
-}
-
-.dark .bsi-proposal-volume-widget .fi-wi-chart-filter.fi-input-wrp {
-    background-color: #091b23 !important;
-    border: 1px solid rgba(183, 131, 47, 0.25) !important;
-    box-shadow: 0 1px 3px rgba(4, 14, 19, 0.3) !important;
-    --tw-ring-shadow: 0 0 #0000 !important;
-}
-
-.dark .bsi-proposal-volume-widget .fi-wi-chart-filter.fi-input-wrp:hover {
-    border-color: rgba(183, 131, 47, 0.45) !important;
-}
-
-.dark .bsi-proposal-volume-widget .fi-wi-chart-filter.fi-input-wrp:focus-within {
-    border-color: #b7832f !important;
-    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.25) !important;
+.bsi-proposal-volume-widget .fi-wi-chart-filter.fi-input-wrp:focus-within {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 2px var(--accent-subtle) !important;
     --tw-ring-shadow: 0 0 #0000 !important;
 }
 
@@ -8724,6 +8740,7 @@ html:not(.dark) .bsi-index-projection-series-list-page tr.fi-ta-row:hover {
 
 .bsi-proposal-volume-widget .fi-wi-chart-filter select.fi-select-input {
     background-color: transparent !important;
+    color: var(--text-primary) !important;
     border: none !important;
     outline: none !important;
     box-shadow: none !important;
@@ -8747,34 +8764,22 @@ html:not(.dark) .bsi-index-projection-series-list-page tr.fi-ta-row:hover {
 }
 
 :not(.dark) .bsi-proposal-volume-widget .fi-wi-chart-filter select.fi-select-input {
-    color: #221f1e !important;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%235d5653' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%234b6871' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
 }
 
 .dark .bsi-proposal-volume-widget .fi-wi-chart-filter select.fi-select-input {
-    color: #fbfaf8 !important;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239d918d' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239caeb5' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
 }
 
 /* Opções nativas do seletor */
-:not(.dark) .bsi-proposal-volume-widget .fi-wi-chart-filter select.fi-select-input option {
-    background-color: #ffffff !important;
-    color: #221f1e !important;
+.bsi-proposal-volume-widget .fi-wi-chart-filter select.fi-select-input option {
+    background-color: var(--surface-card) !important;
+    color: var(--text-primary) !important;
 }
 
-:not(.dark) .bsi-proposal-volume-widget .fi-wi-chart-filter select.fi-select-input option:checked {
-    background-color: #efede9 !important;
-    color: #96651f !important;
-}
-
-.dark .bsi-proposal-volume-widget .fi-wi-chart-filter select.fi-select-input option {
-    background-color: #091b23 !important;
-    color: #fbfaf8 !important;
-}
-
-.dark .bsi-proposal-volume-widget .fi-wi-chart-filter select.fi-select-input option:checked {
-    background-color: #12313b !important;
-    color: #d4af37 !important;
+.bsi-proposal-volume-widget .fi-wi-chart-filter select.fi-select-input option:checked {
+    background-color: var(--surface-highlight) !important;
+    color: var(--accent) !important;
 }
 
 

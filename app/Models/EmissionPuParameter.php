@@ -5,12 +5,15 @@ namespace App\Models;
 use App\Domain\PuCalculator\Enums\PuCalculationMethod;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
+use App\Observers\PuContractualInputObserver;
 use Database\Factories\EmissionPuParameterFactory;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
+#[ObservedBy(PuContractualInputObserver::class)]
 class EmissionPuParameter extends Model
 {
     /** @use HasFactory<EmissionPuParameterFactory> */

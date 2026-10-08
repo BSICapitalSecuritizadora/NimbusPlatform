@@ -93,14 +93,6 @@ class ProposalVolumeChartWidget extends ChartWidget
 
     protected function getOptions(): array
     {
-        $months = (int) ($this->filter ?? 6);
-        $series = app(ProposalDashboardData::class)->monthlyVolume($months);
-        $tickColors = [];
-        foreach ($series['labels'] as $idx => $label) {
-            $hasActivity = (($series['received'][$idx] ?? 0) > 0) || (($series['completed'][$idx] ?? 0) > 0);
-            $tickColors[] = $hasActivity ? '#d4af37' : '#64748b';
-        }
-
         return [
             'layout' => [
                 'padding' => [
@@ -120,7 +112,6 @@ class ProposalVolumeChartWidget extends ChartWidget
                         'usePointStyle' => true,
                         'pointStyle' => 'circle',
                         'padding' => 12,
-                        'color' => '#9ca3af',
                         'font' => [
                             'size' => 11,
                             'weight' => '500',
@@ -142,28 +133,22 @@ class ProposalVolumeChartWidget extends ChartWidget
                         'display' => false,
                     ],
                     'grid' => [
-                        'color' => 'rgba(255, 255, 255, 0.05)',
                         'drawTicks' => false,
                     ],
                     'ticks' => [
                         'precision' => 0,
                         'stepSize' => 1,
                         'padding' => 8,
-                        'color' => '#64748b',
                         'font' => [
                             'size' => 11,
                         ],
                     ],
                 ],
                 'x' => [
-                    'border' => [
-                        'color' => 'rgba(255, 255, 255, 0.08)',
-                    ],
                     'grid' => [
                         'display' => false,
                     ],
                     'ticks' => [
-                        'color' => $tickColors,
                         'padding' => 6,
                         'font' => [
                             'size' => 11,

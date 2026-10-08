@@ -6,10 +6,14 @@ namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\Contracts\BusinessDayCalendar;
 use App\Domain\PuCalculator\Contracts\RealizedIndexRateProvider;
+use App\Domain\PuCalculator\DTOs\PuCurveChangeAssessment;
+use App\Domain\PuCalculator\DTOs\PuCurveInputSnapshot;
 use App\Domain\PuCalculator\DTOs\PuIndexRateRequirement;
 use App\Domain\PuCalculator\DTOs\PuOfficialCurveStatus;
+use App\Domain\PuCalculator\Enums\PuCurveChangeImpact;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuOfficialCurveFreshness;
+use App\Domain\PuCalculator\Exceptions\PuCurveInputsException;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuDailyCurve;
@@ -35,6 +39,14 @@ use Throwable;
  *
  * Precedência quando mais de um vale: reprocessamento (o passado mudou) →
  * índice ausente (causa nos dados) → falha da extensão → atrasada → atual.
+ *
+ * Fase 4: a curva oficial é lida pelo RETRATO de insumos que a homologação
+ * aprovou -- o horizonte (vencimento + pagamento deslocado), as regras de busca do
+ * índice e o indexador vêm dele, nunca dos parâmetros vivos. E os insumos vivos
+ * são comparados com o retrato ({@see PuCurveChangeImpactClassifier}): mudança
+ * contratual que alcança o trecho gravado é reprocessamento; mudança só no futuro
+ * limita a oficial à véspera da data afetada, e a oficial que chegou lá fica
+ * "nova versão necessária".
  */
 final class PuOfficialCurveFreshnessService
 {
@@ -42,6 +54,8 @@ final class PuOfficialCurveFreshnessService
         private readonly PuIndexRateRequirementResolver $requirements,
         private readonly RealizedIndexRateProvider $realizedRates,
         private readonly BusinessDayCalendar $calendar,
+        private readonly PuCurveInputSnapshotService $snapshots,
+        private readonly PuCurveChangeImpactClassifier $classifier,
     ) {}
 
     public function status(Emission $emission, ?CarbonInterface $now = null): PuOfficialCurveStatus
@@ -58,13 +72,36 @@ final class PuOfficialCurveFreshnessService
             );
         }
 
-        $parameter = EmissionPuParameter::query()->where('emission_id', $emission->id)->first();
         $lastRowDate = EmissionPuDailyCurve::query()
             ->where('curve_version_id', $official->id)
             ->max('curve_date');
         $realizedThrough = $lastRowDate !== null ? CarbonImmutable::parse((string) $lastRowDate)->startOfDay() : null;
+
+        try {
+            $approved = $this->snapshots->forVersion($official);
+        } catch (PuCurveInputsException $exception) {
+            return new PuOfficialCurveStatus(
+                freshness: PuOfficialCurveFreshness::ReprocessingRequired,
+                versionId: $official->id,
+                calculationVersion: $official->calculation_version,
+                realizedThrough: $realizedThrough,
+                reason: $exception->getMessage(),
+            );
+        }
+
+        // Com retrato, tudo vem do que foi aprovado; sem retrato (anterior à Fase 4),
+        // dos parâmetros vivos, como antes -- a extensão diária recusa essa versão.
+        $parameter = $approved instanceof PuCurveInputSnapshot
+            ? $this->snapshots->hydrate($emission, $approved)->puParameter
+            : EmissionPuParameter::query()->where('emission_id', $emission->id)->first();
         $curveEnd = $parameter?->curve_end_date !== null
             ? CarbonImmutable::instance($parameter->curve_end_date)->startOfDay()
+            : null;
+        $contractual = $approved instanceof PuCurveInputSnapshot
+            ? $this->contractualAssessment($emission, $approved, $realizedThrough)
+            : null;
+        $pendingFrom = $contractual?->impact === PuCurveChangeImpact::FutureVersionRequired
+            ? $contractual->earliestAffectedDate
             : null;
 
         $base = [
@@ -72,6 +109,7 @@ final class PuOfficialCurveFreshnessService
             'calculationVersion' => $official->calculation_version,
             'realizedThrough' => $realizedThrough,
             'curveEndDate' => $curveEnd,
+            'contractualChangeFrom' => $pendingFrom,
         ];
 
         if ($official->extension_diverged_at !== null) {
@@ -87,6 +125,32 @@ final class PuOfficialCurveFreshnessService
                     ? CarbonImmutable::parse($firstDivergentDate)->startOfDay()
                     : null,
             ]);
+        }
+
+        if ($contractual?->impact === PuCurveChangeImpact::HistoricalReprocessRequired) {
+            return $this->make([
+                ...$base,
+                'freshness' => PuOfficialCurveFreshness::ReprocessingRequired,
+                'expectedRealizedThrough' => $realizedThrough,
+                'reason' => $contractual->summary(),
+                'reprocessingFrom' => $contractual->earliestAffectedDate,
+            ]);
+        }
+
+        if ($pendingFrom !== null && $curveEnd !== null) {
+            // A oficial só pode chegar à véspera da mudança não homologada -- e, se a
+            // mudança vem depois do fim aprovado (vencimento prorrogado, pagamento
+            // novo), a oficial completa também não responde pelo contrato de agora.
+            $curveEnd = $pendingFrom->subDay()->min($curveEnd);
+
+            if ($realizedThrough !== null && $realizedThrough->gte($curveEnd)) {
+                return $this->make([
+                    ...$base,
+                    'freshness' => PuOfficialCurveFreshness::NewVersionRequired,
+                    'expectedRealizedThrough' => $realizedThrough,
+                    'reason' => $contractual?->summary(),
+                ]);
+            }
         }
 
         if ($realizedThrough !== null && $curveEnd !== null && $realizedThrough->gte($curveEnd)) {
@@ -188,6 +252,30 @@ final class PuOfficialCurveFreshnessService
                 ? sprintf('A próxima observação exigida (%s) ainda não foi divulgada.', $next->requiredRateDate()?->toDateString())
                 : null,
         ]);
+    }
+
+    /**
+     * Insumos vivos contra o retrato aprovado. Insumo vivo que nem se deixa
+     * retratar (parâmetros apagados) conta como mudança no passado: na dúvida, o
+     * gravado deixa de responder.
+     */
+    private function contractualAssessment(
+        Emission $emission,
+        PuCurveInputSnapshot $approved,
+        ?CarbonImmutable $realizedThrough,
+    ): PuCurveChangeAssessment {
+        try {
+            return $this->classifier->compare($approved, $this->snapshots->capture($emission), $realizedThrough);
+        } catch (PuCurveInputsException $exception) {
+            return new PuCurveChangeAssessment(
+                impact: PuCurveChangeImpact::HistoricalReprocessRequired,
+                earliestAffectedDate: $approved->curveStartDate(),
+                changes: [],
+                approvedFingerprint: $approved->fingerprint,
+                liveFingerprint: '',
+                lastPersistedDate: $realizedThrough,
+            );
+        }
     }
 
     /**

@@ -120,7 +120,21 @@ class OperationForm
                                     'required' => 'Selecione o empreendimento.',
                                 ]),
 
-                            static::moneyField('construction_fund_amount', 'Fundo de Obra'),
+                            // O Fundo de Obra é da versão do plano: muda aqui só
+                            // enquanto a V1 é rascunho. Plano em vigor muda o
+                            // custo por revisão (aba Versões dos Planos); o campo
+                            // travado não é enviado e nada muda.
+                            static::moneyField('construction_fund_amount', 'Fundo de Obra')
+                                ->disabled(fn (Get $get): bool => (bool) $get('has_active_version'))
+                                ->helperText(fn (Get $get): ?string => $get('has_active_version')
+                                    ? 'Plano em vigor: o Fundo de Obra muda por revisão do plano, na aba Versões dos Planos.'
+                                    : null),
+                            // O fundo mostrado e o rascunho lido: fundo igual ao
+                            // mostrado não é mudança, e rascunho alterado por
+                            // outra pessoa depois de aberto é recusado.
+                            Hidden::make('construction_fund_original'),
+                            Hidden::make('construction_fund_revision'),
+                            Hidden::make('has_active_version')->dehydrated(false),
 
                             // Só o plano que ainda vai nascer aceita o avanço
                             // inicial; o de um plano existente aparece, travado.
@@ -138,6 +152,7 @@ class OperationForm
                             $component->state(
                                 $record->planSets()
                                     ->whereNotNull('construction_id')
+                                    ->with(['activeVersion', 'draftVersion'])
                                     ->get()
                                     ->map(fn (MeasurementPlanSet $plan): array => static::developmentRow($plan->construction_id, $plan))
                                     ->all(),
@@ -278,7 +293,7 @@ class OperationForm
      * A development that already has a plan in the operation keeps its plan's
      * values, so its initial physical progress shows up locked.
      *
-     * @return array<int, array{construction_id: int, construction_fund_amount: mixed, has_plan: bool, initial_physical_progress_percent: mixed, initial_physical_progress_reference_date: string|null}>
+     * @return array<int, array{construction_id: int, construction_fund_amount: string|null, construction_fund_original: string|null, construction_fund_revision: int|null, has_active_version: bool, has_plan: bool, initial_physical_progress_percent: mixed, initial_physical_progress_reference_date: string|null}>
      */
     protected static function developmentsForEmission(mixed $emissionId, ?Operation $record = null): array
     {
@@ -294,7 +309,7 @@ class OperationForm
         }
 
         $plans = $record instanceof Operation
-            ? $record->planSets()->whereNotNull('construction_id')->get()->keyBy('construction_id')
+            ? $record->planSets()->whereNotNull('construction_id')->with(['activeVersion', 'draftVersion'])->get()->keyBy('construction_id')
             : collect();
 
         return app(OperationContextVisibilityService::class)
@@ -311,15 +326,26 @@ class OperationForm
      * ('500000.00'), a máscara pt-BR lê o ponto como milhar e o valor salvo
      * sairia cem vezes maior.
      *
-     * @return array{construction_id: int, construction_fund_amount: string|null, has_plan: bool, initial_physical_progress_percent: mixed, initial_physical_progress_reference_date: string|null}
+     * O fundo é o da versão em vigor do plano (ou do rascunho da V1, antes da
+     * ativação). O valor cru mostrado e o contador do rascunho vão junto, para
+     * o serviço de planos distinguir "não mudou" de "mudou" e recusar um
+     * rascunho que outra pessoa alterou depois de aberto.
+     *
+     * @return array{construction_id: int, construction_fund_amount: string|null, construction_fund_original: string|null, construction_fund_revision: int|null, has_active_version: bool, has_plan: bool, initial_physical_progress_percent: mixed, initial_physical_progress_reference_date: string|null}
      */
     protected static function developmentRow(int $constructionId, ?MeasurementPlanSet $plan): array
     {
+        $version = $plan?->currentVersion();
+        $fund = $version?->construction_fund_amount;
+
         return [
             'construction_id' => $constructionId,
-            'construction_fund_amount' => blank($plan?->construction_fund_amount)
+            'construction_fund_amount' => blank($fund)
                 ? null
-                : MoneyFormatter::formatCurrencyForDisplay($plan->construction_fund_amount),
+                : MoneyFormatter::formatCurrencyForDisplay($fund),
+            'construction_fund_original' => blank($fund) ? null : (string) $fund,
+            'construction_fund_revision' => $version?->isDraft() ? (int) $version->revision : null,
+            'has_active_version' => (bool) $version?->isActive(),
             'has_plan' => $plan instanceof MeasurementPlanSet,
             'initial_physical_progress_percent' => $plan?->initial_physical_progress_percent ?? 0,
             'initial_physical_progress_reference_date' => $plan?->initial_physical_progress_reference_date?->toDateString(),

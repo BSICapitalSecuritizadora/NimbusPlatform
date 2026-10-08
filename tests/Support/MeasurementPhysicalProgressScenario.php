@@ -47,9 +47,8 @@ final class MeasurementPhysicalProgressScenario
             'payment_finalizer_user_id' => $actor->id,
         ]);
 
-        $planSet = MeasurementPlanSet::factory()->default()->create([
+        $planSet = MeasurementPlanSet::factory()->default()->withConstructionFund('1000000.00')->create([
             'operation_id' => $operation->id,
-            'construction_fund_amount' => '1000000.00',
             'initial_incurred_amount' => '0.00',
             'initial_physical_progress_percent' => $initialPercent,
             'initial_physical_progress_reference_date' => $referenceDate
@@ -71,6 +70,8 @@ final class MeasurementPhysicalProgressScenario
                 'realized_cumulative_percent' => 0,
             ]);
         }
+
+        MeasurementPlanVersionFixture::activate($planSet);
 
         return compact('actor', 'operation', 'planSet', 'lines');
     }

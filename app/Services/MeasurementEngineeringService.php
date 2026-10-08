@@ -8,6 +8,8 @@ use App\Models\Measurement;
 use App\Models\MeasurementAsset;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
+use App\Models\MeasurementPlanVersion;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -42,7 +44,10 @@ class MeasurementEngineeringService
      *         is_default: bool,
      *         construction_fund_amount: string|null,
      *         initial_incurred_amount: string|null,
+     *         plan_version_id: int|null,
+     *         plan_version_number: int|null,
      *         plan_line_id: int,
+     *         plan_line_lineage_key: string,
      *         measurement_date: string,
      *         sequence_number: int,
      *         planned_monthly_percent: string,
@@ -148,6 +153,16 @@ class MeasurementEngineeringService
                 continue;
             }
 
+            // A medição é aprovada contra a versão em que foi enviada: a linha
+            // precisa ser dela, mesmo que outra versão já esteja vigente. Todo
+            // arquivo de plano grava a versão (no envio, ou na migração das
+            // versões para os anteriores a elas); sem ela não há o que aprovar.
+            if ((int) $line->plan_version_id !== (int) $asset->plan_version_id) {
+                $errors["plan_line.{$planSet->getKey()}"] = "A linha do cronograma de {$label} não é da versão do plano em que a medição foi enviada.";
+
+                continue;
+            }
+
             if ($line->measurement_date === null) {
                 $errors["measurement_date.{$planSet->getKey()}"] = "Informe a data da medição de {$label}.";
             } elseif ($measurement->reference_month !== null
@@ -165,7 +180,8 @@ class MeasurementEngineeringService
 
             $monthly = (int) $this->basisPoints($monthlyProgress[$planSet->getKey()]);
             $progress = $physicalProgress[(int) $planSet->getKey()];
-            $physicalError = $this->physicalProgressError($progress, $line, $label, $monthly);
+            $physicalError = $this->physicalProgressError($progress, $line, $label, $monthly)
+                ?? $this->lineClaimError($measurement, $asset, $line, $label);
 
             if ($physicalError !== null) {
                 $errors["realized.{$planSet->getKey()}"] = $physicalError;
@@ -182,7 +198,9 @@ class MeasurementEngineeringService
             $initial = $progress->initialPercent();
             $monthly = MeasurementPhysicalProgress::decimal($monthly);
 
-            $validatedLines[] = compact('planSet', 'construction', 'line', 'asset', 'monthly', 'cumulative', 'prior', 'initial');
+            $version = MeasurementPlanVersion::query()->find($asset->plan_version_id);
+
+            $validatedLines[] = compact('planSet', 'construction', 'line', 'asset', 'version', 'monthly', 'cumulative', 'prior', 'initial');
         }
 
         if ($errors !== []) {
@@ -217,10 +235,16 @@ class MeasurementEngineeringService
      * Os empreendimentos que esta aprovação precisa cobrir, um arquivo para
      * cada, travados em ordem de id.
      *
-     * Sem pagamento, todos os planos atuais da operação: a Engenharia confirma
-     * a competência da obra inteira, e a obra que entrou depois do envio pede o
-     * arquivo dela -- a medição sem pagamento ainda pode ser recusada e
-     * reenviada.
+     * Sem pagamento, todos os planos da operação que já estavam em vigor
+     * quando a medição foi enviada e preveem medição na competência dela: a
+     * Engenharia confirma a competência da obra inteira. O plano que só passou
+     * a valer depois do envio não é exigido -- o arquivo dele não se acrescenta
+     * pela edição, e a medição ficaria sem saída a cada volta à Engenharia; ele
+     * é medido pelas medições seguintes. O plano sem medição prevista na
+     * competência também não: não há linha dele para o arquivo. O plano ainda
+     * em rascunho não recebe medição. Uma revisão ativada depois do envio não
+     * muda nada aqui: o plano é o mesmo, e o arquivo continua na versão em que
+     * foi enviado.
      *
      * Com pagamento, só os empreendimentos dos arquivos da própria medição. O
      * pagamento foi registrado sobre esse contexto, os arquivos dele não podem
@@ -250,6 +274,34 @@ class MeasurementEngineeringService
                 ->pluck('plan_set_id')
                 ->map(fn (mixed $planSetId): int => (int) $planSetId)
                 ->all());
+        } else {
+            // Os planos em vigor quando a medição foi enviada: o envio os cobre
+            // (CreateMeasurement confere sob o lock da Operation), e o arquivo
+            // de um plano ativado depois não se acrescenta pela edição. Um
+            // plano vale para a medição se alguma versão dele foi ativada antes
+            // dela -- a ativação guarda a última medição da operação até ali,
+            // e as duas se serializam pela Operation, então o id separa antes
+            // e depois. Plano com arquivo nesta medição também é exigido.
+            $measurementId = (int) $measurement->getKey();
+            $competence = $measurement->reference_month;
+
+            // E só o plano que prevê medição na competência: o arquivo de um
+            // plano tem de ser de uma medição prevista do mês da medição, e o
+            // plano sem nenhuma ali (a obra que começa depois, ou que já
+            // terminou) deixaria a competência sem como ser medida.
+            $planSets->where(fn (Builder $required): Builder => $required
+                ->whereHas('assets', fn (Builder $assets): Builder => $assets->where('measurement_id', $measurementId))
+                ->orWhere(fn (Builder $inForce): Builder => $inForce
+                    ->whereHas('versions', fn (Builder $versions): Builder => $versions
+                        ->whereNotNull('activated_at')
+                        ->where(fn (Builder $before): Builder => $before
+                            ->whereNull('last_measurement_id_at_activation')
+                            ->orWhere('last_measurement_id_at_activation', '<', $measurementId)))
+                    ->when($competence !== null, fn (Builder $planned): Builder => $planned
+                        ->whereHas('activeVersion.lines', fn (Builder $lines): Builder => $lines->whereBetween('measurement_date', [
+                            $competence->copy()->startOfMonth()->toDateString(),
+                            $competence->copy()->endOfMonth()->toDateString(),
+                        ])))));
         }
 
         return $planSets->orderBy('id')->lockForUpdate()->get();
@@ -329,7 +381,9 @@ class MeasurementEngineeringService
             );
         }
 
-        $claimant = $progress->lineClaimant((int) $line->getKey());
+        // A ocupação é da medição prevista, em qualquer versão do plano: a cópia
+        // na V2 de uma linha medida na V1 continua ocupada.
+        $claimant = $progress->lineageClaimant((string) $line->lineage_key);
 
         if ($claimant !== null) {
             return sprintf(
@@ -344,6 +398,40 @@ class MeasurementEngineeringService
         if ($progress->exceedsLimitWith($monthly)) {
             return $progress->limitExceededMessage($label, $monthly);
         }
+
+        return null;
+    }
+
+    /**
+     * O arquivo precisa ocupar a medição prevista que a Engenharia vai
+     * aprovar (`line_claim_key`): a ocupação nasce no envio e é única no
+     * banco. Arquivo anterior a ela, sem ocupação gravada, ocupa agora se a
+     * linhagem estiver livre; se outra medição de pé já a ocupa, esta é a que
+     * sobrou de uma corrida e não é aprovada sobre ela.
+     */
+    private function lineClaimError(Measurement $measurement, MeasurementAsset $asset, MeasurementPlanLine $line, string $label): ?string
+    {
+        if ($asset->line_claim_key === $line->lineage_key) {
+            return null;
+        }
+
+        $holder = MeasurementAsset::query()
+            ->where('line_claim_key', $line->lineage_key)
+            ->whereKeyNot($asset->getKey())
+            ->value('measurement_id');
+
+        if ($holder !== null && (int) $holder !== (int) $measurement->getKey()) {
+            return sprintf(
+                'A medição %s (%s) do cronograma de %s está ocupada pela medição #%d. Recuse esta medição ou corrija a linha do cronograma escolhida no envio.',
+                str_pad((string) $line->sequence_number, 2, '0', STR_PAD_LEFT),
+                $line->measurement_date?->format('m/Y') ?? 'sem data',
+                $label,
+                (int) $holder,
+            );
+        }
+
+        MeasurementAsset::query()->whereKey($asset->getKey())->update(['line_claim_key' => $line->lineage_key]);
+        $asset->setRawAttributes(['line_claim_key' => $line->lineage_key] + $asset->getAttributes(), sync: true);
 
         return null;
     }
@@ -390,7 +478,10 @@ class MeasurementEngineeringService
      * antes desta medição na mesma posição. Chaves acrescentadas sem trocar a
      * versão: os leitores conferem só as chaves que conhecem.
      *
-     * @param  array{planSet: MeasurementPlanSet, construction: Construction|null, line: MeasurementPlanLine, asset: MeasurementAsset, monthly: string, cumulative: string, prior: string, initial: string}  $validated
+     * O Fundo de Obra é o da versão em que a medição foi enviada (a do
+     * arquivo): uma revisão de custo ativada depois não alcança esta medição.
+     *
+     * @param  array{planSet: MeasurementPlanSet, construction: Construction|null, line: MeasurementPlanLine, asset: MeasurementAsset, version: MeasurementPlanVersion|null, monthly: string, cumulative: string, prior: string, initial: string}  $validated
      * @return array<string, bool|int|string|null>
      */
     private function snapshotPlanSet(array $validated): array
@@ -399,6 +490,7 @@ class MeasurementEngineeringService
         $construction = $validated['construction'];
         $line = $validated['line'];
         $asset = $validated['asset'];
+        $version = $validated['version'];
 
         return [
             'plan_set_id' => (int) $planSet->getKey(),
@@ -408,9 +500,12 @@ class MeasurementEngineeringService
             'plan_set_name' => (string) $planSet->name,
             'construction_name' => $construction?->development_name,
             'is_default' => (bool) $planSet->is_default,
-            'construction_fund_amount' => $this->nullableDecimal($planSet->construction_fund_amount),
+            'construction_fund_amount' => $this->nullableDecimal($version?->construction_fund_amount),
             'initial_incurred_amount' => $this->nullableDecimal($planSet->initial_incurred_amount),
+            'plan_version_id' => $version instanceof MeasurementPlanVersion ? (int) $version->getKey() : null,
+            'plan_version_number' => $version instanceof MeasurementPlanVersion ? (int) $version->version_number : null,
             'plan_line_id' => (int) $line->getKey(),
+            'plan_line_lineage_key' => (string) $line->lineage_key,
             'measurement_date' => $line->measurement_date?->toDateString() ?? '',
             'sequence_number' => (int) $line->sequence_number,
             'planned_monthly_percent' => $this->decimal($line->planned_monthly_percent),

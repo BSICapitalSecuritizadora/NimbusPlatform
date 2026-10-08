@@ -17,6 +17,7 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -109,7 +110,24 @@ it('offers only the schedule lines the Engineering can still accept', function (
 it('keeps listing the line already saved in the file being edited', function () {
     $scenario = Scenario::plan();
     $open = Scenario::measurement($scenario, '2026-06');
-    Scenario::measurement($scenario, '2026-06');
+
+    // A linha já é ocupada pela medição aberta: um segundo envio para ela é
+    // recusado (`line_claim_key` é única) e não deixa nada gravado.
+    expect(fn () => DB::transaction(fn () => Scenario::measurement($scenario, '2026-06')))->toThrow(
+        MeasurementWorkflowException::class,
+        "já está ocupada pela medição #{$open->id}",
+    );
+
+    // A corrida das duas abas anterior à ocupação única deixou duas medições
+    // com arquivo na mesma linha, e a migration ficou com a ocupação da mais
+    // antiga. O estado legado, que o envio não produz mais, é montado direto
+    // no banco: a outra medição continua aberta na linha, sem ocupação.
+    $duplicate = Scenario::measurement($scenario, '2026-07');
+    DB::table('measurement_assets')->where('measurement_id', $duplicate->id)->update([
+        'plan_line_id' => $scenario['lines']['2026-06']->id,
+        'line_claim_key' => null,
+    ]);
+    DB::table('measurements')->where('id', $duplicate->id)->update(['reference_month' => '2026-06-01']);
     $asset = $open->assets()->sole();
     $this->actingAs($scenario['actor']);
 

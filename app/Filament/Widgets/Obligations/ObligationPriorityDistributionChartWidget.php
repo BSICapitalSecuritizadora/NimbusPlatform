@@ -65,7 +65,6 @@ class ObligationPriorityDistributionChartWidget extends ChartWidget
                     '#f59e0b', // Alta
                     '#ef4444', // Crítica
                 ],
-                'borderColor' => '#0d252e',
                 'borderWidth' => 2,
                 'hoverOffset' => 6,
             ]],

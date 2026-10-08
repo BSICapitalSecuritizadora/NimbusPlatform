@@ -198,7 +198,7 @@ new class extends Component
         </div>
 
         <div class="col-lg-5">
-            <div class="p-4 p-lg-5 rounded-4 text-white position-relative overflow-hidden" style="background: var(--brand-strong); box-shadow: 0 20px 40px rgba(0,32,91,0.2);">
+            <div class="p-4 p-lg-5 rounded-4 text-white position-relative overflow-hidden" style="background: var(--brand-strong); box-shadow: 0 20px 40px rgba(9,27,35,0.2);">
                 <!-- Decorative element -->
                 <div class="position-absolute top-0 end-0 bg-white rounded-circle" style="width: 200px; height: 200px; margin-top: -100px; margin-right: -100px; opacity: 0.1;"></div>
                 

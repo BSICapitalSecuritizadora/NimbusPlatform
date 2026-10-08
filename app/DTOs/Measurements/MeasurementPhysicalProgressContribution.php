@@ -12,7 +12,9 @@ use Illuminate\Contracts\Support\Arrayable;
  * que a Finalização confere --, e não da linha do cronograma, que continua com
  * a última gravação mesmo depois de a aprovação deixar de valer. `legacy` marca
  * a única exceção: aprovação anterior ao snapshot, em que a linha gravada pela
- * Engenharia é o único registro do que foi aprovado.
+ * Engenharia é o único registro do que foi aprovado. `lineageKey` é a
+ * identidade da medição prevista através das versões do plano: a cópia da
+ * linha numa revisão tem outro id e a mesma linhagem.
  *
  * @implements Arrayable<string, mixed>
  */
@@ -26,6 +28,7 @@ final readonly class MeasurementPhysicalProgressContribution implements Arrayabl
         public ?CarbonImmutable $measurementDate,
         public int $basisPoints,
         public bool $legacy = false,
+        public ?string $lineageKey = null,
     ) {}
 
     /** @return array<string, mixed> */
@@ -35,6 +38,7 @@ final readonly class MeasurementPhysicalProgressContribution implements Arrayabl
             'measurement_id' => $this->measurementId,
             'plan_set_id' => $this->planSetId,
             'plan_line_id' => $this->planLineId,
+            'lineage_key' => $this->lineageKey,
             'sequence_number' => $this->sequenceNumber,
             'measurement_date' => $this->measurementDate?->toDateString(),
             'percent' => MeasurementPhysicalProgress::decimal($this->basisPoints),

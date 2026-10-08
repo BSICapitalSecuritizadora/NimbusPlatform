@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\MeasurementPlanRevisionCategory;
+use App\Enums\MeasurementPlanVersionStatus;
 use App\Filament\Resources\Measurements\Pages\CreateMeasurement;
 use App\Filament\Resources\Measurements\Pages\ListMeasurements;
 use App\Filament\Resources\Measurements\Pages\ViewMeasurement;
@@ -9,11 +11,13 @@ use App\Filament\Resources\Operations\Pages\ListOperations;
 use App\Filament\Resources\Operations\Pages\ViewOperation;
 use App\Filament\Resources\Operations\RelationManagers\PlanLinesRelationManager;
 use App\Filament\Resources\Operations\RelationManagers\PlanSetsRelationManager;
+use App\Filament\Resources\Operations\RelationManagers\PlanVersionsRelationManager;
 use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\Measurement;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
+use App\Models\MeasurementPlanVersion;
 use App\Models\Operation;
 use App\Models\User;
 use App\Services\MeasurementWorkflow;
@@ -25,6 +29,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementPlanVersionFixture;
 
 uses(RefreshDatabase::class);
 
@@ -69,13 +74,17 @@ it('creates an operation and derives its title from the development', function (
         ->assertHasNoFormErrors();
 
     $operation = Operation::query()->first();
+    // O Fundo de Obra é da versão do plano: o do formulário vai para a V1, que
+    // nasce em rascunho -- o plano só passa a valer quando ela for ativada.
+    $version = $operation?->planSets()->where('construction_id', $construction->id)->sole()->currentVersion();
 
     expect($operation)->not->toBeNull()
         ->and($operation->emission_id)->toBe($emission->id)
         ->and($operation->title)->toBe('Residencial Teste')
         ->and($operation->code)->toStartWith('OP-')
-        ->and($operation->planSets()->where('construction_id', $construction->id)->value('construction_fund_amount'))
-        ->toBe('1000000.00');
+        ->and($version?->construction_fund_amount)->toBe('1000000.00')
+        ->and($version?->version_number)->toBe(1)
+        ->and($version?->status)->toBe(MeasurementPlanVersionStatus::Draft);
 });
 
 it('allows selecting more than one rejection-notify user', function () {
@@ -146,13 +155,16 @@ it('creates a plan set per selected development when the emission has many', fun
 
     $operation = Operation::query()->latest('id')->first();
 
+    // Cada empreendimento leva o próprio Fundo de Obra para a V1 do seu plano.
     expect($operation->planSets()->count())->toBe(2)
         ->and($operation->planSets()->pluck('construction_id')->sort()->values()->all())
         ->toBe(collect([$conviva1->id, $conviva2->id])->sort()->values()->all())
         ->and($operation->planSets()->where('is_default', true)->count())->toBe(1)
         ->and($operation->title)->toBe('Conviva I, Conviva II')
-        ->and($operation->planSets()->where('construction_id', $conviva1->id)->value('construction_fund_amount'))->toBe('500000.00')
-        ->and($operation->planSets()->where('construction_id', $conviva2->id)->value('construction_fund_amount'))->toBe('750000.00');
+        ->and($operation->planSets()->where('construction_id', $conviva1->id)->sole()->currentConstructionFundAmount())->toBe('500000.00')
+        ->and($operation->planSets()->where('construction_id', $conviva2->id)->sole()->currentConstructionFundAmount())->toBe('750000.00')
+        ->and(MeasurementPlanVersion::query()->whereIn('plan_set_id', $operation->planSets()->pluck('id'))->pluck('status')->all())
+        ->toBe([MeasurementPlanVersionStatus::Draft, MeasurementPlanVersionStatus::Draft]);
 });
 
 it('renders the measurement plan editor (schedule) relation manager', function () {
@@ -175,6 +187,9 @@ it('renders the read-only schedule monitoring with the plan lines', function () 
         'planned_cumulative_percent' => 40,
         'realized_cumulative_percent' => 55,
     ]);
+    // O acompanhamento mostra o cronograma da versão vigente: a linha entra no
+    // rascunho da V1, que a fixture põe em vigor.
+    MeasurementPlanVersionFixture::activate($planSet);
 
     Livewire::test(PlanLinesRelationManager::class, [
         'ownerRecord' => $operation,
@@ -186,7 +201,10 @@ it('renders the read-only schedule monitoring with the plan lines', function () 
     expect($line->fresh()->evolution_trend)->toBe(MeasurementPlanLine::TREND_AHEAD);
 });
 
-it('edits the planned monthly and cumulative progress from the monitoring grid', function () {
+it('edits the planned monthly and cumulative progress in a plan revision instead of the monitoring grid', function () {
+    // A vigência é o mês da ativação: com o relógio em agosto, a revisão vale
+    // a partir de 08/2026 e ainda pode replanejar a medição prevista do mês.
+    $this->travelTo(now()->setDate(2026, 8, 10)->setTime(15, 0));
     $this->actingAs(makeMeasurementAdminUser());
     $operation = Operation::factory()->create();
     $planSet = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
@@ -196,39 +214,78 @@ it('edits the planned monthly and cumulative progress from the monitoring grid',
         'sequence_number' => 1,
         'planned_monthly_percent' => 0,
         'planned_cumulative_percent' => 0,
+        'measurement_date' => '2026-08-01',
     ]);
-
-    Livewire::test(PlanLinesRelationManager::class, [
+    $firstVersion = MeasurementPlanVersionFixture::activeVersion($planSet);
+    $monitoring = fn () => Livewire::test(PlanLinesRelationManager::class, [
         'ownerRecord' => $operation,
         'pageClass' => ViewOperation::class,
-    ])
-        ->callTableAction('editPlanned', $line, data: [
+    ]);
+    $versions = Livewire::test(PlanVersionsRelationManager::class, [
+        'ownerRecord' => $operation,
+        'pageClass' => ViewOperation::class,
+    ]);
+
+    // O previsto da versão vigente é histórico: o acompanhamento não o edita,
+    // e a mudança nasce num rascunho de revisão, na aba Versões dos Planos.
+    $monitoring()->assertTableActionDoesNotExist('editPlanned');
+
+    $versions->callTableAction('createRevision', $firstVersion, data: [
+        'revision_category' => MeasurementPlanRevisionCategory::PhysicalPlanning->value,
+        'revision_reason' => 'Replanejamento físico do mês de agosto.',
+    ])->assertHasNoTableActionErrors();
+
+    $draft = MeasurementPlanVersion::query()->where('plan_set_id', $planSet->id)->draft()->sole();
+    $draftLine = $draft->lines()->sole();
+
+    $versions->callTableAction('editDraft', $draft, data: [
+        'lines' => [[
+            'id' => $draftLine->id,
+            'sequence_number' => 1,
             'planned_monthly_percent' => 15,
             'planned_cumulative_percent' => 15,
-        ])
-        ->assertHasNoTableActionErrors();
+            'measurement_date' => '2026-08',
+        ]],
+    ])->assertHasNoTableActionErrors();
 
-    $line->refresh();
+    // Enquanto é rascunho, o acompanhamento continua com o previsto da V1.
+    $monitoring()
+        ->assertCanSeeTableRecords([$line])
+        ->assertCanNotSeeTableRecords([$draftLine]);
 
-    expect($line->planned_monthly_percent)->toBe('15.00')
-        ->and($line->planned_cumulative_percent)->toBe('15.00');
+    $versions->callTableAction('activateVersion', $draft->fresh())->assertHasNoTableActionErrors();
+
+    $monitoring()
+        ->assertCanSeeTableRecords([$draftLine])
+        ->assertCanNotSeeTableRecords([$line]);
+
+    expect($draftLine->fresh()->planned_monthly_percent)->toBe('15.00')
+        ->and($draftLine->fresh()->planned_cumulative_percent)->toBe('15.00')
+        ->and($draftLine->fresh()->lineage_key)->toBe($line->lineage_key)
+        ->and($line->fresh()->planned_monthly_percent)->toBe('0.00')
+        ->and($line->fresh()->planned_cumulative_percent)->toBe('0.00')
+        ->and($firstVersion->fresh()->status)->toBe(MeasurementPlanVersionStatus::Superseded);
 });
 
 it('no longer exposes manual realized entry in the monitoring grid', function () {
     $this->actingAs(makeMeasurementAdminUser());
     $operation = Operation::factory()->create();
     $planSet = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
-    $line = MeasurementPlanLine::factory()->create([
+    MeasurementPlanLine::factory()->create([
         'plan_set_id' => $planSet->id,
         'operation_id' => $operation->id,
     ]);
+    MeasurementPlanVersionFixture::activate($planSet);
 
+    // A grade é só leitura: o realizado vem da Engenharia e o previsto muda por
+    // revisão do plano. Resta o atalho para o arquivo da medição da linha.
     Livewire::test(PlanLinesRelationManager::class, [
         'ownerRecord' => $operation,
         'pageClass' => ViewOperation::class,
     ])
-        ->assertTableActionExists('editPlanned')
-        ->assertTableActionDoesNotExist('registerActual');
+        ->assertTableActionExists('openMeasurement')
+        ->assertTableActionDoesNotExist('registerActual')
+        ->assertTableActionDoesNotExist('editPlanned');
 });
 
 it('renders the measurements list page', function () {
@@ -274,6 +331,9 @@ it('offers a per-development measurement slot when the operation is selected', f
         'sequence_number' => 3,
         'measurement_date' => '2026-07-01',
     ]);
+    // Só plano em vigor recebe medição: a linha entra no rascunho da V1, que a
+    // fixture ativa.
+    MeasurementPlanVersionFixture::activate($planSet);
 
     $component = Livewire::test(CreateMeasurement::class)
         ->fillForm(['operation_id' => $operation->id]);
@@ -294,6 +354,7 @@ it('pre-fills one file slot per development when the operation is selected', fun
     $operation = Operation::factory()->forEmission($emission)->create();
     $planA = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id, 'construction_id' => $constructionA->id]);
     $planB = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id, 'construction_id' => $constructionB->id]);
+    MeasurementPlanVersionFixture::activate($planA, $planB);
 
     $component = Livewire::test(CreateMeasurement::class)
         ->fillForm(['operation_id' => $operation->id]);
@@ -305,6 +366,26 @@ it('pre-fills one file slot per development when the operation is selected', fun
         ->toBe(collect([$planA->id, $planB->id])->sort()->values()->all());
 });
 
+it('offers no file slot to a development whose plan is still a draft', function () {
+    $this->actingAs(makeMeasurementAdminUser());
+
+    $emission = Emission::factory()->create();
+    $constructionA = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Obra A']);
+    $constructionB = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Obra B']);
+    $operation = Operation::factory()->forEmission($emission)->create();
+    $effective = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id, 'construction_id' => $constructionA->id]);
+    MeasurementPlanSet::factory()->create(['operation_id' => $operation->id, 'construction_id' => $constructionB->id]);
+    MeasurementPlanVersionFixture::activate($effective);
+
+    // O plano que nunca foi ativado tem o cronograma em rascunho: não recebe
+    // medição, e a Engenharia também não exige o arquivo dele.
+    $component = Livewire::test(CreateMeasurement::class)
+        ->fillForm(['operation_id' => $operation->id]);
+
+    expect(collect($component->get('data.assets'))->pluck('plan_set_id')->map(fn ($id): int => (int) $id)->values()->all())
+        ->toBe([$effective->id]);
+});
+
 it('persists one asset per development with its file and starts the review', function () {
     $this->actingAs($admin = makeMeasurementAdminUser());
 
@@ -314,6 +395,7 @@ it('persists one asset per development with its file and starts the review', fun
     $operation = Operation::factory()->forEmission($emission)->create(['responsible_user_id' => $admin->id]);
     $planA = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id, 'construction_id' => $constructionA->id]);
     $planB = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id, 'construction_id' => $constructionB->id]);
+    MeasurementPlanVersionFixture::activate($planA, $planB);
 
     $measurement = Measurement::create([
         'operation_id' => $operation->id,
@@ -331,9 +413,12 @@ it('persists one asset per development with its file and starts the review', fun
     ]);
     app(MeasurementWorkflow::class)->startReview($measurement, $admin);
 
+    // Cada arquivo guarda a versão vigente do plano do seu empreendimento.
     expect($measurement->fresh()->assets()->count())->toBe(2)
         ->and($measurement->fresh()->assets()->pluck('plan_set_id')->sort()->values()->all())
         ->toBe(collect([$planA->id, $planB->id])->sort()->values()->all())
+        ->and($measurement->fresh()->assets()->orderBy('plan_set_id')->pluck('plan_version_id')->map(fn ($id): int => (int) $id)->all())
+        ->toBe(collect([$planA, $planB])->sortBy('id')->map(fn (MeasurementPlanSet $plan): int => (int) $plan->activeVersion()->value('id'))->values()->all())
         ->and($measurement->fresh()->status)->toBe('in_review');
 });
 
@@ -358,6 +443,7 @@ it('exposes the review actions to the stage reviewer and approves a stage', func
         'realized_monthly_percent' => 0,
         'realized_cumulative_percent' => 0,
     ]);
+    MeasurementPlanVersionFixture::activate($planSet);
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
         'reference_month' => '2026-07-01',
@@ -485,6 +571,7 @@ it('persists clean engineering uploads and rolls back rejected uploads through t
     $line = MeasurementPlanLine::factory()->create([
         'plan_set_id' => $plan->id, 'operation_id' => $operation->id, 'measurement_date' => '2026-09-01',
     ]);
+    MeasurementPlanVersionFixture::activate($plan);
     $this->mock(ClamAvFileScanner::class, function ($mock) use ($scanResult): void {
         $mock->shouldReceive('isEnabled')->andReturnTrue();
         $mock->shouldReceive('scanStream')->once()->andReturn($scanResult);

@@ -2,10 +2,14 @@
 
 namespace App\Actions\Emissions;
 
+use App\Domain\PuCalculator\DTOs\PuCurveInputSnapshot;
+use App\Domain\PuCalculator\Enums\PuCurveChangeImpact;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
 use App\Domain\PuCalculator\Exceptions\PuCurveGovernanceException;
 use App\Domain\PuCalculator\Exceptions\PuMakerCheckerException;
 use App\Domain\PuCalculator\Services\PuAuditLogService;
+use App\Domain\PuCalculator\Services\PuCurveChangeImpactClassifier;
+use App\Domain\PuCalculator\Services\PuCurveInputSnapshotService;
 use App\Domain\PuCalculator\Services\PuCurveVersionService;
 use App\Domain\PuCalculator\Services\PuPaymentScheduleService;
 use App\Enums\BusinessArea;
@@ -24,6 +28,13 @@ use Illuminate\Support\Facades\DB;
  * relê o status, aplica maker/checker e justificativa, marca a versão, registra
  * a auditoria e concilia o Cronograma de Pagamentos. Se qualquer passo falha,
  * nada disso fica gravado e nenhum consumidor vê a curva como oficial.
+ *
+ * Fase 4: homologar aprova também o RETRATO de insumos da versão. Se os insumos
+ * contratuais vivos (relidos sob trava compartilhada) já mudaram em algum dia que
+ * a versão gravou, ela não representa mais o contrato e a homologação é recusada
+ * -- vale para todo caminho, inclusive a auto-homologação. Mudança só depois do
+ * último dia gravado não impede: a versão é correta até lá, e a extensão a limita
+ * à véspera da mudança até que outra versão seja homologada.
  */
 class HomologatePuCurve
 {
@@ -32,6 +43,8 @@ class HomologatePuCurve
         private readonly PuAuditLogService $auditLogService,
         private readonly AreaResponsibilityService $areaResponsibilities,
         private readonly PuPaymentScheduleService $paymentSchedule,
+        private readonly PuCurveInputSnapshotService $snapshots,
+        private readonly PuCurveChangeImpactClassifier $classifier,
     ) {}
 
     /**
@@ -57,6 +70,8 @@ class HomologatePuCurve
                     mb_strtolower($previousStatus->label()),
                 ));
             }
+
+            $this->assertInputsStillDescribeVersion($lockedEmission, $version);
 
             $selfHomologation = $this->isSelfHomologation($version, $requestedByUserId);
             $blocker = $this->selfHomologationBlocker($version, $requestedByUserId)
@@ -93,6 +108,34 @@ class HomologatePuCurve
 
             return $version;
         });
+    }
+
+    /**
+     * Versão com retrato: os insumos vivos não podem ter mudado em dia que ela já
+     * gravou. Versão sem retrato (anterior à Fase 4) segue as regras de antes -- e a
+     * extensão diária a recusa.
+     */
+    private function assertInputsStillDescribeVersion(Emission $emission, EmissionPuCurveVersion $version): void
+    {
+        $approved = $this->snapshots->forVersion($version);
+
+        if (! $approved instanceof PuCurveInputSnapshot) {
+            return;
+        }
+
+        $assessment = $this->classifier->compare(
+            $approved,
+            $this->snapshots->capture($emission, lockForShare: true),
+            $this->classifier->lastPersistedDate($version),
+        );
+
+        if ($assessment->impact === PuCurveChangeImpact::HistoricalReprocessRequired) {
+            throw new PuCurveGovernanceException(sprintf(
+                'A versão %s não pode ser homologada: %s Gere uma nova versão com os insumos atuais.',
+                $version->calculation_version,
+                $assessment->summary(),
+            ));
+        }
     }
 
     /**

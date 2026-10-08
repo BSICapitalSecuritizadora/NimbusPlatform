@@ -23,7 +23,11 @@ use Carbon\CarbonInterface;
  *    divulgada a esta altura (calendário de divulgação + defasagem configurada);
  *  - `reprocessingFrom`: com reprocessamento necessário, a primeira data cujo
  *    valor gravado deixou de ser reproduzível (índice corrigido, recálculo que
- *    diverge). Nula quando a causa não diz de onde -- e aí nenhuma linha vale.
+ *    diverge, mudança contratual no trecho gravado). Nula quando a causa não diz
+ *    de onde -- e aí nenhuma linha vale;
+ *  - `contractualChangeFrom`: mudança contratual ainda não homologada que só vale
+ *    a partir desta data (Fase 4). A oficial avança até a véspera e para; o que
+ *    já está gravado continua valendo.
  */
 final readonly class PuOfficialCurveStatus
 {
@@ -39,6 +43,7 @@ final readonly class PuOfficialCurveStatus
         public ?CarbonImmutable $expectedLatestRateDate = null,
         public ?string $reason = null,
         public ?CarbonImmutable $reprocessingFrom = null,
+        public ?CarbonImmutable $contractualChangeFrom = null,
     ) {}
 
     /**
@@ -87,6 +92,7 @@ final readonly class PuOfficialCurveStatus
             'expected_latest_rate_date' => $this->expectedLatestRateDate?->toDateString(),
             'reason' => $this->reason,
             'reprocessing_from' => $this->reprocessingFrom?->toDateString(),
+            'contractual_change_from' => $this->contractualChangeFrom?->toDateString(),
         ];
     }
 }

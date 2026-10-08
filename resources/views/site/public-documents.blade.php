@@ -8,37 +8,41 @@
         <style>
             *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
             body {
-                font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-                background: #FDFDFC;
-                color: #1b1b18;
+                font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+                background: #ece9e8;
+                color: #091b23;
                 min-height: 100vh;
                 padding: 2rem;
             }
             .container { max-width: 56rem; margin: 0 auto; }
-            h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; }
+            h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; color: #091b23; }
             .doc-list { list-style: none; display: flex; flex-direction: column; gap: 0.75rem; }
             .doc-item {
                 padding: 1rem 1.25rem;
-                border: 1px solid #e3e3e0;
+                background: #ffffff;
+                border: 1px solid rgba(9, 27, 35, 0.08);
                 border-radius: 0.5rem;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
+                box-shadow: 0 1px 2px rgba(9, 27, 35, 0.04);
             }
-            .doc-title { font-weight: 500; }
-            .doc-category { font-size: 0.75rem; color: #706f6c; margin-top: 0.25rem; }
-            .doc-date { font-size: 0.75rem; color: #706f6c; white-space: nowrap; }
-            .empty { color: #706f6c; font-size: 0.875rem; }
+            .doc-title { font-weight: 600; color: #091b23; }
+            .doc-category { font-size: 0.75rem; color: #4b6871; margin-top: 0.25rem; }
+            .doc-date { font-size: 0.75rem; color: #758d95; white-space: nowrap; }
+            .empty { color: #758d95; font-size: 0.875rem; }
             .pagination { margin-top: 1.5rem; display: flex; justify-content: center; gap: 0.5rem; }
             .pagination a, .pagination span {
                 padding: 0.375rem 0.75rem;
-                border: 1px solid #e3e3e0;
+                background: #ffffff;
+                border: 1px solid rgba(9, 27, 35, 0.08);
                 border-radius: 0.25rem;
                 font-size: 0.875rem;
                 text-decoration: none;
-                color: #1b1b18;
+                color: #4b6871;
             }
-            .pagination span.current { background: #1b1b18; color: #fff; }
+            .pagination a:hover { border-color: #8d6123; color: #8d6123; }
+            .pagination span.current { background: #8d6123; border-color: #8d6123; color: #ffffff; }
         </style>
     </head>
     <body>

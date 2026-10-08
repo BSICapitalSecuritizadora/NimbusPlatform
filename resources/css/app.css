@@ -51,8 +51,8 @@
         background:
             radial-gradient(circle at top left, rgb(9 27 35 / 0.12), transparent 28%),
             radial-gradient(circle at top right, rgb(160 110 40 / 0.14), transparent 22%),
-            #ece9e8;
-        color: #091b23;
+            var(--surface-canvas);
+        color: var(--text-primary);
     }
 
     a:focus-visible,
@@ -61,15 +61,15 @@
     input:focus-visible,
     select:focus-visible,
     textarea:focus-visible {
-        @apply outline-hidden ring-2 ring-brand-300 ring-offset-2 ring-offset-white dark:ring-gold-400 dark:ring-offset-zinc-950;
+        @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-white dark:ring-accent dark:ring-offset-navy-950;
     }
 
     .dark body {
         background:
             radial-gradient(circle at top left, rgb(75 104 113 / 0.16), transparent 26%),
             radial-gradient(circle at top right, rgb(160 110 40 / 0.12), transparent 20%),
-            #040c11;
-        color: #e6e4e4;
+            var(--surface-canvas);
+        color: var(--text-primary);
     }
 }
 

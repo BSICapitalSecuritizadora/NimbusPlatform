@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\DTOs\Measurements\MeasurementPhysicalProgress;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
@@ -12,7 +13,11 @@ class OperationNextMeasurementResolver
 {
     /**
      * Resolve na consulta, sem persistir next_measurement_at nem consultar por registro.
-     * O plano segue Operation::defaultPlanSet(): padrão, ou o primeiro cadastrado.
+     * O plano é o padrão, ou o primeiro cadastrado, entre os vigentes (com
+     * versão ativada) -- como Operation::defaultPlanSet(), mas sem o plano em
+     * rascunho, que ainda não recebe medição: com o padrão em rascunho, a
+     * próxima medição vem do vigente seguinte. O cronograma é o da versão
+     * vigente dele.
      * Pendente é a linha que ainda pode receber medição
      * ({@see MeasurementPlanLine::scopeAvailableForMeasurement()}): nem
      * reivindicada por Engenharia vigente, nem ocupada por outra medição aberta,
@@ -20,7 +25,11 @@ class OperationNextMeasurementResolver
      * linha não decidem: elas guardam a última aprovação mesmo depois de ela
      * deixar de valer, e prendiam para sempre a competência de uma medição
      * recusada, excluída ou reaprovada em outra linha.
-     * A sequência do plano prevalece sobre a data atual, inclusive para atrasos.
+     * A ordem é a do cronograma -- competência, e no mesmo mês a sequência (a
+     * posição de {@see MeasurementPhysicalProgress}) --
+     * e prevalece sobre a data atual, inclusive para atrasos: uma revisão que
+     * acrescenta medição prevista com número maior num mês anterior não a
+     * esconde.
      *
      * @param  Builder<Operation>  $operations
      * @return Builder<Operation>
@@ -33,6 +42,7 @@ class OperationNextMeasurementResolver
         $defaultPlan = MeasurementPlanSet::query()
             ->select($planSet->getQualifiedKeyName())
             ->whereColumn($planSet->qualifyColumn('operation_id'), $line->qualifyColumn('operation_id'))
+            ->whereHas('activeVersion')
             ->orderByDesc('is_default')
             ->orderBy('id')
             ->limit(1);
@@ -41,9 +51,11 @@ class OperationNextMeasurementResolver
             ->select($line->qualifyColumn('measurement_date'))
             ->whereColumn($line->qualifyColumn('operation_id'), $operations->getModel()->getQualifiedKeyName())
             ->where('plan_set_id', $defaultPlan)
+            ->ofActiveVersions()
             ->whereNotNull('measurement_date')
             ->availableForMeasurement()
             ->whereDoesntHave('planSet', fn (Builder $plans): Builder => $this->coveringInitialProgress($plans, $line))
+            ->orderBy('measurement_date')
             ->orderBy('sequence_number')
             ->limit(1);
 

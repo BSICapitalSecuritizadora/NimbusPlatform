@@ -7,8 +7,8 @@ use App\Enums\OperationStatus;
 use App\Exceptions\DelegationHistoryException;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Exceptions\OperationLifecycleException;
+use App\Services\MeasurementPlanVersionService;
 use App\Services\OperationContextMutationService;
-use App\Services\OperationContextVisibilityService;
 use App\Services\OperationResponsibilityService;
 use App\Services\ResponsibilityDelegationService;
 use Database\Factories\OperationFactory;
@@ -198,6 +198,11 @@ class Operation extends Model
         return $this->hasMany(MeasurementPlanLine::class);
     }
 
+    public function planVersions(): HasMany
+    {
+        return $this->hasMany(MeasurementPlanVersion::class);
+    }
+
     public function measurements(): HasMany
     {
         return $this->hasMany(Measurement::class);
@@ -217,54 +222,18 @@ class Operation extends Model
     }
 
     /**
-     * Ensures one measurement plan set exists per development, each carrying its
-     * own construction fund. Existing plan sets are updated; the first development
-     * becomes the default plan when the operation has none yet. The initial
-     * physical progress only goes into a plan being created: an existing plan
-     * keeps its own, which no ordinary write may change.
+     * Garante um plano de medição por empreendimento, cada um com o próprio
+     * Fundo de Obra na V1. A escrita é do serviço de planos, sob o lock da
+     * Operation ({@see MeasurementPlanVersionService::syncDevelopmentPlans()}):
+     * plano novo nasce com a V1 em rascunho; o existente só acompanha o nome
+     * do empreendimento, e o Fundo de Obra de um plano já ativado muda por
+     * revisão do plano, não por aqui.
      *
      * @param  array<int, array{construction_id?: mixed, construction_fund_amount?: mixed, initial_physical_progress_percent?: mixed, initial_physical_progress_reference_date?: mixed}>  $developments
      */
     public function syncDevelopmentPlans(array $developments, User $actor): void
     {
-        $visibility = app(OperationContextVisibilityService::class);
-        $visibility->assertOperationPayloadIsVisible($actor, $this->emission_id, $developments);
-        $hasDefault = $this->planSets()->where('is_default', true)->exists();
-        $index = 0;
-
-        foreach ($developments as $development) {
-            $constructionId = $development['construction_id'] ?? null;
-
-            if (blank($constructionId)) {
-                continue;
-            }
-
-            $construction = $visibility->assertConstructionIsVisibleForOperation($actor, $this, $constructionId);
-            $developmentName = $construction->development_name;
-            $fund = $development['construction_fund_amount'] ?? null;
-
-            $planSet = $this->planSets()->where('construction_id', $constructionId)->first();
-
-            if ($planSet instanceof MeasurementPlanSet) {
-                $planSet->update([
-                    'name' => $developmentName,
-                    'construction_fund_amount' => $fund,
-                ]);
-            } else {
-                $this->planSets()->create([
-                    'construction_id' => $constructionId,
-                    'name' => $developmentName,
-                    'construction_fund_amount' => $fund,
-                    'is_default' => ! $hasDefault && $index === 0,
-                    'initial_physical_progress_percent' => $development['initial_physical_progress_percent'] ?? 0,
-                    'initial_physical_progress_reference_date' => $development['initial_physical_progress_reference_date'] ?? null,
-                ]);
-            }
-
-            $index++;
-        }
-
-        $this->refreshTitleFromConstructions();
+        app(MeasurementPlanVersionService::class)->syncDevelopmentPlans($this, $actor, $developments);
     }
 
     /**

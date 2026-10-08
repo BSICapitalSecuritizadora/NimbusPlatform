@@ -10,7 +10,7 @@
     <div class="container position-relative z-1">
         <div class="row align-items-center justify-content-center text-center g-5">
             <div class="col-lg-8">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">INTEGRIDADE E CONFIANÇA</span>
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent); letter-spacing: 0.1em; font-weight: 600;">INTEGRIDADE E CONFIANÇA</span>
                 <h1 class="display-4 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
                     Canal de Ética
                 </h1>
@@ -90,9 +90,9 @@
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6 order-2 order-lg-1">
-                <div class="card border-0 p-5" style="background: linear-gradient(135deg, rgba(0,32,91,0.05), rgba(212,175,55,0.05)); border-radius: 20px;">
+                <div class="card border-0 p-5" style="background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 5%, transparent), color-mix(in srgb, var(--gold) 5%, transparent)); border-radius: 20px;">
                     <div class="d-flex align-items-center gap-3 mb-4">
-                        <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0" style="width: 52px; height: 52px; background: rgba(0,32,91,0.08); color: var(--brand);">
+                        <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0" style="width: 52px; height: 52px; background: color-mix(in srgb, var(--brand) 8%, transparent); color: var(--brand);">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                         </div>
                         <h4 class="fw-bold mb-0" style="color: var(--brand);">Tratamento de Relatos</h4>
@@ -114,7 +114,7 @@
                 </div>
             </div>
             <div class="col-lg-6 order-1 order-lg-2">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91,0.05); letter-spacing: 0.1em; font-weight: 600;">Procedimento</span>
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: color-mix(in srgb, var(--brand) 5%, transparent); letter-spacing: 0.1em; font-weight: 600;">Procedimento</span>
                 <h2 class="h3 fw-bold text-dark mb-4">Como funciona o processo</h2>
                 <p class="text-muted mb-4">Ao submeter uma manifestação, nossa equipe de controles e integridade inicia um protocolo formal focado na imparcialidade da apuração.</p>
                 <p class="text-muted">Nosso compromisso não é apenas receber o relato, mas assegurar que cada caso seja devidamente mapeado, avaliado e acompanhado até o seu desfecho, retroalimentando as ações de prevenção corporativa.</p>

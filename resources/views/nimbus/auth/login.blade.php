@@ -13,11 +13,11 @@
     
     <style>
         :root {
-            --nd-navy-900: #06151c;
-            --nd-navy-800: #091b23;
-            --nd-gold-500: #a06e28;
-            --nd-gold-600: #7b541e;
-            --nd-white: #e6e4e4;
+            --nd-navy-900: var(--color-navy-950, #06151c);
+            --nd-navy-800: var(--color-navy-900, #091b23);
+            --nd-gold-500: var(--accent, #a06e28);
+            --nd-gold-600: var(--accent-hover, #7b541e);
+            --nd-white: var(--color-offwhite, #e6e4e4);
         }
         
         * {
@@ -32,7 +32,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, var(--nd-navy-900) 0%, var(--nd-navy-800) 40%, #22424c 100%);
+            background: linear-gradient(135deg, var(--nd-navy-900) 0%, var(--nd-navy-800) 40%, var(--color-navy-700, #1e4756) 100%);
             position: relative;
             overflow: hidden;
             font-family: 'Plus Jakarta Sans', sans-serif;
@@ -188,7 +188,7 @@
             background: linear-gradient(135deg, var(--nd-gold-500) 0%, var(--nd-gold-600) 100%);
             border: none;
             border-radius: 14px;
-            color: #091b23;
+            color: var(--text-primary, #091b23);
             font-family: 'Plus Jakarta Sans', sans-serif;
             font-size: 0.9375rem;
             font-weight: 800;
@@ -204,7 +204,7 @@
         }
 
         .nd-portal-submit:hover {
-            background: linear-gradient(135deg, #be935d 0%, var(--nd-gold-500) 100%);
+            background: linear-gradient(135deg, var(--color-gold-300, #d5aa67) 0%, var(--nd-gold-500) 100%);
             transform: translateY(-2px);
             box-shadow: 0 8px 30px rgba(160, 110, 40, 0.4);
         }

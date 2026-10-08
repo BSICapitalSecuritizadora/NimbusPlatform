@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementPlanVersionFixture;
 
 uses(RefreshDatabase::class);
 
@@ -49,6 +50,9 @@ function staleUxScenario(): array
         'realized_monthly_percent' => 0,
         'realized_cumulative_percent' => 0,
     ]);
+    // Só plano vigente recebe medição: a linha entra no rascunho da V1, que a
+    // fixture põe em vigor.
+    MeasurementPlanVersionFixture::activate($planSet);
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->getKey(),
         'reference_month' => '2026-07-01',

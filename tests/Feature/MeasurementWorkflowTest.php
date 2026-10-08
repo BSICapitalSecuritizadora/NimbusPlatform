@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementPlanVersionFixture;
 use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 uses(RefreshDatabase::class);
@@ -54,6 +55,9 @@ function makeWorkflowMeasurement(array $operationOverrides = []): Measurement
         'realized_monthly_percent' => 0,
         'realized_cumulative_percent' => 0,
     ]);
+    // O cronograma entra no rascunho da V1, e o plano só recebe medição depois
+    // de vigente: a versão é ativada antes do envio.
+    MeasurementPlanVersionFixture::activate($planSet);
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
         'reference_month' => '2026-08-01',
@@ -254,6 +258,7 @@ it('propagates the realized progress reported during validation to the schedule 
         'planned_cumulative_percent' => 80,
         'measurement_date' => '2026-07-01',
     ]);
+    MeasurementPlanVersionFixture::activate($planSet);
 
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
@@ -302,6 +307,7 @@ it('targets the schedule line chosen on each development asset', function () {
         'measurement_date' => '2026-06-01',
         'realized_monthly_percent' => 0,
     ]);
+    MeasurementPlanVersionFixture::activate($planSet);
 
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
@@ -331,6 +337,9 @@ it('registers one payment per development', function () {
     $operation = Operation::factory()->create(['payment_manager_user_id' => $actor->id]);
     $planA = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
     $planB = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
+    // Só plano vigente recebe medição: o snapshot da Engenharia abaixo
+    // pressupõe os dois ativados.
+    MeasurementPlanVersionFixture::activate($planA, $planB);
 
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
@@ -369,6 +378,9 @@ it('ignores payment rows without an amount', function () {
     $operation = Operation::factory()->create(['payment_manager_user_id' => $actor->id]);
     $planA = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
     $planB = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
+    // Só plano vigente recebe medição: o snapshot da Engenharia abaixo
+    // pressupõe os dois ativados.
+    MeasurementPlanVersionFixture::activate($planA, $planB);
 
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,

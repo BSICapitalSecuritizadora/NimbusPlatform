@@ -10,7 +10,7 @@
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Serviços</span>
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent); letter-spacing: 0.1em; font-weight: 600;">Serviços</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
                     Monitoramento Regulatório para<br><span style="color: var(--gold);">Operações Estruturadas</span>
                 </h1>
@@ -232,7 +232,7 @@
 
                         <div class="d-flex align-items-center gap-3 position-relative z-1">
                             <div class="text-white rounded-circle d-flex align-items-center justify-content-center fw-bold small shadow-sm" style="background-color: var(--gold, #d4af37); width: 40px; height: 40px; min-width: 40px;">3</div>
-                            <div class="flex-grow-1 p-3 rounded-3 border shadow-xs" style="background-color: rgba(212,175,55,0.05); border-color: rgba(212,175,55,0.2) !important;">
+                            <div class="flex-grow-1 p-3 rounded-3 border shadow-xs" style="background-color: color-mix(in srgb, var(--gold) 5%, transparent); border-color: color-mix(in srgb, var(--gold) 20%, transparent) !important;">
                                 <div class="fw-bold small" style="color: var(--gold, #d4af37);">Comitê e registro da decisão</div>
                                 <div class="smaller text-muted">Um comitê avalia a operação através de regras de segregação, emitindo parecer técnico com registro de deliberação.</div>
                             </div>

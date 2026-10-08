@@ -442,9 +442,12 @@ final class PuSimulationService
         EmissionPuParameter $parameter,
         CarbonImmutable $endDate,
     ): array {
-        $persisted = $emission->relationLoaded('puEvents')
+        // Evento cancelado não existe mais no contrato: nem a simulação o considera.
+        $persisted = ($emission->relationLoaded('puEvents')
             ? $emission->puEvents
-            : $emission->puEvents()->get();
+            : $emission->puEvents()->get())
+            ->filter(fn (EmissionPuEvent $event): bool => $event->isActive())
+            ->values();
         $candidate = $this->eventCandidate($resolution, $parameter);
 
         if ($candidate === null) {

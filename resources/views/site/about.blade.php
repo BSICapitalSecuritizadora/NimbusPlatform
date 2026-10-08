@@ -9,7 +9,7 @@
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Institucional</span>
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent); letter-spacing: 0.1em; font-weight: 600;">Institucional</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
                     BSI Capital: securitização com <br><span style="color: var(--gold);">rigor técnico, governança e visão de longo prazo</span>
                 </h1>
@@ -48,7 +48,7 @@
 </section>
 
 <!-- Contadores -->
-<section style="background: #091B23; border-top: 1px solid rgba(212,175,55,0.15);">
+<section style="background: #091B23; border-top: 1px solid color-mix(in srgb, var(--gold) 15%, transparent);">
     <div class="container py-5">
         <div class="row text-center g-4">
             <div class="col-6 col-md-3">
@@ -74,11 +74,11 @@
 <!-- Timeline de Sucessos -->
 <section class="py-5 bg-white border-top position-relative overflow-hidden">
     <!-- Decoração de fundo sutil -->
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="background: radial-gradient(circle at top right, rgba(212,175,55,0.03), transparent 50%); pointer-events: none;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="background: radial-gradient(circle at top right, color-mix(in srgb, var(--gold) 3%, transparent), transparent 50%); pointer-events: none;"></div>
 
     <div class="container py-5 position-relative z-1">
         <div class="text-center mb-5 pb-4">
-            <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Evolução</span>
+            <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent); letter-spacing: 0.1em; font-weight: 600;">Evolução</span>
             <h2 class="display-6 fw-bold text-dark mb-3">Nossa Trajetória</h2>
             <p class="text-muted mx-auto" style="max-width: 600px; font-size: 1.1rem;">Mais de uma década de evolução constante e compromisso com o mercado de capitais.</p>
         </div>
@@ -166,12 +166,12 @@
                             </div>
                         </div>
                         <div class="d-none d-md-flex col-md-2 order-2 order-md-2 text-center position-relative align-items-center justify-content-center">
-                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm timeline-dot timeline-dot-active" style="width: 48px; height: 48px; border: 6px solid #fff; z-index: 2; transition: all 0.3s ease; box-shadow: 0 0 15px rgba(212,175,55,0.3) !important;">
+                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm timeline-dot timeline-dot-active" style="width: 48px; height: 48px; border: 6px solid #fff; z-index: 2; transition: all 0.3s ease; box-shadow: 0 0 15px color-mix(in srgb, var(--gold) 30%, transparent) !important;">
                                 <div class="rounded-circle bg-white" style="width: 12px; height: 12px;"></div>
                             </div>
                         </div>
                         <div class="col-10 col-md-5 order-2 order-md-3 ps-5 ps-md-5">
-                            <div class="card border-0 shadow-sm p-4 h-100 timeline-card" style="border-radius: 16px; background: linear-gradient(145deg, #ffffff, #fcfaf5); border: 1px solid rgba(212,175,55,0.15) !important; transition: all 0.3s ease;">
+                            <div class="card border-0 shadow-sm p-4 h-100 timeline-card" style="border-radius: 16px; background: linear-gradient(145deg, #ffffff, #fcfaf5); border: 1px solid color-mix(in srgb, var(--gold) 15%, transparent) !important; transition: all 0.3s ease;">
                                 <div class="h3 fw-bold mb-2 timeline-year-active" style="font-family: var(--font-heading);">Hoje</div>
                                 <h5 class="fw-bold text-dark mb-2">+R$ 1 Bilhão</h5>
                                 <p class="text-muted small mb-0">Marco histórico em volume estruturado e implementação de infraestrutura digital proprietária.</p>
@@ -195,7 +195,7 @@
         <div class="row g-4">
             <div class="col-md-4">
                 <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover" style="transition: .3s;">
-                    <div class="mb-4 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 60px; height: 60px; background: rgba(0,32,91,0.08); color: var(--brand);">
+                    <div class="mb-4 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 60px; height: 60px; background: color-mix(in srgb, var(--brand) 8%, transparent); color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Nossa Missão</h3>
@@ -205,7 +205,7 @@
 
             <div class="col-md-4">
                 <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover" style="transition: .3s;">
-                    <div class="mb-4 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 60px; height: 60px; background: rgba(0,32,91,0.08); color: var(--brand);">
+                    <div class="mb-4 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 60px; height: 60px; background: color-mix(in srgb, var(--brand) 8%, transparent); color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Nossa Visão</h3>
@@ -215,7 +215,7 @@
 
             <div class="col-md-4">
                 <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover" style="transition: .3s;">
-                    <div class="mb-4 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 60px; height: 60px; background: rgba(0,32,91,0.08); color: var(--brand);">
+                    <div class="mb-4 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 60px; height: 60px; background: color-mix(in srgb, var(--brand) 8%, transparent); color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Nossos Valores</h3>
@@ -279,7 +279,7 @@
         <div class="row g-4">
             <div class="col-md-6 col-lg-3">
                 <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-center" style="transition: .3s;">
-                    <div class="mb-3 mx-auto d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 56px; height: 56px; background: rgba(0,32,91,0.08); color: var(--brand);">
+                    <div class="mb-3 mx-auto d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 56px; height: 56px; background: color-mix(in srgb, var(--brand) 8%, transparent); color: var(--brand);">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
                     </div>
                     <h4 class="fw-bold mb-2" style="font-size: 1rem; color: #0b1220;">Planejamento Estratégico</h4>
@@ -288,7 +288,7 @@
             </div>
             <div class="col-md-6 col-lg-3">
                 <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-center" style="transition: .3s;">
-                    <div class="mb-3 mx-auto d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 56px; height: 56px; background: rgba(0,32,91,0.08); color: var(--brand);">
+                    <div class="mb-3 mx-auto d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 56px; height: 56px; background: color-mix(in srgb, var(--brand) 8%, transparent); color: var(--brand);">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                     </div>
                     <h4 class="fw-bold mb-2" style="font-size: 1rem; color: #0b1220;">Estudo de Viabilidade</h4>
@@ -297,7 +297,7 @@
             </div>
             <div class="col-md-6 col-lg-3">
                 <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-center" style="transition: .3s;">
-                    <div class="mb-3 mx-auto d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 56px; height: 56px; background: rgba(0,32,91,0.08); color: var(--brand);">
+                    <div class="mb-3 mx-auto d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 56px; height: 56px; background: color-mix(in srgb, var(--brand) 8%, transparent); color: var(--brand);">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
                     </div>
                     <h4 class="fw-bold mb-2" style="font-size: 1rem; color: #0b1220;">Monitoramento de Mercado</h4>
@@ -306,7 +306,7 @@
             </div>
             <div class="col-md-6 col-lg-3">
                 <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-center" style="transition: .3s;">
-                    <div class="mb-3 mx-auto d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 56px; height: 56px; background: rgba(0,32,91,0.08); color: var(--brand);">
+                    <div class="mb-3 mx-auto d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 56px; height: 56px; background: color-mix(in srgb, var(--brand) 8%, transparent); color: var(--brand);">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                     </div>
                     <h4 class="fw-bold mb-2" style="font-size: 1rem; color: #0b1220;">Inteligência de Risco</h4>
@@ -327,7 +327,7 @@
                 </div>
             </div>
             <div class="col-lg-6 order-lg-1">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91,0.05); letter-spacing: 0.1em; font-weight: 600;">Tecnologia e Controle</span>
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: color-mix(in srgb, var(--brand) 5%, transparent); letter-spacing: 0.1em; font-weight: 600;">Tecnologia e Controle</span>
                 <h2 class="h3 fw-bold text-dark mb-4">Tecnologia aplicada à governança da securitização</h2>
                 <p class="text-muted mb-4">O mercado de capitais exige agilidade aliada a mecanismos de controle e auditoria. Na BSI Capital, integramos soluções sistêmicas para apoiar a originação, estruturação e a governança fiduciária de todo o ciclo de vida do ativo.</p>
                 <ul class="list-unstyled mb-0">
@@ -560,7 +560,7 @@
 
         <div class="row g-4 justify-content-center">
             <div class="col-md-5">
-                <div class="card h-100 p-5 border-0 text-center" style="background: rgba(255,255,255,0.04); border-radius: 20px; border: 1px solid rgba(212,175,55,0.15) !important;">
+                <div class="card h-100 p-5 border-0 text-center" style="background: rgba(255,255,255,0.04); border-radius: 20px; border: 1px solid color-mix(in srgb, var(--gold) 15%, transparent) !important;">
                     <div class="mb-4">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                     </div>
@@ -570,7 +570,7 @@
             </div>
 
             <div class="col-md-5">
-                <div class="card h-100 p-5 border-0 text-center" style="background: rgba(255,255,255,0.04); border-radius: 20px; border: 1px solid rgba(212,175,55,0.15) !important;">
+                <div class="card h-100 p-5 border-0 text-center" style="background: rgba(255,255,255,0.04); border-radius: 20px; border: 1px solid color-mix(in srgb, var(--gold) 15%, transparent) !important;">
                     <div class="mb-4">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>

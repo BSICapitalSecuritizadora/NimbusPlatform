@@ -231,8 +231,8 @@
 
         .badge-ri {
             color: var(--gold);
-            background: rgba(212, 175, 55, 0.12);
-            border: 1px solid rgba(212, 175, 55, 0.32);
+            background: color-mix(in srgb, var(--gold) 12%, transparent);
+            border: 1px solid color-mix(in srgb, var(--gold) 32%, transparent);
         }
 
         .btn {

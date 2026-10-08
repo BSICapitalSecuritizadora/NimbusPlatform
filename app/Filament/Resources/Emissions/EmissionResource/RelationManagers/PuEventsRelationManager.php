@@ -4,10 +4,12 @@ namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuEventDateChangeReason;
+use App\Domain\PuCalculator\Enums\PuEventStatus;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Domain\PuCalculator\Services\PuBaselineCandidateFactory;
 use App\Domain\PuCalculator\Services\PuContractualEventScheduleService;
+use App\Domain\PuCalculator\Services\PuContractualEventService;
 use App\Models\Emission;
 use App\Models\EmissionPuEvent;
 use App\Models\User;
@@ -125,13 +127,21 @@ class PuEventsRelationManager extends RelationManager
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         PuEventType::InterestPayment->value => 'Pagamento de Juros',
                         PuEventType::Amortization->value => 'Amortização',
-                        default => $state,
+                        default => PuEventType::tryFrom($state)?->label() ?? $state,
                     })
                     ->color(fn (string $state): string => match ($state) {
                         PuEventType::InterestPayment->value => 'info',
                         PuEventType::Amortization->value => 'warning',
                         default => 'gray',
                     }),
+                TextColumn::make('status')
+                    ->label('Situação')
+                    ->badge()
+                    ->formatStateUsing(fn (?PuEventStatus $state): string => ($state ?? PuEventStatus::Active)->label())
+                    ->color(fn (?PuEventStatus $state): string => $state === PuEventStatus::Cancelled ? 'gray' : 'success')
+                    ->tooltip(fn (EmissionPuEvent $record): ?string => $record->isActive()
+                        ? null
+                        : sprintf('Cancelado em %s: %s', $record->cancelled_at?->format('d/m/Y H:i') ?? '—', $record->cancellation_reason)),
                 TextColumn::make('effective_date_reason')
                     ->label('Data mudou por')
                     ->badge()
@@ -207,10 +217,39 @@ class PuEventsRelationManager extends RelationManager
             ->actions([
                 ActionGroup::make([
                     EditAction::make()
-                        ->visible(fn (): bool => auth()->user()?->can('pu.parameters.configure') ?? false)
+                        // O formulário cobre os pagamentos do cronograma; os demais tipos do
+                        // catálogo não são editados por aqui.
+                        ->visible(fn (EmissionPuEvent $record): bool => $record->isActive()
+                            && (PuEventType::tryFrom((string) $record->event_type)?->isScheduledPayment() ?? false)
+                            && (auth()->user()?->can('pu.parameters.configure') ?? false))
                         ->after(fn (): null => $this->logEventChange('updated')),
+                    Action::make('cancelEvent')
+                        ->label('Cancelar evento')
+                        ->icon('heroicon-m-no-symbol')
+                        ->color('danger')
+                        ->visible(fn (EmissionPuEvent $record): bool => ! $this->isReadOnly()
+                            && $record->isActive()
+                            && (auth()->user()?->can('pu.parameters.configure') ?? false))
+                        ->requiresConfirmation()
+                        ->modalHeading('Cancelar evento de PU')
+                        ->modalDescription('O evento sai do cálculo das próximas versões da curva e fica registrado como cancelado, com o motivo. A curva oficial não muda: se o evento já valia para ela, uma nova versão precisa ser gerada e homologada.')
+                        ->form([
+                            Textarea::make('cancellation_reason')
+                                ->label('Motivo do cancelamento')
+                                ->required()
+                                ->rows(3)
+                                ->maxLength(2000),
+                        ])
+                        ->action(function (EmissionPuEvent $record, array $data): void {
+                            /** @var User $actor */
+                            $actor = auth()->user();
+                            app(PuContractualEventService::class)->cancel($record, $actor, (string) ($data['cancellation_reason'] ?? ''));
+
+                            Notification::make()->title('Evento cancelado.')->success()->send();
+                        }),
                     DeleteAction::make()
-                        ->visible(fn (): bool => auth()->user()?->can('pu.parameters.configure') ?? false)
+                        ->visible(fn (EmissionPuEvent $record): bool => ! $record->isGoverned()
+                            && (auth()->user()?->can('pu.parameters.configure') ?? false))
                         ->after(fn (): null => $this->logEventChange('deleted')),
                 ]),
             ])
@@ -258,6 +297,10 @@ class PuEventsRelationManager extends RelationManager
                 $this->brazilianDate($plan['creatable_events'][0]['effective_date']),
                 $this->brazilianDate($plan['creatable_events'][array_key_last($plan['creatable_events'])]['effective_date']),
             );
+
+        if ($plan['creatable_events'] !== [] && $this->getOwnerRecord()->officialPuCurveVersion() !== null) {
+            $lines[] = 'A curva oficial vigente não os incorpora sozinha: ela avança até a véspera do primeiro deles e só os aplica depois que uma nova versão for gerada e homologada.';
+        }
 
         if ($plan['missing_in_calculated_period'] !== []) {
             $lines[] = sprintf(

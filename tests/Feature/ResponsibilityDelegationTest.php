@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementPlanVersionFixture;
 
 uses(RefreshDatabase::class);
 
@@ -438,6 +439,9 @@ it('audit captures effective actor and delegation source', function () {
     $planSet = MeasurementPlanSet::factory()->create(['operation_id' => $op->id]);
     $line1 = MeasurementPlanLine::factory()->create(['plan_set_id' => $planSet->id, 'operation_id' => $op->id, 'sequence_number' => 1, 'planned_monthly_percent' => 10, 'planned_cumulative_percent' => 30, 'initial_realized_cumulative_percent' => 0, 'realized_monthly_percent' => 0, 'realized_cumulative_percent' => 0, 'measurement_date' => '2026-08-01']);
     MeasurementPlanLine::factory()->create(['plan_set_id' => $planSet->id, 'operation_id' => $op->id, 'sequence_number' => 2, 'planned_monthly_percent' => 10, 'planned_cumulative_percent' => 60, 'initial_realized_cumulative_percent' => 0, 'realized_monthly_percent' => 0, 'realized_cumulative_percent' => 0, 'measurement_date' => '2026-09-01']);
+    // O cronograma entra no rascunho da V1, e o plano só recebe medição depois
+    // de vigente: a versão é ativada antes do envio.
+    MeasurementPlanVersionFixture::activate($planSet);
 
     $measurement = Measurement::factory()->create([
         'operation_id' => $op->id,

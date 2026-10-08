@@ -2,6 +2,7 @@
 
 use App\Actions\Emissions\GeneratePuDailyCurve;
 use App\Actions\Emissions\HomologatePuCurve;
+use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Enums\PuOfficialCurveFreshness;
@@ -13,6 +14,7 @@ use App\Domain\PuCalculator\Services\PuOperationalMonitorService;
 use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
+use App\Models\EmissionPuEvent;
 use App\Models\IndexRate;
 use App\Models\User;
 use App\Services\Reports\EmissionMonthlyReportService;
@@ -190,14 +192,24 @@ it('detects a stale official curve and never presents its last PU as the PU of a
 it('reports an extension failure apart from missing index data', function () {
     $emission = p3fOfficialEmission();
     p3fPublish('2026-03-16', '2026-03-18');
-    $emission->integralizationHistories()->delete();
+    // Pré-requisito bloqueado sem mexer no passado aprovado: um evento futuro que a
+    // engine ainda não calcula. (Apagar a integralização, como antes, desde a Fase 4
+    // é mudança contratual no trecho gravado -- reprocessamento, que tem precedência
+    // sobre a falha.)
+    EmissionPuEvent::query()->create([
+        'emission_id' => $emission->id,
+        'event_type' => PuEventType::Waiver->value,
+        'effective_date' => '2026-06-01',
+        'effective_until' => '2026-06-30',
+        'sequence' => 1,
+    ]);
 
     app(PuCurveExtensionService::class)->extendOfficial($emission->fresh());
     $status = p3fStatus($emission, '2026-03-19 10:00');
     $strict = app(EmissionPuReader::class)->officialReadingAt($emission->fresh(), CarbonImmutable::parse('2026-03-19'), p3fAt('2026-03-19 10:00'));
 
     expect($status->freshness)->toBe(PuOfficialCurveFreshness::ExtensionFailed)
-        ->and($status->reason)->toContain('integralizacao')
+        ->and($status->reason)->toContain('ainda não calcula')
         ->and($status->expectedRealizedThrough?->toDateString())->toBe('2026-03-19')
         ->and($strict['reading'])->toBeNull()
         ->and($strict['status']->freshness)->toBe(PuOfficialCurveFreshness::ExtensionFailed);

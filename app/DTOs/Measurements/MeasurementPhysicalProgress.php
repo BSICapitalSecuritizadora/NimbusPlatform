@@ -217,9 +217,22 @@ final readonly class MeasurementPhysicalProgress implements Arrayable
      */
     public function contributionsForLine(int $planLineId): array
     {
+        return $this->contributionsForLines([$planLineId]);
+    }
+
+    /**
+     * Contribuições de qualquer das linhas -- a mesma medição prevista nas
+     * várias versões do plano tem uma linha em cada uma.
+     *
+     * @param  list<int>  $planLineIds
+     * @return list<MeasurementPhysicalProgressContribution>
+     */
+    public function contributionsForLines(array $planLineIds): array
+    {
         return array_values(array_filter(
             $this->contributions,
-            fn (MeasurementPhysicalProgressContribution $contribution): bool => $contribution->planLineId === $planLineId,
+            fn (MeasurementPhysicalProgressContribution $contribution): bool => $contribution->planLineId !== null
+                && in_array($contribution->planLineId, $planLineIds, true),
         ));
     }
 
@@ -228,7 +241,41 @@ final readonly class MeasurementPhysicalProgress implements Arrayable
      */
     public function lineClaimant(int $planLineId): ?int
     {
-        return $this->contributionsForLine($planLineId)[0]->measurementId ?? null;
+        return $this->lineClaimantAmong([$planLineId]);
+    }
+
+    /**
+     * Medição com Engenharia vigente que já ocupa alguma das linhas -- a
+     * linhagem inteira da medição prevista.
+     *
+     * @param  list<int>  $planLineIds
+     */
+    public function lineClaimantAmong(array $planLineIds): ?int
+    {
+        return $this->contributionsForLines($planLineIds)[0]->measurementId ?? null;
+    }
+
+    /**
+     * Contribuições da medição prevista em qualquer versão do plano: a linha
+     * medida na V1 e a cópia dela na V2 são a mesma linhagem.
+     *
+     * @return list<MeasurementPhysicalProgressContribution>
+     */
+    public function contributionsForLineage(string $lineageKey): array
+    {
+        return array_values(array_filter(
+            $this->contributions,
+            fn (MeasurementPhysicalProgressContribution $contribution): bool => $contribution->lineageKey === $lineageKey,
+        ));
+    }
+
+    /**
+     * Medição com Engenharia vigente que já mediu a medição prevista, em
+     * qualquer versão do plano.
+     */
+    public function lineageClaimant(string $lineageKey): ?int
+    {
+        return $this->contributionsForLineage($lineageKey)[0]->measurementId ?? null;
     }
 
     public function initialPercent(): string

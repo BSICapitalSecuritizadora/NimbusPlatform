@@ -10,7 +10,7 @@
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Estruturação</span>
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent); letter-spacing: 0.1em; font-weight: 600;">Estruturação</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
                     Captação de <br><span style="color: var(--gold);">Recursos</span>
                 </h1>
@@ -115,7 +115,7 @@
         </div>
         
         <div class="row g-0 position-relative">
-            <div class="d-none d-lg-block position-absolute start-0 w-100 border-top border-2" style="top: 29px; border-color: rgba(212,175,55, 0.3) !important; z-index: 1;"></div>
+            <div class="d-none d-lg-block position-absolute start-0 w-100 border-top border-2" style="top: 29px; border-color: color-mix(in srgb, var(--gold) 30%, transparent) !important; z-index: 1;"></div>
             
             <div class="col-lg-3 px-4 py-4 py-lg-0 text-center position-relative z-2">
                 <div class="bg-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-4 border border-2 shadow-sm" style="width: 60px; height: 60px; border-color: var(--gold) !important; color: var(--brand);">

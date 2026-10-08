@@ -2,7 +2,11 @@
 
 use App\Filament\Resources\Operations\OperationResource;
 use App\Filament\Resources\Operations\Pages\ViewOperation;
+use App\Filament\Resources\Operations\RelationManagers\MeasurementsRelationManager;
+use App\Filament\Resources\Operations\RelationManagers\PaymentsRelationManager;
+use App\Filament\Resources\Operations\RelationManagers\PlanLinesRelationManager;
 use App\Filament\Resources\Operations\RelationManagers\PlanSetsRelationManager;
+use App\Filament\Resources\Operations\RelationManagers\PlanVersionsRelationManager;
 use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\MeasurementPlanLine;
@@ -15,6 +19,7 @@ use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementPlanVersionFixture;
 
 uses(RefreshDatabase::class);
 
@@ -51,11 +56,11 @@ function makeOperationViewScenario(): Operation
         ...$responsibles,
     ]);
 
-    $planSet = MeasurementPlanSet::factory()->default()->create([
+    // O Fundo de Obra é da versão do plano: nasce na V1.
+    $planSet = MeasurementPlanSet::factory()->default()->withConstructionFund('200000.00')->create([
         'operation_id' => $operation->id,
         'construction_id' => $construction->id,
         'name' => 'Plano Costa Azul',
-        'construction_fund_amount' => '200000.00',
         'initial_incurred_amount' => '50000.00',
     ]);
 
@@ -76,6 +81,10 @@ function makeOperationViewScenario(): Operation
         'realized_monthly_percent' => 0,
         'realized_cumulative_percent' => 0,
     ]);
+
+    // Plano em vigor, como o de uma operação em andamento: é o cronograma
+    // vigente que dá a próxima medição e que admite revisão.
+    MeasurementPlanVersionFixture::activate($planSet);
 
     return $operation->fresh();
 }
@@ -128,16 +137,31 @@ it('keeps every responsibility label with its real assignee', function () {
         ]);
 });
 
-it('keeps the four area tabs with plans as the first one', function () {
+it('keeps the area tabs with plans first and the plan versions right after them', function () {
     $operation = makeOperationViewScenario();
 
-    Livewire::test(ViewOperation::class, ['record' => $operation->getRouteKey()])
-        ->assertSee('Planos de Medição (Evolução da Obra)')
-        ->assertSee('Cronograma (Acompanhamento)')
-        ->assertSee('Medições')
-        ->assertSee('Pagamentos')
-        ->set('activeRelationManager', '2')
-        ->assertSee('Medições');
+    // A aba Versões dos Planos entrou logo depois dos planos: as seguintes
+    // andaram uma posição, e Medições agora é a aba '3'.
+    $page = Livewire::test(ViewOperation::class, ['record' => $operation->getRouteKey()])
+        ->assertSeeInOrder([
+            'Planos de Medição (Evolução da Obra)',
+            'Versões dos Planos',
+            'Cronograma (Acompanhamento)',
+            'Medições',
+            'Pagamentos',
+        ])
+        ->assertSeeHtml('wire:name="'.PlanSetsRelationManager::class.'"')
+        ->set('activeRelationManager', '3')
+        ->assertSeeHtml('wire:name="'.MeasurementsRelationManager::class.'"')
+        ->assertDontSeeHtml('wire:name="'.PlanSetsRelationManager::class.'"');
+
+    expect($page->instance()->getCachedRelationManagers())->toBe([
+        PlanSetsRelationManager::class,
+        PlanVersionsRelationManager::class,
+        PlanLinesRelationManager::class,
+        MeasurementsRelationManager::class,
+        PaymentsRelationManager::class,
+    ]);
 });
 
 it('groups the plan table without losing values, counts or actions', function () {
@@ -154,14 +178,16 @@ it('groups the plan table without losing values, counts or actions', function ()
         ->assertSee('Novo Plano')
         ->assertTableColumnExists('name')
         ->assertTableColumnExists('construction.development_name')
+        ->assertTableColumnExists('version')
         ->assertTableColumnExists('lines_count')
         ->assertTableColumnExists('financials')
         ->assertTableColumnExists('used_percentage')
-        ->assertSeeInOrder(['Plano', 'Empreendimento', 'Estrutura', 'Financeiro', '% Utilizada'])
+        ->assertSeeInOrder(['Plano', 'Empreendimento', 'Versão', 'Estrutura', 'Financeiro', '% Utilizada'])
         ->assertSee('R$')
         ->assertSeeInOrder([
             'Plano Costa Azul',
             'Residencial Costa Azul',
+            'V1 · Vigente',
             '2 linhas',
             'Padrão',
             'Fundo de Obra', '200.000,00',
@@ -169,9 +195,12 @@ it('groups the plan table without losing values, counts or actions', function ()
             'Saldo Disponível', '150.000,00',
             '25,00%',
         ])
+        // O cronograma é da versão: medição prevista nova entra pela revisão
+        // do plano (aba Versões dos Planos), não mais por "Adicionar medições".
         ->assertTableActionVisible('edit', $planSet)
-        ->assertTableActionVisible('addLines', $planSet)
-        ->assertTableActionVisible('delete', $planSet);
+        ->assertTableActionVisible('createPlanRevision', $planSet)
+        ->assertTableActionVisible('delete', $planSet)
+        ->assertTableActionDoesNotExist('addLines');
 
     $table = $relation->instance()->getTable();
 
@@ -189,12 +218,11 @@ it('distinguishes a secondary plan with a single line', function () {
         'development_name' => 'Torre Farol',
     ]);
 
-    $secondary = MeasurementPlanSet::factory()->create([
+    $secondary = MeasurementPlanSet::factory()->withConstructionFund('100000.00')->create([
         'operation_id' => $operation->id,
         'construction_id' => $construction->id,
         'name' => 'Plano Farol',
         'is_default' => false,
-        'construction_fund_amount' => '100000.00',
         'initial_incurred_amount' => '0.00',
     ]);
 
@@ -207,11 +235,13 @@ it('distinguishes a secondary plan with a single line', function () {
         'realized_cumulative_percent' => 0,
     ]);
 
+    // Ainda não ativado: o plano responde pelo rascunho da V1 -- o cronograma
+    // e o Fundo de Obra dela.
     Livewire::test(PlanSetsRelationManager::class, [
         'ownerRecord' => $operation,
         'pageClass' => ViewOperation::class,
     ])
-        ->assertSeeInOrder(['Plano Farol', 'Torre Farol', '1 linha', 'Não padrão'])
+        ->assertSeeInOrder(['Plano Farol', 'Torre Farol', 'V1 · Rascunho', '1 linha', 'Não padrão'])
         ->assertSee('100.000,00')
         ->assertSee('0,00%');
 });
@@ -219,10 +249,9 @@ it('distinguishes a secondary plan with a single line', function () {
 it('keeps searching and paging the grouped plan table', function () {
     $operation = makeOperationViewScenario();
 
-    MeasurementPlanSet::factory()->count(26)->create([
+    MeasurementPlanSet::factory()->count(26)->withConstructionFund('10000.00')->create([
         'operation_id' => $operation->id,
         'construction_id' => null,
-        'construction_fund_amount' => '10000.00',
         'initial_incurred_amount' => '0.00',
     ]);
 
@@ -269,6 +298,6 @@ it('preserves the resource permissions and hides management actions from a reade
         ->assertOk()
         ->assertSee('200.000,00')
         ->assertTableActionHidden('edit', $operation->planSets()->first())
-        ->assertTableActionHidden('addLines', $operation->planSets()->first())
+        ->assertTableActionHidden('createPlanRevision', $operation->planSets()->first())
         ->assertTableActionHidden('delete', $operation->planSets()->first());
 });

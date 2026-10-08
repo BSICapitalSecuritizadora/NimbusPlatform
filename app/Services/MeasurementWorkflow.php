@@ -12,6 +12,7 @@ use App\Models\MeasurementPause;
 use App\Models\MeasurementPayment;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
+use App\Models\MeasurementPlanVersion;
 use App\Models\MeasurementReview;
 use App\Models\Operation;
 use App\Models\User;
@@ -421,7 +422,14 @@ class MeasurementWorkflow
         }
 
         $result = DB::transaction(function () use ($measurement, $actor, $expectedStage, $expectedRevision, $notes): array {
-            $locked = $this->lockMeasurement($measurement);
+            // A recusa terminal (na Engenharia) solta as medições previstas que a
+            // medição ocupava (Measurement::updated), e a disponibilidade delas
+            // é lida pelo envio sob o lock da Operation: a recusa trava a
+            // Operation antes, como o envio e a aprovação da Engenharia. As
+            // demais recusas só devolvem a etapa e travam só a medição.
+            $locked = $expectedStage === self::STAGE_ENGINEERING
+                ? $this->lockMeasurementWithOperation($measurement)
+                : $this->lockMeasurement($measurement);
             $stage = $this->unifiedStage($locked);
 
             $this->assertExpectedState($locked, $expectedRevision, $expectedStage);
@@ -997,11 +1005,13 @@ class MeasurementWorkflow
 
     /**
      * Trava só a medição, para os caminhos que não pedem nada à operação:
-     * aprovações das etapas 2 a 4, recusas, devoluções, pausas, retomadas e a
-     * reavaliação de pagamento. Nenhum deles trava plano, obra ou linha nem
-     * insere linha filha de `operations`, então não fecham ciclo com quem trava
-     * a Operation primeiro. Um caminho que passe a fazer isso usa
-     * {@see self::lockMeasurementWithOperation()}.
+     * aprovações das etapas 2 a 4, recusas que devolvem a etapa, devoluções da
+     * Finalização, pausas, retomadas e a reavaliação de pagamento. Nenhum deles
+     * trava plano, versão, obra ou linha nem insere linha filha de
+     * `operations`, então não fecham ciclo com quem trava a Operation primeiro.
+     * Um caminho que passe a fazer isso usa
+     * {@see self::lockMeasurementWithOperation()} -- como a recusa terminal na
+     * Engenharia, que solta as medições previstas da medição.
      */
     private function lockMeasurement(Measurement $measurement): Measurement
     {
@@ -1023,9 +1033,9 @@ class MeasurementWorkflow
      * do módulo, a mesma do lifecycle da operação, da mutação de contexto, do
      * envio e da edição de medição e das delegações com escopo na operação --
      *
-     *   Operation (X) → medições por id → revisões e pausas → planos → obras
-     *   → { linhas, arquivos da medição } → pagamentos → regra financeira →
-     *   evidências.
+     *   Operation (X) → medições por id → revisões e pausas → planos (o
+     *   plano, depois as versões dele por id) → obras → { linhas, arquivos da
+     *   medição } → pagamentos → regra financeira → evidências.
      *
      * Linhas e arquivos da medição só são travados por quem já segura a
      * Operation, e por isso a ordem entre eles é indiferente: a aprovação da
@@ -1034,22 +1044,25 @@ class MeasurementWorkflow
      * mesma operação. É a Operation que serializa; quem não a segura não está
      * protegido por esta ordem.
      *
-     * Quem trava plano, obra, linha ou arquivo da medição, ou insere linha
-     * filha de `operations` (pagamentos, planos, linhas, medições,
-     * destinatários de recusa, delegações), trava a Operation antes -- o
-     * INSERT do filho pede lock na operação pela chave estrangeira. Aqui isso
-     * vale para o início da análise, a aprovação da Engenharia, o registro de
-     * pagamento e a Finalização; a edição da medição trava as duas na própria
-     * página, no `beforeValidate()` de Editar Medição, antes de gravar os
-     * arquivos; o resto do fluxo usa {@see self::lockMeasurement()}. Não há
+     * Quem trava plano, versão, obra, linha ou arquivo da medição, ou insere
+     * linha filha de `operations` (pagamentos, planos, versões, linhas,
+     * medições, destinatários de recusa, delegações), trava a Operation antes
+     * -- o INSERT do filho pede lock na operação pela chave estrangeira. Aqui
+     * isso vale para o início da análise, a aprovação da Engenharia, o registro
+     * de pagamento e a Finalização; a edição da medição trava as duas na
+     * própria página, no `beforeValidate()` de Editar Medição, antes de gravar
+     * os arquivos, e o envio trava a Operation no `beforeValidate()` de Enviar
+     * Medição; o resto do fluxo usa {@see self::lockMeasurement()}. Não há
      * retry: a ordem é a defesa, e uma repetição esconderia a regressão que a
      * quebrar.
      *
-     * Ainda fora da regra, até serem corrigidos -- travam plano, linha ou obra
-     * sem a Operation e por isso ainda podem se cruzar com a aprovação da
-     * Engenharia: a edição de planos e de linhas nas abas da operação
-     * (EditAction, addLines e editPlanned), o `syncDevelopmentPlans` da
-     * gravação da operação e as escritas de Construction (obra).
+     * Toda escrita de plano, de versão e de linha do cronograma passa por
+     * {@see MeasurementPlanVersionService} -- criação e edição do plano, revisão,
+     * edição do rascunho, ativação, cancelamento e o `syncDevelopmentPlans` da
+     * gravação da operação -- com a Operation travada primeiro; a exclusão do
+     * plano trava na própria aba. A escrita de obra (Construction) que mexe no
+     * que a Engenharia congela trava antes as operações que a planejam
+     * ({@see Construction::save()}).
      *
      * O envio da medição depende da situação da operação, e a situação da
      * operação depende de não haver medição aberta. As duas leituras precisam
@@ -1422,6 +1435,10 @@ class MeasurementWorkflow
             ->orderBy('id')
             ->lockForUpdate()
             ->get();
+        $versions = MeasurementPlanVersion::query()
+            ->whereKey($assets->pluck('plan_version_id')->filter()->unique()->values()->all())
+            ->get()
+            ->keyBy('id');
 
         if ($planSets->count() !== count($expectedPlanSetIds)
             || $lines->count() !== count($expectedLineIds)
@@ -1440,12 +1457,25 @@ class MeasurementWorkflow
             $construction = filled($constructionId) ? $constructions->get((int) $constructionId) : null;
             $line = $lines->get((int) ($requirement['plan_line_id'] ?? 0));
             $asset = $assetsByPlanSet->get($planSetId);
+            $version = $asset instanceof MeasurementAsset && $asset->plan_version_id !== null
+                ? $versions->get((int) $asset->plan_version_id)
+                : null;
+            // O Fundo de Obra conferido é o da versão em que a medição foi
+            // enviada -- imutável depois de vigente --, e não o vigente hoje: uma
+            // revisão de custo ativada no meio do fluxo não invalida a medição.
+            // Arquivo de plano sem versão gravada não existe mais e não passa.
+            $fundAmount = $version?->construction_fund_amount;
 
             if (! $planSet instanceof MeasurementPlanSet
                 || ! $line instanceof MeasurementPlanLine
                 || ! $asset instanceof MeasurementAsset
+                || ! $version instanceof MeasurementPlanVersion
+                || (int) $line->plan_version_id !== (int) $version->getKey()
+                || (array_key_exists('plan_version_id', $requirement)
+                    && (! $this->nullableIntMatches($asset->plan_version_id, $requirement['plan_version_id'])
+                        || ! $this->nullableIntMatches($line->plan_version_id, $requirement['plan_version_id'])))
                 || ! $this->nullableIntMatches($planSet->construction_id, $constructionId)
-                || ! $this->nullableDecimalMatches($planSet->construction_fund_amount, $requirement['construction_fund_amount'] ?? null)
+                || ! $this->nullableDecimalMatches($fundAmount, $requirement['construction_fund_amount'] ?? null)
                 || ! $this->nullableDecimalMatches($planSet->initial_incurred_amount, $requirement['initial_incurred_amount'] ?? null)
                 || (filled($constructionId) && ! $construction instanceof Construction)
                 || ($construction instanceof Construction

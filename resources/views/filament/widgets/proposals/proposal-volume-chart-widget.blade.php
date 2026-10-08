@@ -77,70 +77,70 @@
         {{-- Faixa de Síntese Analítica Executiva --}}
         <div class="mb-2.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {{-- Total Captado --}}
-            <div class="flex flex-col justify-between rounded-xl border border-gray-200/60 bg-white/70 p-2 sm:px-2.5 sm:py-2 shadow-none transition-colors dark:border-white/[0.06] dark:bg-[#06161d]/75">
+            <div class="flex flex-col justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-2 sm:px-2.5 sm:py-2 shadow-none transition-colors">
                 <div class="flex items-center justify-between gap-1">
-                    <span class="text-[0.59rem] font-semibold uppercase tracking-tight text-gray-500 dark:text-gray-400 truncate">Total Captado</span>
+                    <span class="text-[0.59rem] font-semibold uppercase tracking-tight text-[var(--text-muted)] truncate">Total Captado</span>
                     <div class="flex size-4.5 shrink-0 items-center justify-center rounded bg-bsi-gold-500/15 text-bsi-gold-500">
                         <x-heroicon-m-arrow-down-tray class="size-3" aria-hidden="true" />
                     </div>
                 </div>
                 <div class="mt-1 flex items-baseline gap-1">
-                    <span class="text-sm sm:text-base font-bold tabular-nums text-gray-950 dark:text-white">{{ $metrics['total_received'] }}</span>
-                    <span class="text-[0.65rem] font-normal text-gray-500 dark:text-gray-400 truncate">{{ $metrics['total_received'] === 1 ? 'proposta' : 'propostas' }}</span>
+                    <span class="text-sm sm:text-base font-bold tabular-nums text-[var(--text-primary)]">{{ $metrics['total_received'] }}</span>
+                    <span class="text-[0.65rem] font-normal text-[var(--text-secondary)] truncate">{{ $metrics['total_received'] === 1 ? 'proposta' : 'propostas' }}</span>
                 </div>
             </div>
 
             {{-- Formalizações --}}
-            <div class="flex flex-col justify-between rounded-xl border border-gray-200/60 bg-white/70 p-2 sm:px-2.5 sm:py-2 shadow-none transition-colors dark:border-white/[0.06] dark:bg-[#06161d]/75">
+            <div class="flex flex-col justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-2 sm:px-2.5 sm:py-2 shadow-none transition-colors">
                 <div class="flex items-center justify-between gap-1">
-                    <span class="text-[0.59rem] font-semibold uppercase tracking-tight text-gray-500 dark:text-gray-400 truncate">Formalizações</span>
+                    <span class="text-[0.59rem] font-semibold uppercase tracking-tight text-[var(--text-muted)] truncate">Formalizações</span>
                     <div class="flex size-4.5 shrink-0 items-center justify-center rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                         <x-heroicon-m-check-circle class="size-3" aria-hidden="true" />
                     </div>
                 </div>
                 <div class="mt-1 flex items-baseline gap-1">
-                    <span class="text-sm sm:text-base font-bold tabular-nums text-gray-950 dark:text-white">{{ $metrics['total_completed'] }}</span>
-                    <span class="text-[0.65rem] font-normal text-gray-500 dark:text-gray-400 truncate">{{ $metrics['total_completed'] === 1 ? 'concluída' : 'concluídas' }}</span>
+                    <span class="text-sm sm:text-base font-bold tabular-nums text-[var(--text-primary)]">{{ $metrics['total_completed'] }}</span>
+                    <span class="text-[0.65rem] font-normal text-[var(--text-secondary)] truncate">{{ $metrics['total_completed'] === 1 ? 'concluída' : 'concluídas' }}</span>
                 </div>
             </div>
 
             {{-- Conversão --}}
-            <div class="flex flex-col justify-between rounded-xl border border-gray-200/60 bg-white/70 p-2 sm:px-2.5 sm:py-2 shadow-none transition-colors dark:border-white/[0.06] dark:bg-[#06161d]/75">
+            <div class="flex flex-col justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-2 sm:px-2.5 sm:py-2 shadow-none transition-colors">
                 <div class="flex items-center justify-between gap-1">
-                    <span class="text-[0.59rem] font-semibold uppercase tracking-tight text-gray-500 dark:text-gray-400 truncate">Conversão</span>
+                    <span class="text-[0.59rem] font-semibold uppercase tracking-tight text-[var(--text-muted)] truncate">Conversão</span>
                     <div class="flex size-4.5 shrink-0 items-center justify-center rounded bg-blue-500/15 text-blue-600 dark:text-blue-400">
                         <x-heroicon-m-chart-pie class="size-3" aria-hidden="true" />
                     </div>
                 </div>
                 <div class="mt-1 flex items-baseline gap-1">
-                    <span class="text-sm sm:text-base font-bold tabular-nums text-gray-950 dark:text-white">{{ $metrics['conversion_rate'] }}%</span>
-                    <span class="text-[0.65rem] font-normal text-gray-500 dark:text-gray-400 truncate">(no período)</span>
+                    <span class="text-sm sm:text-base font-bold tabular-nums text-[var(--text-primary)]">{{ $metrics['conversion_rate'] }}%</span>
+                    <span class="text-[0.65rem] font-normal text-[var(--text-secondary)] truncate">(no período)</span>
                 </div>
             </div>
 
             {{-- Mês Destaque --}}
-            <div class="flex flex-col justify-between rounded-xl border border-gray-200/60 bg-white/70 p-2 sm:px-2.5 sm:py-2 shadow-none transition-colors dark:border-white/[0.06] dark:bg-[#06161d]/75">
+            <div class="flex flex-col justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-2 sm:px-2.5 sm:py-2 shadow-none transition-colors">
                 <div class="flex items-center justify-between gap-1">
-                    <span class="text-[0.59rem] font-semibold uppercase tracking-tight text-gray-500 dark:text-gray-400 truncate">Mês Destaque</span>
-                    <div class="flex size-4.5 shrink-0 items-center justify-center rounded bg-gray-100 text-gray-600 dark:bg-white/[0.08] dark:text-gray-300">
+                    <span class="text-[0.59rem] font-semibold uppercase tracking-tight text-[var(--text-muted)] truncate">Mês Destaque</span>
+                    <div class="flex size-4.5 shrink-0 items-center justify-center rounded bg-[var(--surface-ground)] text-[var(--text-secondary)]">
                         <x-heroicon-m-calendar-days class="size-3" aria-hidden="true" />
                     </div>
                 </div>
                 <div class="mt-1 flex items-baseline gap-1 truncate">
                     @if($metrics['peak_count'] > 0)
-                        <span class="text-sm sm:text-base font-bold tabular-nums text-gray-950 dark:text-white">{{ $metrics['peak_month'] }}</span>
-                        <span class="text-[0.65rem] font-normal text-gray-500 dark:text-gray-400">({{ $metrics['peak_count'] }})</span>
+                        <span class="text-sm sm:text-base font-bold tabular-nums text-[var(--text-primary)]">{{ $metrics['peak_month'] }}</span>
+                        <span class="text-[0.65rem] font-normal text-[var(--text-secondary)]">({{ $metrics['peak_count'] }})</span>
                     @else
-                        <span class="text-sm sm:text-base font-bold tabular-nums text-gray-950 dark:text-white">{{ $metrics['current_month_label'] }}</span>
-                        <span class="text-[0.65rem] font-normal text-gray-500 dark:text-gray-400">(0)</span>
+                        <span class="text-sm sm:text-base font-bold tabular-nums text-[var(--text-primary)]">{{ $metrics['current_month_label'] }}</span>
+                        <span class="text-[0.65rem] font-normal text-[var(--text-secondary)]">(0)</span>
                     @endif
                 </div>
             </div>
         </div>
 
         @if(! $metrics['has_activity'])
-            <div class="mb-3 flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:bg-gray-800/40 dark:text-gray-400">
-                <x-heroicon-m-information-circle class="size-4 shrink-0 text-gray-400" />
+            <div class="mb-3 flex items-center gap-2 rounded-lg bg-[var(--surface-ground)] px-3 py-2 text-xs text-[var(--text-secondary)]">
+                <x-heroicon-m-information-circle class="size-4 shrink-0 text-[var(--text-muted)]" />
                 <span>Nenhuma movimentação de propostas registrada no período selecionado.</span>
             </div>
         @endif
@@ -187,23 +187,45 @@
                 ></canvas>
 
                 <span
+                    aria-hidden="true"
                     x-ref="backgroundColorElement"
                     class="fi-wi-chart-bg-color"
                 ></span>
 
                 <span
+                    aria-hidden="true"
                     x-ref="borderColorElement"
                     class="fi-wi-chart-border-color"
                 ></span>
 
                 <span
+                    aria-hidden="true"
                     x-ref="gridColorElement"
                     class="fi-wi-chart-grid-color"
                 ></span>
 
                 <span
+                    aria-hidden="true"
                     x-ref="textColorElement"
                     class="fi-wi-chart-text-color"
+                ></span>
+
+                <span
+                    aria-hidden="true"
+                    x-ref="tooltipBackgroundColorElement"
+                    class="fi-wi-chart-tooltip-bg-color"
+                ></span>
+
+                <span
+                    aria-hidden="true"
+                    x-ref="tooltipTextColorElement"
+                    class="fi-wi-chart-tooltip-text-color"
+                ></span>
+
+                <span
+                    aria-hidden="true"
+                    x-ref="tooltipBorderColorElement"
+                    class="fi-wi-chart-tooltip-border-color"
                 ></span>
             </div>
         </div>

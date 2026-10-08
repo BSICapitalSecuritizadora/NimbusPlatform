@@ -48,6 +48,7 @@ use Spatie\Permission\PermissionRegistrar;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\Support\DatabaseConcurrencyFailure;
 use Tests\Support\MeasurementPhysicalProgressScenario as PhysicalScenario;
+use Tests\Support\MeasurementPlanVersionFixture;
 use Tests\Support\MeasurementReceiptEvidenceScenario as ReceiptScenario;
 
 /**
@@ -302,12 +303,13 @@ function domainErrorTwoDevelopments(): array
     $planSets = [];
 
     foreach (['Torre Alfa' => '10000.00', 'Torre Beta' => '20000.00'] as $name => $fund) {
-        $planSet = MeasurementPlanSet::factory()->create([
+        // O Fundo de Obra é da versão do plano: vai para a V1, que a fixture
+        // ativa depois de receber o cronograma -- só plano vigente recebe medição.
+        $planSet = MeasurementPlanSet::factory()->withConstructionFund($fund)->create([
             'operation_id' => $operation->id,
             'construction_id' => Construction::factory()->create(['development_name' => $name])->id,
             'name' => $name,
             'is_default' => $planSets === [],
-            'construction_fund_amount' => $fund,
             'initial_incurred_amount' => '0.00',
         ]);
         $line = MeasurementPlanLine::factory()->create([
@@ -317,6 +319,7 @@ function domainErrorTwoDevelopments(): array
             'initial_realized_cumulative_percent' => 0,
             'measurement_date' => '2026-08-01',
         ]);
+        MeasurementPlanVersionFixture::activate($planSet);
         $path = "nimbus_docs/measurements/assets/visibility-{$measurement->id}-{$planSet->id}.pdf";
         Storage::disk('local')->put($path, "%PDF-1.7 {$name}");
         $measurement->assets()->create(['plan_set_id' => $planSet->id, 'plan_line_id' => $line->id, 'storage_path' => $path, 'storage_disk' => 'local']);
@@ -390,41 +393,49 @@ it('explains an Engineering refusal that has no field and keeps the modal open',
 });
 
 it('keeps an Engineering refusal that has a field under the development field, without a notification', function () {
-    $scenario = PhysicalScenario::plan();
-    $may = PhysicalScenario::measured($scenario, '2026-05', 10);
-    $second = PhysicalScenario::measurement($scenario, '2026-05');
+    // Uma segunda medição na linha já medida não nasce mais: a ocupação da
+    // medição prevista é única desde o envio. A recusa com campo que só o
+    // domínio conhece é outra: o avanço físico inicial do plano já cobre maio,
+    // e a Engenharia recusa avanço positivo nessa competência -- embaixo do
+    // campo do empreendimento, que o modal não teria como conferir sozinho.
+    $scenario = PhysicalScenario::plan(initialPercent: '20.00', referenceDate: '2026-05-31');
+    $measurement = PhysicalScenario::measurement($scenario, '2026-05');
     $this->actingAs($scenario['actor']);
     $field = "mountedActions.0.data.realized.{$scenario['planSet']->id}";
 
-    $component = Livewire::test(ViewMeasurement::class, ['record' => $second->getRouteKey()])
+    $component = Livewire::test(ViewMeasurement::class, ['record' => $measurement->getRouteKey()])
         ->callAction('approve', data: ['realized' => [$scenario['planSet']->id => 4]]);
 
     expect($component->errors()->get($field))->toBe([
-        "A medição 01 (05/2026) do cronograma de Plano padrão já está vinculada à medição #{$may->id}, aprovada pela Engenharia. Recuse esta medição ou corrija a linha do cronograma escolhida no envio.",
+        'A competência 05/2026 de Plano padrão já está coberta pelo avanço físico inicial de 20,00% (referência 31/05/2026).',
     ])
         ->and(domainErrorKeysWithoutField($component))->toBe([])
         ->and(domainErrorNotifications())->toBe([]);
 
     $component->assertActionMounted('approve');
+
+    expect($measurement->fresh()->engineering_snapshot)->toBeNull();
 });
 
 it('puts the field errors on their fields and the rest in a single notification', function () {
-    $scenario = PhysicalScenario::plan();
-    PhysicalScenario::measured($scenario, '2026-05', 10);
-    $second = PhysicalScenario::measurement($scenario, '2026-05');
-    DB::table('measurements')->where('id', $second->id)->update(['reference_month' => null]);
+    // A competência coberta pelo avanço inicial recusa o percentual no campo
+    // do empreendimento; a competência ausente não tem campo no modal.
+    $scenario = PhysicalScenario::plan(initialPercent: '20.00', referenceDate: '2026-05-31');
+    $measurement = PhysicalScenario::measurement($scenario, '2026-05');
+    DB::table('measurements')->where('id', $measurement->id)->update(['reference_month' => null]);
     $this->actingAs($scenario['actor']);
     $field = "mountedActions.0.data.realized.{$scenario['planSet']->id}";
 
-    $component = Livewire::test(ViewMeasurement::class, ['record' => $second->getRouteKey()])
+    $component = Livewire::test(ViewMeasurement::class, ['record' => $measurement->getRouteKey()])
         ->callAction('approve', data: ['realized' => [$scenario['planSet']->id => 4]]);
 
     expect($component->errors()->keys())->toBe([$field])
+        ->and($component->errors()->get($field))->toBe(['A competência 05/2026 de Plano padrão já está coberta pelo avanço físico inicial de 20,00% (referência 31/05/2026).'])
         ->and(domainErrorKeysWithoutField($component))->toBe([])
         ->and(domainErrorNotifications())->toHaveCount(1)
         ->and(domainErrorNotificationBody('Ação não concluída.'))->toBe('Informe a competência da medição antes de aprovar a Engenharia.');
 
-    expect($second->fresh()->engineering_snapshot)->toBeNull();
+    expect($measurement->fresh()->engineering_snapshot)->toBeNull();
 });
 
 it('tells to register a payment, without offering the justification, when the Payment stage has no payment', function () {

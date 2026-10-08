@@ -34,6 +34,12 @@ enum PuOfficialCurveFreshness: string
     /** O passado da curva oficial mudou (índice corrigido, parâmetro, evento): a extensão está suspensa. */
     case ReprocessingRequired = 'reprocessing_required';
 
+    /**
+     * Mudança contratual ainda não homologada a partir de uma data futura: a oficial
+     * chegou à véspera e só avança com uma versão nova homologada (Fase 4).
+     */
+    case NewVersionRequired = 'new_version_required';
+
     /** Indexador sem extensão diária por índice realizado (prefixado, IPCA fora de operação). */
     case NotTracked = 'not_tracked';
 
@@ -47,6 +53,7 @@ enum PuOfficialCurveFreshness: string
             self::MissingIndex => 'Índice exigido ausente',
             self::ExtensionFailed => 'Extensão diária falhou',
             self::ReprocessingRequired => 'Reprocessamento necessário',
+            self::NewVersionRequired => 'Nova versão necessária: mudança contratual não homologada',
             self::NotTracked => 'Sem acompanhamento diário',
         };
     }

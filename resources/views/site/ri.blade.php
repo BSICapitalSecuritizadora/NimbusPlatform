@@ -138,7 +138,7 @@
     <div class="container position-relative z-1">
         <div class="row g-4 align-items-center">
             <div class="col-lg-8">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Institucional</span>
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent); letter-spacing: 0.1em; font-weight: 600;">Institucional</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">Relações com <span style="color: var(--gold);">Investidores</span></h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 760px;">
                     Central pública de documentos, comunicados e informações institucionais da BSI Capital, organizada para apoiar investidores, agentes da operação e demais stakeholders no acompanhamento das emissões e da companhia.
@@ -287,7 +287,7 @@
                                         <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                                             <span class="badge badge-soft px-3 py-2">{{ $categories[$d->category] ?? ($d->category ?? '—') }}</span>
                                             @foreach($d->emissions as $emission)
-                                                <span class="badge px-3 py-2" style="background: rgba(212,175,55,0.1); color: var(--gold); border: 1px solid rgba(212,175,55,0.2);">{{ $emission->name }}</span>
+                                                <span class="badge px-3 py-2" style="background: color-mix(in srgb, var(--gold) 10%, transparent); color: var(--gold); border: 1px solid color-mix(in srgb, var(--gold) 20%, transparent);">{{ $emission->name }}</span>
                                             @endforeach
                                         </div>
                                         <div class="d-flex flex-wrap gap-3 small text-muted">

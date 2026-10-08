@@ -12,6 +12,7 @@ use App\Filament\Resources\Operations\RelationManagers\MeasurementsRelationManag
 use App\Filament\Resources\Operations\RelationManagers\PaymentsRelationManager;
 use App\Filament\Resources\Operations\RelationManagers\PlanLinesRelationManager;
 use App\Filament\Resources\Operations\RelationManagers\PlanSetsRelationManager;
+use App\Filament\Resources\Operations\RelationManagers\PlanVersionsRelationManager;
 use App\Filament\Resources\Operations\Schemas\OperationForm;
 use App\Filament\Resources\Operations\Schemas\OperationInfolist;
 use App\Filament\Resources\Operations\Tables\OperationsTable;
@@ -77,6 +78,7 @@ class OperationResource extends Resource
     {
         return [
             PlanSetsRelationManager::class,
+            PlanVersionsRelationManager::class,
             PlanLinesRelationManager::class,
             MeasurementsRelationManager::class,
             PaymentsRelationManager::class,

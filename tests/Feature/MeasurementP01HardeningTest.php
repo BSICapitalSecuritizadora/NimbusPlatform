@@ -1,11 +1,13 @@
 <?php
 
+use App\Enums\MeasurementPlanRevisionCategory;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Filament\Resources\Measurements\Pages\ListMeasurements;
 use App\Filament\Resources\Measurements\Schemas\MeasurementForm;
 use App\Filament\Resources\Operations\Pages\EditOperation;
 use App\Filament\Resources\Operations\Pages\ViewOperation;
-use App\Filament\Resources\Operations\RelationManagers\PlanLinesRelationManager;
+use App\Filament\Resources\Operations\RelationManagers\PlanSetsRelationManager;
+use App\Filament\Resources\Operations\RelationManagers\PlanVersionsRelationManager;
 use App\Models\Construction;
 use App\Models\Measurement;
 use App\Models\MeasurementAsset;
@@ -15,9 +17,11 @@ use App\Models\Operation;
 use App\Models\User;
 use App\Services\MeasurementAuthorizationService;
 use App\Services\MeasurementFileValidationService;
+use App\Services\MeasurementPlanVersionService;
 use App\Services\MeasurementWorkflow;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +32,7 @@ use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementPlanVersionFixture;
 use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 uses(RefreshDatabase::class);
@@ -110,6 +115,9 @@ function createP01Scenario(int $planSetCount = 1, ?User $actor = null): array
             'sequence_number' => 1,
             'measurement_date' => '2026-08-01',
         ]);
+        // A linha entra no rascunho da V1, e o plano só recebe arquivo de
+        // medição depois que ela fica vigente.
+        MeasurementPlanVersionFixture::activate($planSet);
         $path = "nimbus_docs/measurements/assets/p01-{$measurement->id}-{$sequence}.pdf";
         putP01Pdf($path, suffix: "asset-{$sequence}");
         $asset = $measurement->assets()->create([
@@ -207,20 +215,57 @@ it('blocks a forged Filament responsibility payload on the backend', function ()
 it('rejects custom plan mutations for a read-only participant', function () {
     $reader = User::factory()->withTwoFactor()->create();
     $reader->givePermissionTo('operations.view');
-    $operation = Operation::factory()->create(['assigned_user_id' => $reader->id]);
+    $operation = Operation::factory()->create(['status' => 'active', 'assigned_user_id' => $reader->id]);
     $planSet = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
     $line = MeasurementPlanLine::factory()->create([
         'operation_id' => $operation->id,
         'plan_set_id' => $planSet->id,
+        'planned_monthly_percent' => 10,
     ]);
+    $draft = $planSet->draftVersion()->firstOrFail();
+    $service = app(MeasurementPlanVersionService::class);
     $this->actingAs($reader);
 
-    Livewire::test(PlanLinesRelationManager::class, [
+    // O previsto muda só no rascunho, pela aba Versões dos Planos: quem só lê
+    // a operação não vê as ações de escrita dele...
+    Livewire::test(PlanVersionsRelationManager::class, [
         'ownerRecord' => $operation,
         'pageClass' => ViewOperation::class,
-    ])->assertTableActionHidden('editPlanned', $line);
+    ])
+        ->assertTableActionHidden('editDraft', $draft)
+        ->assertTableActionHidden('generateDraftLines', $draft)
+        ->assertTableActionHidden('activateVersion', $draft);
 
-    expect($line->fresh()->planned_monthly_percent)->not->toBe('20.00');
+    // ...e o serviço de planos recusa o payload forjado.
+    expect(fn () => $service->updateDraft($draft, $reader, [], [[
+        'id' => $line->id,
+        'sequence_number' => $line->sequence_number,
+        'planned_monthly_percent' => 20,
+        'planned_cumulative_percent' => 20,
+        'measurement_date' => $line->measurement_date->toDateString(),
+    ]], (int) $draft->revision))->toThrow(AuthorizationException::class)
+        ->and(fn () => $service->activate($draft, $reader, (int) $draft->revision))->toThrow(AuthorizationException::class);
+
+    // Com o plano em vigor, a revisão também não é oferecida nem aceita.
+    MeasurementPlanVersionFixture::activate($planSet);
+    $active = $planSet->activeVersion()->firstOrFail();
+
+    Livewire::test(PlanVersionsRelationManager::class, [
+        'ownerRecord' => $operation,
+        'pageClass' => ViewOperation::class,
+    ])->assertTableActionHidden('createRevision', $active);
+
+    Livewire::test(PlanSetsRelationManager::class, [
+        'ownerRecord' => $operation,
+        'pageClass' => ViewOperation::class,
+    ])->assertTableActionHidden('createPlanRevision', $planSet);
+
+    expect(fn () => $service->createRevision($planSet, $reader, [
+        'revision_category' => MeasurementPlanRevisionCategory::Schedule->value,
+        'revision_reason' => 'Payload forjado.',
+    ]))->toThrow(AuthorizationException::class)
+        ->and($line->fresh()->planned_monthly_percent)->toBe('10.00')
+        ->and($planSet->versions()->count())->toBe(1);
 });
 
 it('keeps operation immutable after measurement creation', function () {
@@ -277,8 +322,20 @@ it('blocks finalization when snapshot coverage is missing or points to the wrong
     if ($tamper === 'missing') {
         DB::table('measurement_assets')->where('id', $asset->id)->delete();
     } else {
+        // As FKs compostas não deixam o arquivo apontar para outro plano sem
+        // levar junto a versão e a linha dele: a divergência que ainda cabe no
+        // banco é o arquivo inteiro de outro plano.
         $foreignPlanSet = MeasurementPlanSet::factory()->create();
-        DB::table('measurement_assets')->where('id', $asset->id)->update(['plan_set_id' => $foreignPlanSet->id]);
+        $foreignLine = MeasurementPlanLine::factory()->create(['plan_set_id' => $foreignPlanSet->id]);
+
+        expect(fn () => DB::table('measurement_assets')->where('id', $asset->id)->update(['plan_set_id' => $foreignPlanSet->id]))
+            ->toThrow(QueryException::class);
+
+        DB::table('measurement_assets')->where('id', $asset->id)->update([
+            'plan_set_id' => $foreignPlanSet->id,
+            'plan_version_id' => $foreignLine->plan_version_id,
+            'plan_line_id' => $foreignLine->id,
+        ]);
     }
 
     expect(fn () => app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['actor']))

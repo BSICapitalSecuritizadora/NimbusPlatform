@@ -1,28 +1,13 @@
 @theme {
-    /* Colors */
-    --color-navy-900: #091b23;
-    --color-navy-800: #122a34;
-    --color-navy-700: #22424c;
-    --color-navy-600: #355b67;
-    --color-navy-100: #d7e0e3;
-    --color-navy-50: #eef2f3;
-
-    --color-gold-700: #7b541e;
-    --color-gold-600: #8d6123;
-    --color-gold-500: #a06e28;
-    --color-gold-400: #b4864a;
-    --color-gold-200: #d7c09c;
-    --color-gold-100: #e8dcc7;
-    --color-gold-50: #f4eee6;
-
-    --color-ink-900: #101e24;
-    --color-ink-700: #31444b;
-    --color-ink-500: #5d6a70;
-    --color-ink-400: #808c91;
-    --color-ink-300: #aab2b5;
-    --color-ink-200: #cdd1d2;
-    --color-ink-100: #dfe1e2;
-    --color-ink-50: #f2efee;
+    /* ── Canonical Aliases for Portals & External Surfaces ── */
+    --color-ink-900: var(--color-navy-900);
+    --color-ink-700: var(--color-navy-700);
+    --color-ink-500: var(--color-navy-500);
+    --color-ink-400: var(--color-navy-400);
+    --color-ink-300: var(--color-navy-300);
+    --color-ink-200: var(--color-navy-200);
+    --color-ink-100: var(--color-navy-100);
+    --color-ink-50: var(--surface-highlight);
 
     --color-emerald-600: #1E7A56;
     --color-emerald-50: #E6F1EC;
@@ -33,7 +18,7 @@
     --color-rose-600: #9B2D3E;
     --color-rose-50: #F7E5E8;
 
-    --color-portal-bg: #e6e4e4;
+    --color-portal-bg: var(--surface-canvas);
 
     /* Typography */
     --font-fraunces: 'Fraunces', serif;
@@ -59,7 +44,7 @@
     /* Link Action Hover Style */
     .t-link-action:hover {
         text-decoration: underline !important;
-        text-decoration-color: var(--color-gold-500) !important;
+        text-decoration-color: var(--accent) !important;
     }
 
     .p-header {
@@ -73,7 +58,7 @@
         right: 0;
         bottom: -1px;
         height: 1px;
-        background: linear-gradient(90deg, transparent, var(--color-gold-500) 30%, var(--color-gold-500) 70%, transparent);
+        background: linear-gradient(90deg, transparent, var(--accent) 30%, var(--accent) 70%, transparent);
         opacity: 0.55;
         z-index: 10;
     }
@@ -97,24 +82,24 @@
         top: 24px;
         bottom: 24px;
         width: 3px;
-        background: var(--color-gold-500);
+        background: var(--accent);
     }
 
     .kpi {
-        background: #FFF;
-        border: 1px solid var(--color-ink-200);
+        background: var(--surface-card);
+        border: 1px solid var(--border-subtle);
         border-radius: 8px;
         padding: 24px 26px;
     }
     
     .kpi.gold {
-        border-top: 2px solid var(--color-gold-500);
+        border-top: 2px solid var(--accent);
     }
 
     .kpi-meta {
         margin-top: 14px;
         padding-top: 12px;
-        border-top: 1px solid var(--color-ink-100);
+        border-top: 1px solid var(--border-subtle);
     }
 
     .row-cta {
@@ -126,7 +111,7 @@
     }
     
     .row-cta:hover {
-        border-bottom-color: var(--color-gold-500);
+        border-bottom-color: var(--accent);
         color: var(--color-navy-900);
     }
 

@@ -14,33 +14,33 @@
         font-weight: 700;
         letter-spacing: 0.14em;
         text-transform: uppercase;
-        color: #091b23;
+        color: var(--text-primary);
     }
 
     .bsi-investor-login-form .bsi-investor-credential-field {
         gap: 0.45rem;
         padding: 0.95rem 1rem;
-        border: 2px solid var(--color-brand-700);
+        border: 2px solid var(--border-strong);
         border-radius: 1rem;
-        background: var(--color-white);
+        background: var(--surface-card);
     }
 
     .bsi-investor-login-form .bsi-investor-credential-field:focus-within {
-        border-color: var(--color-brand-700);
-        box-shadow: 0 0 0 3px rgba(9, 27, 35, 0.12);
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-subtle);
     }
 
     .bsi-investor-login-form .bsi-investor-credential-field input[data-flux-control]:not([type='checkbox']) {
         min-height: auto;
         border: 0 !important;
         background: transparent !important;
-        color: #091b23 !important;
+        color: var(--text-primary) !important;
         padding-inline: 0;
         box-shadow: none !important;
     }
 
     .bsi-investor-login-form .bsi-investor-credential-field input[data-flux-control]::placeholder {
-        color: #8b9398;
+        color: var(--text-muted);
         opacity: 1;
     }
 </style>

@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\Services;
 
+use App\Domain\PuCalculator\DTOs\PuCurveChangeAssessment;
 use App\Domain\PuCalculator\DTOs\PuCurveExtensionResult;
+use App\Domain\PuCalculator\DTOs\PuCurveInputSnapshot;
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
+use App\Domain\PuCalculator\Enums\PuCurveChangeImpact;
 use App\Domain\PuCalculator\Enums\PuCurveReviewStatus;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Domain\PuCalculator\Exceptions\PuCurveInputsException;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuDailyCurve;
@@ -50,6 +54,24 @@ use Throwable;
  * Uma extensão que não consegue rodar (pré-requisito bloqueado ou erro de
  * cálculo) fica registrada na própria versão (`extension_failed_at`): é o que
  * separa "a curva ainda não foi estendida" de "a extensão falhou".
+ *
+ * Fase 4 -- índice novo estende, contrato novo não. A curva é recalculada a partir
+ * do RETRATO de insumos aprovado na versão, nunca das tabelas vivas: um evento,
+ * parâmetro ou integralização que a versão não aprovou nunca entra nela. Antes de
+ * anexar, os insumos vivos são comparados com o retrato
+ * ({@see PuCurveChangeImpactClassifier}):
+ *
+ *  - iguais: a extensão segue (inclusive aplicando, na data, o evento futuro que a
+ *    versão já aprovou);
+ *  - mudança só depois do último dia gravado: a versão avança no máximo até a
+ *    véspera da data afetada e fica registrada como pendente de versão nova;
+ *  - mudança que alcança dias gravados: nada é anexado; a versão governada fica
+ *    marcada para reprocessamento, e a de trabalho comum é regerada.
+ *
+ * A mesma comparação é refeita dentro da transação, com os insumos lidos sob
+ * trava compartilhada: uma mudança contratual concorrente ou comitou antes (e é
+ * vista) ou espera o commit da extensão. Versão sem retrato (anterior à Fase 4)
+ * não é estendida: não há o que provar.
  */
 final class PuCurveExtensionService
 {
@@ -75,6 +97,10 @@ final class PuCurveExtensionService
 
     public const ACTION_DIVERGED_GOVERNED = 'diverged_governed';
 
+    public const ACTION_CONTRACTUAL_CHANGE_PENDING = 'contractual_change_pending';
+
+    public const CAUSE_CONTRACTUAL_INPUT_CHANGED = 'contractual_input_changed';
+
     /** @var list<PuCurveStatus> */
     private const EXTENDABLE_STATUSES = [
         PuCurveStatus::Generated,
@@ -90,6 +116,8 @@ final class PuCurveExtensionService
         private readonly PuOperationalProfileGuard $operationalProfiles,
         private readonly PuAuditLogService $auditLog,
         private readonly PuPaymentScheduleService $paymentSchedule,
+        private readonly PuCurveInputSnapshotService $snapshots,
+        private readonly PuCurveChangeImpactClassifier $classifier,
     ) {}
 
     /**
@@ -182,6 +210,23 @@ final class PuCurveExtensionService
         }
 
         try {
+            $approved = $this->snapshots->forVersion($version);
+        } catch (PuCurveInputsException $exception) {
+            return $this->refuseWithoutInputs($version, $exception->getMessage(), $purpose);
+        }
+
+        if (! $approved instanceof PuCurveInputSnapshot) {
+            return $this->refuseWithoutInputs(
+                $version,
+                sprintf(
+                    'A versão %s não tem retrato de insumos contratuais (gerada antes da Fase 4): a extensão não tem como provar o que ela aprovou. Gere uma nova versão.',
+                    $version->calculation_version,
+                ),
+                $purpose,
+            );
+        }
+
+        try {
             $prerequisites = $this->prerequisites->handle($emission);
 
             if (! $prerequisites->passes()) {
@@ -196,7 +241,18 @@ final class PuCurveExtensionService
                 );
             }
 
-            $computedRows = $this->generator->handle($emission)->rows;
+            $assessment = $this->classifier->compare(
+                $approved,
+                $this->snapshots->capture($emission),
+                $this->classifier->lastPersistedDate($version),
+            );
+
+            if (($contractual = $this->contractualOutcome($version, $assessment, $purpose)) instanceof PuCurveExtensionResult) {
+                return $contractual;
+            }
+
+            // Calculada a partir do retrato aprovado: o que a versão não aprovou não entra.
+            $computedRows = $this->generator->handle($this->snapshots->hydrate($emission, $approved))->rows;
             $this->operationalProfiles->assertOperational($computedRows, 'a extensão da curva operacional');
             $persistedRows = $this->checksums->persistedRows($version);
         } catch (Throwable $exception) {
@@ -237,17 +293,31 @@ final class PuCurveExtensionService
             ])->save();
         }
 
-        if ($tail === []) {
-            return new PuCurveExtensionResult(self::ACTION_UP_TO_DATE, $version->id, purpose: $purpose);
+        $this->syncContractualChange($version, $assessment);
+        $limitedTail = $this->limitTail($tail, $assessment);
+
+        if ($limitedTail === []) {
+            return $tail !== [] && $assessment->hasContractualChange()
+                ? new PuCurveExtensionResult(
+                    action: self::ACTION_CONTRACTUAL_CHANGE_PENDING,
+                    versionId: $version->id,
+                    firstDivergentDate: $assessment->earliestAffectedDate?->toDateString(),
+                    reason: $assessment->summary(),
+                    purpose: $purpose,
+                )
+                : new PuCurveExtensionResult(self::ACTION_UP_TO_DATE, $version->id, purpose: $purpose);
         }
 
         // O status visto antes do recálculo não vale como final: sob a trava da
         // emissão a versão é relida, e uma versão invalidada ou substituída no
         // meio do caminho não recebe dia novo -- nem a oficial que deixou de ser
-        // oficial. Anexar não publica nada no legado; numa curva oficial, os
+        // oficial. Os insumos contratuais também são relidos, sob trava
+        // compartilhada: o que mudou entre o cálculo e aqui decide o que ainda pode
+        // entrar. Anexar não publica nada no legado; numa curva oficial, os
         // pagamentos dos dias novos são conciliados na mesma transação -- ou
         // entram as linhas e os pagamentos, ou nada.
-        $extended = DB::transaction(function () use ($emission, $version, $tail, $purpose): EmissionPuCurveVersion|string {
+        $lockedAssessment = null;
+        $extended = DB::transaction(function () use ($emission, $version, $limitedTail, $purpose, $approved, &$lockedAssessment): array|string {
             $lockedEmission = Emission::query()->whereKey($emission->id)->lockForUpdate()->firstOrFail();
             $locked = EmissionPuCurveVersion::query()->whereKey($version->id)->lockForUpdate()->firstOrFail();
 
@@ -257,6 +327,25 @@ final class PuCurveExtensionService
 
             if ($purpose === self::PURPOSE_OFFICIAL && ! $this->isStillOfficial($locked)) {
                 return sprintf('A versão %s deixou de ser a oficial durante a extensão.', $locked->calculation_version);
+            }
+
+            $lockedAssessment = $this->classifier->compare(
+                $approved,
+                $this->snapshots->capture($lockedEmission, lockForShare: true),
+                $this->classifier->lastPersistedDate($locked),
+            );
+
+            if ($this->blocksExtension($locked, $lockedAssessment, $purpose)) {
+                return sprintf(
+                    'Os insumos contratuais mudaram durante a extensão; nada foi anexado nesta rodada. %s',
+                    $lockedAssessment->summary(),
+                );
+            }
+
+            $tail = $this->limitTail($limitedTail, $lockedAssessment);
+
+            if ($tail === []) {
+                return sprintf('Os insumos contratuais mudaram durante a extensão; nada foi anexado nesta rodada. %s', $lockedAssessment->summary());
             }
 
             if (($changedObservation = $this->changedTailObservation($lockedEmission, $tail)) !== null) {
@@ -287,10 +376,15 @@ final class PuCurveExtensionService
                 $this->paymentSchedule->reconcile($lockedEmission);
             }
 
-            return $locked;
+            return [$locked, $tail];
         });
 
-        if (! $extended instanceof EmissionPuCurveVersion) {
+        if (! is_array($extended)) {
+            if ($lockedAssessment instanceof PuCurveChangeAssessment
+                && ($contractual = $this->contractualOutcome($version->fresh() ?? $version, $lockedAssessment, $purpose)) instanceof PuCurveExtensionResult) {
+                return $contractual;
+            }
+
             return new PuCurveExtensionResult(
                 action: self::ACTION_NOT_EXTENDABLE,
                 versionId: $version->id,
@@ -299,16 +393,167 @@ final class PuCurveExtensionService
             );
         }
 
-        $fromDate = $tail[0]->date->toDateString();
-        $toDate = $tail[array_key_last($tail)]->date->toDateString();
-        $this->auditLog->logCurveExtended($emission, $extended, count($tail), $fromDate, $toDate);
+        [$extendedVersion, $appended] = $extended;
+        $fromDate = $appended[0]->date->toDateString();
+        $toDate = $appended[array_key_last($appended)]->date->toDateString();
+        $this->auditLog->logCurveExtended($emission, $extendedVersion, count($appended), $fromDate, $toDate);
 
         return new PuCurveExtensionResult(
             action: self::ACTION_EXTENDED,
             versionId: $version->id,
-            appendedRows: count($tail),
+            appendedRows: count($appended),
             fromDate: $fromDate,
             toDate: $toDate,
+            purpose: $purpose,
+        );
+    }
+
+    /**
+     * O que a mudança contratual faz com esta extensão, ou nulo quando ela pode
+     * seguir (sem mudança, ou mudança só no futuro de uma versão governada).
+     *
+     *  - versão governada com o passado alcançado: marcada para reprocessamento,
+     *    nada anexado;
+     *  - versão de trabalho comum com qualquer mudança: regerada inteira, como
+     *    qualquer divergência de curva comum.
+     */
+    private function contractualOutcome(
+        EmissionPuCurveVersion $version,
+        PuCurveChangeAssessment $assessment,
+        string $purpose,
+    ): ?PuCurveExtensionResult {
+        if (! $assessment->hasContractualChange()) {
+            return null;
+        }
+
+        if (! $this->isGoverned($version)) {
+            $this->syncContractualChange($version, $assessment);
+
+            return $this->diverged($version, $assessment->earliestAffectedDate?->toDateString(), $assessment->summary(), $purpose);
+        }
+
+        if ($assessment->impact !== PuCurveChangeImpact::HistoricalReprocessRequired) {
+            return null;
+        }
+
+        $this->syncContractualChange($version, $assessment);
+        $existing = is_array($version->extension_divergence) ? $version->extension_divergence : [];
+        $earliest = $assessment->earliestAffectedDate?->toDateString();
+        $previousFirst = $existing['first_divergent_date'] ?? null;
+        $version->forceFill([
+            'extension_diverged_at' => $version->extension_diverged_at ?? now(),
+            'extension_divergence' => [
+                ...$existing,
+                'cause' => $existing['cause'] ?? self::CAUSE_CONTRACTUAL_INPUT_CHANGED,
+                'contractual_input_changed' => true,
+                'first_divergent_date' => $previousFirst !== null && $earliest !== null
+                    ? min((string) $previousFirst, $earliest)
+                    : ($earliest ?? $previousFirst),
+                'reason' => $assessment->summary(),
+                'checked_at' => now()->toIso8601String(),
+            ],
+        ])->save();
+        $this->auditLog->logCurveExtensionDiverged($version, $earliest, $assessment->summary(), true);
+
+        return new PuCurveExtensionResult(
+            action: self::ACTION_DIVERGED_GOVERNED,
+            versionId: $version->id,
+            firstDivergentDate: $earliest,
+            reason: $assessment->summary(),
+            purpose: $purpose,
+        );
+    }
+
+    /**
+     * Dentro da transação: a mudança contratual relida sob trava impede anexar?
+     */
+    private function blocksExtension(EmissionPuCurveVersion $locked, PuCurveChangeAssessment $assessment, string $purpose): bool
+    {
+        if (! $assessment->hasContractualChange()) {
+            return false;
+        }
+
+        return ! $this->isGoverned($locked)
+            || $assessment->impact === PuCurveChangeImpact::HistoricalReprocessRequired;
+    }
+
+    /**
+     * Só os dias até a véspera da primeira data afetada por uma mudança contratual
+     * ainda não aprovada.
+     *
+     * @param  list<PuDailyCurveRowData>  $tail
+     * @return list<PuDailyCurveRowData>
+     */
+    private function limitTail(array $tail, PuCurveChangeAssessment $assessment): array
+    {
+        $limit = $assessment->extensionLimit()?->toDateString();
+
+        if ($limit === null) {
+            return $tail;
+        }
+
+        return array_values(array_filter(
+            $tail,
+            fn (PuDailyCurveRowData $row): bool => $row->date->toDateString() <= $limit,
+        ));
+    }
+
+    /**
+     * Grava (ou limpa) na versão o estado "insumos vivos diferentes dos aprovados".
+     * Só reescreve quando o estado muda, e registra na trilha cada detecção nova.
+     */
+    private function syncContractualChange(EmissionPuCurveVersion $version, PuCurveChangeAssessment $assessment): void
+    {
+        if (! $assessment->hasContractualChange()) {
+            if ($version->contractual_change_detected_at !== null) {
+                $version->forceFill([
+                    'contractual_change_detected_at' => null,
+                    'contractual_change' => null,
+                ])->save();
+            }
+
+            return;
+        }
+
+        $current = is_array($version->contractual_change) ? $version->contractual_change : [];
+        $sameChange = ($current['live_fingerprint'] ?? null) === $assessment->liveFingerprint
+            && ($current['impact'] ?? null) === $assessment->impact->value;
+
+        if ($sameChange && ($current['last_persisted_date'] ?? null) === $assessment->lastPersistedDate?->toDateString()) {
+            return;
+        }
+
+        $version->forceFill([
+            'contractual_change_detected_at' => $version->contractual_change_detected_at ?? now(),
+            'contractual_change' => [
+                ...$assessment->toArray(),
+                'checked_at' => now()->toIso8601String(),
+            ],
+        ])->save();
+
+        // A versão avançar até a véspera não é detecção nova: a trilha registra cada
+        // mudança contratual (ou mudança de impacto) uma vez.
+        if (! $sameChange) {
+            $this->auditLog->logContractualChangeDetected($version, $assessment);
+        }
+    }
+
+    /**
+     * Sem retrato (anterior à Fase 4) ou com retrato que não se explica: a versão de
+     * trabalho comum é regerada; a governada fica com a falha registrada.
+     */
+    private function refuseWithoutInputs(EmissionPuCurveVersion $version, string $reason, string $purpose): PuCurveExtensionResult
+    {
+        if (! $this->isGoverned($version)) {
+            return $this->diverged($version, null, $reason, $purpose);
+        }
+
+        $this->recordFailure($version, self::ACTION_NOT_EXTENDABLE, $reason, $purpose);
+
+        return new PuCurveExtensionResult(
+            action: self::ACTION_NOT_EXTENDABLE,
+            versionId: $version->id,
+            reason: $reason,
             purpose: $purpose,
         );
     }

@@ -76,7 +76,6 @@ class Measurement extends Model
 
     protected $fillable = [
         'operation_id',
-        'plan_set_id',
         'reference_month',
         'filename',
         'storage_path',
@@ -135,6 +134,24 @@ class Measurement extends Model
             }
         });
 
+        // A recusa terminal solta as medições previstas que a medição ocupava
+        // (`measurement_assets.line_claim_key`): a competência volta a aceitar
+        // uma medição nova, e os arquivos continuam gravados como histórico.
+        // Fica aqui, e não só no fluxo, para valer a qualquer gravação da
+        // situação. Pela chave primária, para o UPDATE não travar o intervalo
+        // do índice de `measurement_id` das outras medições.
+        static::updated(function (self $measurement): void {
+            if (! $measurement->wasChanged('status') || $measurement->holdsPlanLineClaims()) {
+                return;
+            }
+
+            $claimingAssetIds = $measurement->assets()->whereNotNull('line_claim_key')->pluck('id')->all();
+
+            if ($claimingAssetIds !== []) {
+                MeasurementAsset::query()->whereKey($claimingAssetIds)->update(['line_claim_key' => null]);
+            }
+        });
+
         static::deleting(function (self $measurement): void {
             if ($measurement->hasWorkflowHistory()) {
                 throw new MeasurementWorkflowException('Uma medição que já entrou no fluxo de análise não pode ser excluída: ela é encerrada pelo próprio fluxo.', [
@@ -186,11 +203,6 @@ class Measurement extends Model
     public function operation(): BelongsTo
     {
         return $this->belongsTo(Operation::class);
-    }
-
-    public function planSet(): BelongsTo
-    {
-        return $this->belongsTo(MeasurementPlanSet::class, 'plan_set_id');
     }
 
     public function uploadedByUser(): BelongsTo
@@ -286,6 +298,19 @@ class Measurement extends Model
     public function getResolvedStorageDiskAttribute(): string
     {
         return $this->storage_disk ?: 'public';
+    }
+
+    /**
+     * A medição ocupa as medições previstas dos próprios arquivos? Toda
+     * medição de pé ocupa -- aberta, finalizada, com Engenharia vigente ou com
+     * pagamento --; só a recusada sem pagamento solta. É o mesmo predicado de
+     * {@see MeasurementPlanLine::scopeAvailableForMeasurement()}.
+     */
+    public function holdsPlanLineClaims(): bool
+    {
+        return $this->status !== 'rejected'
+            || $this->hasApprovedEngineering()
+            || $this->payments()->exists();
     }
 
     public function isOpen(): bool

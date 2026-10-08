@@ -6,6 +6,8 @@ namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
+use App\Domain\PuCalculator\Enums\PuEventType;
+use App\Domain\PuCalculator\Exceptions\PuCurveInputsException;
 use App\Models\EmissionPuEvent;
 use App\Models\IntegralizationHistory;
 use Carbon\CarbonImmutable;
@@ -24,17 +26,35 @@ class PuCurveEventSupport
     ) {}
 
     /**
+     * Pagamentos do cronograma ATIVOS, agrupados pela data efetiva e na ordem
+     * canônica ({@see PuEventType::orderingKey()}). Evento cancelado não entra; evento
+     * ativo de um tipo que estas engines não calculam (alteração de spread, regimes,
+     * vencimento antecipado...) recusa o cálculo em vez de sumir.
+     *
      * @param  EloquentCollection<int, EmissionPuEvent>  $events
      * @return array<string, Collection<int, EmissionPuEvent>>
      */
     public function groupEventsByDate(EloquentCollection $events): array
     {
-        return $events
-            ->sortBy(fn (EmissionPuEvent $event): string => sprintf(
-                '%s|%010d|%010d',
+        $active = $events->filter(fn (EmissionPuEvent $event): bool => $event->isActive());
+
+        foreach ($active as $event) {
+            $type = PuEventType::tryFrom((string) $event->event_type);
+
+            if (! ($type?->isScheduledPayment() ?? false)) {
+                throw new PuCurveInputsException(sprintf(
+                    'O evento %s de %s tem efeito financeiro que esta engine não calcula; a curva não foi calculada.',
+                    $type?->label() ?? (string) $event->event_type,
+                    CarbonImmutable::instance($event->effective_date)->format('d/m/Y'),
+                ));
+            }
+        }
+
+        return $active
+            ->sortBy(fn (EmissionPuEvent $event): string => PuEventType::orderingKey(
                 CarbonImmutable::instance($event->effective_date)->toDateString(),
-                $event->sequence,
-                $event->id,
+                (string) $event->event_type,
+                (int) $event->sequence,
             ))
             ->groupBy(fn (EmissionPuEvent $event): string => CarbonImmutable::instance($event->effective_date)->toDateString())
             ->all();

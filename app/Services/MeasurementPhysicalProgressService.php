@@ -63,7 +63,7 @@ class MeasurementPhysicalProgressService
     /**
      * Junta as fontes ao avanço inicial de cada plano. Não consulta o banco.
      *
-     * @param  array{snapshots: array<int, mixed>, legacy_lines: Collection<int, MeasurementPlanLine>, legacy_plan_sets: array<int, list<int>>}  $sources
+     * @param  array{snapshots: array<int, mixed>, legacy_lines: Collection<int, MeasurementPlanLine>, legacy_plan_sets: array<int, list<int>>, lineages?: array<int, string>}  $sources
      * @param  Collection<int, MeasurementPlanSet>  $planSets
      * @return array<int, MeasurementPhysicalProgress> indexado por `plan_set_id`
      */
@@ -84,7 +84,7 @@ class MeasurementPhysicalProgressService
                 }
 
                 $contribution = is_array($snapshot)
-                    ? $this->snapshotContribution($measurementId, $planSetId, $snapshot)
+                    ? $this->snapshotContribution($measurementId, $planSetId, $snapshot, $sources['lineages'] ?? [])
                     : $this->legacyContribution($measurementId, $planSetId, $sources['legacy_lines'], $sources['legacy_plan_sets'][$measurementId] ?? []);
 
                 if ($contribution === false) {
@@ -115,7 +115,7 @@ class MeasurementPhysicalProgressService
      * Snapshots das medições da operação com a Engenharia vigente e, para as
      * aprovadas antes do snapshot existir, as linhas que elas gravaram.
      *
-     * @return array{snapshots: array<int, mixed>, legacy_lines: Collection<int, MeasurementPlanLine>, legacy_plan_sets: array<int, list<int>>}
+     * @return array{snapshots: array<int, mixed>, legacy_lines: Collection<int, MeasurementPlanLine>, legacy_plan_sets: array<int, list<int>>, lineages: array<int, string>}
      */
     public function sources(int $operationId): array
     {
@@ -133,7 +133,40 @@ class MeasurementPhysicalProgressService
             'snapshots' => $snapshots,
             'legacy_lines' => $this->legacyLines($operationId, $snapshots),
             'legacy_plan_sets' => $this->legacyPlanSets($snapshots),
+            'lineages' => $this->lineages($snapshots),
         ];
+    }
+
+    /**
+     * Linhagem de cada linha que os snapshots citam: a contribuição medida numa
+     * linha da V1 continua sendo da mesma medição prevista na cópia da V2. O
+     * snapshot novo já traz a linhagem; os anteriores a ela são resolvidos
+     * pela linha.
+     *
+     * @param  array<int, mixed>  $snapshots
+     * @return array<int, string> lineage_key por plan_line_id
+     */
+    private function lineages(array $snapshots): array
+    {
+        $lineIds = [];
+
+        foreach ($snapshots as $snapshot) {
+            foreach (is_array($snapshot) && is_array($snapshot['plan_sets'] ?? null) ? $snapshot['plan_sets'] : [] as $entry) {
+                if (is_array($entry) && filled($entry['plan_line_id'] ?? null)) {
+                    $lineIds[] = (int) $entry['plan_line_id'];
+                }
+            }
+        }
+
+        if ($lineIds === []) {
+            return [];
+        }
+
+        return MeasurementPlanLine::query()
+            ->whereKey(array_values(array_unique($lineIds)))
+            ->pluck('lineage_key', 'id')
+            ->map(fn (mixed $key): string => (string) $key)
+            ->all();
     }
 
     /**
@@ -158,7 +191,7 @@ class MeasurementPhysicalProgressService
             ->where('operation_id', $operationId)
             ->whereIn('measurement_id', $legacyIds)
             ->orderBy('id')
-            ->get(['id', 'plan_set_id', 'operation_id', 'sequence_number', 'measurement_date', 'measurement_id', 'realized_monthly_percent'])
+            ->get(['id', 'plan_set_id', 'operation_id', 'sequence_number', 'measurement_date', 'measurement_id', 'realized_monthly_percent', 'lineage_key'])
             ->sortBy([['sequence_number', 'asc'], ['id', 'asc']])
             ->values();
     }
@@ -194,7 +227,10 @@ class MeasurementPhysicalProgressService
      *
      * @param  array<string, mixed>  $snapshot
      */
-    private function snapshotContribution(int $measurementId, int $planSetId, array $snapshot): MeasurementPhysicalProgressContribution|false|null
+    /**
+     * @param  array<int, string>  $lineages
+     */
+    private function snapshotContribution(int $measurementId, int $planSetId, array $snapshot, array $lineages = []): MeasurementPhysicalProgressContribution|false|null
     {
         $entry = collect(is_array($snapshot['plan_sets'] ?? null) ? $snapshot['plan_sets'] : [])
             ->first(fn (mixed $entry): bool => is_array($entry) && (int) ($entry['plan_set_id'] ?? 0) === $planSetId);
@@ -209,13 +245,18 @@ class MeasurementPhysicalProgressService
             return false;
         }
 
+        $planLineId = filled($entry['plan_line_id'] ?? null) ? (int) $entry['plan_line_id'] : null;
+
         return new MeasurementPhysicalProgressContribution(
             measurementId: $measurementId,
             planSetId: $planSetId,
-            planLineId: filled($entry['plan_line_id'] ?? null) ? (int) $entry['plan_line_id'] : null,
+            planLineId: $planLineId,
             sequenceNumber: (int) ($entry['sequence_number'] ?? 0),
             measurementDate: $this->date($entry['measurement_date'] ?? null),
             basisPoints: $basisPoints,
+            lineageKey: is_string($entry['plan_line_lineage_key'] ?? null)
+                ? $entry['plan_line_lineage_key']
+                : ($planLineId === null ? null : ($lineages[$planLineId] ?? null)),
         );
     }
 
@@ -253,6 +294,7 @@ class MeasurementPhysicalProgressService
             measurementDate: $line->measurement_date === null ? null : CarbonImmutable::parse($line->measurement_date->toDateString()),
             basisPoints: $basisPoints,
             legacy: true,
+            lineageKey: $line->lineage_key,
         );
     }
 

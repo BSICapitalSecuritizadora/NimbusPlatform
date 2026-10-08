@@ -2,9 +2,12 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\PuCalculator\DTOs\PuCurveInputSnapshot;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Domain\PuCalculator\Exceptions\PuCurveInputsException;
 use App\Domain\PuCalculator\Services\PuCurveExtensionService;
+use App\Domain\PuCalculator\Services\PuCurveInputSnapshotService;
 use App\Jobs\ExtendPuDailyCurveJob;
 use App\Jobs\GeneratePuDailyCurveJob;
 use App\Models\Emission;
@@ -21,8 +24,12 @@ class GenerateRealizedPuCurvesCommand extends Command
 
     protected $description = 'Estende com o indice realizado mais recente a curva de PU OFICIAL (homologada) e, separadamente, a versao de trabalho de CDI, anexando so os dias novos. Sem nenhuma versao utilizavel, gera a curva inteira (que nasce nao oficial).';
 
-    public function handle(PuCurveExtensionService $extensions): int
+    private PuCurveInputSnapshotService $snapshots;
+
+    public function handle(PuCurveExtensionService $extensions, PuCurveInputSnapshotService $snapshots): int
     {
+        $this->snapshots = $snapshots;
+
         $extensionsQueued = 0;
         $officialExtensions = 0;
         $generations = 0;
@@ -116,10 +123,24 @@ class GenerateRealizedPuCurvesCommand extends Command
      * Só há o que estender quando a versão ainda não alcançou a data final: nesse
      * caso o CDI recém-publicado acrescenta dias realizados. Curvas que já cobrem
      * todo o período não recebem nada.
+     *
+     * A data final é o horizonte do retrato APROVADO na versão (vencimento e
+     * pagamento do vencimento deslocado), não o vencimento vivo: um vencimento
+     * alterado depois da aprovação não estica a versão. Versão sem retrato
+     * (anterior à Fase 4) segue os parâmetros vivos e é a extensão que a recusa.
      */
     private function hasRealizedTailToExtend(Emission $emission, EmissionPuCurveVersion $version): bool
     {
-        $curveEnd = $emission->puParameter?->curve_end_date;
+        try {
+            $approved = $this->snapshots->forVersion($version);
+        } catch (PuCurveInputsException) {
+            // A extensão registra a recusa na versão.
+            return true;
+        }
+
+        $curveEnd = $approved instanceof PuCurveInputSnapshot
+            ? $approved->horizonEndDate()
+            : $emission->puParameter?->curve_end_date;
 
         if ($curveEnd === null) {
             return false;

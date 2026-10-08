@@ -333,8 +333,8 @@
         gap: 7px;
         padding: 6px 10px;
         border-radius: 999px;
-        background: rgba(212, 175, 55, 0.16);
-        color: #e8dcc7;
+        background: var(--accent-subtle);
+        color: var(--color-gold-100);
         font: 600 10px/1 'JetBrains Mono', monospace;
         letter-spacing: .08em;
         text-transform: uppercase;
@@ -345,8 +345,8 @@
         width: 6px;
         height: 6px;
         border-radius: 999px;
-        background: #C9A66A;
-        box-shadow: 0 0 0 4px rgba(201, 166, 106, 0.12);
+        background: var(--color-gold-400);
+        box-shadow: 0 0 0 4px var(--accent-subtle);
     }
 
     .kpi {

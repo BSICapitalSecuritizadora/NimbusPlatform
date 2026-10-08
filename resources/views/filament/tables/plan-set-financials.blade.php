@@ -5,7 +5,8 @@
     $planSet = $getRecord();
     $locale = config('app.locale');
 
-    $fund = $planSet->construction_fund_amount;
+    // O Fundo de Obra é da versão vigente (ou do rascunho da V1, antes da ativação).
+    $fund = $planSet->currentConstructionFundAmount();
     $incurred = (float) $planSet->incurred_amount;
     $available = (float) $planSet->available_balance;
 @endphp

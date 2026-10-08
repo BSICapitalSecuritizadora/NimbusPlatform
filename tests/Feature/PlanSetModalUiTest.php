@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\MeasurementPlanVersionStatus;
 use App\Filament\Resources\Operations\Pages\ViewOperation;
 use App\Filament\Resources\Operations\RelationManagers\PlanSetsRelationManager;
 use App\Models\Construction;
@@ -73,16 +74,18 @@ it('keeps the executive field structure with searchable development and table sc
 
     $html = $livewire->getSchema($livewire->getMountedActionSchemaName())->toHtml();
 
+    // O Fundo de Obra e o cronograma do "Novo Plano" são os da V1, que nasce
+    // em rascunho; replanejar um plano em vigor é revisá-lo.
     $orderedLabels = [
         'Nome do Plano',
         'Empreendimento',
-        'Um plano por empreendimento. A mesma medição pode atender todos os planos da operação.',
+        'Um plano por empreendimento. Para mudar o cronograma ou o Fundo de Obra de um plano em vigor, crie uma revisão na aba Versões dos Planos.',
         'Plano padrão',
         'Definir como plano padrão desta operação.',
-        'Fundo de Obra',
+        'Fundo de Obra (V1)',
         'Incorrido Inicial',
         'Cronograma físico — Previsto',
-        'Pré-cadastre as medições previstas para este plano.',
+        'Pré-cadastre as medições previstas da V1 do plano, que nasce em rascunho e passa a valer quando for ativada (aba Versões dos Planos).',
         'Nenhuma medição prevista cadastrada.',
         'Adicione a primeira medição para estruturar o cronograma físico.',
         'Medições do plano',
@@ -117,7 +120,7 @@ it('keeps the executive field structure with searchable development and table sc
         ->and($html)->toContain('bsi-plan-money-field');
 });
 
-it('creates the plan with lines, default flag and financials through the modal', function () {
+it('creates through the modal the plan and its V1 draft with lines, fund, default flag and incurred amount', function () {
     ['operation' => $operation, 'construction' => $construction] = makePlanSetModalScenario();
 
     planSetsRelationManager($operation)
@@ -151,12 +154,20 @@ it('creates the plan with lines, default flag and financials through the modal',
         ->where('name', 'Plano Executivo')
         ->firstOrFail();
 
+    // O plano guarda a identidade e o incorrido inicial; o Fundo de Obra e o
+    // cronograma são da V1, em rascunho até a ativação.
+    $version = $planSet->versions()->sole();
+
     expect($planSet->construction_id)->toBe($construction->id)
         ->and($planSet->is_default)->toBeTrue()
-        ->and((float) $planSet->construction_fund_amount)->toEqual(1500000.00)
         ->and((float) $planSet->initial_incurred_amount)->toEqual(250000.00)
+        ->and($version->version_number)->toBe(1)
+        ->and($version->status)->toBe(MeasurementPlanVersionStatus::Draft)
+        ->and($version->construction_fund_amount)->toBe('1500000.00')
+        ->and($planSet->currentConstructionFundAmount())->toBe('1500000.00')
+        ->and($version->lines()->count())->toBe(2)
         ->and($planSet->lines()->count())->toBe(2)
-        ->and($planSet->lines()->orderBy('sequence_number')->first()->measurement_date->format('Y-m'))->toBe('2026-10');
+        ->and($version->lines()->orderBy('sequence_number')->first()->measurement_date->format('Y-m'))->toBe('2026-10');
 });
 
 it('still requires the plan name', function () {

@@ -56,7 +56,7 @@ class ProposalStatusDistributionChartWidget extends ChartWidget
                 'labels' => ['Sem propostas'],
                 'datasets' => [[
                     'data' => [1],
-                    'backgroundColor' => ['#334155'],
+                    'backgroundColor' => ['rgba(148, 163, 184, 0.15)'],
                     'borderWidth' => 0,
                 ]],
             ];
@@ -70,7 +70,6 @@ class ProposalStatusDistributionChartWidget extends ChartWidget
                 'data' => array_column($details['active_items'], 'count'),
                 'backgroundColor' => array_column($details['active_items'], 'color_hex'),
                 'borderWidth' => $isSingleItem ? 0 : 2,
-                'borderColor' => '#091b23',
                 'hoverOffset' => 3,
             ]],
         ];

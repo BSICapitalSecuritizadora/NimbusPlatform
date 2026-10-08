@@ -5,10 +5,13 @@ namespace App\Filament\Resources\Measurements\Pages;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Exceptions\OperationLifecycleException;
 use App\Filament\Resources\Measurements\MeasurementResource;
+use App\Filament\Resources\Measurements\Schemas\MeasurementForm;
 use App\Filament\Support\DetectsConcurrentUpdates;
 use App\Filament\Support\SurfacesUnplacedValidationErrors;
 use App\Models\Measurement;
 use App\Models\Operation;
+use App\Models\User;
+use App\Services\MeasurementAuthorizationService;
 use App\Services\MeasurementWorkflow;
 use App\Services\OperationLifecycleService;
 use Filament\Actions\Action;
@@ -17,6 +20,7 @@ use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Enums\Alignment;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -34,6 +38,20 @@ class CreateMeasurement extends CreateRecord
      * padrão da autorização é em inglês e não diz isso.
      */
     private const NOT_A_DIRECT_PARTICIPANT_MESSAGE = 'Você não pode enviar medição nesta operação: o envio é feito por quem participa diretamente dela.';
+
+    /**
+     * A ocupação da medição prevista é única no banco
+     * (`measurement_assets.line_claim_key`): outra medição a ocupou entre a
+     * conferência e a gravação.
+     */
+    private const LINE_CLAIMED_MEANWHILE_MESSAGE = 'A medição prevista escolhida acabou de ser ocupada por outra medição. Recarregue a página e escolha outra.';
+
+    /**
+     * Um plano da operação passou a valer (ou deixou de) entre a escolha da
+     * operação e o envio: os arquivos do formulário não cobrem mais os planos
+     * em vigor, e a Engenharia recusaria a medição sem saída.
+     */
+    public const PLANS_IN_FORCE_CHANGED_MESSAGE = 'Os planos de medição em vigor desta operação mudaram desde que você a selecionou. Selecione a operação de novo para atualizar os arquivos por empreendimento.';
 
     protected static string $resource = MeasurementResource::class;
 
@@ -76,6 +94,8 @@ class CreateMeasurement extends CreateRecord
     public function create(bool $another = false): void
     {
         try {
+            $this->assertTheOperationAcceptsThisSubmission();
+
             parent::create($another);
         } catch (Throwable $exception) {
             $this->record = null;
@@ -126,6 +146,12 @@ class CreateMeasurement extends CreateRecord
             return;
         }
 
+        if ($exception instanceof UniqueConstraintViolationException && str_contains($exception->getMessage(), 'line_claim')) {
+            $this->refuse(self::LINE_CLAIMED_MEANWHILE_MESSAGE);
+
+            return;
+        }
+
         if (! static::isConcurrentUpdate($exception)) {
             throw $exception;
         }
@@ -143,6 +169,105 @@ class CreateMeasurement extends CreateRecord
             ->body($message)
             ->persistent()
             ->send();
+    }
+
+    /**
+     * Trava a Operation escolhida como primeira instrução da transação da
+     * página, antes da validação.
+     *
+     * A validação confere a medição prevista de cada arquivo contra as opções
+     * do formulário -- as linhas da versão vigente do plano que ainda estão
+     * livres. Com o lock só no `handleRecordCreation()`, a fotografia do
+     * REPEATABLE READ nascia na primeira leitura da validação, antes dele: duas
+     * abas viam a mesma linha livre, e a segunda enviava sobre a primeira; uma
+     * revisão do plano ativada no meio passava despercebida. Com a Operation à
+     * frente, o envio, a ativação de versão e a outra aba se serializam, e a
+     * validação lê o estado depois de quem terminou antes. A ocupação da
+     * linha também é única no banco (`measurement_assets.line_claim_key`).
+     *
+     * A operação que a pessoa não enxerga não fica travada: a recusa sai antes
+     * de qualquer outra leitura e desfaz a transação.
+     */
+    protected function beforeValidate(): void
+    {
+        $operationId = filter_var($this->data['operation_id'] ?? null, FILTER_VALIDATE_INT);
+        $actor = auth()->user();
+
+        if ($operationId === false || $operationId === null || $actor === null) {
+            return;
+        }
+
+        Operation::query()->whereKey($operationId)->lockForUpdate()->first();
+
+        if (! Operation::query()->visibleTo($actor)->whereKey($operationId)->exists()) {
+            throw ValidationException::withMessages([
+                'data.operation_id' => 'Selecione uma operação.',
+            ]);
+        }
+    }
+
+    /**
+     * Os arquivos do envio são os dos planos em vigor quando a operação foi
+     * escolhida ({@see MeasurementForm::planSetIdsInForce()}). Um plano ativado
+     * entre a escolha e o envio deixaria a medição sem o arquivo dele -- e o
+     * Editar não acrescenta arquivo --, então a conferência é sob o lock da
+     * Operation, que a ativação também segura. Sem a lista no estado (envio
+     * montado por fora do formulário), não há com o que comparar.
+     *
+     * @throws ValidationException
+     */
+    private function assertThePlansInForceDidNotChange(int $operationId): void
+    {
+        $offered = $this->data['offered_plan_set_ids'] ?? null;
+
+        if (! is_array($offered)) {
+            return;
+        }
+
+        $offered = collect($offered)->map(fn (mixed $id): int => (int) $id)->sort()->values()->all();
+
+        if ($offered !== MeasurementForm::planSetIdsInForce($operationId)) {
+            throw ValidationException::withMessages([
+                'data.operation_id' => self::PLANS_IN_FORCE_CHANGED_MESSAGE,
+            ]);
+        }
+    }
+
+    /**
+     * A operação escolhida aceita o envio desta pessoa? Conferido antes da
+     * transação da página -- leitura comum, sem lock --, para que um id
+     * forjado no estado do formulário não chegue a travar a operação de
+     * outra pessoa durante a validação e o envio dos arquivos. A conferência
+     * que vale continua sob o lock ({@see self::handleRecordCreation()}).
+     *
+     * @throws ValidationException
+     */
+    private function assertTheOperationAcceptsThisSubmission(): void
+    {
+        $operationId = filter_var($this->data['operation_id'] ?? null, FILTER_VALIDATE_INT);
+        $actor = auth()->user();
+
+        if ($operationId === false || $operationId === null || ! $actor instanceof User) {
+            return;
+        }
+
+        $operation = Operation::query()->visibleTo($actor)->find($operationId);
+
+        if (! $operation instanceof Operation) {
+            throw ValidationException::withMessages([
+                'data.operation_id' => 'Selecione uma operação.',
+            ]);
+        }
+
+        if (! $operation->status->allowsNewMeasurements()) {
+            throw ValidationException::withMessages([
+                'data.operation_id' => OperationLifecycleException::newMeasurementsNotAllowed($operation->status)->getMessage(),
+            ]);
+        }
+
+        if (! app(MeasurementAuthorizationService::class)->canCreateMeasurement($actor, $operation)) {
+            throw new AuthorizationException(self::NOT_A_DIRECT_PARTICIPANT_MESSAGE);
+        }
     }
 
     /**
@@ -200,6 +325,8 @@ class CreateMeasurement extends CreateRecord
                     'data.operation_id' => $exception->getMessage(),
                 ]);
             }
+
+            $this->assertThePlansInForceDidNotChange((int) ($data['operation_id'] ?? 0));
 
             return parent::handleRecordCreation($data);
         }, 3);

@@ -13,6 +13,7 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementPlanVersionFixture;
 
 uses(RefreshDatabase::class);
 
@@ -102,6 +103,9 @@ it('renders operations with formatted values and developments counter', function
         'realized_monthly_percent' => 0,
         'realized_cumulative_percent' => 0,
     ]);
+    // A próxima medição sai do cronograma vigente: o plano padrão é ativado
+    // depois de receber a linha (o Horizon segue em rascunho).
+    MeasurementPlanVersionFixture::activate($defaultPlan);
 
     MeasurementPlanSet::create([
         'operation_id' => $operation->id,
@@ -192,11 +196,17 @@ it('creates an operation with developments from the selected emission', function
         ->assertHasNoFormErrors();
 
     $operation = Operation::query()->where('emission_id', $emission->id)->first();
+    $planSet = $operation?->planSets()->first();
+
+    // O empreendimento vira plano com a V1 em rascunho, que leva o Fundo de
+    // Obra informado.
     expect($operation)->not->toBeNull()
         ->and($operation->status)->toBe(OperationStatus::Draft)
         ->and($operation->responsible_user_id)->toBe($engineer->id)
         ->and($operation->planSets()->count())->toBe(1)
-        ->and($operation->planSets()->first()->construction_id)->toBe($construction->id);
+        ->and($planSet->construction_id)->toBe($construction->id)
+        ->and($planSet->draftVersion?->version_number)->toBe(1)
+        ->and($planSet->currentConstructionFundAmount())->toBe('500000.00');
 });
 
 function makeOperationAdminUser(): User

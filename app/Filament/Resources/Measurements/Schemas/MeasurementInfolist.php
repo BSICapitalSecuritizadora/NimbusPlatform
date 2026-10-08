@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Measurements\Schemas;
 
+use App\Concerns\MoneyFormatter;
 use App\Models\Measurement;
 use App\Models\MeasurementAsset;
 use App\Services\MeasurementWorkflow;
@@ -114,6 +115,19 @@ class MeasurementInfolist
                         ->columns(['default' => 1, 'sm' => 2, 'lg' => 3])
                         ->schema([
                             TextEntry::make('planSet.construction.development_name')->label('Empreendimento')->placeholder('—'),
+                            // A versão do plano em que o arquivo foi enviado, para
+                            // sempre: é ela -- e o Fundo de Obra dela -- que a
+                            // Engenharia aprova e o pagamento confere, mesmo com
+                            // outra versão vigente ou com a competência anterior
+                            // à vigência dela.
+                            TextEntry::make('plan_version_label')
+                                ->label('Versão do plano')
+                                ->state(fn (MeasurementAsset $record): ?string => $record->planVersion === null
+                                    ? null
+                                    : $record->planVersion->label().(blank($record->planVersion->construction_fund_amount)
+                                        ? ''
+                                        : ' · Fundo de Obra R$ '.MoneyFormatter::formatCurrencyForDisplay($record->planVersion->construction_fund_amount)))
+                                ->placeholder('—'),
                             TextEntry::make('storage_path')
                                 ->label('Arquivo')
                                 ->state(fn (MeasurementAsset $record): ?string => filled($record->storage_path) ? 'Abrir arquivo' : null)

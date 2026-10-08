@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\DerivesStoredFileMetadata;
+use App\Enums\MeasurementPlanVersionStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Services\DocumentStorageService;
 use App\Services\MeasurementFileValidationService;
@@ -38,6 +39,36 @@ class MeasurementAsset extends Model
      * na mesma linha continua sendo a correção da Engenharia.
      */
     public const PAID_CONTEXT_CHANGE_REFUSAL = 'A obra e a linha do cronograma de uma medição com pagamento registrado não podem ser alteradas: o pagamento continua vinculado a elas.';
+
+    /**
+     * A medição nasce sob a versão vigente do plano. Entre abrir o formulário
+     * e enviar, outra pessoa pode ter ativado uma revisão.
+     */
+    public const SUPERSEDED_PLAN_REFUSAL = 'A medição prevista escolhida não é mais da versão vigente do plano de %s: o plano foi revisado. Recarregue a página e escolha a medição prevista de novo.';
+
+    /**
+     * Plano que nunca foi ativado não recebe medição: o cronograma dele ainda
+     * é rascunho.
+     */
+    public const PLAN_NOT_EFFECTIVE_REFUSAL = 'O plano de %s ainda não está em vigor: ative a versão dele (aba Versões dos Planos da operação) antes de enviar medição.';
+
+    /**
+     * A medição fica ligada para sempre à versão do plano em que foi enviada;
+     * a correção escolhe outra linha dessa mesma versão.
+     */
+    public const CAPTURED_VERSION_REFUSAL = 'A medição foi enviada sob a %s do plano de %s e continua ligada a ela: escolha uma medição prevista dessa versão.';
+
+    /**
+     * Medição enviada sob uma versão já substituída fica na linha em que foi
+     * enviada.
+     */
+    public const SUPERSEDED_VERSION_LINE_CHANGE_REFUSAL = 'A medição foi enviada sob a %s do plano de %s, que já foi substituída: a medição prevista dela não muda mais. Para medir outra competência, recuse esta medição e envie uma nova sob a versão vigente.';
+
+    /**
+     * Uma medição prevista (em qualquer versão do plano) tem no máximo uma
+     * medição de pé.
+     */
+    public const LINE_ALREADY_CLAIMED_REFUSAL = 'A medição %s (%s) do cronograma de %s já está ocupada pela medição #%d. Escolha outra medição prevista ou aguarde a recusa daquela medição.';
 
     protected $attributes = [
         'storage_disk' => DocumentStorageService::DEFAULT_PRIVATE_DISK,
@@ -84,6 +115,8 @@ class MeasurementAsset extends Model
                         'asset_id' => $asset->getKey(),
                     ]);
                 }
+
+                $asset->bindPlanContext($measurement);
 
                 if ($newFile) {
                     $asset->validateNewFile($validation);
@@ -153,6 +186,14 @@ class MeasurementAsset extends Model
     public function planLine(): BelongsTo
     {
         return $this->belongsTo(MeasurementPlanLine::class, 'plan_line_id');
+    }
+
+    /**
+     * A versão do plano em que a medição foi enviada para este empreendimento.
+     */
+    public function planVersion(): BelongsTo
+    {
+        return $this->belongsTo(MeasurementPlanVersion::class, 'plan_version_id');
     }
 
     public function fileMigrationJournal(): MorphOne
@@ -252,6 +293,122 @@ class MeasurementAsset extends Model
         ));
     }
 
+    /**
+     * Amarra o arquivo ao plano, à versão e à linha -- sempre a partir da
+     * linha escolhida, nunca do que o formulário mandar para plano ou versão.
+     *
+     * - na criação, a linha precisa ser da versão vigente: é ela que a medição
+     *   leva para sempre (`plan_version_id`);
+     * - depois, a versão não muda, e outra linha só vale se for da mesma versão;
+     * - enquanto a medição está de pé (qualquer situação menos a recusa
+     *   terminal), o arquivo ocupa a linhagem da linha (`line_claim_key`); a
+     *   unique do banco recusa a segunda ocupação, e a conferência abaixo dá o
+     *   motivo antes dela.
+     *
+     * Quem grava arquivo já segura o lock da Operation (envio, edição), então
+     * nenhuma ativação de versão nem outra ocupação acontece no meio.
+     */
+    private function bindPlanContext(?Measurement $measurement): void
+    {
+        if (blank($this->plan_line_id)) {
+            if (! $this->exists && filled($this->plan_set_id) && blank($this->plan_version_id)) {
+                $this->plan_version_id = MeasurementPlanVersion::query()
+                    ->where('plan_set_id', $this->plan_set_id)
+                    ->active()
+                    ->value('id');
+            }
+
+            $this->line_claim_key = null;
+
+            return;
+        }
+
+        $line = MeasurementPlanLine::query()->with('planSet.construction')->find($this->plan_line_id);
+        $version = $line instanceof MeasurementPlanLine
+            ? MeasurementPlanVersion::query()->whereKey($line->plan_version_id)->sharedLock()->first()
+            : null;
+
+        if (! $line instanceof MeasurementPlanLine || ! $version instanceof MeasurementPlanVersion) {
+            throw ValidationException::withMessages(['asset' => 'A medição prevista escolhida não está mais disponível.']);
+        }
+
+        $label = $line->planSet?->construction?->development_name ?? $line->planSet?->name ?? 'o empreendimento';
+
+        if ($measurement instanceof Measurement && (int) $line->operation_id !== (int) $measurement->operation_id) {
+            throw new MeasurementWorkflowException("A medição prevista escolhida não pertence à operação desta medição ({$label}).", [
+                'measurement_id' => $measurement->getKey(),
+                'plan_line_id' => $line->getKey(),
+            ]);
+        }
+
+        if (filled($this->plan_set_id) && (int) $this->plan_set_id !== (int) $line->plan_set_id) {
+            throw new MeasurementWorkflowException("A medição prevista escolhida não pertence ao plano de {$label}.", [
+                'plan_set_id' => $this->plan_set_id,
+                'plan_line_id' => $line->getKey(),
+            ]);
+        }
+
+        $this->plan_set_id = $line->plan_set_id;
+        $capturedVersionId = $this->exists ? $this->getRawOriginal('plan_version_id') : null;
+
+        if ($capturedVersionId === null) {
+            if ($version->status !== MeasurementPlanVersionStatus::Active) {
+                $neverEffective = $version->status === MeasurementPlanVersionStatus::Draft
+                    && ! MeasurementPlanVersion::query()->where('plan_set_id', $line->plan_set_id)->active()->exists();
+
+                throw new MeasurementWorkflowException(sprintf($neverEffective ? self::PLAN_NOT_EFFECTIVE_REFUSAL : self::SUPERSEDED_PLAN_REFUSAL, $label), [
+                    'plan_line_id' => $line->getKey(),
+                    'plan_version_id' => $line->plan_version_id,
+                ]);
+            }
+
+            $this->plan_version_id = $line->plan_version_id;
+        } elseif ((int) $line->plan_version_id !== (int) $capturedVersionId || $this->isDirty('plan_version_id')) {
+            $captured = MeasurementPlanVersion::query()->find($capturedVersionId);
+
+            throw new MeasurementWorkflowException(sprintf(self::CAPTURED_VERSION_REFUSAL, $captured?->label() ?? 'versão', $label), [
+                'asset_id' => $this->getKey(),
+                'plan_version_id' => $capturedVersionId,
+                'plan_line_id' => $line->getKey(),
+            ]);
+        } elseif ($this->isDirty('plan_line_id') && $version->status !== MeasurementPlanVersionStatus::Active) {
+            // A versão em que a medição foi enviada já foi substituída: trocar de
+            // linha agora levaria a medição para uma competência que a versão
+            // vigente replanejou. A correção é recusar e reenviar sob a vigente.
+            throw new MeasurementWorkflowException(sprintf(self::SUPERSEDED_VERSION_LINE_CHANGE_REFUSAL, $version->label(), $label), [
+                'asset_id' => $this->getKey(),
+                'plan_version_id' => $capturedVersionId,
+                'plan_line_id' => $line->getKey(),
+            ]);
+        }
+
+        $this->line_claim_key = $measurement instanceof Measurement && ! $measurement->holdsPlanLineClaims()
+            ? null
+            : $line->lineage_key;
+
+        if ($this->line_claim_key === null) {
+            return;
+        }
+
+        $holder = self::query()
+            ->where('line_claim_key', $this->line_claim_key)
+            ->when($this->exists, fn ($others) => $others->whereKeyNot($this->getKey()))
+            ->value('measurement_id');
+
+        if ($holder !== null && (int) $holder !== (int) $this->measurement_id) {
+            throw new MeasurementWorkflowException(sprintf(
+                self::LINE_ALREADY_CLAIMED_REFUSAL,
+                str_pad((string) $line->sequence_number, 2, '0', STR_PAD_LEFT),
+                $line->measurement_date?->format('m/Y') ?? 'sem data',
+                $label,
+                (int) $holder,
+            ), [
+                'plan_line_id' => $line->getKey(),
+                'holder_measurement_id' => (int) $holder,
+            ]);
+        }
+    }
+
     private function auditAssetChange(string $event, ?string $oldHash): void
     {
         $measurement = $this->measurement()->first();
@@ -263,6 +420,8 @@ class MeasurementAsset extends Model
                 'operation_id' => $measurement?->operation_id,
                 'plan_set_id' => $this->plan_set_id,
                 'plan_line_id' => $this->plan_line_id,
+                'plan_version_id' => $this->plan_version_id,
+                'line_claim_key' => $this->line_claim_key,
                 'old_sha256' => $oldHash,
                 'new_sha256' => $event === 'measurement_asset_removed' ? null : $this->sha256,
                 'actor_user_id' => auth()->id(),

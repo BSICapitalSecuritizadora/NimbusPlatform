@@ -50,9 +50,8 @@ final class MeasurementReceiptEvidenceScenario
             'payment_receipt_uploader_user_id' => $actor->id,
             'payment_finalizer_user_id' => $actor->id,
         ]);
-        $planSet = MeasurementPlanSet::factory()->default()->create([
+        $planSet = MeasurementPlanSet::factory()->default()->withConstructionFund('10114801.60')->create([
             'operation_id' => $operation->id,
-            'construction_fund_amount' => '10114801.60',
             'initial_incurred_amount' => 0,
         ]);
         $line = MeasurementPlanLine::factory()->create([
@@ -64,6 +63,7 @@ final class MeasurementReceiptEvidenceScenario
             'realized_monthly_percent' => 0,
             'realized_cumulative_percent' => 0,
         ]);
+        MeasurementPlanVersionFixture::activate($planSet);
         $measurement = Measurement::factory()->create([
             'operation_id' => $operation->id,
             'reference_month' => '2026-05-01',

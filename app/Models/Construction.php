@@ -3,17 +3,20 @@
 namespace App\Models;
 
 use App\Concerns\MoneyFormatter;
+use App\Enums\MeasurementPlanVersionStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Exceptions\SalesBoardSourceException;
 use App\Services\SalesBoards\SalesBoardSourceGuard;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Closure;
 use Database\Factories\ConstructionFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -24,6 +27,12 @@ class Construction extends Model
     use HasFactory, LogsActivity;
 
     public const MEASUREMENT_COMPANY_TYPE_NAME = 'Engenharia';
+
+    /**
+     * Por que a obra cujo plano de medição já valeu não sai
+     * ({@see self::hasMeasurementPlanHistory()}).
+     */
+    public const MEASUREMENT_PLAN_DELETION_REFUSAL = 'Este empreendimento tem plano de medição já ativado ou com medição registrada e não pode ser removido: as versões do plano e as medições dependem dele.';
 
     public const STATE_OPTIONS = [
         'AC' => 'AC',
@@ -110,6 +119,15 @@ class Construction extends Model
                 throw new MeasurementWorkflowException('Um empreendimento aprovado pela Engenharia não pode ser removido.');
             }
 
+            // A FK do plano solta a obra (SET NULL) sem passar pela guarda do
+            // plano: o plano que já valeu ou já recebeu medição ficaria sem a
+            // obra de que as versões e as medições dependem.
+            if ($construction->hasMeasurementPlanHistory()) {
+                throw new MeasurementWorkflowException(self::MEASUREMENT_PLAN_DELETION_REFUSAL, [
+                    'construction_id' => $construction->getKey(),
+                ]);
+            }
+
             /**
              * Os quadros de vendas são a única história da obra que o banco não
              * protege: a FK desce em cascata e leva o histórico de versões
@@ -120,6 +138,41 @@ class Construction extends Model
                 throw SalesBoardSourceException::constructionDeletionBlocked(['tem Quadro de Vendas registrado']);
             }
         });
+    }
+
+    /**
+     * A troca de Emissão ou de CNPJ -- o que a aprovação da Engenharia congela
+     * no snapshot -- de uma obra com plano de medição trava antes, em ordem de
+     * id, as operações que a planejam: a ordem canônica do módulo de medição
+     * (Operation → planos → obras), a mesma da aprovação, que trava a
+     * Operation e só depois a obra. A guarda do `saving` passa a ler o estado
+     * posterior ao lock, e uma aprovação não cabe mais entre a conferência e a
+     * gravação. As outras escritas da obra não mudam nada que a medição
+     * confira e seguem como antes.
+     *
+     * @param  array<string, mixed>  $options
+     */
+    public function save(array $options = []): bool
+    {
+        if (! $this->exists || ! $this->isDirty(['emission_id', 'development_cnpj'])) {
+            return parent::save($options);
+        }
+
+        return $this->underMeasurementPlanningLock(fn (): bool => parent::save($options));
+    }
+
+    /**
+     * A exclusão de obra com plano de medição passa pelo mesmo lock: sem ele, a
+     * guarda lia "sem Engenharia aprovada" enquanto uma aprovação gravava, e a
+     * FK deixava o plano sem obra logo depois.
+     */
+    public function delete(): ?bool
+    {
+        if (! $this->exists) {
+            return parent::delete();
+        }
+
+        return $this->underMeasurementPlanningLock(fn (): ?bool => parent::delete());
     }
 
     protected function developmentCnpj(): Attribute
@@ -239,11 +292,75 @@ class Construction extends Model
     }
 
     /**
+     * As operações são lidas antes da transação, e o lock delas é a primeira
+     * instrução dela: no MySQL em REPEATABLE READ a fotografia da transação nasce
+     * depois do lock. Se o conjunto mudou nesse meio-tempo, a gravação é
+     * recusada em vez de seguir sem uma das operações travada.
+     *
+     * @template TResult
+     *
+     * @param  Closure(): TResult  $write
+     * @return TResult
+     */
+    private function underMeasurementPlanningLock(Closure $write): mixed
+    {
+        $operationIds = $this->measurementPlanningOperationIds();
+
+        if ($operationIds === []) {
+            return $write();
+        }
+
+        return DB::transaction(function () use ($operationIds, $write): mixed {
+            Operation::query()->whereKey($operationIds)->orderBy('id')->lockForUpdate()->get(['id']);
+
+            if ($this->measurementPlanningOperationIds() !== $operationIds) {
+                throw new MeasurementWorkflowException('Os planos de medição deste empreendimento mudaram durante a gravação. Tente novamente.', [
+                    'construction_id' => $this->getKey(),
+                ]);
+            }
+
+            return $write();
+        });
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function measurementPlanningOperationIds(): array
+    {
+        return MeasurementPlanSet::query()
+            ->where('construction_id', $this->getKey())
+            ->distinct()
+            ->orderBy('operation_id')
+            ->pluck('operation_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
+    }
+
+    /**
      * Uma medição do empreendimento já passou pela aprovação da Engenharia?
      *
      * Pública porque a guarda de exclusão da obra precisa dizer este motivo
      * antes de o `deleting` recusar com um erro.
      */
+    /**
+     * Algum plano de medição da obra já valeu (versão vigente ou substituída)
+     * ou já recebeu arquivo ou pagamento? Plano só com o rascunho da V1 ainda é
+     * planejamento e solta a obra pela FK, como antes das versões.
+     */
+    public function hasMeasurementPlanHistory(): bool
+    {
+        return $this->measurementPlanSets()
+            ->where(fn ($plans) => $plans
+                ->whereHas('versions', fn ($versions) => $versions->whereIn('status', [
+                    MeasurementPlanVersionStatus::Active->value,
+                    MeasurementPlanVersionStatus::Superseded->value,
+                ]))
+                ->orWhereHas('assets')
+                ->orWhereHas('payments'))
+            ->exists();
+    }
+
     public function isReferencedByApprovedEngineering(): bool
     {
         return $this->measurementPlanSets()

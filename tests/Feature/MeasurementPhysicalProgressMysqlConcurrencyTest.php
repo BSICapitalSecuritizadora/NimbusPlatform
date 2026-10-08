@@ -219,10 +219,24 @@ it('includes a month approved concurrently in the cumulative of the next month o
         ->and(Scenario::progress($scenario)->currentPercent())->toBe('15.00');
 })->group('mysql');
 
+/**
+ * Hoje a medição prevista é ocupada já no envio (`measurement_assets.line_claim_key`,
+ * única no banco), e a segunda medição nem chega a gravar o arquivo na mesma
+ * linha. Os arquivos gravados antes da ocupação não a têm: duas medições de pé
+ * na mesma linha, e quem ocupa a linha é a aprovação da Engenharia, sob o lock
+ * da Operation. Sem a serialização, as duas leriam a linha livre e a segunda só
+ * pararia na unique do banco, como erro de servidor e não como recusa.
+ */
 it('lets only one of two concurrent approvals claim the same schedule line on MySQL', function () {
     $scenario = Scenario::plan();
+    $may = $scenario['lines']['2026-05'];
     $first = Scenario::measurement($scenario, '2026-05');
-    $second = Scenario::measurement($scenario, '2026-05');
+    $second = Scenario::measurement($scenario, '2026-06');
+    DB::table('measurement_assets')->whereIn('measurement_id', [$first->id, $second->id])->update([
+        'plan_line_id' => $may->id,
+        'line_claim_key' => null,
+    ]);
+    DB::table('measurements')->where('id', $second->id)->update(['reference_month' => '2026-05-01']);
 
     $results = racePhysicalProgressApprovals($scenario, $first, 10, $second, 4);
 
@@ -231,7 +245,10 @@ it('lets only one of two concurrent approvals claim the same schedule line on My
         ->and($results[1]['exception'])->toBe(ValidationException::class)
         ->and($results[1]['message'])->toContain("já está vinculada à medição #{$first->id}, aprovada pela Engenharia.")
         ->and($results[1]['lock_wait_ms'])->toBeGreaterThan(250)
-        ->and($scenario['lines']['2026-05']->fresh()->measurement_id)->toBe($first->id)
+        ->and($may->fresh()->measurement_id)->toBe($first->id)
+        ->and(DB::table('measurement_assets')->where('measurement_id', $first->id)->value('line_claim_key'))->toBe($may->lineage_key)
+        ->and(DB::table('measurement_assets')->where('measurement_id', $second->id)->value('line_claim_key'))->toBeNull()
+        ->and($second->fresh()->engineering_snapshot)->toBeNull()
         ->and(Scenario::progress($scenario)->currentPercent())->toBe('10.00');
 })->group('mysql');
 

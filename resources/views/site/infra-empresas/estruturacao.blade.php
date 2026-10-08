@@ -10,7 +10,7 @@
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Infra & Empresas</span>
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent); letter-spacing: 0.1em; font-weight: 600;">Infra & Empresas</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
                     Engenharia <br><span style="color: var(--gold);">sob Medida</span>
                 </h1>
@@ -230,7 +230,7 @@
         <div class="row g-5">
             <div class="col-lg-4">
                 <div class="pe-lg-4">
-                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91, 0.05); letter-spacing: 0.1em; font-weight: 600;">Engenharia Fiduciária</span>
+                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: color-mix(in srgb, var(--brand) 5%, transparent); letter-spacing: 0.1em; font-weight: 600;">Engenharia Fiduciária</span>
                     <h2 class="h3 fw-bold text-dark mb-4">Arquitetura de Crédito Complexa</h2>
                     <p class="text-muted mb-4">Esclarecemos os aspectos técnicos da modelagem e execução de operações sob medida.</p>
                     <a href="{{ route('site.contact') }}" class="btn btn-brand btn-sm px-4 py-2">Consultar Tese</a>

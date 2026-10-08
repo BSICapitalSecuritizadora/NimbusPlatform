@@ -4,23 +4,17 @@ namespace App\Filament\Resources\Operations\RelationManagers;
 
 use App\DTOs\Measurements\MeasurementPhysicalProgress;
 use App\DTOs\Measurements\MeasurementPhysicalProgressContribution;
-use App\Exceptions\MeasurementWorkflowException;
 use App\Filament\Resources\Measurements\MeasurementResource;
+use App\Models\MeasurementAsset;
 use App\Models\MeasurementPlanLine;
-use App\Models\MeasurementPlanSet;
 use App\Services\MeasurementPhysicalProgressService;
 use App\Support\BusinessTime;
 use App\Support\Money\IntegerMoney;
 use Filament\Actions\Action;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Gate;
 
 class PlanLinesRelationManager extends RelationManager
 {
@@ -31,12 +25,18 @@ class PlanLinesRelationManager extends RelationManager
     /** @var array<int, MeasurementPhysicalProgress>|null */
     private ?array $physicalProgress = null;
 
+    /** @var array<string, int>|null medição que ocupa cada linhagem da operação */
+    private ?array $claimHolders = null;
+
     public function table(Table $table): Table
     {
         return $table
             ->heading('Plano de medições cadastrado')
-            ->description('Acompanhe os percentuais previstos e realizados por medição. O realizado vem das medições com a Engenharia vigente e parte do avanço físico inicial do plano; um mês sem medição mantém o último acumulado.')
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['planSet.construction', 'measurement']))
+            ->description('Acompanhe os percentuais previstos e realizados por medição. O cronograma é o da versão vigente de cada plano; o realizado vem das medições com a Engenharia vigente e parte do avanço físico inicial do plano; um mês sem medição mantém o último acumulado.')
+            // Só a versão vigente: ela traz, igual, o previsto das competências
+            // anteriores à vigência (a ativação recusa reescrevê-lo). O
+            // previsto muda por revisão, na aba Versões dos Planos.
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->ofActiveVersions()->with(['planSet.construction', 'version']))
             // A ordem da conta: competência, e no mesmo mês a sequência.
             ->defaultSort(fn (Builder $query): Builder => $query->orderBy('measurement_date')->orderBy('sequence_number'))
             ->columns([
@@ -44,6 +44,9 @@ class PlanLinesRelationManager extends RelationManager
                     ->label('Empreendimento')
                     ->placeholder('—')
                     ->wrap(),
+                TextColumn::make('version.version_number')
+                    ->label('Versão')
+                    ->formatStateUsing(fn (mixed $state): string => 'V'.(int) $state),
                 TextColumn::make('sequence_number')
                     ->label('#')
                     ->sortable(),
@@ -99,88 +102,17 @@ class PlanLinesRelationManager extends RelationManager
                     ->color(fn (string $state): string => $state === 'Realizado informado' ? 'success' : 'gray'),
             ])
             ->recordActions([
-                Action::make('editPlanned')
-                    ->label('Editar previsto')
-                    ->icon('heroicon-o-calculator')
-                    ->authorize(fn (): bool => Gate::allows('update', $this->getOwnerRecord()))
-                    ->fillForm(fn (MeasurementPlanLine $record): array => [
-                        'planned_monthly_percent' => $record->planned_monthly_percent,
-                        'planned_cumulative_percent' => $record->planned_cumulative_percent,
-                        'measurement_date' => $record->measurement_date?->format('Y-m'),
-                    ])
-                    ->schema([
-                        TextInput::make('planned_monthly_percent')
-                            ->label('Previsto mensal (%)')
-                            ->numeric()
-                            ->suffix('%')
-                            ->minValue(0)
-                            ->maxValue(100)
-                            ->default(0)
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function (mixed $state, Set $set, MeasurementPlanLine $record): void {
-                                $set('planned_cumulative_percent', round(static::previousCumulativeFor($record) + (float) $state, 2));
-                            }),
-                        TextInput::make('planned_cumulative_percent')
-                            ->label('Previsto acum. (%)')
-                            ->numeric()
-                            ->suffix('%')
-                            ->minValue(0)
-                            ->maxValue(100)
-                            ->default(0)
-                            ->helperText('Sugerido a partir do mensal; ajuste se necessário.'),
-                        TextInput::make('measurement_date')
-                            ->label('Data prevista (mês/ano)')
-                            ->type('month'),
-                    ])
-                    ->action(function (array $data, MeasurementPlanLine $record): void {
-                        $data['measurement_date'] = filled($data['measurement_date'] ?? null)
-                            ? Carbon::parse($data['measurement_date'].'-01')->toDateString()
-                            : null;
-
-                        $record->update($data);
-
-                        Notification::make()
-                            ->success()
-                            ->title('Previsto atualizado.')
-                            ->send();
-                    }),
-
+                // A medição da linha é a da linhagem: a que a Engenharia aprovou
+                // nela -- talvez numa versão anterior do plano --, ou a que a
+                // ocupa agora.
                 Action::make('openMeasurement')
                     ->label('Arquivo')
                     ->icon('heroicon-o-paper-clip')
-                    ->visible(fn (MeasurementPlanLine $record): bool => filled($record->measurement_id))
-                    ->url(fn (MeasurementPlanLine $record): ?string => $record->measurement_id
-                        ? MeasurementResource::getUrl('view', ['record' => $record->measurement_id])
-                        : null),
+                    ->visible(fn (MeasurementPlanLine $record): bool => $this->lineageMeasurementId($record) !== null)
+                    ->url(fn (MeasurementPlanLine $record): ?string => ($measurementId = $this->lineageMeasurementId($record)) === null
+                        ? null
+                        : MeasurementResource::getUrl('view', ['record' => $measurementId])),
             ]);
-    }
-
-    /**
-     * Chama a ação montada e mostra a recusa do domínio da Medição.
-     *
-     * A linha usada por uma Engenharia aprovada recusa a alteração do previsto
-     * com `MeasurementWorkflowException`, que não é reportada: sem tratamento,
-     * a pessoa via o aviso genérico de erro e o percentual não mudava sem
-     * explicação. O modal fica aberto, como num `halt()`, e nada é gravado.
-     *
-     * @param  array<string, mixed>  $arguments
-     */
-    public function callMountedAction(array $arguments = []): mixed
-    {
-        $actionName = $this->getMountedAction()?->getName();
-
-        try {
-            return parent::callMountedAction($arguments);
-        } catch (MeasurementWorkflowException $refusal) {
-            Notification::make()
-                ->danger()
-                ->title($actionName === 'editPlanned' ? 'Previsto não atualizado.' : 'Ação não concluída.')
-                ->body($refusal->getMessage())
-                ->persistent()
-                ->send();
-
-            return null;
-        }
     }
 
     /**
@@ -189,7 +121,7 @@ class PlanLinesRelationManager extends RelationManager
      */
     private function realizedMonthlyBasisPoints(MeasurementPlanLine $record): ?int
     {
-        $contributions = $this->progressFor($record)->contributionsForLine((int) $record->getKey());
+        $contributions = $this->progressFor($record)->contributionsForLineage((string) $record->lineage_key);
 
         if ($contributions === []) {
             return null;
@@ -258,17 +190,25 @@ class PlanLinesRelationManager extends RelationManager
     }
 
     /**
-     * O previsto acumulado é da obra inteira: na primeira linha ele parte do
-     * avanço físico inicial do plano, não de zero.
+     * A medição da linhagem: a que a Engenharia aprovou nela, em qualquer
+     * versão do plano, ou a que a ocupa agora. A linha copiada numa revisão
+     * não guarda `measurement_id`.
      */
-    protected static function previousCumulativeFor(MeasurementPlanLine $record): float
+    private function lineageMeasurementId(MeasurementPlanLine $record): ?int
     {
-        $previous = MeasurementPlanLine::query()
-            ->where('plan_set_id', $record->plan_set_id)
-            ->where('sequence_number', '<', $record->sequence_number)
-            ->orderByDesc('sequence_number')
-            ->value('planned_cumulative_percent');
+        $approved = $this->progressFor($record)->lineageClaimant((string) $record->lineage_key);
 
-        return (float) ($previous ?? MeasurementPlanSet::query()->whereKey($record->plan_set_id)->value('initial_physical_progress_percent'));
+        if ($approved !== null) {
+            return $approved;
+        }
+
+        $this->claimHolders ??= MeasurementAsset::query()
+            ->whereNotNull('line_claim_key')
+            ->whereHas('measurement', fn (Builder $measurements): Builder => $measurements->where('operation_id', $this->getOwnerRecord()->getKey()))
+            ->pluck('measurement_id', 'line_claim_key')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
+
+        return $this->claimHolders[(string) $record->lineage_key] ?? null;
     }
 }

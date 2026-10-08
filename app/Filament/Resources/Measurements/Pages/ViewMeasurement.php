@@ -15,6 +15,7 @@ use App\Models\Measurement;
 use App\Models\MeasurementPayment;
 use App\Models\MeasurementPaymentReceiptEvidence;
 use App\Models\MeasurementPlanSet;
+use App\Models\MeasurementPlanVersion;
 use App\Models\User;
 use App\Services\MeasurementFinancialReconciliationService;
 use App\Services\MeasurementFinancialRuleService;
@@ -319,7 +320,7 @@ class ViewMeasurement extends ViewRecord
             return [
                 Placeholder::make("physical_progress_context.{$planSet->id}")
                     ->hiddenLabel()
-                    ->content($this->physicalProgressContent($label, $progress)),
+                    ->content($this->physicalProgressContent($label, $progress, $this->capturedVersionLabel((int) $planSet->id))),
                 TextInput::make("realized.{$planSet->id}")
                     ->label($label)
                     ->numeric()
@@ -425,7 +426,7 @@ class ViewMeasurement extends ViewRecord
      * Onde o empreendimento está antes desta medição: a pessoa vê quanto ainda
      * cabe até 100% antes de digitar, e não depois de recusada.
      */
-    private function physicalProgressContent(string $label, MeasurementPhysicalProgress $progress): HtmlString
+    private function physicalProgressContent(string $label, MeasurementPhysicalProgress $progress, ?string $versionLabel = null): HtmlString
     {
         $initial = MeasurementPhysicalProgress::format($progress->initialBasisPoints);
 
@@ -438,6 +439,7 @@ class ViewMeasurement extends ViewRecord
             ['Medido no sistema', MeasurementPhysicalProgress::format($progress->measuredBasisPoints())],
             ['Avanço físico atual', MeasurementPhysicalProgress::format($progress->currentBasisPoints())],
             ['Máximo restante', MeasurementPhysicalProgress::format($progress->remainingBasisPoints())],
+            ...($versionLabel === null ? [] : [['Versão do plano', $versionLabel]]),
         ];
 
         $html = collect($cells)
@@ -454,6 +456,29 @@ class ViewMeasurement extends ViewRecord
             e("Progresso físico de {$label}"),
             $html,
         ));
+    }
+
+    /**
+     * A versão do plano em que o arquivo deste empreendimento foi enviado, com
+     * o Fundo de Obra dela -- a que a Engenharia aprova e a que vale para o
+     * pagamento, mesmo que outra versão já esteja vigente.
+     */
+    private function capturedVersionLabel(int $planSetId): ?string
+    {
+        $version = $this->record->assets()
+            ->where('plan_set_id', $planSetId)
+            ->whereNotNull('plan_version_id')
+            ->with('planVersion')
+            ->first()
+            ?->planVersion;
+
+        if (! $version instanceof MeasurementPlanVersion) {
+            return null;
+        }
+
+        return $version->label().(blank($version->construction_fund_amount)
+            ? ''
+            : ' · Fundo de Obra R$ '.MoneyFormatter::formatCurrencyForDisplay($version->construction_fund_amount));
     }
 
     /**
@@ -476,7 +501,7 @@ class ViewMeasurement extends ViewRecord
             return $fromAssets;
         }
 
-        return $this->record->operation?->planSets()->with('construction')->get() ?? collect();
+        return $this->record->operation?->planSets()->whereHas('activeVersion')->with('construction')->get() ?? collect();
     }
 
     /**

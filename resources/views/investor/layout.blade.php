@@ -17,7 +17,7 @@
     @endphp
 
     <div class="relative min-h-screen overflow-hidden">
-        <div class="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(circle_at_top_left,rgba(0,32,91,0.16),transparent_36%),radial-gradient(circle_at_top_right,rgba(212,175,55,0.18),transparent_24%)]"></div>
+        <div class="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(circle_at_top_left,rgb(9_27_35/0.16),transparent_36%),radial-gradient(circle_at_top_right,rgb(160_110_40/0.18),transparent_24%)]"></div>
         <div class="pointer-events-none absolute left-0 top-[18rem] h-[360px] w-[360px] rounded-full bg-brand-100/55 blur-3xl"></div>
         <div class="pointer-events-none absolute right-0 top-[7rem] h-[280px] w-[280px] rounded-full bg-gold-400/12 blur-3xl"></div>
 

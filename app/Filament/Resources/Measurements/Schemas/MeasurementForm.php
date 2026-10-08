@@ -2,11 +2,13 @@
 
 namespace App\Filament\Resources\Measurements\Schemas;
 
+use App\Enums\MeasurementPlanVersionStatus;
 use App\Enums\OperationStatus;
 use App\Models\Measurement;
 use App\Models\MeasurementAsset;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
+use App\Models\MeasurementPlanVersion;
 use App\Models\Operation;
 use App\Models\User;
 use App\Services\DocumentStorageService;
@@ -15,6 +17,7 @@ use App\Services\MeasurementFileValidationService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -91,6 +94,10 @@ class MeasurementForm
                             ->afterStateUpdated(function (Set $set, mixed $state, mixed $old): void {
                                 if ($state !== $old) {
                                     $set('assets', static::assetsForOperation($state));
+                                    // Os planos em vigor no momento da escolha: o envio
+                                    // confere sob o lock que eles continuam os mesmos
+                                    // (CreateMeasurement::assertThePlansInForceDidNotChange()).
+                                    $set('offered_plan_set_ids', static::planSetIdsInForce($state));
                                 }
                             })
                             ->validationMessages([
@@ -125,6 +132,19 @@ class MeasurementForm
                     ->description('Associe a medição prevista e envie o arquivo correspondente para cada empreendimento.')
                     ->columnSpanFull()
                     ->schema([
+                        Hidden::make('offered_plan_set_ids')
+                            ->dehydrated(false),
+
+                        // Plano ainda em rascunho não recebe medição: sem o aviso, a
+                        // operação escolhida mostrava a seção vazia e o envio só
+                        // respondia com o erro genérico do repeater.
+                        Placeholder::make('plans_not_in_force_notice')
+                            ->hiddenLabel()
+                            ->content(fn (Get $get): string => static::plansNotInForceNotice($get('operation_id')) ?? '')
+                            ->visible(fn (Get $get, ?Model $record): bool => ! $record instanceof Measurement
+                                && filled($get('operation_id'))
+                                && static::plansNotInForceNotice($get('operation_id')) !== null),
+
                         Placeholder::make('empty_operation_notice')
                             ->hiddenLabel()
                             ->content(new HtmlString('<div class="flex flex-col items-center gap-1.5 px-6 py-10 text-center"><svg class="w-8 h-8 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke-width="1.25" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg><p class="text-sm font-semibold text-slate-600 dark:text-slate-300">Nenhuma operação selecionada</p><p class="max-w-md text-xs leading-relaxed text-slate-400 dark:text-slate-500">Selecione uma operação acima para carregar os empreendimentos vinculados e enviar os respectivos arquivos de medição.</p></div>'))
@@ -150,6 +170,9 @@ class MeasurementForm
                             ->deleteAction(fn (Action $action) => $action->tooltip('Remover empreendimento deste envio'))
                             ->reorderable(false)
                             ->minItems(1)
+                            ->validationMessages([
+                                'min' => 'Nenhum empreendimento desta operação tem plano de medição em vigor: ative a versão do plano (aba Versões dos Planos da operação) antes de enviar medição.',
+                            ])
                             ->columns(['default' => 1, 'md' => 2])
                             ->itemLabel(fn (array $state): ?string => filled($state['plan_set_id'] ?? null)
                                 ? static::planSetLabel($state['plan_set_id'])
@@ -178,8 +201,13 @@ class MeasurementForm
                                     ->live()
                                     ->required()
                                     // A linha do arquivo pago também fica presa
-                                    // (MeasurementAsset::PAID_CONTEXT_CHANGE_REFUSAL).
-                                    ->disabled(fn (?Model $record): bool => static::hasRegisteredPayment($record))
+                                    // (MeasurementAsset::PAID_CONTEXT_CHANGE_REFUSAL), e a
+                                    // do arquivo enviado sob uma versão do plano já
+                                    // substituída (SUPERSEDED_VERSION_LINE_CHANGE_REFUSAL).
+                                    // A da versão é a de quando a página abriu: substituída
+                                    // no meio-tempo, a troca chega à gravação e é recusada,
+                                    // em vez de sumir calada enquanto a competência muda.
+                                    ->disabled(fn (Get $get, ?Model $record): bool => static::hasRegisteredPayment($record) || (bool) $get('sent_under_superseded_version'))
                                     ->afterStateUpdated(function (Set $set, ?string $state): void {
                                         $date = filled($state)
                                             ? static::visiblePlanLinesQuery()->whereKey($state)->value('measurement_date')
@@ -189,12 +217,18 @@ class MeasurementForm
                                             $set('../../reference_month', Carbon::parse($date)->toDateString());
                                         }
                                     })
-                                    ->helperText(fn (?Model $record): string => static::hasRegisteredPayment($record)
-                                        ? 'Travada: esta medição tem pagamento registrado, e o pagamento continua vinculado a esta linha.'
-                                        : 'Selecione a medição prevista à qual este arquivo corresponde.')
+                                    ->helperText(fn (Get $get, ?Model $record): string => match (true) {
+                                        static::hasRegisteredPayment($record) => 'Travada: esta medição tem pagamento registrado, e o pagamento continua vinculado a esta linha.',
+                                        (bool) $get('sent_under_superseded_version') => 'Travada: a medição foi enviada sob uma versão do plano que já foi substituída. Para medir outra competência, recuse-a e envie uma nova sob a versão vigente.',
+                                        default => 'Selecione a medição prevista à qual este arquivo corresponde.',
+                                    })
                                     ->validationMessages([
                                         'required' => 'Selecione a medição do cronograma correspondente.',
                                     ]),
+
+                                Hidden::make('sent_under_superseded_version')
+                                    ->dehydrated(false)
+                                    ->afterStateHydrated(fn (Hidden $component, ?Model $record) => $component->state(static::wasSentUnderSupersededVersion($record))),
 
                                 FileUpload::make('storage_path')
                                     ->label('Arquivo da Medição')
@@ -274,6 +308,18 @@ class MeasurementForm
     }
 
     /**
+     * O arquivo foi enviado sob uma versão do plano que outra já substituiu?
+     * A medição continua nela, e a linha não muda mais.
+     */
+    protected static function wasSentUnderSupersededVersion(?Model $record): bool
+    {
+        return $record instanceof MeasurementAsset
+            && $record->exists
+            && filled($record->plan_version_id)
+            && MeasurementPlanVersion::query()->whereKey($record->plan_version_id)->value('status') === MeasurementPlanVersionStatus::Superseded;
+    }
+
+    /**
      * O que o campo de upload entrega ao navegador sobre um arquivo do estado.
      *
      * O padrão do Filament monta o endereço pelo disco: no disco privado com
@@ -317,11 +363,30 @@ class MeasurementForm
 
     /**
      * Builds one asset row per development of the operation, with the plan set
-     * pre-filled and the file/measurement left blank to fill.
+     * pre-filled and the file/measurement left blank to fill. Só os planos
+     * vigentes (com versão ativada): o plano ainda em rascunho não recebe
+     * medição.
      *
      * @return array<int, array{plan_set_id: int, plan_line_id: null, storage_path: null}>
      */
     protected static function assetsForOperation(mixed $operationId): array
+    {
+        return collect(static::planSetIdsInForce($operationId))
+            ->map(fn (int $id): array => [
+                'plan_set_id' => $id,
+                'plan_line_id' => null,
+                'storage_path' => null,
+            ])
+            ->all();
+    }
+
+    /**
+     * Planos da operação, visíveis para a pessoa, que estão em vigor (com
+     * versão ativada), em ordem de id.
+     *
+     * @return list<int>
+     */
+    public static function planSetIdsInForce(mixed $operationId): array
     {
         if (blank($operationId)) {
             return [];
@@ -329,14 +394,37 @@ class MeasurementForm
 
         return static::visiblePlanSetsQuery()
             ->where('operation_id', $operationId)
+            ->whereHas('activeVersion')
             ->orderBy('id')
             ->pluck('id')
-            ->map(fn (int $id): array => [
-                'plan_set_id' => $id,
-                'plan_line_id' => null,
-                'storage_path' => null,
-            ])
+            ->map(fn (mixed $id): int => (int) $id)
+            ->values()
             ->all();
+    }
+
+    /**
+     * Quais planos da operação ainda não estão em vigor, para o aviso do envio;
+     * `null` quando todos estão.
+     */
+    protected static function plansNotInForceNotice(mixed $operationId): ?string
+    {
+        if (blank($operationId)) {
+            return null;
+        }
+
+        $drafts = static::visiblePlanSetsQuery()
+            ->where('operation_id', $operationId)
+            ->whereDoesntHave('activeVersion')
+            ->with('construction')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (MeasurementPlanSet $planSet): string => $planSet->construction?->development_name ?? $planSet->name);
+
+        return $drafts->isEmpty() ? null : sprintf(
+            'Ainda sem plano de medição em vigor, não recebe%s medição neste envio: %s. Ative a versão do plano na aba Versões dos Planos da operação.',
+            $drafts->count() === 1 ? '' : 'm',
+            $drafts->implode(', '),
+        );
     }
 
     /**
@@ -355,6 +443,10 @@ class MeasurementForm
      * a Engenharia aceita 0%, e numa operação com vários empreendimentos esse 0%
      * é o que deixa medir os demais.
      *
+     * As linhas são as da versão do plano: a vigente, no envio; na edição, a
+     * versão em que a medição foi enviada, que ela leva para sempre -- mesmo
+     * que outra versão tenha sido ativada depois.
+     *
      * @return array<int, string>
      */
     protected static function scheduleOptionsForPlanSet(mixed $planSetId, ?MeasurementAsset $asset = null): array
@@ -365,9 +457,17 @@ class MeasurementForm
 
         $editedMeasurementId = filled($asset?->measurement_id) ? (int) $asset->measurement_id : null;
         $savedLineId = $asset?->plan_line_id;
+        $versionId = filled($asset?->plan_version_id)
+            ? (int) $asset->plan_version_id
+            : MeasurementPlanVersion::query()->where('plan_set_id', $planSetId)->active()->value('id');
+
+        if ($versionId === null) {
+            return [];
+        }
 
         return static::visiblePlanLinesQuery()
             ->where('plan_set_id', $planSetId)
+            ->where('plan_version_id', $versionId)
             ->whereNotNull('measurement_date')
             ->where(fn (Builder $lines): Builder => $lines
                 ->where(fn (Builder $available): Builder => $available->availableForMeasurement($editedMeasurementId))
@@ -397,6 +497,8 @@ class MeasurementForm
 
         return static::visiblePlanSetsQuery()
             ->where('operation_id', $operationId)
+            // Plano vigente: uma vez ativado, ele sempre tem uma versão vigente.
+            ->whereHas('activeVersion')
             ->with('construction')
             ->get()
             ->mapWithKeys(fn (MeasurementPlanSet $planSet): array => [

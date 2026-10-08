@@ -119,8 +119,11 @@ class MeasurementPlanProgressProvider implements ConstructionProgressProvider
 
     private function baseQuery(Emission $emission, ?Construction $construction, bool $defaultPlanOnly): Builder
     {
+        // Só o cronograma vigente: a versão vigente traz, igual, o previsto das
+        // competências anteriores à vigência dela (a ativação recusa reescrevê-lo).
         return MeasurementPlanLine::query()
             ->with('planSet')
+            ->ofActiveVersions()
             ->whereNotNull('measurement_date')
             ->when($defaultPlanOnly, fn (Builder $query): Builder => $query->whereHas(
                 'planSet',

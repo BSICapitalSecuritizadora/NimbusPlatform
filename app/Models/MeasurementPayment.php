@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\DerivesStoredFileMetadata;
+use App\Exceptions\MeasurementWorkflowException;
 use App\Services\DocumentStorageService;
 use App\Services\MeasurementFileValidationService;
 use Database\Factories\MeasurementPaymentFactory;
@@ -47,6 +48,17 @@ class MeasurementPayment extends Model
 
     protected static function booted(): void
     {
+        // O plano do pagamento é o que a Engenharia aprovou para a medição; o
+        // banco recusa excluir o plano referenciado (RESTRICT), e aqui nenhuma
+        // gravação o troca depois -- o pagamento não migra para outro plano.
+        static::updating(function (self $payment): void {
+            if ($payment->isDirty(['plan_set_id', 'measurement_id', 'operation_id'])) {
+                throw new MeasurementWorkflowException('O pagamento continua vinculado à medição, à operação e ao plano em que foi registrado.', [
+                    'payment_id' => $payment->getKey(),
+                ]);
+            }
+        });
+
         static::saving(function (self $payment): void {
             if ($payment->exists && $payment->isDirty(['receipt_path', 'receipt_disk', 'receipt_sha256', 'receipt_size', 'receipt_mime_type', 'receipt_uploaded_by', 'receipt_uploaded_at'])
                 && $payment->receiptEvidences()->exists()) {

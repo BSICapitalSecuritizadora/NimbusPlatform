@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\MeasurementPlanRevisionCategory;
 use App\Enums\MeasurementReconciliationStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Filament\Resources\Measurements\Pages\ViewMeasurement;
@@ -13,7 +14,9 @@ use App\Models\User;
 use App\Services\MeasurementEngineeringService;
 use App\Services\MeasurementFinancialReconciliationService;
 use App\Services\MeasurementPaymentFinancialService;
+use App\Services\MeasurementPlanVersionService;
 use App\Services\MeasurementWorkflow;
+use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Forms\Components\Placeholder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,6 +28,7 @@ use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementPlanVersionFixture;
 use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 uses(RefreshDatabase::class);
@@ -58,9 +62,9 @@ function reconciliationMeasurement(array $planSets): Measurement
     $entries = [];
 
     foreach ($planSets as $index => $spec) {
-        $planSet = MeasurementPlanSet::factory()->create([
+        // O Fundo de Obra é da versão do plano (aqui, a V1), não do plano.
+        $planSet = MeasurementPlanSet::factory()->withConstructionFund($spec['fund'])->create([
             'operation_id' => $operation->getKey(),
-            'construction_fund_amount' => $spec['fund'],
         ]);
 
         $entries[] = [
@@ -151,12 +155,11 @@ function reconciliationApprovedScenario(array $specs): array
 
     foreach ($specs as $index => $spec) {
         $construction = Construction::factory()->create(isset($spec['name']) ? ['development_name' => $spec['name']] : []);
-        $planSet = MeasurementPlanSet::factory()->create([
+        $planSet = MeasurementPlanSet::factory()->withConstructionFund($spec['fund'])->create([
             'operation_id' => $operation->getKey(),
             'construction_id' => $construction->getKey(),
             'name' => 'Plano '.($index + 1),
             'is_default' => $index === 0,
-            'construction_fund_amount' => $spec['fund'],
             'initial_incurred_amount' => '0.00',
         ]);
         $line = MeasurementPlanLine::factory()->create([
@@ -166,6 +169,9 @@ function reconciliationApprovedScenario(array $specs): array
             'initial_realized_cumulative_percent' => 0,
             'measurement_date' => '2026-08-01',
         ]);
+        // A medição só é enviada sob a versão vigente do plano: a linha entra
+        // no rascunho da V1, que é ativado antes do arquivo.
+        MeasurementPlanVersionFixture::activate($planSet);
 
         $path = "nimbus_docs/measurements/assets/recon-{$measurement->getKey()}-{$index}.pdf";
         Storage::disk('local')->put($path, "%PDF-1.7\nrecon-{$index}\n%%EOF");
@@ -405,11 +411,32 @@ it('reads the construction fund from the engineering snapshot and not from the c
     $measurement = $scenario['measurement'];
     $planSet = $scenario['planSets'][0];
 
-    expect(reconciliationService()->forMeasurement($measurement)->line($planSet->getKey())->expectedAmount)
+    expect($measurement->engineering_snapshot['plan_sets'][0])->toMatchArray([
+        'plan_version_number' => 1,
+        'construction_fund_amount' => '8000000.00',
+    ])->and(reconciliationService()->forMeasurement($measurement)->line($planSet->getKey())->expectedAmount)
         ->toBe('200000.00');
 
-    DB::table('measurement_plan_sets')
-        ->where('id', $planSet->getKey())
+    // O Fundo de Obra é da versão do plano, e o caminho normal para o fundo
+    // atual mudar depois da aprovação é uma revisão de custo ativada. Ela vale
+    // a partir do mês da ativação, posterior à competência já medida (08/2026).
+    $this->travelTo(CarbonImmutable::parse('2026-10-15 12:00:00', 'America/Sao_Paulo'));
+    $versions = app(MeasurementPlanVersionService::class);
+    $revision = $versions->createRevision($planSet, $scenario['actor'], [
+        'revision_category' => MeasurementPlanRevisionCategory::Cost->value,
+        'revision_reason' => 'Orçamento da obra revisado pela construtora.',
+    ]);
+    $revision = $versions->updateDraft($revision, $scenario['actor'], ['construction_fund_amount' => '1000.00'], null, $revision->revision);
+    $versions->activate($revision, $scenario['actor'], $revision->revision);
+
+    expect($planSet->fresh()->currentConstructionFundAmount())->toBe('1000.00')
+        ->and(reconciliationService()->forMeasurement($measurement->fresh())->line($planSet->getKey())->expectedAmount)
+        ->toBe('200000.00');
+
+    // Nem o fundo das versões nem o realizado das linhas, alterados por fora
+    // do Eloquent, chegam ao valor esperado: a única fonte é o snapshot.
+    DB::table('measurement_plan_versions')
+        ->where('plan_set_id', $planSet->getKey())
         ->update(['construction_fund_amount' => '1000.00']);
     DB::table('measurement_plan_lines')
         ->where('plan_set_id', $planSet->getKey())

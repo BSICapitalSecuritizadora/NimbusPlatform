@@ -108,7 +108,7 @@
     }
 
     .emissions-pagination-nav .page-item:not(.active):not(.disabled) .page-link:hover {
-        background: rgba(212,175,55,0.1);
+        background: color-mix(in srgb, var(--gold) 10%, transparent);
         color: var(--gold);
         transform: translateY(-2px);
     }
@@ -292,11 +292,11 @@
     };
 @endphp
 
-<section class="hero position-relative d-flex align-items-center" style="min-height: 45vh; background: linear-gradient(135deg, #020918 0%, #051a3d 100%);">
+<section class="hero position-relative d-flex align-items-center" style="min-height: 45vh; background: linear-gradient(135deg, var(--brand-strong) 0%, var(--brand) 100%);">
     <div class="container">
         <div class="row g-4 align-items-center">
             <div class="col-lg-12">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="background: rgba(212,175,55,0.2); color: var(--gold);">Track Record Institucional</span>
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="background: color-mix(in srgb, var(--gold) 20%, transparent); color: var(--gold);">Track Record Institucional</span>
                 <h1 class="display-4 fw-bold mb-3 text-white">Emissões e Track Record</h1>
                 <p class="lead mb-0 text-white-50" style="max-width: 860px;">
                     Portal de transparência das operações estruturadas pela BSI Capital. Consulte o histórico completo de emissões de CRI, CRA e CR, com acesso a documentos técnicos, relatórios e dados de mercado atualizados.

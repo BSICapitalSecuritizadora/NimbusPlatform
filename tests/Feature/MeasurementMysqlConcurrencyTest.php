@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementPlanVersionFixture;
 use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 beforeEach(function () {
@@ -156,6 +157,8 @@ function createMysqlEngineeringOperationRaceScenario(): array
         'sequence_number' => 1,
         'initial_realized_cumulative_percent' => 0,
     ]);
+    // O plano só recebe medição depois de ativado: a linha entra no rascunho da V1.
+    MeasurementPlanVersionFixture::activate($planSet);
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
         'reference_month' => '2026-08-01',
@@ -387,6 +390,8 @@ it('serializes finalize against finalize on MySQL', function () {
         'plan_set_id' => $planSet->id,
         'measurement_date' => '2026-08-01',
     ]);
+    // O plano só recebe medição depois de ativado: a linha entra no rascunho da V1.
+    MeasurementPlanVersionFixture::activate($planSet);
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
         'reference_month' => '2026-08-01',

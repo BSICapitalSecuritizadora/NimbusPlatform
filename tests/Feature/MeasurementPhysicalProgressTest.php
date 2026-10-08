@@ -5,6 +5,7 @@ use App\Exceptions\MeasurementWorkflowException;
 use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\Measurement;
+use App\Models\MeasurementAsset;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
@@ -22,6 +23,7 @@ use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\MeasurementPhysicalProgressScenario as Scenario;
+use Tests\Support\MeasurementPlanVersionFixture;
 use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 uses(RefreshDatabase::class);
@@ -143,9 +145,19 @@ it('sets the initial physical progress only on the plans the operation sync crea
         'operation_id' => $operation->id,
         'construction_id' => $existing->id,
     ]);
+    $existingDraft = $existingPlan->draftVersion()->sole();
 
+    // O formulário da operação devolve, do plano existente, o fundo que mostrou e
+    // o contador do rascunho da V1 que leu: só assim o fundo do rascunho muda.
     $operation->syncDevelopmentPlans([
-        ['construction_id' => $existing->id, 'construction_fund_amount' => 100, 'initial_physical_progress_percent' => 70, 'initial_physical_progress_reference_date' => '2026-09-30'],
+        [
+            'construction_id' => $existing->id,
+            'construction_fund_amount' => 100,
+            'construction_fund_original' => $existingDraft->construction_fund_amount,
+            'construction_fund_revision' => $existingDraft->revision,
+            'initial_physical_progress_percent' => 70,
+            'initial_physical_progress_reference_date' => '2026-09-30',
+        ],
         ['construction_id' => $new->id, 'construction_fund_amount' => 200, 'initial_physical_progress_percent' => 45, 'initial_physical_progress_reference_date' => '2026-09-30'],
     ], $actor);
 
@@ -153,9 +165,10 @@ it('sets the initial physical progress only on the plans the operation sync crea
 
     expect($existingPlan->fresh()->initial_physical_progress_percent)->toBe('20.00')
         ->and($existingPlan->fresh()->initial_physical_progress_reference_date->toDateString())->toBe('2026-03-31')
-        ->and($existingPlan->fresh()->construction_fund_amount)->toBe('100.00')
+        ->and($existingPlan->fresh()->currentConstructionFundAmount())->toBe('100.00')
         ->and($newPlan->initial_physical_progress_percent)->toBe('45.00')
-        ->and($newPlan->initial_physical_progress_reference_date->toDateString())->toBe('2026-09-30');
+        ->and($newPlan->initial_physical_progress_reference_date->toDateString())->toBe('2026-09-30')
+        ->and($newPlan->currentConstructionFundAmount())->toBe('200.00');
 });
 
 it('records who created the plan, when, and its initial physical progress in the protected trail', function () {
@@ -402,6 +415,8 @@ it('accepts 0% in a competence covered by the initial physical progress without 
             'measurement_date' => '2026-05-01', 'initial_realized_cumulative_percent' => 0,
             'realized_monthly_percent' => 0, 'realized_cumulative_percent' => 0,
         ]);
+        // O plano só recebe medição depois de ativado: a linha entra no rascunho da V1.
+        MeasurementPlanVersionFixture::activate($planSet);
         Storage::disk('local')->put("nimbus_docs/measurements/assets/covered-{$planSet->id}.pdf", "%PDF-1.7 torre {$planSet->id}");
         $measurement->assets()->create(['plan_set_id' => $planSet->id, 'plan_line_id' => $line->id, 'storage_path' => "nimbus_docs/measurements/assets/covered-{$planSet->id}.pdf", 'storage_disk' => 'local']);
     }
@@ -473,6 +488,8 @@ it('lets a construction at 100% approve a month without progress so the other de
             'measurement_date' => '2026-05-01', 'initial_realized_cumulative_percent' => 0,
             'realized_monthly_percent' => 0, 'realized_cumulative_percent' => 0,
         ]);
+        // O plano só recebe medição depois de ativado: a linha entra no rascunho da V1.
+        MeasurementPlanVersionFixture::activate($planSet);
         Storage::disk('local')->put("nimbus_docs/measurements/assets/finished-{$planSet->id}.pdf", "%PDF-1.7 torre {$planSet->id}");
         $measurement->assets()->create(['plan_set_id' => $planSet->id, 'plan_line_id' => $line->id, 'storage_path' => "nimbus_docs/measurements/assets/finished-{$planSet->id}.pdf", 'storage_disk' => 'local']);
     }
@@ -602,23 +619,25 @@ it('keeps counting a measurement while the later stages decide', function () {
 });
 
 it('keeps the Finalization of an approved measurement valid after another month is approved', function () {
-    $scenario = MeasurementReceiptEvidenceScenario::open();
-    $planSet = $scenario['operation']->planSets()->sole();
-    $april = MeasurementPlanLine::factory()->create([
-        'operation_id' => $scenario['operation']->id, 'plan_set_id' => $planSet->id, 'sequence_number' => 2,
-        'measurement_date' => '2026-04-01', 'planned_monthly_percent' => 5, 'planned_cumulative_percent' => 5,
-        'initial_realized_cumulative_percent' => 0, 'realized_monthly_percent' => 0, 'realized_cumulative_percent' => 0,
-    ]);
-    $context = ['actor' => $scenario['actor'], 'operation' => $scenario['operation'], 'planSet' => $planSet, 'lines' => ['2026-04' => $april]];
+    // Abril é competência anterior a maio, cadastrada depois dele no cronograma
+    // (sequência 2). Com o plano vigente, a linha só entra no cronograma antes da
+    // ativação -- uma revisão não acrescenta competência anterior à vigência.
+    $scenario = Scenario::plan(['2026-05', '2026-04']);
+    $workflow = app(MeasurementWorkflow::class);
+    $may = Scenario::measured($scenario, '2026-05', 10);
+    $workflow->approve($may->fresh(), $scenario['actor']);
+    $workflow->approve($may->fresh(), $scenario['actor']);
+    $payment = $workflow->registerPayment($may->fresh(), $scenario['actor'], ['plan_set_id' => $scenario['planSet']->id, 'pay_date' => '2026-05-20', 'amount' => '100000.00', 'method' => 'TED']);
+    $workflow->approve($may->fresh(), $scenario['actor']);
 
-    Scenario::measured($context, '2026-04', 3);
-    app(MeasurementWorkflow::class)->attachReceipt($scenario['payment']->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
-    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($scenario['payment'], $scenario['actor']);
-    app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['actor']);
+    Scenario::measured($scenario, '2026-04', 3);
+    $workflow->attachReceipt($payment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['actor']);
+    $workflow->finalize($may->fresh(), $scenario['actor']);
 
-    expect($scenario['measurement']->fresh()->status)->toBe('finalized')
-        ->and($april->fresh()->realized_cumulative_percent)->toBe('3.00')
-        ->and(app(MeasurementPhysicalProgressService::class)->forPlanSet($planSet)->currentPercent())->toBe('13.00');
+    expect($may->fresh()->status)->toBe('finalized')
+        ->and($scenario['lines']['2026-04']->fresh()->realized_cumulative_percent)->toBe('3.00')
+        ->and(Scenario::progress($scenario)->currentPercent())->toBe('13.00');
 });
 
 it('keeps the financial expected amount on the monthly percent regardless of the initial progress', function () {
@@ -688,12 +707,26 @@ it('does not count a measurement twice on repeated reads or a retried approval',
 it('refuses a second measurement on a schedule line already measured by Engineering', function () {
     $scenario = Scenario::plan();
     $first = Scenario::measured($scenario, '2026-05', 10);
-    $second = Scenario::measurement($scenario, '2026-05');
+
+    // A ocupação da medição prevista nasce no envio: o arquivo da segunda
+    // medição na mesma linha é recusado antes de chegar à Engenharia.
+    expect(fn () => Scenario::measurement($scenario, '2026-05'))
+        ->toThrow(MeasurementWorkflowException::class, sprintf(MeasurementAsset::LINE_ALREADY_CLAIMED_REFUSAL, '01', '05/2026', 'Plano padrão', $first->id));
+
+    // Arquivo gravado antes de a ocupação existir (`line_claim_key` vazio), na
+    // mesma linha: a Engenharia continua recusando a segunda aprovação.
+    $second = Scenario::measurement($scenario, '2026-06');
+    DB::table('measurement_assets')->where('measurement_id', $second->id)->update([
+        'plan_line_id' => $scenario['lines']['2026-05']->id,
+        'line_claim_key' => null,
+    ]);
+    DB::table('measurements')->where('id', $second->id)->update(['reference_month' => '2026-05-01']);
 
     $error = physicalProgressLimitError(fn () => Scenario::approveEngineering($scenario, $second, 4), $scenario['planSet']->id);
 
     expect($error)->toBe("A medição 01 (05/2026) do cronograma de Plano padrão já está vinculada à medição #{$first->id}, aprovada pela Engenharia. Recuse esta medição ou corrija a linha do cronograma escolhida no envio.")
         ->and($scenario['lines']['2026-05']->fresh()->measurement_id)->toBe($first->id)
+        ->and($second->fresh()->engineering_snapshot)->toBeNull()
         ->and(Scenario::progress($scenario)->currentPercent())->toBe('10.00');
 });
 
@@ -776,6 +809,8 @@ it('keeps the progress and the limit of each development independent', function 
             'measurement_date' => '2026-05-01', 'initial_realized_cumulative_percent' => 0,
             'realized_monthly_percent' => 0, 'realized_cumulative_percent' => 0,
         ]);
+        // O plano só recebe medição depois de ativado: a linha entra no rascunho da V1.
+        MeasurementPlanVersionFixture::activate($planSet);
         Storage::disk('local')->put("nimbus_docs/measurements/assets/towers-{$planSet->id}.pdf", "%PDF-1.7 torre {$planSet->id}");
         $measurement->assets()->create(['plan_set_id' => $planSet->id, 'plan_line_id' => $line->id, 'storage_path' => "nimbus_docs/measurements/assets/towers-{$planSet->id}.pdf", 'storage_disk' => 'local']);
     }

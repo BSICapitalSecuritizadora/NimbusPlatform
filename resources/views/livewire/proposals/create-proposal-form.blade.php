@@ -12,7 +12,7 @@
         <div class="surface-card p-4 p-lg-5 mb-5 border-0 shadow-sm" style="background: var(--brand-strong); color: #fff;">
             <div class="row align-items-center g-5">
                 <div class="col-lg-7">
-                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Oportunidade</span>
+                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent); letter-spacing: 0.1em; font-weight: 600;">Oportunidade</span>
                     <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
                         Solicitar Análise de <span style="color: var(--gold);">Operação</span>
                     </h1>
@@ -70,7 +70,7 @@
         <!-- FORM -->
         <form wire:submit="save">
             <!-- ANTES DE ENVIAR -->
-            <div class="surface-card p-4 p-lg-4 mb-4 border-0 shadow-sm" style="background: rgba(0, 32, 91, 0.03); border-left: 4px solid var(--brand) !important;">
+            <div class="surface-card p-4 p-lg-4 mb-4 border-0 shadow-sm" style="background: color-mix(in srgb, var(--brand) 4%, var(--surface)); border-left: 4px solid var(--brand) !important;">
                 <h2 class="h5 fw-bold text-brand mb-2">Antes de enviar sua operação</h2>
                 <p class="small text-muted mb-0">
                     Este formulário é destinado à apresentação inicial de oportunidades relacionadas a securitização, crédito estruturado, CRI, CRA, CR, recebíveis, operações imobiliárias, agronegócio, infraestrutura, empresas ou parcerias estratégicas. O envio não representa aprovação, compromisso de estruturação ou garantia de continuidade da operação.

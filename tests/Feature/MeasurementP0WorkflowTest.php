@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementPlanVersionFixture;
 use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 uses(RefreshDatabase::class);
@@ -84,6 +85,9 @@ function createP0Scenario(): array
         'realized_monthly_percent' => 0,
         'realized_cumulative_percent' => 0,
     ]);
+    // O cronograma entra no rascunho da V1, e o plano só recebe medição depois
+    // de vigente: a versão é ativada antes do envio.
+    MeasurementPlanVersionFixture::activate($planSet);
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
         'reference_month' => '2026-08-01',
@@ -143,6 +147,17 @@ it('executes the formal five-stage workflow without treating payment registratio
     $workflow->approve($measurement->fresh(), $scenario['engineering'], null, [$scenario['planSet']->id => 10]);
     expect($measurement->fresh()->current_stage)->toBe(2)
         ->and($measurement->fresh()->reviewForStage(1)?->status)->toBe('approved');
+
+    // A Engenharia aprova contra a versão do plano em que a medição foi
+    // enviada, e o snapshot congela qual foi -- com o Fundo de Obra dela.
+    $version = $scenario['planSet']->activeVersion()->sole();
+    $approvedPlan = $measurement->fresh()->engineering_snapshot['plan_sets'][0];
+
+    expect($measurement->assets()->sole()->plan_version_id)->toBe($version->id)
+        ->and($approvedPlan['plan_version_id'])->toBe($version->id)
+        ->and($approvedPlan['plan_version_number'])->toBe(1)
+        ->and($approvedPlan['plan_line_lineage_key'])->toBe($scenario['line']->fresh()->lineage_key)
+        ->and($approvedPlan['construction_fund_amount'])->toBe($version->construction_fund_amount);
 
     $workflow->approve($measurement->fresh(), $scenario['management']);
     expect($measurement->fresh()->current_stage)->toBe(3);
@@ -240,6 +255,13 @@ it('returns each rejected post-engineering stage to its immediate predecessor', 
 
 it('terminates an engineering rejection and records its reason', function () {
     $scenario = createP0Scenario();
+    $lineIsAvailable = fn (): bool => MeasurementPlanLine::query()
+        ->availableForMeasurement()
+        ->whereKey($scenario['line']->id)
+        ->exists();
+
+    expect($scenario['measurement']->assets()->sole()->line_claim_key)->toBe($scenario['line']->fresh()->lineage_key)
+        ->and($lineIsAvailable())->toBeFalse();
 
     app(MeasurementWorkflow::class)->reject(
         $scenario['measurement']->fresh(),
@@ -247,8 +269,12 @@ it('terminates an engineering rejection and records its reason', function () {
         'Arquivo técnico inconsistente',
     );
 
+    // A recusa terminal solta a medição prevista que a medição ocupava: a
+    // competência volta a aceitar um envio, e o arquivo fica como histórico.
     expect($scenario['measurement']->fresh()->status)->toBe('rejected')
-        ->and($scenario['measurement']->fresh()->reviewForStage(1)?->notes)->toBe('Arquivo técnico inconsistente');
+        ->and($scenario['measurement']->fresh()->reviewForStage(1)?->notes)->toBe('Arquivo técnico inconsistente')
+        ->and($scenario['measurement']->assets()->sole()->line_claim_key)->toBeNull()
+        ->and($lineIsAvailable())->toBeTrue();
 });
 
 /**
@@ -310,6 +336,8 @@ it('refuses to close at Engineering a paid measurement that Finalization returne
 
     $measurement = $scenario['measurement']->fresh();
 
+    // A medição paga continua ocupando a medição prevista dela: a competência
+    // paga não volta a aceitar outro envio.
     expect($measurement->status)->toBe('in_review')
         ->and($measurement->current_stage)->toBe(MeasurementWorkflow::STAGE_ENGINEERING)
         ->and($measurement->reviewForStage(1)?->status)->toBe('pending')
@@ -317,7 +345,8 @@ it('refuses to close at Engineering a paid measurement that Finalization returne
         ->and($measurement->workflow_revision)->toBe($returned->workflow_revision)
         ->and($payment->fresh()?->amount)->toBe('1000.00')
         ->and($payment->fresh()->currentReceiptEvidence?->review_status)->toBe($receiptStatus)
-        ->and(Activity::query()->where('description', 'measurement_stage_rejected')->count())->toBe($rejectionsBefore);
+        ->and(Activity::query()->where('description', 'measurement_stage_rejected')->count())->toBe($rejectionsBefore)
+        ->and($measurement->assets()->sole()->line_claim_key)->toBe($scenario['line']->fresh()->lineage_key);
 
     Notification::assertNotSentTo(
         $scenario['assigned'],

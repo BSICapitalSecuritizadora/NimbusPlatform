@@ -216,9 +216,9 @@
     }
     
     .badge-premium {
-        background: rgba(212,175,55,0.12);
+        background: color-mix(in srgb, var(--gold) 12%, transparent);
         color: var(--gold);
-        border: 1px solid rgba(212,175,55,0.25);
+        border: 1px solid color-mix(in srgb, var(--gold) 25%, transparent);
         font-weight: 600;
         font-size: 0.75rem;
         border-radius: 8px;
@@ -286,7 +286,7 @@
     }
     .doc-filter-select:focus {
         border-color: var(--gold);
-        box-shadow: 0 0 0 4px rgba(212,175,55,0.15);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--gold) 15%, transparent);
     }
 
     .calculator-card {

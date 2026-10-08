@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\MeasurementPlanRevisionCategory;
+use App\Enums\MeasurementPlanVersionStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Filament\Resources\Measurements\Pages\CreateMeasurement;
 use App\Filament\Resources\Measurements\Pages\EditMeasurement;
@@ -7,17 +9,21 @@ use App\Filament\Resources\Operations\Pages\EditOperation;
 use App\Filament\Resources\Operations\Pages\ViewOperation;
 use App\Filament\Resources\Operations\RelationManagers\PlanLinesRelationManager;
 use App\Filament\Resources\Operations\RelationManagers\PlanSetsRelationManager;
+use App\Filament\Resources\Operations\RelationManagers\PlanVersionsRelationManager;
 use App\Models\Construction;
 use App\Models\Measurement;
 use App\Models\MeasurementAsset;
 use App\Models\MeasurementPayment;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
+use App\Models\MeasurementPlanVersion;
 use App\Models\Operation;
 use App\Models\ResponsibilityDelegation;
 use App\Models\User;
+use App\Services\MeasurementPlanVersionService;
 use App\Services\MeasurementWorkflow;
 use App\Services\Security\ClamAvFileScanner;
+use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Testing\TestAction;
 use Filament\Forms\Components\Repeater;
@@ -34,6 +40,7 @@ use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\MeasurementPhysicalProgressScenario as PhysicalScenario;
+use Tests\Support\MeasurementPlanVersionFixture;
 
 /**
  * O que a medição já usou não muda por fora do fluxo.
@@ -106,7 +113,8 @@ function integrityGuardsLogs(string $level): ArrayObject
  * Operação com Torre Alfa e Torre Beta, duas competências no cronograma de
  * cada obra (08 e 09/2026) e a medição de agosto enviada com um arquivo por
  * obra, aguardando a Engenharia. Quem envia é um editor que ocupa os sete
- * papéis da operação.
+ * papéis da operação. O cronograma e o Fundo de Obra estão na V1 de cada
+ * plano, vigente desde 08/2026: é a versão que a medição leva.
  *
  * @return array{actor: User, operation: Operation, measurement: Measurement, planSets: list<MeasurementPlanSet>, august: list<MeasurementPlanLine>, september: list<MeasurementPlanLine>, assets: list<MeasurementAsset>}
  */
@@ -134,12 +142,11 @@ function integrityGuardsTwoDevelopments(): array
     $assets = [];
 
     foreach (['Torre Alfa' => '10000.00', 'Torre Beta' => '20000.00'] as $name => $fund) {
-        $planSet = MeasurementPlanSet::factory()->create([
+        $planSet = MeasurementPlanSet::factory()->withConstructionFund($fund)->create([
             'operation_id' => $operation->id,
             'construction_id' => Construction::factory()->create(['emission_id' => $operation->emission_id, 'development_name' => $name])->id,
             'name' => "Plano {$name}",
             'is_default' => $planSets === [],
-            'construction_fund_amount' => $fund,
             'initial_incurred_amount' => '0.00',
         ]);
 
@@ -162,6 +169,10 @@ function integrityGuardsTwoDevelopments(): array
                 $september[] = $line;
             }
         }
+
+        // As linhas entram no rascunho da V1, e o plano só recebe arquivo de
+        // medição depois que ela fica vigente.
+        MeasurementPlanVersionFixture::activate($planSet);
 
         $path = "nimbus_docs/measurements/assets/integrity-{$measurement->id}-{$planSet->id}.pdf";
         Storage::disk('local')->put($path, "%PDF-1.7 medição de agosto da {$name}");
@@ -226,6 +237,43 @@ function integrityGuardsPaidReturned(): array
     $scenario['measurement'] = $scenario['measurement']->fresh();
 
     return $scenario;
+}
+
+/**
+ * Replanejamento do plano em vigor: a revisão nasce em rascunho, copiada da
+ * vigente, e o rascunho recebe o Fundo de Obra novo ou o previsto mensal novo
+ * da linha de agosto. É o único caminho para mudar o que a versão vigente
+ * guarda; a ativação é que decide se a mudança vale.
+ *
+ * @param  array{actor: User, august: list<MeasurementPlanLine>}  $scenario
+ */
+function integrityGuardsReplanningDraft(array $scenario, MeasurementPlanSet $planSet, string $change): MeasurementPlanVersion
+{
+    $service = app(MeasurementPlanVersionService::class);
+    $august = collect($scenario['august'])->firstWhere('plan_set_id', $planSet->id);
+    $draft = $service->createRevision($planSet, $scenario['actor'], [
+        'revision_category' => $change === 'fundo de obra' ? MeasurementPlanRevisionCategory::Cost->value : MeasurementPlanRevisionCategory::Schedule->value,
+        'revision_reason' => 'Replanejamento pedido pela construtora.',
+    ]);
+
+    return match ($change) {
+        'fundo de obra' => $service->updateDraft($draft, $scenario['actor'], ['construction_fund_amount' => '99999.00'], null, (int) $draft->revision),
+        'linha do cronograma' => $service->updateDraft(
+            $draft,
+            $scenario['actor'],
+            [],
+            $draft->lines()->orderBy('sequence_number')->get()
+                ->map(fn (MeasurementPlanLine $line): array => [
+                    'id' => $line->id,
+                    'sequence_number' => $line->sequence_number,
+                    'planned_monthly_percent' => $line->lineage_key === $august->lineage_key ? 15 : $line->planned_monthly_percent,
+                    'planned_cumulative_percent' => $line->planned_cumulative_percent,
+                    'measurement_date' => $line->measurement_date->toDateString(),
+                ])
+                ->all(),
+            (int) $draft->revision,
+        ),
+    };
 }
 
 // ── Arquivos, obra, linha e competência da medição paga ──────────────────────
@@ -364,11 +412,10 @@ it('reapproves a paid measurement returned to Engineering on the developments of
 
     // A obra nova entra na operação depois do pagamento, e a medição de
     // setembro já a aprova: o plano dela não pode mais ser excluído.
-    $gamma = MeasurementPlanSet::factory()->create([
+    $gamma = MeasurementPlanSet::factory()->withConstructionFund('30000.00')->create([
         'operation_id' => $scenario['operation']->id,
         'construction_id' => Construction::factory()->create(['emission_id' => $scenario['operation']->emission_id, 'development_name' => 'Torre Gama'])->id,
         'name' => 'Plano Torre Gama',
-        'construction_fund_amount' => '30000.00',
         'initial_incurred_amount' => '0.00',
     ]);
     $gammaLine = MeasurementPlanLine::factory()->create([
@@ -380,6 +427,7 @@ it('reapproves a paid measurement returned to Engineering on the developments of
         'realized_monthly_percent' => 0,
         'realized_cumulative_percent' => 0,
     ]);
+    MeasurementPlanVersionFixture::activate($gamma);
     $september = Measurement::factory()->create([
         'operation_id' => $scenario['operation']->id,
         'reference_month' => '2026-09-01',
@@ -417,64 +465,124 @@ it('reapproves a paid measurement returned to Engineering on the developments of
         ->and($measurement->reviewForStage(MeasurementWorkflow::STAGE_PAYMENT)?->status)->toBe('approved');
 });
 
-it('still requires a file for every development of the operation from a measurement without payment', function () {
+it('still requires a file for every development in force when a measurement without payment was sent', function () {
+    // Agosto: a V1 da obra nova, ativada agora, vale a partir de 08/2026. O
+    // cronograma dela começa em setembro: agosto já tem medição de pé sem o
+    // arquivo dela, e uma medição prevista em agosto nunca seria medida.
+    $this->travelTo(CarbonImmutable::parse('2026-08-20 10:00:00', 'America/Sao_Paulo'));
     $scenario = integrityGuardsTwoDevelopments();
-    $gamma = MeasurementPlanSet::factory()->create([
+    $workflow = app(MeasurementWorkflow::class);
+    [$alfa, $beta] = $scenario['planSets'];
+    $gamma = MeasurementPlanSet::factory()->withConstructionFund('30000.00')->create([
         'operation_id' => $scenario['operation']->id,
         'construction_id' => Construction::factory()->create(['emission_id' => $scenario['operation']->emission_id, 'development_name' => 'Torre Gama'])->id,
         'name' => 'Plano Torre Gama',
-        'construction_fund_amount' => '30000.00',
         'initial_incurred_amount' => '0.00',
     ]);
     MeasurementPlanLine::factory()->create([
         'operation_id' => $scenario['operation']->id,
         'plan_set_id' => $gamma->id,
         'sequence_number' => 1,
-        'measurement_date' => '2026-08-01',
+        'measurement_date' => '2026-09-01',
+        'planned_monthly_percent' => 10,
+        'planned_cumulative_percent' => 10,
         'initial_realized_cumulative_percent' => 0,
         'realized_monthly_percent' => 0,
         'realized_cumulative_percent' => 0,
     ]);
+    $gammaDraft = $gamma->draftVersion()->firstOrFail();
     $errors = [];
 
+    // A medição de agosto aguarda a Engenharia sem o arquivo da Torre Gama, e
+    // o plano dela entra em vigor mesmo assim: a medição foi enviada antes, e
+    // a Engenharia não exige dela o arquivo que o Editar não acrescenta.
+    $gammaV1 = app(MeasurementPlanVersionService::class)->activate($gammaDraft, $scenario['actor'], (int) $gammaDraft->revision);
+    integrityGuardsApproveEngineering($scenario, 10);
+
+    expect($gammaV1->status)->toBe(MeasurementPlanVersionStatus::Active)
+        ->and(collect($scenario['measurement']->fresh()->engineering_snapshot['plan_sets'])->pluck('plan_set_id')->all())->toBe([$alfa->id, $beta->id]);
+
+    // A medição de setembro foi enviada com a Torre Gama já em vigor: a
+    // Engenharia continua exigindo dela o arquivo de toda obra vigente.
+    $september = Measurement::factory()->create([
+        'operation_id' => $scenario['operation']->id,
+        'reference_month' => '2026-09-01',
+        'status' => 'pending',
+        'current_stage' => MeasurementWorkflow::STAGE_ENGINEERING,
+        'storage_path' => null,
+        'filename' => null,
+        'uploaded_by' => $scenario['actor']->id,
+    ]);
+
+    foreach ([[$alfa, $scenario['september'][0]], [$beta, $scenario['september'][1]]] as [$planSet, $line]) {
+        $path = "nimbus_docs/measurements/assets/integrity-september-{$planSet->id}.pdf";
+        Storage::disk('local')->put($path, "%PDF-1.7 medição de setembro de {$planSet->name}");
+        $september->assets()->create(['plan_set_id' => $planSet->id, 'plan_line_id' => $line->id, 'storage_path' => $path, 'storage_disk' => 'local']);
+    }
+
+    $workflow->startReview($september->fresh(), $scenario['actor']);
+
     try {
-        integrityGuardsApproveEngineering($scenario, 10);
+        $workflow->approve($september->fresh(), $scenario['actor'], engineeringProgress: [$alfa->id => 10, $beta->id => 10]);
     } catch (ValidationException $exception) {
         $errors = $exception->errors();
     }
 
-    expect($errors['assets.coverage'] ?? null)->toBe(['Envie exatamente um arquivo para cada empreendimento da operação.'])
-        ->and($errors["assets.{$gamma->id}"] ?? null)->toBe(['Envie o arquivo da medição para Torre Gama.'])
-        ->and($scenario['measurement']->fresh()->hasApprovedEngineering())->toBeFalse();
+    expect($errors)->toBe([
+        'assets.coverage' => ['Envie exatamente um arquivo para cada empreendimento da operação.'],
+        "assets.{$gamma->id}" => ['Envie o arquivo da medição para Torre Gama.'],
+    ])
+        ->and($september->fresh()->hasApprovedEngineering())->toBeFalse();
 });
 
 // ── Recusas visíveis nos planos e nas linhas da operação ─────────────────────
 
 it('explains why a schedule line used by an approved Engineering keeps its planned values', function () {
-    $scenario = integrityGuardsTwoDevelopments();
-    integrityGuardsApproveEngineering($scenario);
-    $line = $scenario['august'][0];
-    $this->actingAs($scenario['actor']);
-
-    Livewire::test(PlanLinesRelationManager::class, ['ownerRecord' => $scenario['operation'], 'pageClass' => ViewOperation::class])
-        ->callTableAction('editPlanned', $line, data: [
-            'planned_monthly_percent' => 12,
-            'planned_cumulative_percent' => 12,
-            'measurement_date' => '2026-08',
-        ])
-        ->assertActionHalted(TestAction::make('editPlanned')->table($line));
-
-    expect(integrityGuardsNotificationBody('Previsto não atualizado.'))->toBe('A linha de cronograma usada por uma Engenharia aprovada está bloqueada.')
-        ->and($line->fresh()->planned_monthly_percent)->toBe('10.00');
-});
-
-it('explains why a plan covered by an approved Engineering keeps its context', function (string $change) {
+    // Setembro: a competência de agosto, que a Engenharia aprovou, já passou, e
+    // uma revisão ativada agora valeria a partir de setembro.
+    $this->travelTo(CarbonImmutable::parse('2026-09-15 10:00:00', 'America/Sao_Paulo'));
     $scenario = integrityGuardsTwoDevelopments();
     integrityGuardsApproveEngineering($scenario);
     [$alfa] = $scenario['planSets'];
     $line = $scenario['august'][0];
     $this->actingAs($scenario['actor']);
 
+    // A aba do cronograma só acompanha: o previsto não se edita na linha da
+    // versão vigente, e o modelo recusa a escrita direta com o motivo.
+    Livewire::test(PlanLinesRelationManager::class, ['ownerRecord' => $scenario['operation'], 'pageClass' => ViewOperation::class])
+        ->assertTableActionDoesNotExist('editPlanned', record: $line);
+
+    expect(fn () => $line->fresh()->update(['planned_monthly_percent' => 12]))
+        ->toThrow(MeasurementWorkflowException::class, 'A linha de cronograma usada por uma Engenharia aprovada está bloqueada.');
+
+    // O previsto muda só numa revisão -- e a revisão que reescreve agosto é
+    // recusada na ativação, com o motivo, mesmo com a competência já passada.
+    $draft = integrityGuardsReplanningDraft($scenario, $alfa, 'linha do cronograma');
+
+    Livewire::test(PlanVersionsRelationManager::class, ['ownerRecord' => $scenario['operation'], 'pageClass' => ViewOperation::class])
+        ->callTableAction('activateVersion', $draft)
+        ->assertActionHalted(TestAction::make('activateVersion')->table($draft));
+
+    expect(integrityGuardsNotificationBody('Versão do plano não alterada.'))
+        ->toBe('A medição prevista 01 (08/2026) é anterior à vigência 09/2026 e precisa continuar igual à da V1: a revisão não reescreve competências passadas.')
+        ->and($draft->fresh()->status)->toBe(MeasurementPlanVersionStatus::Draft)
+        ->and($alfa->activeVersion()->value('id'))->toBe($line->plan_version_id)
+        ->and($line->fresh()->planned_monthly_percent)->toBe('10.00');
+});
+
+it('explains why a plan covered by an approved Engineering keeps its context', function (string $change) {
+    // Agosto: uma revisão ativada agora valeria a partir de agosto, a mesma
+    // competência que a Engenharia aprovou.
+    $this->travelTo(CarbonImmutable::parse('2026-08-20 10:00:00', 'America/Sao_Paulo'));
+    $scenario = integrityGuardsTwoDevelopments();
+    integrityGuardsApproveEngineering($scenario);
+    [$alfa] = $scenario['planSets'];
+    $line = $scenario['august'][0];
+    $captured = MeasurementPlanVersion::query()->findOrFail($scenario['assets'][0]->fresh()->plan_version_id);
+    $this->actingAs($scenario['actor']);
+
+    // O Fundo de Obra e o cronograma são da versão: a edição do plano não os
+    // leva mais, e o payload forjado nela não muda nada.
     $manager = Livewire::test(PlanSetsRelationManager::class, ['ownerRecord' => $scenario['operation'], 'pageClass' => ViewOperation::class])
         ->mountTableAction('edit', $alfa);
 
@@ -483,13 +591,26 @@ it('explains why a plan covered by an approved Engineering keeps its context', f
         'linha do cronograma' => $manager->set("mountedActions.0.data.lines.record-{$line->id}.planned_monthly_percent", 15),
     };
 
-    $manager->callMountedTableAction()->assertActionHalted(TestAction::make('edit')->table($alfa));
+    $manager->callMountedTableAction()->assertHasNoTableActionErrors();
 
-    expect(integrityGuardsNotificationBody('Plano não atualizado.'))->toBe(match ($change) {
-        'fundo de obra' => 'O contexto de um plano aprovado pela Engenharia está bloqueado.',
-        'linha do cronograma' => 'A linha de cronograma usada por uma Engenharia aprovada está bloqueada.',
-    })
-        ->and($alfa->fresh()->construction_fund_amount)->toBe('10000.00')
+    expect(integrityGuardsNotificationBody('Plano não atualizado.'))->toBeNull()
+        ->and($alfa->fresh()->currentConstructionFundAmount())->toBe('10000.00')
+        ->and($line->fresh()->planned_monthly_percent)->toBe('10.00')
+        ->and($alfa->versions()->count())->toBe(1);
+
+    // O replanejamento nasce num rascunho de revisão, e a ativação dele é que
+    // recusa, com o motivo.
+    $draft = integrityGuardsReplanningDraft($scenario, $alfa, $change);
+
+    Livewire::test(PlanVersionsRelationManager::class, ['ownerRecord' => $scenario['operation'], 'pageClass' => ViewOperation::class])
+        ->callTableAction('activateVersion', $draft)
+        ->assertActionHalted(TestAction::make('activateVersion')->table($draft));
+
+    expect(integrityGuardsNotificationBody('Versão do plano não alterada.'))
+        ->toBe("A competência 08/2026 já tem medição de pé (#{$scenario['measurement']->id}) e não pode ser replanejada. Ativada agora, a revisão valeria a partir de 08/2026; ative-a a partir de 01/09/2026.")
+        ->and($draft->fresh()->status)->toBe(MeasurementPlanVersionStatus::Draft)
+        ->and($captured->fresh()->status)->toBe(MeasurementPlanVersionStatus::Active)
+        ->and($alfa->fresh()->currentConstructionFundAmount())->toBe('10000.00')
         ->and($line->fresh()->planned_monthly_percent)->toBe('10.00');
 })->with(['fundo de obra', 'linha do cronograma']);
 
@@ -524,14 +645,23 @@ it('explains on the operation edit page why a development fund covered by an app
     $key = collect($page->get('data.developments'))
         ->search(fn (array $row): bool => (int) $row['construction_id'] === (int) $alfa->construction_id);
 
-    expect($key)->not->toBeFalse();
+    expect($key)->not->toBeFalse()
+        ->and($page->instance()->getSchema('form')->getComponentByStatePath("developments.{$key}.construction_fund_amount")?->isDisabled())->toBeTrue();
 
-    $page->set("data.developments.{$key}.construction_fund_amount", '99.999,00')
+    // O Fundo de Obra é da versão vigente: o campo do plano em vigor vem
+    // travado, com o caminho da revisão.
+    $page->assertSee('Plano em vigor: o Fundo de Obra muda por revisão do plano, na aba Versões dos Planos.');
+
+    // O payload forjado, que destrava o campo e manda outro fundo, é recusado
+    // pelo serviço de planos; a operação em si é gravada.
+    $page->set("data.developments.{$key}.has_active_version", false)
+        ->set("data.developments.{$key}.construction_fund_amount", '99.999,00')
         ->call('save');
 
     expect(integrityGuardsNotificationBody('Empreendimentos não atualizados.'))
-        ->toBe('O contexto de um plano aprovado pela Engenharia está bloqueado. Os demais dados da operação foram salvos.')
-        ->and($alfa->fresh()->construction_fund_amount)->toBe('10000.00');
+        ->toBe(MeasurementPlanSet::FUND_BELONGS_TO_VERSION_REFUSAL.' Os demais dados da operação foram salvos.')
+        ->and($alfa->fresh()->currentConstructionFundAmount())->toBe('10000.00')
+        ->and($alfa->versions()->count())->toBe(1);
 });
 
 // ── Arquivos recusados: de qual empreendimento, e com rastro ─────────────────

@@ -67,7 +67,6 @@ class ObligationStatusDistributionChartWidget extends ChartWidget
                     '#f59e0b', // Em análise
                     '#64748b', // Não aplicável
                 ],
-                'borderColor' => '#0d252e',
                 'borderWidth' => 2,
                 'hoverOffset' => 6,
             ]],

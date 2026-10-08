@@ -96,7 +96,6 @@ class NimbusVolumeChart extends ChartWidget
                     'borderColor' => '#38bdf8',
                     'borderWidth' => 2,
                     'pointBackgroundColor' => '#38bdf8',
-                    'pointBorderColor' => '#0d252e',
                     'pointRadius' => 2.5,
                     'pointHoverRadius' => 5,
                     'tension' => 0.35,
@@ -125,9 +124,6 @@ class NimbusVolumeChart extends ChartWidget
             'scales' => [
                 'y' => [
                     'beginAtZero' => true,
-                    'grid' => [
-                        'color' => 'rgba(148, 163, 184, 0.08)',
-                    ],
                     'ticks' => [
                         'precision' => 0,
                         'font' => [

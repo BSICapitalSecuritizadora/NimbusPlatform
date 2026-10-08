@@ -160,7 +160,7 @@
                         $isNew = $docDate > ($previousPortalSeenAt ?? '1970-01-01 00:00:00');
                     @endphp
 
-                    <article class="bsi-shell-card p-5 transition hover:-translate-y-0.5 hover:shadow-[0_24px_48px_rgba(0,32,91,0.12)]" wire:key="document-{{ $doc->id }}">
+                    <article class="bsi-shell-card p-5 transition hover:-translate-y-0.5 hover:shadow-[0_24px_48px_rgba(9,27,35,0.12)]" wire:key="document-{{ $doc->id }}">
                         <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                             <div class="flex items-start gap-4">
                                 <span class="flex size-14 flex-shrink-0 items-center justify-center rounded-[24px] bg-brand-50 text-brand-700">

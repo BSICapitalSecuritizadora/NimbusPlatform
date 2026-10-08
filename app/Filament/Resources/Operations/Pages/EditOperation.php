@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operations\Pages;
 
 use App\Exceptions\MeasurementWorkflowException;
 use App\Filament\Resources\Operations\OperationResource;
+use App\Filament\Support\DetectsConcurrentUpdates;
 use App\Models\Operation;
 use App\Models\User;
 use App\Services\OperationContextMutationService;
@@ -12,10 +13,15 @@ use App\Services\OperationResponsibilityService;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class EditOperation extends EditRecord
 {
+    use DetectsConcurrentUpdates;
+
     protected static string $resource = OperationResource::class;
 
     protected static ?string $title = 'Editar Operação de Obra';
@@ -51,6 +57,10 @@ class EditOperation extends EditRecord
      * o aviso genérico de erro, sem dizer o que não foi salvo. Quando a recusa
      * vem dos empreendimentos, a operação já foi gravada antes deles -- a
      * notificação diz isso, em vez de "nada foi salvo".
+     *
+     * Os empreendimentos são gravados pelo serviço de planos, que trava a
+     * Operation: a espera pelo lock pode estourar enquanto um pagamento ou uma
+     * Finalização a seguram, e o aviso pede nova tentativa em vez de erro.
      */
     public function save(bool $shouldRedirect = true, bool $shouldSendSavedNotification = true): void
     {
@@ -59,15 +69,29 @@ class EditOperation extends EditRecord
         try {
             parent::save($shouldRedirect, $shouldSendSavedNotification);
         } catch (MeasurementWorkflowException $refusal) {
-            Notification::make()
-                ->danger()
-                ->title($this->operationWasUpdated ? 'Empreendimentos não atualizados.' : 'Operação não atualizada.')
-                ->body($this->operationWasUpdated
-                    ? $refusal->getMessage().' Os demais dados da operação foram salvos.'
-                    : $refusal->getMessage())
-                ->persistent()
-                ->send();
+            $this->notifyDevelopmentsRefusal($refusal->getMessage());
+        } catch (Halt|ValidationException $exception) {
+            throw $exception;
+        } catch (Throwable $exception) {
+            if (! static::isConcurrentUpdate($exception)) {
+                throw $exception;
+            }
+
+            report($exception);
+            $this->notifyDevelopmentsRefusal(self::CONCURRENT_OPERATION_UPDATE_MESSAGE);
         }
+    }
+
+    private function notifyDevelopmentsRefusal(string $message): void
+    {
+        Notification::make()
+            ->danger()
+            ->title($this->operationWasUpdated ? 'Empreendimentos não atualizados.' : 'Operação não atualizada.')
+            ->body($this->operationWasUpdated
+                ? $message.' Os demais dados da operação foram salvos.'
+                : $message)
+            ->persistent()
+            ->send();
     }
 
     /**
@@ -130,7 +154,18 @@ class EditOperation extends EditRecord
         $actor = auth()->user();
         abort_unless($actor instanceof User, 403);
 
-        $this->record->syncDevelopmentPlans($this->developments, $actor);
+        try {
+            $this->record->syncDevelopmentPlans($this->developments, $actor);
+        } catch (ValidationException $exception) {
+            // As mensagens do serviço de planos não trazem o caminho do campo
+            // no repeater: viram a recusa dos empreendimentos, com o motivo.
+            throw new MeasurementWorkflowException(collect($exception->errors())->flatten()->unique()->implode(' '));
+        }
+
+        // A página continua aberta depois de salvar: o fundo mostrado e o
+        // contador do rascunho voltam do banco, senão a próxima gravação
+        // compararia com o que valia antes desta e acusaria outra pessoa.
+        $this->refreshFormData(['developments']);
     }
 
     protected function getSavedNotificationTitle(): ?string

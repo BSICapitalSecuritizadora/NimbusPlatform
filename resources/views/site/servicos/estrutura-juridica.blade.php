@@ -10,7 +10,7 @@
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Serviços</span>
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent); letter-spacing: 0.1em; font-weight: 600;">Serviços</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
                     Estrutura Jurídica para <br><span style="color: var(--gold);">Operações de Securitização</span>
                 </h1>
@@ -186,7 +186,7 @@
                     </div>
 
                     <!-- Securitizadora (Container) -->
-                    <div class="p-1 rounded-4 border-dashed border-gold border-2 position-relative w-100" style="max-width: 280px; background: rgba(212,175,55, 0.05);">
+                    <div class="p-1 rounded-4 border-dashed border-gold border-2 position-relative w-100" style="max-width: 280px; background: color-mix(in srgb, var(--gold) 5%, transparent);">
                          <div class="text-center p-3 bg-white rounded-3 shadow-sm">
                             <div class="fw-bold text-dark mb-1" style="font-size: 0.9rem;">Patrimônio Separado</div>
                             <div class="smaller text-muted" style="font-size: 0.75rem;">Lastro e Regime Fiduciário</div>

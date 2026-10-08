@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
+use Tests\Support\MeasurementPlanVersionFixture;
 use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 uses(RefreshDatabase::class);
@@ -49,14 +50,17 @@ function financialRuleScenario(): array
         'payment_manager_user_id' => $actor->id, 'payment_receipt_uploader_user_id' => $actor->id,
         'payment_finalizer_user_id' => $actor->id,
     ]);
-    $plan = MeasurementPlanSet::factory()->default()->create([
+    $plan = MeasurementPlanSet::factory()->default()->withConstructionFund('10000.00')->create([
         'operation_id' => $operation->id, 'construction_id' => $construction->id,
-        'construction_fund_amount' => '10000.00', 'initial_incurred_amount' => 0,
+        'initial_incurred_amount' => 0,
     ]);
     $line = MeasurementPlanLine::factory()->create([
         'operation_id' => $operation->id, 'plan_set_id' => $plan->id, 'sequence_number' => 1,
         'measurement_date' => '2026-05-01', 'initial_realized_cumulative_percent' => 0,
     ]);
+    // O plano só recebe medição com a versão vigente: a linha entra no
+    // rascunho da V1, que é ativado antes do arquivo da medição.
+    MeasurementPlanVersionFixture::activate($plan);
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id, 'reference_month' => '2026-05-01', 'storage_path' => null,
         'status' => 'pending', 'current_stage' => 1,

@@ -7,6 +7,7 @@ use App\Domain\PuCalculator\Enums\PuCurveInternalValidationStatus;
 use App\Domain\PuCalculator\Enums\PuCurveReviewStatus;
 use App\Domain\PuCalculator\Enums\PuCurveRole;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Services\PuCurveInputSnapshotService;
 use Database\Factories\EmissionPuCurveVersionFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -55,6 +56,18 @@ class EmissionPuCurveVersion extends Model
     ];
 
     /**
+     * Retrato dos insumos contratuais e a sua identidade. Gravados na geração e
+     * imutáveis desde então ({@see PuCurveInputSnapshotService}).
+     *
+     * @var list<string>
+     */
+    public const CURVE_INPUT_FIELDS = [
+        'curve_inputs_schema',
+        'curve_inputs_fingerprint',
+        'curve_inputs',
+    ];
+
+    /**
      * Candidate persistida é artefato auditável: conteúdo financeiro, identidade
      * (role, asOf, fingerprint, checksum), provenance do maker e resultado da
      * validação interna são imutáveis; só a decisão de review pode ser gravada, e
@@ -63,6 +76,18 @@ class EmissionPuCurveVersion extends Model
      */
     protected static function booted(): void
     {
+        // O retrato de insumos é a prova do que a versão calculou e do que a
+        // homologação aprovou: gravado uma vez, nunca mais muda -- em nenhum papel.
+        static::updating(function (self $version): void {
+            if ($version->getRawOriginal('curve_inputs_fingerprint') === null) {
+                return;
+            }
+
+            if (array_intersect(array_keys($version->getDirty()), self::CURVE_INPUT_FIELDS) !== []) {
+                throw new LogicException('The curve input snapshot of a PU curve version is immutable.');
+            }
+        });
+
         static::updating(function (self $version): void {
             if ($version->getRawOriginal('curve_role') !== PuCurveRole::Candidate->value) {
                 return;
@@ -119,6 +144,11 @@ class EmissionPuCurveVersion extends Model
         'obsolete_reason',
         'engine_version',
         'parameters_snapshot',
+        'curve_inputs_schema',
+        'curve_inputs_fingerprint',
+        'curve_inputs',
+        'predecessor_version_id',
+        'generation_context',
         'rows_count',
         'extended_rows_count',
         'last_extended_at',
@@ -126,6 +156,8 @@ class EmissionPuCurveVersion extends Model
         'extension_divergence',
         'extension_failed_at',
         'extension_failure',
+        'contractual_change_detected_at',
+        'contractual_change',
         'error_message',
         'validation_summary',
         'generated_by',
@@ -161,6 +193,11 @@ class EmissionPuCurveVersion extends Model
             'extension_divergence' => 'array',
             'extension_failed_at' => 'datetime',
             'extension_failure' => 'array',
+            'curve_inputs' => 'array',
+            'generation_context' => 'array',
+            'predecessor_version_id' => 'integer',
+            'contractual_change_detected_at' => 'datetime',
+            'contractual_change' => 'array',
             'generated_at' => 'datetime',
             'validated_at' => 'datetime',
             'homologated_at' => 'datetime',
@@ -173,6 +210,14 @@ class EmissionPuCurveVersion extends Model
     public function emission(): BelongsTo
     {
         return $this->belongsTo(Emission::class);
+    }
+
+    /**
+     * Versão oficial vigente quando esta foi gerada: a que ela pretende substituir.
+     */
+    public function predecessor(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'predecessor_version_id');
     }
 
     public function generatedBy(): BelongsTo

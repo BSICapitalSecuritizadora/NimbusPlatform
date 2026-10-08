@@ -8,11 +8,15 @@ use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use App\Services\ConstructionProgressProvider;
 use App\Services\MeasurementEngineeringService;
+use App\Services\MeasurementPlanVersionService;
 use App\Services\Reports\EmissionMonthlyReportService;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementPlanVersionFixture;
 
 uses(RefreshDatabase::class);
 
@@ -23,7 +27,12 @@ function progressProvider(): ConstructionProgressProvider
 
 /**
  * Medição com a Engenharia vigente para a linha, com o trecho do snapshot que
- * a aprovação grava para o plano.
+ * a aprovação grava para o plano -- inclusive a versão do plano em que a
+ * medição foi enviada e a linhagem da medição prevista.
+ *
+ * O relatório lê só o cronograma vigente: o teste cria as linhas no rascunho
+ * da V1 e ativa o plano ({@see MeasurementPlanVersionFixture::activate()})
+ * antes da aprovação.
  */
 function approvedProgressMeasurement(MeasurementPlanLine $line, string $percent, string $engineeringStatus = 'approved'): Measurement
 {
@@ -36,7 +45,10 @@ function approvedProgressMeasurement(MeasurementPlanLine $line, string $percent,
             'schema_version' => MeasurementEngineeringService::SNAPSHOT_SCHEMA_VERSION,
             'plan_sets' => [[
                 'plan_set_id' => $line->plan_set_id,
+                'plan_version_id' => $line->plan_version_id,
+                'plan_version_number' => $line->version()->value('version_number'),
                 'plan_line_id' => $line->id,
+                'plan_line_lineage_key' => $line->lineage_key,
                 'sequence_number' => $line->sequence_number,
                 'measurement_date' => $line->measurement_date->toDateString(),
                 'realized_monthly_percent' => $percent,
@@ -60,6 +72,7 @@ it('returns the evolution data for the reference month of an emission', function
         'planned_cumulative_percent' => 40,
         'measurement_date' => '2026-04-15',
     ]);
+    MeasurementPlanVersionFixture::activate($planSet);
     approvedProgressMeasurement($line, '12.00');
 
     $progress = progressProvider()->forEmission($emission, Carbon::parse('2026-04-01'));
@@ -84,6 +97,7 @@ it('falls back to the latest line on or before the reference month', function ()
         'sequence_number' => 1,
         'measurement_date' => '2026-02-10',
     ]);
+    MeasurementPlanVersionFixture::activate($planSet);
     approvedProgressMeasurement($line, '30.00');
 
     $progress = progressProvider()->forEmission($emission, Carbon::parse('2026-05-01'));
@@ -107,11 +121,15 @@ it('narrows progress to a specific construction when provided', function () {
         'operation_id' => $operationA->id,
         'measurement_date' => '2026-04-10',
     ]);
+    MeasurementPlanVersionFixture::activate($planA);
     approvedProgressMeasurement($line, '70.00');
 
     $progress = progressProvider()->forEmission($emission, Carbon::parse('2026-04-01'), $constructionB);
 
-    expect($progress)->toBeNull();
+    // A obra A tem progresso publicado: o nulo da B vem do recorte por obra, e
+    // não da falta de cronograma vigente.
+    expect($progress)->toBeNull()
+        ->and(progressProvider()->forEmission($emission, Carbon::parse('2026-04-01'), $constructionA)?->realizedCumulativePercent)->toBe(70.0);
 });
 
 it('resolves progress per development when one operation covers multiple empreendimentos', function () {
@@ -132,16 +150,19 @@ it('resolves progress per development when one operation covers multiple empreen
         'name' => 'Plano B',
     ]);
 
-    approvedProgressMeasurement(MeasurementPlanLine::factory()->create([
+    $lineA = MeasurementPlanLine::factory()->create([
         'plan_set_id' => $planA->id,
         'operation_id' => $operation->id,
         'measurement_date' => '2026-04-12',
-    ]), '35.00');
-    approvedProgressMeasurement(MeasurementPlanLine::factory()->create([
+    ]);
+    $lineB = MeasurementPlanLine::factory()->create([
         'plan_set_id' => $planB->id,
         'operation_id' => $operation->id,
         'measurement_date' => '2026-04-12',
-    ]), '80.00');
+    ]);
+    MeasurementPlanVersionFixture::activate($planA, $planB);
+    approvedProgressMeasurement($lineA, '35.00');
+    approvedProgressMeasurement($lineB, '80.00');
 
     $provider = progressProvider();
     $month = Carbon::parse('2026-04-01');
@@ -169,6 +190,7 @@ it('carries the last known cumulative into a planned month without measurement',
         'measurement_date' => '2026-06-01', 'planned_monthly_percent' => 10, 'planned_cumulative_percent' => 20,
         'realized_monthly_percent' => 0, 'realized_cumulative_percent' => 0,
     ]);
+    MeasurementPlanVersionFixture::activate($planSet);
     approvedProgressMeasurement($may, '10.00');
 
     $june = progressProvider()->forEmission($emission, Carbon::parse('2026-06-01'));
@@ -195,6 +217,8 @@ it('counts a month approved at 0% as measured', function (array $approvals, floa
             'realized_monthly_percent' => 0, 'realized_cumulative_percent' => 0,
         ]);
     }
+
+    MeasurementPlanVersionFixture::activate($planSet);
 
     foreach ($approvals as $month => $percent) {
         approvedProgressMeasurement($lines[$month], $percent);
@@ -226,6 +250,7 @@ it('ignores a measurement whose Engineering approval no longer stands', function
         'plan_set_id' => $planSet->id, 'operation_id' => $operation->id, 'sequence_number' => 2,
         'measurement_date' => '2026-05-01', 'planned_cumulative_percent' => 10,
     ]);
+    MeasurementPlanVersionFixture::activate($planSet);
     approvedProgressMeasurement($april, '5.00');
     $returned = approvedProgressMeasurement($may, '10.00', engineeringStatus: 'pending');
     DB::table('measurement_plan_lines')->where('id', $may->id)->update([
@@ -249,6 +274,9 @@ it('publishes no realized progress before anything is known about the constructi
         'measurement_date' => '2026-05-01', 'planned_cumulative_percent' => 10,
         'realized_monthly_percent' => 0, 'realized_cumulative_percent' => 0,
     ]);
+    // Cronograma vigente: o nulo vem de não haver realizado conhecido, e não
+    // de o plano ainda estar em rascunho.
+    MeasurementPlanVersionFixture::activate($planSet);
 
     expect(progressProvider()->forEmission($emission, Carbon::parse('2026-05-01')))->toBeNull();
 });
@@ -265,6 +293,8 @@ it('counts the initial physical progress only from its reference date', function
         ]);
     }
 
+    MeasurementPlanVersionFixture::activate($planSet);
+
     expect(progressProvider()->forEmission($emission, Carbon::parse('2026-05-01')))->toBeNull()
         ->and(progressProvider()->forEmission($emission, Carbon::parse('2026-06-01'))->realizedCumulativePercent)->toBe(25.0);
 });
@@ -278,6 +308,7 @@ it('publishes the initial physical progress copied without a reference date in a
         'measurement_date' => '2026-05-01', 'planned_monthly_percent' => 10, 'planned_cumulative_percent' => 10,
         'initial_realized_cumulative_percent' => 35, 'realized_monthly_percent' => 0, 'realized_cumulative_percent' => 0,
     ]);
+    MeasurementPlanVersionFixture::activate($planSet);
     // O plano como a migration de backfill o deixa: o "Realiz. inicial" da
     // primeira linha copiado como percentual, sem data de referência -- estado
     // que a criação do plano recusa.
@@ -309,6 +340,7 @@ it('finds the schedule line dated on the last day of the month', function () {
         'plan_set_id' => $planSet->id, 'operation_id' => $operation->id, 'sequence_number' => 2,
         'measurement_date' => '2026-09-30', 'planned_cumulative_percent' => 50,
     ]);
+    MeasurementPlanVersionFixture::activate($planSet);
     approvedProgressMeasurement($lastDay, '45.00');
 
     $september = progressProvider()->forEmission($emission, Carbon::parse('2026-09-01'));
@@ -333,6 +365,7 @@ it('publishes a month without measurement as not measured, without a false drop 
         ]);
     }
 
+    MeasurementPlanVersionFixture::activate($planSet);
     approvedProgressMeasurement($lines['2026-04-01'], '10.00');
     approvedProgressMeasurement($lines['2026-05-01'], '12.00');
 
@@ -363,6 +396,7 @@ it('publishes a month approved at 0% as measured, with a flat cumulative in the 
         ]);
     }
 
+    MeasurementPlanVersionFixture::activate($planSet);
     approvedProgressMeasurement($lines['2026-04-01'], '10.00');
     approvedProgressMeasurement($lines['2026-05-01'], '0.00');
 
@@ -377,4 +411,67 @@ it('publishes a month approved at 0% as measured, with a flat cumulative in the 
         ->and($row['measurement_date'])->toBe('01/05/2026')
         ->and(collect($data['construction_history']['series'][0]['points'])->pluck('competencia')->all())->toBe(['04/2026', '05/2026'])
         ->and(collect($data['construction_history']['series'][0]['points'])->pluck('realized_cumulative')->all())->toBe(['10,00%', '10,00%']);
+});
+
+/**
+ * O previsto publicado é o do cronograma vigente. O rascunho de uma revisão
+ * não entra no relatório; ativada, a revisão responde pelas competências a
+ * partir da vigência dela, com o acumulado previsto recalculado sobre o avanço
+ * físico do plano, e a medição prevista que ela tirou deixa de ser publicada.
+ */
+it('publishes the planned progress of the active version only', function () {
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    $this->seed(RolesAndPermissionsSeeder::class);
+    $this->travelTo(now()->setDate(2026, 5, 10));
+    $actor = makeAdminUser();
+    $service = app(MeasurementPlanVersionService::class);
+    $emission = Emission::factory()->create();
+    $operation = Operation::factory()->forEmission($emission)->create(['status' => 'active']);
+    $planSet = MeasurementPlanSet::factory()->default()->withConstructionFund('1000000.00')->create(['operation_id' => $operation->id]);
+    $lines = [];
+
+    foreach (['2026-04-01', '2026-05-01', '2026-06-01'] as $sequence => $month) {
+        $lines[$month] = MeasurementPlanLine::factory()->create([
+            'plan_set_id' => $planSet->id, 'operation_id' => $operation->id, 'sequence_number' => $sequence + 1,
+            'measurement_date' => $month, 'planned_monthly_percent' => 10, 'planned_cumulative_percent' => 10 * ($sequence + 1),
+            'realized_monthly_percent' => 0, 'realized_cumulative_percent' => 0,
+        ]);
+    }
+
+    MeasurementPlanVersionFixture::activate($planSet);
+    approvedProgressMeasurement($lines['2026-04-01'], '10.00');
+
+    // V2: abril e maio como estavam, junho sai e julho entra com 15%.
+    $revision = $service->createRevision($planSet, $actor, [
+        'revision_category' => 'schedule',
+        'revision_reason' => 'Etapa de junho adiada para julho.',
+    ], MeasurementPlanVersionFixture::activeVersion($planSet)->id);
+    $copies = $revision->lines()->get()->keyBy('sequence_number');
+    $revision = $service->updateDraft($revision, $actor, [], [
+        ...collect([1, 2])->map(fn (int $sequence): array => [
+            'id' => $copies[$sequence]->id,
+            'sequence_number' => $sequence,
+            'planned_monthly_percent' => $copies[$sequence]->planned_monthly_percent,
+            'planned_cumulative_percent' => $copies[$sequence]->planned_cumulative_percent,
+            'measurement_date' => $copies[$sequence]->measurement_date->toDateString(),
+        ])->all(),
+        ['sequence_number' => 4, 'planned_monthly_percent' => 15, 'planned_cumulative_percent' => 0, 'measurement_date' => '2026-07'],
+    ], (int) $revision->revision);
+
+    $julyBeforeActivation = progressProvider()->forEmission($emission, Carbon::parse('2026-07-01'));
+
+    expect($julyBeforeActivation->plannedCumulativePercent)->toBe(30.0)
+        ->and($julyBeforeActivation->plannedMonthlyPercent)->toBe(10.0);
+
+    $service->activate($revision, $actor, (int) $revision->revision);
+
+    $june = progressProvider()->forEmission($emission, Carbon::parse('2026-06-01'));
+    $july = progressProvider()->forEmission($emission, Carbon::parse('2026-07-01'));
+
+    expect($june->plannedCumulativePercent)->toBe(20.0)
+        ->and($june->realizedCumulativePercent)->toBe(10.0)
+        ->and($july->plannedMonthlyPercent)->toBe(15.0)
+        ->and($july->plannedCumulativePercent)->toBe(35.0)
+        ->and($july->realizedCumulativePercent)->toBe(10.0)
+        ->and(progressProvider()->forEmission($emission, Carbon::parse('2026-04-01'))->plannedCumulativePercent)->toBe(10.0);
 });

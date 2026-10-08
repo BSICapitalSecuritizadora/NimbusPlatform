@@ -3,8 +3,8 @@
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-white dark:bg-zinc-800">
-        <flux:header container class="border-b border-zinc-200/70 bg-white/85 backdrop-blur dark:border-white/10 dark:bg-[#08111dcc]">
+    <body class="min-h-screen bg-[var(--surface-ground)] text-[var(--text-primary)] dark:bg-[var(--surface-canvas)]">
+        <flux:header container class="border-b border-[var(--border-subtle)] bg-white/85 backdrop-blur dark:border-[var(--border-subtle)] dark:bg-[var(--surface-card)]">
             <flux:sidebar.toggle class="mr-2 lg:hidden" icon="bars-2" inset="left" />
 
             <x-app-logo href="{{ route('dashboard') }}" wire:navigate />
@@ -41,7 +41,7 @@
             <x-desktop-user-menu />
         </flux:header>
 
-        <flux:sidebar collapsible="mobile" sticky class="border-e border-zinc-200/70 bg-white/95 dark:border-white/10 dark:bg-[#08111df2] lg:hidden">
+        <flux:sidebar collapsible="mobile" sticky class="border-e border-[var(--border-subtle)] bg-white/95 dark:border-[var(--border-subtle)] dark:bg-[var(--surface-card)] lg:hidden">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
                 <flux:sidebar.collapse class="in-data-flux-sidebar-on-desktop:not-in-data-flux-sidebar-collapsed-desktop:-mr-2" />

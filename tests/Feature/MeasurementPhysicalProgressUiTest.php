@@ -1,13 +1,16 @@
 <?php
 
+use App\Enums\MeasurementPlanVersionStatus;
 use App\Filament\Resources\Measurements\Pages\ViewMeasurement;
 use App\Filament\Resources\Operations\Pages\CreateOperation;
 use App\Filament\Resources\Operations\Pages\EditOperation;
 use App\Filament\Resources\Operations\Pages\ViewOperation;
 use App\Filament\Resources\Operations\RelationManagers\PlanLinesRelationManager;
 use App\Filament\Resources\Operations\RelationManagers\PlanSetsRelationManager;
+use App\Filament\Resources\Operations\RelationManagers\PlanVersionsRelationManager;
 use App\Models\Construction;
 use App\Models\Emission;
+use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -51,6 +54,14 @@ function physicalProgressPlanSets(Operation $operation)
 function physicalProgressSchedule(Operation $operation)
 {
     return Livewire::test(PlanLinesRelationManager::class, [
+        'ownerRecord' => $operation,
+        'pageClass' => ViewOperation::class,
+    ]);
+}
+
+function physicalProgressVersions(Operation $operation)
+{
+    return Livewire::test(PlanVersionsRelationManager::class, [
         'ownerRecord' => $operation,
         'pageClass' => ViewOperation::class,
     ]);
@@ -223,10 +234,9 @@ it('keeps the initial physical progress of an existing plan locked on the operat
     $emission = Emission::factory()->create();
     $construction = Construction::factory()->create(['emission_id' => $emission->id]);
     $operation = Operation::factory()->create(['emission_id' => $emission->id]);
-    $planSet = MeasurementPlanSet::factory()->default()->withInitialPhysicalProgress('20.00', '2026-03-31')->create([
+    $planSet = MeasurementPlanSet::factory()->default()->withInitialPhysicalProgress('20.00', '2026-03-31')->withConstructionFund('500000.00')->create([
         'operation_id' => $operation->id,
         'construction_id' => $construction->id,
-        'construction_fund_amount' => '500000.00',
     ]);
 
     $component = Livewire::test(EditOperation::class, ['record' => $operation->getRouteKey()]);
@@ -249,7 +259,7 @@ it('keeps the initial physical progress of an existing plan locked on the operat
 
     expect($planSet->fresh()->initial_physical_progress_percent)->toBe('20.00')
         ->and($planSet->fresh()->initial_physical_progress_reference_date->toDateString())->toBe('2026-03-31')
-        ->and($planSet->fresh()->construction_fund_amount)->toBe('500000.00');
+        ->and($planSet->fresh()->currentConstructionFundAmount())->toBe('500000.00');
 });
 
 it('keeps the initial physical progress of an existing plan locked after switching the emission and back on the operation edit form', function () {
@@ -298,8 +308,10 @@ it('shows where the development stands before the Engineering enters the month',
     $component = Livewire::test(ViewMeasurement::class, ['record' => $june->getRouteKey()])
         ->mountAction('approve');
 
+    // Com a versão do plano em que o arquivo foi enviado e o Fundo de Obra
+    // dela: é contra ela que a Engenharia aprova, mesmo com outra já vigente.
     expect(strip_tags(physicalProgressModalContent($component, $scenario['planSet']->id)))
-        ->toBe('Plano padrãoAvanço físico inicial30,00% em 30/04/2026Medido no sistema10,00%Avanço físico atual40,00%Máximo restante60,00%');
+        ->toBe('Plano padrãoAvanço físico inicial30,00% em 30/04/2026Medido no sistema10,00%Avanço físico atual40,00%Máximo restante60,00%Versão do planoV1 · Fundo de Obra R$ 1.000.000,00');
 });
 
 it('explains the 100% limit under the development field and keeps the measurement in Engineering', function () {
@@ -357,14 +369,47 @@ it('opens the Engineering field empty instead of repeating a value from the sche
 
 // ── Cronograma (Acompanhamento) ──────────────────────────────────────────────
 
-it('suggests the planned cumulative of the first line from the initial physical progress', function () {
-    $scenario = Scenario::plan(initialPercent: '35.00');
+it('derives the planned cumulative of the first line from the initial physical progress when the draft is activated', function () {
+    // O previsto muda no rascunho, pela aba Versões dos Planos, e a ativação
+    // recalcula o acumulado a partir do avanço físico atual. Hoje em maio: a V1
+    // vale desde 05/2026, e a primeira linha já é cronograma em vigor.
+    $this->travelTo(now()->setDate(2026, 5, 10));
     $this->actingAs(makeAdminUser());
+    ['operation' => $operation, 'construction' => $construction] = physicalProgressPlanScenario();
+    $planSet = MeasurementPlanSet::factory()->withInitialPhysicalProgress('35.00', '2026-04-30')->create([
+        'operation_id' => $operation->id,
+        'construction_id' => $construction->id,
+    ]);
+    $line = MeasurementPlanLine::factory()->create([
+        'plan_set_id' => $planSet->id,
+        'sequence_number' => 1,
+        'measurement_date' => '2026-05-01',
+        'planned_monthly_percent' => 0,
+        'planned_cumulative_percent' => 0,
+        'realized_monthly_percent' => 0,
+        'realized_cumulative_percent' => 0,
+    ]);
+    $draft = $planSet->draftVersion()->sole();
 
-    physicalProgressSchedule($scenario['operation'])
-        ->mountTableAction('editPlanned', $scenario['lines']['2026-05'])
-        ->setTableActionData(['planned_monthly_percent' => 5])
-        ->assertTableActionDataSet(['planned_cumulative_percent' => 40.0]);
+    // O acumulado digitado recomeça do zero; o que vale é o avanço inicial (35%)
+    // mais o previsto mensal da linha (5%).
+    physicalProgressVersions($operation)
+        ->callTableAction('editDraft', $draft, data: [
+            'lines' => [[
+                'id' => $line->id,
+                'sequence_number' => 1,
+                'planned_monthly_percent' => 5,
+                'planned_cumulative_percent' => 5,
+                'measurement_date' => '2026-05',
+            ]],
+        ])
+        ->assertHasNoTableActionErrors()
+        ->callTableAction('activateVersion', $draft)
+        ->assertHasNoTableActionErrors();
+
+    expect($draft->fresh()->status)->toBe(MeasurementPlanVersionStatus::Active)
+        ->and($line->fresh()->planned_monthly_percent)->toBe('5.00')
+        ->and($line->fresh()->planned_cumulative_percent)->toBe('40.00');
 });
 
 it('shows a month without measurement as not measured, carrying the last cumulative', function () {

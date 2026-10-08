@@ -3,6 +3,20 @@
 
 @section('content')
 
+@push('styles')
+<style>
+    .nd-step-box.border-warning {
+        border-color: var(--accent) !important;
+    }
+    .nd-step-box.text-warning {
+        color: var(--accent) !important;
+    }
+    #stepperProgress.bg-warning {
+        background-color: var(--accent) !important;
+    }
+</style>
+@endpush
+
 @php
     $submissionDocumentsTotalMaxBytes = (int) config('uploads.submission.total_max_bytes', 50 * 1024 * 1024);
     $submissionDocumentsTotalMaxMb = (int) ceil($submissionDocumentsTotalMaxBytes / 1024 / 1024);

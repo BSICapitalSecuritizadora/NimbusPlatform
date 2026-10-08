@@ -1,6 +1,6 @@
 <x-layouts::app :title="__('Dashboard')">
     <div class="mx-auto flex h-full w-full max-w-7xl flex-1 flex-col gap-6">
-        <section class="bsi-shell-card overflow-hidden bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.14),transparent_24%),linear-gradient(135deg,rgba(0,32,91,0.98),rgba(10,23,52,0.98))] text-white dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.12),transparent_24%),linear-gradient(135deg,rgba(0,32,91,0.96),rgba(10,23,52,0.96))]">
+        <section class="bsi-shell-card overflow-hidden bg-[radial-gradient(circle_at_top_right,rgb(160_110_40/0.14),transparent_24%),linear-gradient(135deg,#091b23_0%,#06151c_100%)] text-white dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_right,rgb(183_131_47/0.12),transparent_24%),linear-gradient(135deg,#06151c_0%,#091b23_100%)]">
             <div class="grid gap-6 p-6 lg:grid-cols-[1.35fr_0.65fr] lg:p-8">
                 <div class="space-y-5">
                     <div class="bsi-kicker">Ambiente interno</div>

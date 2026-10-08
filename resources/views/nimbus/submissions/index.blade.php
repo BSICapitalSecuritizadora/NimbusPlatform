@@ -195,7 +195,7 @@
                                     default => 'draft',
                                 };
                             @endphp
-                            <tr class="border-b border-ink-100 hover:bg-[#FAFBFD] transition-colors">
+                            <tr class="border-b border-ink-100 hover:bg-ink-50 transition-colors">
                                 <td class="px-7 py-[18px]">
                                     <div class="font-jetbrains text-[13px] font-medium text-navy-900 uppercase">#BSI-{{ now()->year }}-{{ sprintf('%04d', $s->id) }}</div>
                                     <div class="font-inter text-[13px] font-medium text-navy-900 mt-0.5">{{ $s->company_name ?? 'Razão Social do Cliente' }}</div>

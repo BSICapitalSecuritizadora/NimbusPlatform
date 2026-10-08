@@ -440,6 +440,7 @@ class ActivityResource extends Resource
             'App\Models\Measurement' => 'Medição',
             'App\Models\MeasurementPlanLine' => 'Linha do Plano de Medição',
             'App\Models\MeasurementPlanSet' => 'Plano de Medição',
+            'App\Models\MeasurementPlanVersion' => 'Versão do Plano de Medição',
             'App\Models\MeasurementReview' => 'Revisão de Medição',
             'App\Models\Negotiation' => 'Negociação',
             'App\Models\Obligation' => 'Obrigação',

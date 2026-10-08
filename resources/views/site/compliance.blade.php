@@ -10,7 +10,7 @@
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Institucional</span>
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent); letter-spacing: 0.1em; font-weight: 600;">Institucional</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
                     <span style="color: var(--gold);">Compliance</span> e Ética Corporativa
                 </h1>
@@ -49,7 +49,7 @@
 </section>
 
 <!-- Selos e Certificações -->
-<section class="py-4" style="background: #f8f9fa; border-bottom: 1px solid rgba(0,32,91,0.05);">
+<section class="py-4" style="background: #f8f9fa; border-bottom: 1px solid rgba(9,27,35,0.05);">
     <div class="container">
         <div class="row align-items-center justify-content-center g-4 opacity-75">
             <div class="col-6 col-md-3 text-center">
@@ -137,7 +137,7 @@
     <div class="container py-5">
         <div class="row g-5 align-items-center">
             <div class="col-lg-5">
-                <div class="p-5" style="background: var(--brand-strong); border-radius: 24px; box-shadow: 0 20px 40px rgba(0,32,91,0.15);">
+                <div class="p-5" style="background: var(--brand-strong); border-radius: 24px; box-shadow: 0 20px 40px rgba(9,27,35,0.15);">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5" class="mb-4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                     <h2 class="h3 fw-bold mb-3" style="color: #fff;">Nosso Compromisso Ético</h2>
                     <p style="color: #8892b0; line-height: 1.7;">Nosso Código de Ética é o referencial que orienta a conduta profissional, prevenindo conflitos de interesse no relacionamento com clientes, parceiros e investidores, e apoiando o registro e tratamento adequado de situações sensíveis, com responsabilização conforme as políticas internas da companhia.</p>
@@ -148,7 +148,7 @@
                 </div>
             </div>
             <div class="col-lg-7">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91,0.05); letter-spacing: 0.1em; font-weight: 600;">Consciência & Prevenção</span>
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: color-mix(in srgb, var(--brand) 6%, transparent); letter-spacing: 0.1em; font-weight: 600;">Consciência & Prevenção</span>
                 <h2 class="h3 fw-bold text-dark mb-4">Cultura de integridade e prevenção</h2>
                 <p class="text-muted mb-4">Investimos na conscientização da nossa equipe e na comunicação interna de diretrizes, visando uma governança sólida por meio da difusão de boas práticas aplicáveis.</p>
                 <div class="row g-4">
@@ -270,7 +270,7 @@
     <div class="container py-5">
         <div class="row justify-content-center">
             <div class="col-lg-8 text-center">
-                <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 72px; height: 72px; color: var(--gold); background: rgba(212,175,55, 0.1) !important;">
+                <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 72px; height: 72px; color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent) !important;">
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                 </div>
                 <h2 class="h3 fw-bold text-dark mb-3">Canal de Ética</h2>

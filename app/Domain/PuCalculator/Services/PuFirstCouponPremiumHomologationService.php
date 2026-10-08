@@ -52,7 +52,7 @@ final class PuFirstCouponPremiumHomologationService
         $withoutRows = $this->generate($emission, $withoutPremium);
         $withRows = $this->generate($emission, $withPremium);
         $interestDates = $emission->puEvents
-            ->filter(fn ($event): bool => $event->event_type_enum === PuEventType::InterestPayment)
+            ->filter(fn ($event): bool => $event->isActive() && $event->event_type_enum === PuEventType::InterestPayment)
             ->sortBy('effective_date')
             ->pluck('effective_date')
             ->map(fn ($date): string => $date->toDateString())

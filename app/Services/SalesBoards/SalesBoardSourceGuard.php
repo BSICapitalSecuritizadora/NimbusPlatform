@@ -111,6 +111,10 @@ class SalesBoardSourceGuard
 
         if ($construction->isReferencedByApprovedEngineering()) {
             $reasons[] = 'tem medição aprovada pela Engenharia';
+        } elseif ($construction->hasMeasurementPlanHistory()) {
+            // A mesma recusa do `deleting` da obra
+            // (Construction::MEASUREMENT_PLAN_DELETION_REFUSAL), dita antes do clique.
+            $reasons[] = 'tem plano de medição já ativado ou com medição registrada';
         }
 
         return $reasons;

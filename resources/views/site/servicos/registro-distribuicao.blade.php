@@ -10,7 +10,7 @@
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Serviços</span>
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent); letter-spacing: 0.1em; font-weight: 600;">Serviços</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
                     Registro e <br><span style="color: var(--gold);">Distribuição de Ofertas</span>
                 </h1>
@@ -166,7 +166,7 @@
 
         <div class="position-relative mt-4">
             <!-- Timeline Line (Desktop) -->
-            <div class="d-none d-lg-block position-absolute" style="top: 48px; left: 10%; width: 80%; height: 2px; background: linear-gradient(90deg, var(--gold) 0%, rgba(212,175,55,0.4) 100%); z-index: 0;"></div>
+            <div class="d-none d-lg-block position-absolute" style="top: 48px; left: 10%; width: 80%; height: 2px; background: linear-gradient(90deg, var(--gold) 0%, color-mix(in srgb, var(--gold) 40%, transparent) 100%); z-index: 0;"></div>
             
             <div class="row row-cols-1 row-cols-md-3 row-cols-lg-5 g-4 position-relative z-1">
                 <!-- Step 1 -->

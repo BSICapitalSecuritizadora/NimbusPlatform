@@ -3,8 +3,8 @@
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-white dark:bg-zinc-800">
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200/70 bg-white/95 dark:border-white/10 dark:bg-[#08111df2]">
+    <body class="min-h-screen bg-[var(--surface-ground)] text-[var(--text-primary)] dark:bg-[var(--surface-canvas)]">
+        <flux:sidebar sticky collapsible="mobile" class="border-e border-[var(--border-subtle)] bg-white/95 dark:border-[var(--border-subtle)] dark:bg-[var(--surface-card)]">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
                 <flux:sidebar.collapse class="lg:hidden" />
@@ -48,7 +48,7 @@
             <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
         </flux:sidebar>
 
-        <flux:header class="border-b border-zinc-200/70 bg-white/90 backdrop-blur dark:border-white/10 dark:bg-[#08111dcc] lg:hidden">
+        <flux:header class="border-b border-[var(--border-subtle)] bg-white/90 backdrop-blur dark:border-[var(--border-subtle)] dark:bg-[var(--surface-card)] lg:hidden">
             <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
             <flux:spacer />
             <div class="text-sm font-semibold tracking-[-0.02em] text-brand-700 dark:text-white">{{ __('Painel BSI Capital') }}</div>

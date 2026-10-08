@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\MeasurementPlanRevisionCategory;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Exceptions\OperationLifecycleException;
 use App\Filament\Resources\Operations\RelationManagers\PlanSetsRelationManager;
@@ -10,9 +11,11 @@ use App\Models\Measurement;
 use App\Models\MeasurementAsset;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
+use App\Models\MeasurementPlanVersion;
 use App\Models\Operation;
 use App\Models\User;
 use App\Services\MeasurementEngineeringService;
+use App\Services\MeasurementPlanVersionService;
 use App\Services\MeasurementWorkflow;
 use App\Services\OperationContextMutationService;
 use App\Services\OperationContextVisibilityService;
@@ -25,6 +28,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementPlanVersionFixture;
 use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 uses(RefreshDatabase::class);
@@ -51,6 +55,12 @@ function putP02Pdf(string $path, string $suffix): void
 }
 
 /**
+ * Medição de agosto enviada com um arquivo por plano e aguardando a
+ * Engenharia. O cronograma e o Fundo de Obra de cada plano estão na V1,
+ * vigente: é a versão que a medição leva. Com `$withSeptemberLine`, cada plano
+ * já nasce com a medição prevista de setembro -- linha nova só entra num
+ * rascunho, antes da ativação.
+ *
  * @return array{
  *     actor: User,
  *     emission: Emission,
@@ -61,7 +71,7 @@ function putP02Pdf(string $path, string $suffix): void
  *     assets: Collection<int, MeasurementAsset>
  * }
  */
-function createP02EngineeringScenario(int $planSetCount = 1): array
+function createP02EngineeringScenario(int $planSetCount = 1, bool $withSeptemberLine = false): array
 {
     $actor = makeP02User('admin');
     test()->actingAs($actor);
@@ -94,12 +104,11 @@ function createP02EngineeringScenario(int $planSetCount = 1): array
             'development_name' => "Empreendimento {$sequence}",
             'development_cnpj' => str_pad((string) $sequence, 14, '0', STR_PAD_LEFT),
         ]);
-        $planSet = MeasurementPlanSet::factory()->create([
+        $planSet = MeasurementPlanSet::factory()->withConstructionFund(100000 * $sequence)->create([
             'operation_id' => $operation->id,
             'construction_id' => $construction->id,
             'name' => "Plano {$sequence}",
             'is_default' => $sequence === 1,
-            'construction_fund_amount' => 100000 * $sequence,
             'initial_incurred_amount' => 1000 * $sequence,
             'initial_physical_progress_percent' => 2,
             'initial_physical_progress_reference_date' => '2026-07-31',
@@ -115,6 +124,12 @@ function createP02EngineeringScenario(int $planSetCount = 1): array
             'realized_monthly_percent' => 0,
             'realized_cumulative_percent' => 0,
         ]);
+
+        if ($withSeptemberLine) {
+            MeasurementPlanLine::factory()->create(p02SeptemberLine($planSet));
+        }
+
+        MeasurementPlanVersionFixture::activate($planSet);
         $path = "nimbus_docs/measurements/assets/p02-{$measurement->id}-{$sequence}.pdf";
         putP02Pdf($path, "asset-{$sequence}");
         $asset = $measurement->assets()->create([
@@ -131,6 +146,26 @@ function createP02EngineeringScenario(int $planSetCount = 1): array
     app(MeasurementWorkflow::class)->startReview($measurement->fresh(), $actor);
 
     return compact('actor', 'emission', 'operation', 'measurement', 'planSets', 'lines', 'assets');
+}
+
+/**
+ * A medição prevista de setembro do plano, ainda no rascunho dele.
+ *
+ * @return array<string, mixed>
+ */
+function p02SeptemberLine(MeasurementPlanSet $planSet): array
+{
+    return [
+        'operation_id' => $planSet->operation_id,
+        'plan_set_id' => $planSet->id,
+        'sequence_number' => 2,
+        'measurement_date' => '2026-09-01',
+        'planned_monthly_percent' => 10,
+        'planned_cumulative_percent' => 35,
+        'initial_realized_cumulative_percent' => 0,
+        'realized_monthly_percent' => 0,
+        'realized_cumulative_percent' => 0,
+    ];
 }
 
 /**
@@ -176,7 +211,13 @@ it('persists the complete versioned Engineering context and approved evidence', 
     $planSet = $scenario['planSets']->first()->fresh();
     $line = $scenario['lines']->first()->fresh();
     $asset = $scenario['assets']->first()->fresh();
+    $version = $planSet->activeVersion()->firstOrFail();
     $requirement = $snapshot['plan_sets'][0];
+
+    // A medição leva a versão vigente no envio, e o snapshot guarda qual é --
+    // o Fundo de Obra congelado é o dela.
+    expect($asset->plan_version_id)->toBe($version->id)
+        ->and($line->plan_version_id)->toBe($version->id);
 
     expect($snapshot)->toMatchArray([
         'schema_version' => MeasurementEngineeringService::SNAPSHOT_SCHEMA_VERSION,
@@ -194,7 +235,10 @@ it('persists the complete versioned Engineering context and approved evidence', 
         'is_default' => true,
         'construction_fund_amount' => '100000.00',
         'initial_incurred_amount' => '1000.00',
+        'plan_version_id' => $version->id,
+        'plan_version_number' => 1,
         'plan_line_id' => $line->id,
+        'plan_line_lineage_key' => $line->lineage_key,
         'measurement_date' => '2026-08-01',
         'sequence_number' => 1,
         'planned_monthly_percent' => '12.50',
@@ -211,17 +255,46 @@ it('persists the complete versioned Engineering context and approved evidence', 
     ]);
 });
 
-it('blocks material model mutations after Engineering while allowing them before approval', function () {
+it('blocks material model mutations after Engineering while plan corrections before approval go to a revision', function () {
     $scenario = createP02EngineeringScenario();
     $planSet = $scenario['planSets']->first();
     $line = $scenario['lines']->first();
     $construction = $planSet->construction;
+    $captured = MeasurementPlanVersion::query()->findOrFail($scenario['assets']->first()->fresh()->plan_version_id);
+    $service = app(MeasurementPlanVersionService::class);
+    $immutable = sprintf(MeasurementPlanVersion::IMMUTABLE_HISTORY_REFUSAL, 'V1');
 
-    $planSet->update(['construction_fund_amount' => 120000]);
-    $line->update(['planned_monthly_percent' => 13]);
+    // O Fundo de Obra e o previsto são da versão em que a medição foi enviada,
+    // e a versão vigente não muda nem antes da Engenharia. Corrigi-los antes
+    // da aprovação é revisar o plano: o rascunho muda livremente e não
+    // alcança a versão da medição.
+    expect(fn () => $captured->fresh()->update(['construction_fund_amount' => 120000]))
+        ->toThrow(MeasurementWorkflowException::class, $immutable)
+        ->and(fn () => $line->fresh()->update(['planned_monthly_percent' => 13]))
+        ->toThrow(MeasurementWorkflowException::class, $immutable);
+
+    $draft = $service->createRevision($planSet, $scenario['actor'], [
+        'revision_category' => MeasurementPlanRevisionCategory::Multiple->value,
+        'revision_reason' => 'Orçamento e cronograma revistos pela construtora.',
+    ]);
+    $draft = $service->updateDraft($draft, $scenario['actor'], ['construction_fund_amount' => 120000], [[
+        'id' => $draft->lines()->sole()->id,
+        'sequence_number' => 1,
+        'planned_monthly_percent' => 13,
+        'planned_cumulative_percent' => 25,
+        'measurement_date' => '2026-08',
+    ]], (int) $draft->revision);
     approveP02Engineering($scenario);
 
-    expect(fn () => $planSet->fresh()->update(['construction_fund_amount' => 130000]))
+    expect($draft->construction_fund_amount)->toBe('120000.00')
+        ->and($draft->lines()->sole()->planned_monthly_percent)->toBe('13.00')
+        ->and($scenario['measurement']->fresh()->engineering_snapshot['plan_sets'][0])->toMatchArray([
+            'plan_version_id' => $captured->id,
+            'construction_fund_amount' => '100000.00',
+            'planned_monthly_percent' => '12.50',
+        ]);
+
+    expect(fn () => $captured->fresh()->update(['construction_fund_amount' => 130000]))
         ->toThrow(MeasurementWorkflowException::class)
         ->and(fn () => $planSet->fresh()->update(['construction_id' => Construction::factory()->create(['emission_id' => $scenario['emission']->id])->id]))
         ->toThrow(MeasurementWorkflowException::class)
@@ -308,13 +381,17 @@ it('blocks finalization after direct database divergence of any approved materia
         'asset metadata' => DB::table('measurement_assets')->where('id', $scenario['assets']->first()->id)->update([
             'mime_type' => 'image/png',
         ]),
+        // O Fundo de Obra conferido é o da versão que a medição leva.
+        'captured version fund' => DB::table('measurement_plan_versions')->where('id', $scenario['assets']->first()->fresh()->plan_version_id)->update([
+            'construction_fund_amount' => '100001.00',
+        ]),
     };
 
     expect(fn () => app(MeasurementWorkflow::class)->finalize(
         $scenario['measurement']->fresh(),
         $scenario['actor'],
     ))->toThrow(MeasurementWorkflowException::class);
-})->with(['construction', 'realized', 'reference month', 'asset metadata']);
+})->with(['construction', 'realized', 'reference month', 'asset metadata', 'captured version fund']);
 
 it('archives the invalidated snapshot and creates a different snapshot after Engineering reapproval', function () {
     $scenario = createP02EngineeringScenario();
@@ -350,7 +427,9 @@ it('archives the invalidated snapshot and creates a different snapshot after Eng
 });
 
 it('keeps old Measurements on A B C while new Measurements can approve D and payments cannot retroact', function () {
-    $scenario = createP02EngineeringScenario(3);
+    // A, B e C já nascem com a medição prevista de setembro: linha nova só
+    // entra no rascunho, antes da ativação.
+    $scenario = createP02EngineeringScenario(3, withSeptemberLine: true);
     $workflow = app(MeasurementWorkflow::class);
     approveP02Engineering($scenario);
     $constructionD = Construction::factory()->create(['emission_id' => $scenario['emission']->id]);
@@ -359,6 +438,9 @@ it('keeps old Measurements on A B C while new Measurements can approve D and pay
         'construction_id' => $constructionD->id,
         'name' => 'Plano D',
     ]);
+    // D entra em vigor depois da aprovação da Engenharia de agosto.
+    MeasurementPlanLine::factory()->create(p02SeptemberLine($planSetD));
+    MeasurementPlanVersionFixture::activate($planSetD);
 
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
@@ -395,14 +477,7 @@ it('keeps old Measurements on A B C while new Measurements can approve D and pay
     $allPlanSets = $scenario['operation']->planSets()->orderBy('id')->get();
 
     foreach ($allPlanSets as $index => $planSet) {
-        $line = $planSet->lines()->create([
-            'operation_id' => $scenario['operation']->id,
-            'sequence_number' => 2,
-            'measurement_date' => '2026-09-01',
-            'planned_monthly_percent' => 10,
-            'planned_cumulative_percent' => 35,
-            'initial_realized_cumulative_percent' => 0,
-        ]);
+        $line = $planSet->lines()->ofActiveVersions()->whereDate('measurement_date', '2026-09-01')->sole();
         $path = "nimbus_docs/measurements/assets/new-{$newMeasurement->id}-{$planSet->id}.pdf";
         putP02Pdf($path, "new-{$index}");
         $newMeasurement->assets()->create([
@@ -435,6 +510,9 @@ it('scopes Operation emission and construction preload search labels and arbitra
     $operationA1 = Operation::factory()->forEmission($emissionA)->create(['assigned_user_id' => $participant->id]);
     $operationA2 = Operation::factory()->forEmission($emissionA)->create(['assigned_user_id' => $outsider->id]);
     $operationB1 = Operation::factory()->forEmission($emissionB)->create(['assigned_user_id' => $outsider->id]);
+    // Operação da Emissão A ainda sem plano: a aba de planos só oferece obra
+    // ainda não planejada na operação, e aqui nenhuma foi.
+    $unplannedOperationA = Operation::factory()->forEmission($emissionA)->create(['assigned_user_id' => $participant->id]);
     MeasurementPlanSet::withoutEvents(fn () => MeasurementPlanSet::factory()->create([
         'operation_id' => $operationA1->id,
         'construction_id' => $constructionA1->id,
@@ -523,6 +601,7 @@ it('scopes Operation emission and construction preload search labels and arbitra
             return parent::constructionLabel($constructionId, $emissionId);
         }
     };
+    $relationProbe->ownerRecord = $unplannedOperationA;
 
     expect($relationProbe->options($emissionA->id))->toBe([$constructionA1->id => 'A1 Visível'])
         ->and($relationProbe->label($constructionA2->id, $emissionA->id))->toBeNull();

@@ -1,12 +1,16 @@
 <?php
 
+use App\Enums\MeasurementPlanVersionStatus;
 use App\Filament\Resources\Operations\Pages\ListOperations;
 use App\Filament\Resources\Operations\Pages\ViewOperation;
 use App\Models\Measurement;
 use App\Models\MeasurementPayment;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
+use App\Models\MeasurementPlanVersion;
 use App\Models\Operation;
+use App\Models\User;
+use App\Services\MeasurementPlanVersionService;
 use App\Services\MeasurementWorkflow;
 use App\Services\OperationNextMeasurementResolver;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -16,10 +20,15 @@ use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\MeasurementPhysicalProgressScenario as Scenario;
+use Tests\Support\MeasurementPlanVersionFixture;
 
 uses(RefreshDatabase::class);
 
 /**
+ * Medição prevista no rascunho da V1 do plano. A próxima competência sai só do
+ * cronograma vigente: o teste cria as linhas e depois ativa o plano
+ * ({@see MeasurementPlanVersionFixture::activate()}).
+ *
  * @param  array<string, mixed>  $attributes
  */
 function makeNextMeasurementLine(
@@ -100,6 +109,7 @@ it('suggests May after finalized April even when the pending competence is overd
     ]);
     makeNextMeasurementLine($plan, 2, '2026-05-01');
     makeNextMeasurementLine($plan, 3, '2026-06-01');
+    MeasurementPlanVersionFixture::activate($plan);
 
     expect(resolveNextMeasurementMonth($operation))->toBe('05/2026')
         ->and($operation->fresh()->next_measurement_at->toDateString())->toBe('2027-01-15');
@@ -115,6 +125,10 @@ it('returns no next competence when every line is claimed by a current Engineeri
             'measurement_id' => makeNextMeasurementLegacyClaimant($plan, $date)->id,
         ]);
     }
+
+    // Plano vigente: sem a ativação, o resultado seria nulo só por não haver
+    // cronograma em vigor, e não pelas reivindicações.
+    MeasurementPlanVersionFixture::activate($plan);
 
     expect(resolveNextMeasurementMonth($plan->operation))->toBeNull();
 })->with([
@@ -132,6 +146,8 @@ it('does not treat realized columns without a current Engineering approval as a 
         ]);
     }
 
+    MeasurementPlanVersionFixture::activate($plan);
+
     expect(resolveNextMeasurementMonth($plan->operation))->toBe('04/2026');
 })->with([
     'orphan left by a deleted measurement' => [3.01, 3.01],
@@ -142,6 +158,7 @@ it('suggests the first pending line in schedule sequence', function () {
     $plan = MeasurementPlanSet::factory()->default()->create();
     makeNextMeasurementLine($plan, 2, '2026-05-01');
     makeNextMeasurementLine($plan, 1, '2026-04-01');
+    MeasurementPlanVersionFixture::activate($plan);
 
     expect(resolveNextMeasurementMonth($plan->operation))->toBe('04/2026');
 });
@@ -150,6 +167,8 @@ it('respects competence occupation by measurement assets before engineering cons
     $plan = MeasurementPlanSet::factory()->default()->create();
     $line = makeNextMeasurementLine($plan, 1, '2026-04-01');
     makeNextMeasurementLine($plan, 2, '2026-05-01');
+    // O plano só recebe arquivo de medição depois de vigente.
+    MeasurementPlanVersionFixture::activate($plan);
     $measurement = Measurement::factory()->create([
         'operation_id' => $plan->operation_id,
         'reference_month' => '2026-04-01',
@@ -178,6 +197,7 @@ it('keeps occupied the competence of a refused measurement that still holds a pa
     $plan = MeasurementPlanSet::factory()->default()->create();
     $line = makeNextMeasurementLine($plan, 1, '2026-04-01');
     makeNextMeasurementLine($plan, 2, '2026-05-01');
+    MeasurementPlanVersionFixture::activate($plan);
     $refused = Measurement::factory()->create([
         'operation_id' => $plan->operation_id,
         'reference_month' => '2026-04-01',
@@ -259,6 +279,7 @@ it('uses the default plan without mixing competences from another plan or operat
     makeNextMeasurementLine($secondary, 1, '2026-03-01');
     makeNextMeasurementLine($default, 1, '2026-05-01');
     makeNextMeasurementLine($other, 1, '2026-02-01');
+    MeasurementPlanVersionFixture::activate($secondary, $default, $other);
 
     expect(resolveNextMeasurementMonth($operation))->toBe('05/2026')
         ->and(resolveNextMeasurementMonth($other->operation))->toBe('02/2026');
@@ -273,6 +294,9 @@ it('does not switch to a secondary plan when the default has no pending competen
         'measurement_id' => makeNextMeasurementLegacyClaimant($default, '2026-04-01')->id,
     ]);
     makeNextMeasurementLine($secondary, 1, '2026-05-01');
+    // Os dois vigentes: o secundário tem competência pendente e mesmo assim
+    // não substitui o padrão.
+    MeasurementPlanVersionFixture::activate($default, $secondary);
 
     expect(resolveNextMeasurementMonth($operation))->toBeNull();
 });
@@ -283,6 +307,7 @@ it('uses the first registered plan when none is explicitly default', function ()
     $second = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
     makeNextMeasurementLine($first, 1, '2026-05-01');
     makeNextMeasurementLine($second, 1, '2026-04-01');
+    MeasurementPlanVersionFixture::activate($first, $second);
 
     expect($operation->defaultPlanSet()->id)->toBe($first->id)
         ->and(resolveNextMeasurementMonth($operation))->toBe('05/2026');
@@ -295,6 +320,7 @@ it('returns no competence without a plan or dated schedule and ignores the legac
 
     $plan = MeasurementPlanSet::factory()->default()->create(['operation_id' => $operation->id]);
     makeNextMeasurementLine($plan, 1, null);
+    MeasurementPlanVersionFixture::activate($plan);
 
     expect(resolveNextMeasurementMonth($operation))->toBeNull();
 });
@@ -309,6 +335,7 @@ it('renders the same derived month in the operations list and detail and sorts b
     $junePlan = MeasurementPlanSet::factory()->default()->create(['operation_id' => $june->id]);
     makeNextMeasurementLine($mayPlan, 1, '2026-05-01');
     makeNextMeasurementLine($junePlan, 1, '2026-06-01');
+    MeasurementPlanVersionFixture::activate($mayPlan, $junePlan);
 
     Livewire::test(ListOperations::class)
         ->assertSuccessful()
@@ -330,9 +357,88 @@ it('skips the competences already covered by the initial physical progress of th
     makeNextMeasurementLine($plan, 1, '2026-04-01');
     makeNextMeasurementLine($plan, 2, '2026-05-01');
     makeNextMeasurementLine($plan, 3, '2026-06-01');
+    MeasurementPlanVersionFixture::activate($plan);
 
     expect(resolveNextMeasurementMonth($operation))->toBe($expected);
 })->with([
     'covered through the end of May' => ['2026-05-31', '06/2026'],
     'mid-May: May still has progress to measure' => ['2026-05-15', '05/2026'],
 ])->group('parity');
+
+/**
+ * Plano vigente pelo serviço de versões em março de 2026 -- V1 com a medição 01
+ * em abril e a 02 em maio -- e o rascunho da revisão, cópia dela, já gravado
+ * com o cronograma informado.
+ *
+ * @param  list<array<string, mixed>>  $revisionLines  cronograma do rascunho; as cópias da V1 entram pelo `copy_of` (sequência na V1)
+ * @return array{actor: User, service: MeasurementPlanVersionService, operation: Operation, firstVersion: MeasurementPlanVersion, revision: MeasurementPlanVersion}
+ */
+function makeNextMeasurementRevision(array $revisionLines): array
+{
+    prepareNextMeasurementWorkflow();
+    test()->travelTo(now()->setDate(2026, 3, 10));
+    $actor = makeAdminUser();
+    $service = app(MeasurementPlanVersionService::class);
+    $operation = Operation::factory()->create(['status' => 'active']);
+    $plan = MeasurementPlanSet::factory()->default()->withConstructionFund('1000000.00')->create(['operation_id' => $operation->id]);
+    makeNextMeasurementLine($plan, 1, '2026-04-01', ['planned_monthly_percent' => 10, 'planned_cumulative_percent' => 10]);
+    makeNextMeasurementLine($plan, 2, '2026-05-01', ['planned_monthly_percent' => 10, 'planned_cumulative_percent' => 20]);
+    $firstVersion = MeasurementPlanVersion::query()->where('plan_set_id', $plan->id)->draft()->sole();
+    $firstVersion = $service->activate($firstVersion, $actor, (int) $firstVersion->revision);
+
+    $revision = $service->createRevision($plan, $actor, [
+        'revision_category' => 'schedule',
+        'revision_reason' => 'Cronograma replanejado pela construtora.',
+    ], (int) $firstVersion->getKey());
+    $copies = $revision->lines()->get()->keyBy('sequence_number');
+    $revision = $service->updateDraft($revision, $actor, [], array_map(
+        fn (array $line): array => [
+            'id' => isset($line['copy_of']) ? $copies[$line['copy_of']]->id : null,
+            'planned_monthly_percent' => 10,
+            'planned_cumulative_percent' => 0,
+            ...array_diff_key($line, ['copy_of' => true]),
+        ],
+        $revisionLines,
+    ), (int) $revision->revision);
+
+    return compact('actor', 'service', 'operation', 'firstVersion', 'revision');
+}
+
+/**
+ * O rascunho da revisão não vale antes de ativado. Ativado, o cronograma é o
+ * dele, na ordem da competência e, no mesmo mês, da sequência: a medição
+ * prevista que a revisão acrescenta com número maior num mês anterior não fica
+ * escondida atrás das que já existiam.
+ */
+it('ignores a draft revision until it is activated and then orders its schedule by month before sequence', function () {
+    ['service' => $service, 'actor' => $actor, 'operation' => $operation, 'revision' => $revision] = makeNextMeasurementRevision([
+        ['copy_of' => 1, 'sequence_number' => 1, 'measurement_date' => '2026-04'],
+        ['copy_of' => 2, 'sequence_number' => 2, 'measurement_date' => '2026-05'],
+        ['sequence_number' => 3, 'measurement_date' => '2026-03'],
+    ]);
+
+    expect($revision->isDraft())->toBeTrue()
+        ->and(resolveNextMeasurementMonth($operation))->toBe('04/2026');
+
+    $service->activate($revision, $actor, (int) $revision->revision);
+
+    expect(resolveNextMeasurementMonth($operation))->toBe('03/2026');
+});
+
+/**
+ * A versão substituída é histórico: a medição prevista que a revisão tirou
+ * não volta a ser sugerida.
+ */
+it('stops suggesting the competence that the activated revision removed', function () {
+    ['service' => $service, 'actor' => $actor, 'operation' => $operation, 'firstVersion' => $firstVersion, 'revision' => $revision] = makeNextMeasurementRevision([
+        ['copy_of' => 2, 'sequence_number' => 2, 'measurement_date' => '2026-05'],
+    ]);
+
+    expect(resolveNextMeasurementMonth($operation))->toBe('04/2026');
+
+    $service->activate($revision, $actor, (int) $revision->revision);
+
+    expect($firstVersion->fresh()->status)->toBe(MeasurementPlanVersionStatus::Superseded)
+        ->and(MeasurementPlanLine::query()->where('plan_version_id', $firstVersion->id)->whereDate('measurement_date', '2026-04-01')->exists())->toBeTrue()
+        ->and(resolveNextMeasurementMonth($operation))->toBe('05/2026');
+});

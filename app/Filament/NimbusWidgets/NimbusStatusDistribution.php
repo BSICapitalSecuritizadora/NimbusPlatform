@@ -100,7 +100,6 @@ class NimbusStatusDistribution extends ChartWidget
                 'data' => array_column($details['active_items'], 'count'),
                 'backgroundColor' => array_column($details['active_items'], 'color_hex'),
                 'borderWidth' => 2,
-                'borderColor' => '#0d252e',
                 'hoverOffset' => 4,
             ]],
         ];
