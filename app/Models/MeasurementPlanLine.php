@@ -4,13 +4,18 @@ namespace App\Models;
 
 use App\Enums\MeasurementPlanVersionStatus;
 use App\Exceptions\MeasurementWorkflowException;
+use App\Services\MeasurementEngineeringService;
+use App\Services\MeasurementPlanVersionResolver;
 use Database\Factories\MeasurementPlanLineFactory;
+use DateTimeInterface;
+use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -197,7 +202,17 @@ class MeasurementPlanLine extends Model
      */
     public function scopeAvailableForMeasurement(Builder $query, ?int $measurementId = null): Builder
     {
-        $lines = $query->getModel()->getTable();
+        self::whereAvailableForMeasurement($query->getQuery(), self::tableReference($query), $measurementId);
+
+        return $query;
+    }
+
+    /**
+     * {@see self::scopeAvailableForMeasurement()} sobre uma consulta de linhas
+     * com o nome (ou apelido) `$lines`, para subconsultas.
+     */
+    public static function whereAvailableForMeasurement(QueryBuilder $query, string $lines, ?int $measurementId = null): QueryBuilder
+    {
         $currentEngineering = fn (QueryBuilder $reviews, string $measurements): QueryBuilder => $reviews
             ->from('measurement_reviews')
             ->whereColumn('measurement_reviews.measurement_id', "{$measurements}.id")
@@ -234,9 +249,11 @@ class MeasurementPlanLine extends Model
     }
 
     /**
-     * Linhas da versão vigente de cada plano: o cronograma em vigor. Pela
-     * regra de ativação, as competências anteriores à vigência dela são cópia
-     * fiel das versões que as governaram.
+     * Linhas da versão vigente de cada plano: o cronograma em vigor hoje, para
+     * quem planeja. Pela regra de ativação, as competências anteriores à
+     * vigência dela são cópia fiel das versões que as governaram. Para o que se
+     * mede numa competência, vale a versão que a rege
+     * ({@see self::scopeGoverningTheirCompetence()}).
      *
      * @param  Builder<self>  $query
      * @return Builder<self>
@@ -245,6 +262,158 @@ class MeasurementPlanLine extends Model
     {
         return $query->whereHas('version', fn (Builder $versions): Builder => $versions
             ->where($versions->qualifyColumn('status'), MeasurementPlanVersionStatus::Active->value));
+    }
+
+    /**
+     * Linhas da versão do plano que rege a competência delas
+     * ({@see MeasurementPlanVersionResolver}): para cada competência do
+     * cronograma, a medição prevista que vale para ela -- a da V1 em junho, a
+     * da V2 de julho em diante, mesmo que a V2 traga uma cópia de junho com a
+     * mesma linhagem. Linha sem mês não tem competência e fica de fora.
+     *
+     * `$asOfMeasurementId` lê o histórico como estava no envio dessa medição.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeGoverningTheirCompetence(Builder $query, ?int $asOfMeasurementId = null): Builder
+    {
+        self::whereGoverningTheirCompetence($query->getQuery(), self::tableReference($query), $asOfMeasurementId);
+
+        return $query;
+    }
+
+    /**
+     * {@see self::scopeGoverningTheirCompetence()} sobre uma consulta de
+     * linhas com o nome (ou apelido) `$lines`, para subconsultas.
+     */
+    public static function whereGoverningTheirCompetence(QueryBuilder $query, string $lines, int|Expression|null $asOf = null): QueryBuilder
+    {
+        $versions = "{$lines}_version";
+
+        return $query
+            ->whereNotNull("{$lines}.measurement_date")
+            ->whereExists(fn (QueryBuilder $governing): QueryBuilder => MeasurementPlanVersionResolver::whereGovernsLineCompetence(
+                $governing->from("measurement_plan_versions as {$versions}")->whereColumn("{$versions}.id", "{$lines}.plan_version_id"),
+                $versions,
+                "{$lines}.measurement_date",
+                $asOf,
+            ));
+    }
+
+    /**
+     * Linhas do mês da competência, comparadas pelo mês ('Y-m'): o resultado
+     * não depende do dia gravado nem do formato da data.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeInCompetence(Builder $query, DateTimeInterface|string $competence): Builder
+    {
+        return $query->whereRaw(
+            MeasurementPlanVersionResolver::monthKey(self::tableReference($query).'.measurement_date').' = ?',
+            [MeasurementPlanVersionResolver::competenceStart($competence)->format('Y-m')],
+        );
+    }
+
+    /**
+     * Linha de uma competência que a operação já mediu sem este plano e que,
+     * por isso, não tem como ser medida enquanto aquela medição estiver de pé:
+     *
+     * - há medição de pé da operação na competência (aberta, finalizada, com
+     *   Engenharia vigente ou com pagamento), sem arquivo deste plano, e que
+     *   não precisava dele: no envio dela, nenhuma versão do plano que regia a
+     *   competência previa medição nela (o plano ainda não valia, ou valia sem
+     *   linha no mês e uma revisão posterior acrescentou o mês) -- é a mesma
+     *   leitura do histórico, conforme o envio, que a Engenharia faz
+     *   ({@see MeasurementEngineeringService});
+     * - nenhuma medição de pé da competência tem arquivo deste plano;
+     * - outro plano em vigor prevê medição na competência, pela versão que a
+     *   rege, e nenhuma dessas medições previstas está livre: uma segunda
+     *   medição da competência teria de cobri-lo.
+     *
+     * É a única definição da "linha órfã": o planejamento a deixa fora do
+     * pendente e do teto ({@see MeasurementPlanVersionService::monthsMeasuredWithoutThePlan()}),
+     * e o Enviar Medição e a próxima medição da operação não a oferecem.
+     * Recusada a medição de pé, a linha volta a valer.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeCompetenceMeasuredWithoutThePlan(Builder $query): Builder
+    {
+        self::whereCompetenceMeasuredWithoutThePlan($query->getQuery(), self::tableReference($query));
+
+        return $query;
+    }
+
+    /**
+     * {@see self::scopeCompetenceMeasuredWithoutThePlan()} sobre uma consulta
+     * de linhas com o nome (ou apelido) `$lines`.
+     */
+    public static function whereCompetenceMeasuredWithoutThePlan(QueryBuilder $query, string $lines): QueryBuilder
+    {
+        $month = fn (string $column): string => MeasurementPlanVersionResolver::monthKey($column);
+        $lineMonth = $month("{$lines}.measurement_date");
+        $standingInTheCompetence = fn (QueryBuilder $measurements, string $alias): QueryBuilder => $measurements
+            ->from("measurements as {$alias}")
+            ->whereColumn("{$alias}.operation_id", "{$lines}.operation_id")
+            ->whereNotNull("{$alias}.reference_month")
+            ->whereRaw("{$month("{$alias}.reference_month")} = {$lineMonth}")
+            ->where(fn (QueryBuilder $holding): QueryBuilder => $holding
+                ->whereIn("{$alias}.status", [...Measurement::OPEN_STATUSES, 'finalized'])
+                ->orWhereExists(fn (QueryBuilder $reviews): QueryBuilder => $reviews
+                    ->from('measurement_reviews')
+                    ->whereColumn('measurement_reviews.measurement_id', "{$alias}.id")
+                    ->where('measurement_reviews.stage', 1)
+                    ->where('measurement_reviews.status', 'approved'))
+                ->orWhereExists(fn (QueryBuilder $payments): QueryBuilder => $payments
+                    ->from('measurement_payments')
+                    ->whereColumn('measurement_payments.measurement_id', "{$alias}.id")));
+        $withAFileOfThePlan = fn (QueryBuilder $assets, string $measurements, string $alias): QueryBuilder => $assets
+            ->from("measurement_assets as {$alias}")
+            ->whereColumn("{$alias}.measurement_id", "{$measurements}.id")
+            ->whereColumn("{$alias}.plan_set_id", "{$lines}.plan_set_id");
+
+        return $query
+            ->whereNotNull("{$lines}.measurement_date")
+            ->whereExists(fn (QueryBuilder $standing): QueryBuilder => $standingInTheCompetence($standing, 'orphan_standing')
+                ->whereNotExists(fn (QueryBuilder $assets): QueryBuilder => $withAFileOfThePlan($assets, 'orphan_standing', 'orphan_standing_assets'))
+                ->whereNotExists(fn (QueryBuilder $required): QueryBuilder => self::whereGoverningTheirCompetence($required
+                    ->from('measurement_plan_lines as orphan_required')
+                    ->whereColumn('orphan_required.plan_set_id', "{$lines}.plan_set_id")
+                    ->whereRaw("{$month('orphan_required.measurement_date')} = {$lineMonth}"), 'orphan_required', DB::raw('orphan_standing.id'))))
+            ->whereNotExists(fn (QueryBuilder $measured): QueryBuilder => $standingInTheCompetence($measured, 'orphan_measured')
+                ->whereExists(fn (QueryBuilder $assets): QueryBuilder => $withAFileOfThePlan($assets, 'orphan_measured', 'orphan_measured_assets')))
+            ->whereExists(fn (QueryBuilder $others): QueryBuilder => $others
+                ->from('measurement_plan_sets as orphan_other_plans')
+                ->whereColumn('orphan_other_plans.operation_id', "{$lines}.operation_id")
+                ->whereColumn('orphan_other_plans.id', '!=', "{$lines}.plan_set_id")
+                ->whereExists(fn (QueryBuilder $inForce): QueryBuilder => $inForce
+                    ->from('measurement_plan_versions as orphan_other_active')
+                    ->whereColumn('orphan_other_active.plan_set_id', 'orphan_other_plans.id')
+                    ->where('orphan_other_active.status', MeasurementPlanVersionStatus::Active->value))
+                ->whereExists(fn (QueryBuilder $planned): QueryBuilder => self::whereGoverningTheirCompetence($planned
+                    ->from('measurement_plan_lines as orphan_planned')
+                    ->whereColumn('orphan_planned.plan_set_id', 'orphan_other_plans.id')
+                    ->whereRaw("{$month('orphan_planned.measurement_date')} = {$lineMonth}"), 'orphan_planned'))
+                ->whereNotExists(fn (QueryBuilder $free): QueryBuilder => self::whereAvailableForMeasurement(self::whereGoverningTheirCompetence($free
+                    ->from('measurement_plan_lines as orphan_free')
+                    ->whereColumn('orphan_free.plan_set_id', 'orphan_other_plans.id')
+                    ->whereRaw("{$month('orphan_free.measurement_date')} = {$lineMonth}"), 'orphan_free'), 'orphan_free')));
+    }
+
+    /**
+     * O nome da tabela da consulta, ou o apelido dela, para as subconsultas
+     * correlacionadas.
+     *
+     * @param  Builder<self>  $query
+     */
+    private static function tableReference(Builder $query): string
+    {
+        $from = (string) $query->getQuery()->from;
+
+        return preg_match('/\s+as\s+(\S+)$/i', $from, $alias) === 1 ? $alias[1] : $from;
     }
 
     /**

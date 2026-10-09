@@ -319,7 +319,7 @@ it('keeps a measurement on the version it was sent under and sends the next one 
         ->and($v2->assets()->pluck('measurement_id')->all())->toBe([$m07->id]);
 });
 
-it('refuses a new measurement file on a line of a superseded or draft version of the plan', function () {
+it('refuses a new measurement file on a line of a version that does not govern the competence, superseded or draft', function () {
     $scenario = planVersionLinkageScenario();
     planVersionLinkageTravelTo('2026-07-01');
     $v2 = planVersionLinkageRevise($scenario, '23000000.00');
@@ -330,18 +330,18 @@ it('refuses a new measurement file on a line of a superseded or draft version of
 
     planVersionLinkageTravelTo('2026-07-20');
     $measurement = planVersionLinkageMeasurement($scenario, '2026-07');
-    $refusal = sprintf(MeasurementAsset::SUPERSEDED_PLAN_REFUSAL, 'Residencial Aurora');
 
-    // Quem abriu o formulário antes da revisão não envia pelo cronograma
-    // substituído, nem pelo rascunho da próxima revisão, que ainda não vale.
+    // Julho é da V2, vigente desde 07/2026: quem abriu o formulário antes da
+    // revisão não envia julho pelo cronograma substituído, nem pelo rascunho
+    // da próxima revisão, que ainda não vale.
     expect(fn () => planVersionLinkageAttach($measurement, $scenario['lines']['2026-07']))
-        ->toThrow(new MeasurementWorkflowException($refusal))
+        ->toThrow(new MeasurementWorkflowException(sprintf(MeasurementAsset::VERSION_NOT_GOVERNING_REFUSAL, '07/2026', 'V1', 'Residencial Aurora', 'V2')))
         ->and(fn () => planVersionLinkageAttach($measurement, planVersionLinkageLinesOf($v3)['2026-07']))
-        ->toThrow(new MeasurementWorkflowException($refusal))
+        ->toThrow(new MeasurementWorkflowException(sprintf(MeasurementAsset::VERSION_NOT_GOVERNING_REFUSAL, '07/2026', 'V3', 'Residencial Aurora', 'V2')))
         ->and(MeasurementAsset::query()->count())->toBe(0);
 
-    // A mesma competência pela versão vigente é aceita: a recusa é da versão,
-    // não do mês.
+    // A mesma competência pela versão que a rege é aceita: a recusa é da
+    // versão, não do mês.
     $asset = planVersionLinkageAttach($measurement, planVersionLinkageLinesOf($v2)['2026-07']);
 
     expect($asset->plan_version_id)->toBe($v2->id)
@@ -446,10 +446,10 @@ it('keeps a measurement sent under a superseded version on its line and on its v
     $before = $m06->assets()->sole()->getAttributes();
     $capturedRefusal = sprintf(MeasurementAsset::CAPTURED_VERSION_REFUSAL, 'V1', 'Residencial Aurora');
 
-    // Mudar a M06 para outra competência da V1 a levaria para um mês que a V2
-    // já replanejou: a correção é recusar e reenviar sob a vigente.
+    // Mudar a M06 para julho da V1 a levaria para um mês que a V2 rege: a
+    // correção é recusar e enviar uma medição nova, que nasce sob a V2.
     expect(fn () => $m06->assets()->sole()->fill(['plan_line_id' => $scenario['lines']['2026-07']->id])->save())
-        ->toThrow(new MeasurementWorkflowException(sprintf(MeasurementAsset::SUPERSEDED_VERSION_LINE_CHANGE_REFUSAL, 'V1', 'Residencial Aurora')))
+        ->toThrow(new MeasurementWorkflowException(sprintf(MeasurementAsset::FROZEN_VERSION_COMPETENCE_REFUSAL, 'V1', 'Residencial Aurora', '07/2026')))
         // A versão capturada no envio não muda: nem por uma linha da V2, nem
         // pela coluna gravada.
         ->and(fn () => $m06->assets()->sole()->fill(['plan_line_id' => $v2Lines['2026-06']->id])->save())
@@ -529,14 +529,17 @@ it('keeps the planned measurement claimed across versions while the measurement 
             $v2Lines['2026-09']->id,
         ]);
 
-    // Uma segunda medição de junho pela V2 mediria a mesma competência duas
-    // vezes.
+    // Uma segunda medição de junho -- pela V1, que rege junho -- mediria a
+    // mesma competência duas vezes. A cópia de junho na V2 nem chega à
+    // ocupação: não é da versão que rege junho.
     planVersionLinkageTravelTo('2026-07-02');
     $duplicate = planVersionLinkageMeasurement($scenario, '2026-06');
-    $refusal = planVersionLinkageRefusal(fn () => planVersionLinkageAttach($duplicate, $v2Lines['2026-06']));
+    $refusal = planVersionLinkageRefusal(fn () => planVersionLinkageAttach($duplicate, $june));
 
     expect($refusal->getMessage())->toBe(sprintf(MeasurementAsset::LINE_ALREADY_CLAIMED_REFUSAL, '01', '06/2026', 'Residencial Aurora', $m06->id))
         ->and($refusal->context()['holder_measurement_id'])->toBe($m06->id)
+        ->and(planVersionLinkageRefusal(fn () => planVersionLinkageAttach($duplicate, $v2Lines['2026-06']))->getMessage())
+        ->toBe(sprintf(MeasurementAsset::VERSION_NOT_GOVERNING_REFUSAL, '06/2026', 'V2', 'Residencial Aurora', 'V1'))
         ->and($duplicate->assets()->exists())->toBeFalse();
 
     // Fora do modelo, a unique do banco ainda recusa a segunda ocupação.
@@ -596,13 +599,15 @@ it('releases the planned measurement when the measurement holding it is rejected
             $v2Lines['2026-09']->id,
         ]);
 
-    // O reenvio de junho nasce sob a vigente e ocupa a mesma medição prevista.
-    $resent = Scenario::measurement(planVersionLinkageUnder($scenario, $v2), '2026-06');
+    // O reenvio de junho, em julho, nasce sob a V1 -- a versão que rege junho
+    // -- e não sob a vigente: na linha de junho da V1, ocupando a mesma
+    // medição prevista.
+    $resent = Scenario::measurement($scenario, '2026-06');
 
     expect($resent->status)->toBe('in_review')
         ->and($resent->assets()->sole()->only(['plan_version_id', 'plan_line_id', 'line_claim_key']))->toBe([
-            'plan_version_id' => $v2->id,
-            'plan_line_id' => $v2Lines['2026-06']->id,
+            'plan_version_id' => $scenario['v1']->id,
+            'plan_line_id' => $june->id,
             'line_claim_key' => $june->lineage_key,
         ])
         ->and(MeasurementAsset::query()->where('line_claim_key', $june->lineage_key)->pluck('measurement_id')->all())->toBe([$resent->id]);
@@ -716,7 +721,7 @@ it('carries the single physical progress of the plan across the revision up to t
 
 // ── Leituras do cronograma em vigor ──────────────────────────────────────────
 
-it('offers and tracks only the active version lines, skipping the planned measurement held under V1', function () {
+it('offers and tracks each competence by the version that governs it, skipping the planned measurement held under V1', function () {
     $scenario = planVersionLinkageScenario();
 
     planVersionLinkageTravelTo('2026-06-20');
@@ -733,12 +738,13 @@ it('offers and tracks only the active version lines, skipping the planned measur
     $v2Lines = planVersionLinkageLinesOf($v2);
     $this->actingAs($scenario['actor']);
 
-    // Julho só existe na V1, e a cópia de junho está ocupada pela M06: a
-    // próxima competência pendente e as opções do envio vêm da V2, a partir
-    // de agosto. O planejado de cada opção é o acumulado que a ativação
-    // gravou, e não o do rascunho: os 30% executados, mais os 10% de junho --
-    // a M06 ocupa junho, mas a Engenharia ainda não a aprovou, então junho
-    // continua a medir, atrasado, antes da vigência -- e o mensal de cada mês.
+    // Julho a V2 tirou do cronograma, e junho -- que a V1 rege -- está
+    // ocupado pela M06: a próxima competência pendente e as opções do envio
+    // são as da V2, a partir de agosto. O planejado de cada opção é o
+    // acumulado que a ativação gravou, e não o do rascunho: os 30% executados,
+    // mais os 10% de junho -- a M06 ocupa junho, mas a Engenharia ainda não a
+    // aprovou, então junho continua a medir, atrasado, antes da vigência -- e
+    // o mensal de cada mês.
     expect(array_keys($v2Lines))->toBe(['2026-06', '2026-08', '2026-09', '2026-10'])
         ->and(planVersionLinkageNextMonth($scenario['operation']))->toBe('08/2026')
         ->and(planVersionLinkageScheduleOptions($scenario['planSet']))->toBe([
@@ -747,14 +753,18 @@ it('offers and tracks only the active version lines, skipping the planned measur
             $v2Lines['2026-10']->id => 'Medição 05 · 10/2026 · 70,0% planejado',
         ]);
 
-    // O acompanhamento mostra o cronograma em vigor, não o histórico.
+    // O acompanhamento mostra cada competência pela versão que a rege --
+    // junho pela V1, a mesma versão da M06; de agosto em diante pela V2 --,
+    // e não a cópia de junho da V2 nem os meses da V1 que a V2 replanejou.
     Livewire::test(PlanLinesRelationManager::class, ['ownerRecord' => $scenario['operation'], 'pageClass' => ViewOperation::class])
-        ->assertCanSeeTableRecords(array_values($v2Lines))
-        ->assertCanNotSeeTableRecords(array_values($scenario['lines']))
+        ->assertCanSeeTableRecords([$scenario['lines']['2026-06'], $v2Lines['2026-08'], $v2Lines['2026-09'], $v2Lines['2026-10']])
+        ->assertCanNotSeeTableRecords([$v2Lines['2026-06'], $scenario['lines']['2026-07'], $scenario['lines']['2026-08'], $scenario['lines']['2026-09']])
         ->assertCountTableRecords(4);
 
-    // Recusada a M06, a cópia de junho na V2 volta a ser a próxima pendente.
+    // Recusada a M06, junho volta a ser a próxima pendente -- pela linha da
+    // V1, a que o envio oferece.
     app(MeasurementWorkflow::class)->reject($m06->fresh(), $scenario['actor'], 'Arquivo ilegível: reenviar a medição de junho.');
 
-    expect(planVersionLinkageNextMonth($scenario['operation']))->toBe('06/2026');
+    expect(planVersionLinkageNextMonth($scenario['operation']))->toBe('06/2026')
+        ->and(array_key_first(planVersionLinkageScheduleOptions($scenario['planSet'])))->toBe($scenario['lines']['2026-06']->id);
 });

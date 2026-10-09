@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Measurements\Schemas;
 
-use App\Enums\MeasurementPlanVersionStatus;
 use App\Enums\OperationStatus;
 use App\Models\Measurement;
 use App\Models\MeasurementAsset;
@@ -13,11 +12,13 @@ use App\Models\Operation;
 use App\Models\User;
 use App\Services\DocumentStorageService;
 use App\Services\MeasurementAuthorizationService;
+use App\Services\MeasurementEngineeringService;
 use App\Services\MeasurementFileValidationService;
+use App\Services\MeasurementPlanVersionResolver;
+use DateTimeInterface;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -30,6 +31,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 use League\Flysystem\UnableToCheckFileExistence;
 use League\Flysystem\UnableToRetrieveMetadata;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
@@ -91,13 +93,12 @@ class MeasurementForm
                             ->disabled(fn (?Measurement $record): bool => $record instanceof Measurement)
                             ->dehydrated()
                             ->live()
-                            ->afterStateUpdated(function (Set $set, mixed $state, mixed $old): void {
+                            ->afterStateUpdated(function (Get $get, Set $set, mixed $state, mixed $old): void {
+                                // Os arquivos são os dos planos que preveem medição na
+                                // competência; o envio confere sob o lock que continuam
+                                // os mesmos (CreateMeasurement::assertTheFilesCoverTheCompetence()).
                                 if ($state !== $old) {
-                                    $set('assets', static::assetsForOperation($state));
-                                    // Os planos em vigor no momento da escolha: o envio
-                                    // confere sob o lock que eles continuam os mesmos
-                                    // (CreateMeasurement::assertThePlansInForceDidNotChange()).
-                                    $set('offered_plan_set_ids', static::planSetIdsInForce($state));
+                                    $set('assets', static::assetsForOperation($state, $get('reference_month')));
                                 }
                             })
                             ->validationMessages([
@@ -107,16 +108,32 @@ class MeasurementForm
                         // Com pagamento registrado, a competência fica presa ao
                         // que foi pago (Measurement::PAID_COMPETENCE_CHANGE_REFUSAL):
                         // o campo travado diz isso antes de a gravação recusar.
+                        // No envio, a competência decide os empreendimentos e a
+                        // versão do plano de cada um: mudá-la refaz a lista de
+                        // arquivos (assetsForCompetence()). Depois do envio, a
+                        // competência só muda dentro da vigência da versão
+                        // congelada (Measurement::FROZEN_VERSION_COMPETENCE_CHANGE_REFUSAL).
                         DatePicker::make('reference_month')
                             ->label('Competência')
                             ->placeholder('mm/aaaa')
                             ->displayFormat('m/Y')
                             ->native(false)
                             ->closeOnDateSelection()
+                            ->live(condition: fn (string $operation): bool => $operation === 'create')
+                            ->afterStateUpdated(function (Get $get, Set $set, mixed $state, string $operation): void {
+                                if ($operation === 'create' && filled($get('operation_id'))) {
+                                    $set('assets', static::assetsForCompetence($get('operation_id'), $state, (array) ($get('assets') ?? [])));
+                                }
+                            })
+                            // A competência decide a versão do plano de cada arquivo:
+                            // a medição não nasce, nem fica, sem ela.
+                            ->required()
                             ->disabled(fn (?Model $record): bool => static::hasRegisteredPayment($record))
-                            ->helperText(fn (?Model $record): string => static::hasRegisteredPayment($record)
-                                ? 'Travada: esta medição tem pagamento registrado, e o pagamento continua vinculado a esta competência.'
-                                : 'Preenchida automaticamente pela medição selecionada no cronograma.')
+                            ->helperText(fn (?Model $record, string $operation): string => match (true) {
+                                static::hasRegisteredPayment($record) => 'Travada: esta medição tem pagamento registrado, e o pagamento continua vinculado a esta competência.',
+                                $operation === 'create' => 'Preenchida automaticamente pela medição selecionada no cronograma. É a competência que decide a versão do plano de cada empreendimento.',
+                                default => 'A versão do plano de cada arquivo ficou congelada no envio: a competência só muda junto com a medição prevista de cada arquivo, para outra que essa versão rege.',
+                            })
                             ->validationMessages([
                                 'required' => 'Informe a competência de referência.',
                             ]),
@@ -132,9 +149,6 @@ class MeasurementForm
                     ->description('Associe a medição prevista e envie o arquivo correspondente para cada empreendimento.')
                     ->columnSpanFull()
                     ->schema([
-                        Hidden::make('offered_plan_set_ids')
-                            ->dehydrated(false),
-
                         // Plano ainda em rascunho não recebe medição: sem o aviso, a
                         // operação escolhida mostrava a seção vazia e o envio só
                         // respondia com o erro genérico do repeater.
@@ -144,6 +158,18 @@ class MeasurementForm
                             ->visible(fn (Get $get, ?Model $record): bool => ! $record instanceof Measurement
                                 && filled($get('operation_id'))
                                 && static::plansNotInForceNotice($get('operation_id')) !== null),
+
+                        // A competência escolhida não tem medição prevista em nenhum
+                        // empreendimento: sem o aviso, a lista de arquivos só
+                        // esvaziava, e o motivo aparecia depois do envio.
+                        Placeholder::make('competence_without_development_notice')
+                            ->hiddenLabel()
+                            ->content(fn (Get $get): string => static::noDevelopmentMessage($get('operation_id'), $get('reference_month')))
+                            ->visible(fn (Get $get, ?Model $record): bool => ! $record instanceof Measurement
+                                && filled($get('operation_id'))
+                                && filled($get('reference_month'))
+                                && blank($get('assets'))
+                                && static::planSetIdsInForce($get('operation_id')) !== []),
 
                         Placeholder::make('empty_operation_notice')
                             ->hiddenLabel()
@@ -162,16 +188,18 @@ class MeasurementForm
                             ]))
                             ->hiddenLabel()
                             ->addable(false)
-                            // O arquivo de medição paga não sai mais
-                            // (MeasurementAsset::PAID_FILE_REMOVAL_REFUSAL): a
+                            // No envio, os arquivos são os empreendimentos que a
+                            // competência envolve -- todos exigidos pela Engenharia:
+                            // não se remove nenhum. O arquivo de medição paga não sai
+                            // mais (MeasurementAsset::PAID_FILE_REMOVAL_REFUSAL): a
                             // Engenharia dela confere justamente os
                             // empreendimentos destes arquivos.
-                            ->deletable(fn (?Model $record): bool => ! static::hasRegisteredPayment($record))
+                            ->deletable(fn (?Model $record, string $operation): bool => $operation !== 'create' && ! static::hasRegisteredPayment($record))
                             ->deleteAction(fn (Action $action) => $action->tooltip('Remover empreendimento deste envio'))
                             ->reorderable(false)
                             ->minItems(1)
                             ->validationMessages([
-                                'min' => 'Nenhum empreendimento desta operação tem plano de medição em vigor: ative a versão do plano (aba Versões dos Planos da operação) antes de enviar medição.',
+                                'min' => fn (Get $get): string => static::noDevelopmentMessage($get('operation_id'), $get('reference_month')),
                             ])
                             ->columns(['default' => 1, 'md' => 2])
                             ->itemLabel(fn (array $state): ?string => filled($state['plan_set_id'] ?? null)
@@ -201,34 +229,46 @@ class MeasurementForm
                                     ->live()
                                     ->required()
                                     // A linha do arquivo pago também fica presa
-                                    // (MeasurementAsset::PAID_CONTEXT_CHANGE_REFUSAL), e a
-                                    // do arquivo enviado sob uma versão do plano já
-                                    // substituída (SUPERSEDED_VERSION_LINE_CHANGE_REFUSAL).
-                                    // A da versão é a de quando a página abriu: substituída
-                                    // no meio-tempo, a troca chega à gravação e é recusada,
-                                    // em vez de sumir calada enquanto a competência muda.
-                                    ->disabled(fn (Get $get, ?Model $record): bool => static::hasRegisteredPayment($record) || (bool) $get('sent_under_superseded_version'))
-                                    ->afterStateUpdated(function (Set $set, ?string $state): void {
+                                    // (MeasurementAsset::PAID_CONTEXT_CHANGE_REFUSAL). A do
+                                    // arquivo já enviado só troca por outra competência da
+                                    // versão congelada (FROZEN_VERSION_COMPETENCE_REFUSAL):
+                                    // as opções são só essas, e a gravação confere de novo.
+                                    ->disabled(fn (?Model $record): bool => static::hasRegisteredPayment($record))
+                                    ->afterStateUpdated(function (Get $get, Set $set, ?string $state, string $operation): void {
                                         $date = filled($state)
                                             ? static::visiblePlanLinesQuery()->whereKey($state)->value('measurement_date')
                                             : null;
 
-                                        if (filled($date)) {
-                                            $set('../../reference_month', Carbon::parse($date)->toDateString());
+                                        if (blank($date)) {
+                                            return;
+                                        }
+
+                                        $competence = Carbon::parse($date)->toDateString();
+                                        $set('../../reference_month', $competence);
+
+                                        // No envio, a medição prevista escolhida define a
+                                        // competência da medição inteira: os outros
+                                        // empreendimentos passam a ser os que preveem medição
+                                        // nela, cada um pela versão que a rege.
+                                        if ($operation === 'create') {
+                                            $set('../../assets', static::assetsForCompetence($get('../../operation_id'), $competence, (array) ($get('../../assets') ?? [])));
                                         }
                                     })
-                                    ->helperText(fn (Get $get, ?Model $record): string => match (true) {
+                                    ->helperText(fn (?Model $record): string => match (true) {
                                         static::hasRegisteredPayment($record) => 'Travada: esta medição tem pagamento registrado, e o pagamento continua vinculado a esta linha.',
-                                        (bool) $get('sent_under_superseded_version') => 'Travada: a medição foi enviada sob uma versão do plano que já foi substituída. Para medir outra competência, recuse-a e envie uma nova sob a versão vigente.',
-                                        default => 'Selecione a medição prevista à qual este arquivo corresponde.',
+                                        $record instanceof MeasurementAsset && filled($record->plan_line_id) && $record->planVersion instanceof MeasurementPlanVersion => sprintf(
+                                            'A medição foi enviada sob a %s do plano: só as competências regidas por ela aparecem aqui.',
+                                            $record->planVersion->label(),
+                                        ),
+                                        default => 'Selecione a medição prevista à qual este arquivo corresponde. Cada competência aparece pela versão do plano que vale para ela.',
                                     })
                                     ->validationMessages([
                                         'required' => 'Selecione a medição do cronograma correspondente.',
+                                        // A opção saiu da lista desde que a página abriu:
+                                        // uma revisão passou a reger a competência, ou
+                                        // outra medição ocupou a medição prevista.
+                                        'in' => 'Esta medição prevista não está mais disponível: o plano foi revisado ou outra medição a ocupou. Recarregue a página e escolha de novo.',
                                     ]),
-
-                                Hidden::make('sent_under_superseded_version')
-                                    ->dehydrated(false)
-                                    ->afterStateHydrated(fn (Hidden $component, ?Model $record) => $component->state(static::wasSentUnderSupersededVersion($record))),
 
                                 FileUpload::make('storage_path')
                                     ->label('Arquivo da Medição')
@@ -308,18 +348,6 @@ class MeasurementForm
     }
 
     /**
-     * O arquivo foi enviado sob uma versão do plano que outra já substituiu?
-     * A medição continua nela, e a linha não muda mais.
-     */
-    protected static function wasSentUnderSupersededVersion(?Model $record): bool
-    {
-        return $record instanceof MeasurementAsset
-            && $record->exists
-            && filled($record->plan_version_id)
-            && MeasurementPlanVersion::query()->whereKey($record->plan_version_id)->value('status') === MeasurementPlanVersionStatus::Superseded;
-    }
-
-    /**
      * O que o campo de upload entrega ao navegador sobre um arquivo do estado.
      *
      * O padrão do Filament monta o endereço pelo disco: no disco privado com
@@ -365,19 +393,93 @@ class MeasurementForm
      * Builds one asset row per development of the operation, with the plan set
      * pre-filled and the file/measurement left blank to fill. Só os planos
      * vigentes (com versão ativada): o plano ainda em rascunho não recebe
-     * medição.
+     * medição. Com a competência já escolhida, só os que preveem medição nela
+     * ({@see self::assetsForCompetence()}).
      *
-     * @return array<int, array{plan_set_id: int, plan_line_id: null, storage_path: null}>
+     * @return array<int|string, array<string, mixed>>
      */
-    protected static function assetsForOperation(mixed $operationId): array
+    protected static function assetsForOperation(mixed $operationId, mixed $competence = null): array
     {
-        return collect(static::planSetIdsInForce($operationId))
-            ->map(fn (int $id): array => [
-                'plan_set_id' => $id,
-                'plan_line_id' => null,
-                'storage_path' => null,
-            ])
-            ->all();
+        return static::assetsForCompetence($operationId, $competence, []);
+    }
+
+    /**
+     * Os arquivos do envio para a competência: um por empreendimento em vigor
+     * que prevê medição nela, pela versão do plano que a rege -- é o que a
+     * Engenharia vai exigir ({@see MeasurementEngineeringService}).
+     * O empreendimento sem medição prevista na competência (a obra que começa
+     * depois, ou que já terminou) sai sozinho, em vez de a pessoa ter de
+     * removê-lo; o que volta a prever medição volta à lista.
+     *
+     * O que já foi preenchido continua: a mesma chave, o mesmo arquivo. Só a
+     * medição prevista de outro mês é limpa -- a competência da medição é uma
+     * só. Sem competência, vale a lista dos planos em vigor.
+     *
+     * @param  array<int|string, array<string, mixed>>  $rows
+     * @return array<int|string, array<string, mixed>>
+     */
+    public static function assetsForCompetence(mixed $operationId, mixed $competence, array $rows): array
+    {
+        $planSetIds = static::planSetIdsInForce($operationId);
+        $month = null;
+
+        if (filled($competence)) {
+            $start = MeasurementPlanVersionResolver::competenceStart($competence instanceof DateTimeInterface ? $competence : (string) $competence);
+            $month = $start->format('Y-m');
+            $planSetIds = app(MeasurementPlanVersionResolver::class)->planSetsPlannedIn($planSetIds, $start);
+        }
+
+        $chosenLineMonths = $month === null ? collect() : static::visiblePlanLinesQuery()
+            ->whereKey(collect($rows)->pluck('plan_line_id')->filter()->all())
+            ->get(['id', 'measurement_date'])
+            ->mapWithKeys(fn (MeasurementPlanLine $line): array => [(int) $line->getKey() => $line->measurement_date?->format('Y-m')]);
+        $kept = [];
+
+        foreach ($rows as $key => $row) {
+            if (! is_array($row) || ! in_array((int) ($row['plan_set_id'] ?? 0), $planSetIds, true)) {
+                continue;
+            }
+
+            if ($month !== null && filled($row['plan_line_id'] ?? null) && $chosenLineMonths->get((int) $row['plan_line_id']) !== $month) {
+                $row['plan_line_id'] = null;
+            }
+
+            $kept[$key] = $row;
+        }
+
+        $present = collect($kept)->map(fn (array $row): int => (int) ($row['plan_set_id'] ?? 0));
+
+        // Linha nova ganha chave nova: reaproveitar a de uma linha que saiu
+        // levaria para outro empreendimento o upload ainda em andamento nela.
+        foreach ($planSetIds as $planSetId) {
+            if (! $present->contains($planSetId)) {
+                $kept[(string) Str::uuid()] = [
+                    'plan_set_id' => $planSetId,
+                    'plan_line_id' => null,
+                    'storage_path' => null,
+                ];
+            }
+        }
+
+        uasort($kept, fn (array $a, array $b): int => (int) ($a['plan_set_id'] ?? 0) <=> (int) ($b['plan_set_id'] ?? 0));
+
+        return $kept;
+    }
+
+    /**
+     * Por que o envio ficou sem arquivo nenhum: nenhum plano em vigor, ou
+     * nenhum que preveja medição na competência escolhida.
+     */
+    protected static function noDevelopmentMessage(mixed $operationId, mixed $competence): string
+    {
+        if (filled($competence) && static::planSetIdsInForce($operationId) !== []) {
+            return sprintf(
+                'Nenhum empreendimento desta operação prevê medição em %s: escolha outra competência.',
+                MeasurementPlanVersionResolver::competenceStart($competence instanceof DateTimeInterface ? $competence : (string) $competence)->format('m/Y'),
+            );
+        }
+
+        return 'Nenhum empreendimento desta operação tem plano de medição em vigor: ative a versão do plano (aba Versões dos Planos da operação) antes de enviar medição.';
     }
 
     /**
@@ -443,9 +545,14 @@ class MeasurementForm
      * a Engenharia aceita 0%, e numa operação com vários empreendimentos esse 0%
      * é o que deixa medir os demais.
      *
-     * As linhas são as da versão do plano: a vigente, no envio; na edição, a
-     * versão em que a medição foi enviada, que ela leva para sempre -- mesmo
-     * que outra versão tenha sido ativada depois.
+     * Cada competência aparece pela versão do plano que a rege
+     * ({@see MeasurementPlanLine::scopeGoverningTheirCompetence()}): junho
+     * pela linha da V1 mesmo depois de a V2 valer desde julho -- e não pela
+     * cópia de junho que a V2 traz --, julho em diante pela V2. É a linha que
+     * a medição congela no envio. Na edição, só as competências que a versão
+     * congelada no arquivo rege. A competência que a operação já mediu sem
+     * este plano também fica de fora
+     * ({@see MeasurementPlanLine::scopeCompetenceMeasuredWithoutThePlan()}).
      *
      * @return array<int, string>
      */
@@ -457,22 +564,21 @@ class MeasurementForm
 
         $editedMeasurementId = filled($asset?->measurement_id) ? (int) $asset->measurement_id : null;
         $savedLineId = $asset?->plan_line_id;
-        $versionId = filled($asset?->plan_version_id)
-            ? (int) $asset->plan_version_id
-            : MeasurementPlanVersion::query()->where('plan_set_id', $planSetId)->active()->value('id');
-
-        if ($versionId === null) {
-            return [];
-        }
+        // A versão congelada é a da linha do arquivo; sem linha, nada congelou.
+        $frozenVersionId = filled($asset?->plan_line_id) && filled($asset?->plan_version_id) ? (int) $asset->plan_version_id : null;
 
         return static::visiblePlanLinesQuery()
             ->where('plan_set_id', $planSetId)
-            ->where('plan_version_id', $versionId)
-            ->whereNotNull('measurement_date')
+            ->when($frozenVersionId !== null, fn (Builder $lines): Builder => $lines->where('plan_version_id', $frozenVersionId))
             ->where(fn (Builder $lines): Builder => $lines
-                ->where(fn (Builder $available): Builder => $available->availableForMeasurement($editedMeasurementId))
+                ->where(fn (Builder $offered): Builder => $offered
+                    ->governingTheirCompetence()
+                    ->availableForMeasurement($editedMeasurementId)
+                    ->whereNot(fn (Builder $orphans): Builder => $orphans->competenceMeasuredWithoutThePlan()))
                 ->when(filled($savedLineId), fn (Builder $saved): Builder => $saved->orWhereKey($savedLineId)))
             ->orderBy('sequence_number')
+            ->orderBy('measurement_date')
+            ->orderBy('id')
             ->get()
             ->mapWithKeys(function (MeasurementPlanLine $line): array {
                 $num = str_pad((string) $line->sequence_number, 2, '0', STR_PAD_LEFT);

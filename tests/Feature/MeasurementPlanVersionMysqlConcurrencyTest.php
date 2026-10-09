@@ -11,6 +11,7 @@ use App\Models\MeasurementPlanSet;
 use App\Models\MeasurementPlanVersion;
 use App\Models\Operation;
 use App\Models\User;
+use App\Services\MeasurementPlanVersionResolver;
 use App\Services\MeasurementPlanVersionService;
 use App\Services\MeasurementWorkflow;
 use App\Services\OperationContextVisibilityService;
@@ -57,6 +58,10 @@ beforeEach(function () {
     $this->committedRows = CommittedRowsSweeper::afterFreshMigration();
     app(PermissionRegistrar::class)->forgetCachedPermissions();
     Notification::fake();
+    // Vigência e competência são do calendário de negócio: o fuso fixo deixa
+    // as fronteiras de mês independentes do ambiente. Os filhos recebem o
+    // mesmo fuso ({@see planVersionRaceBase()}).
+    config()->set('measurements.business_timezone', 'America/Sao_Paulo');
     $this->travelTo(planVersionRaceNow());
 });
 
@@ -165,17 +170,19 @@ function planVersionRaceRevision(array $scenario): MeasurementPlanVersion
 }
 
 /**
- * O que todo processo filho recebe: quem age, o relógio e a raiz do disco do
- * teste (onde estão os arquivos de medição e os marcadores).
+ * O que todo processo filho recebe: quem age, o relógio, o fuso do calendário
+ * de negócio e a raiz do disco do teste (onde estão os arquivos de medição e
+ * os marcadores).
  *
  * @param  array{actor: User}  $scenario
- * @return array{actor_id: int, now: string, storage_root: string}
+ * @return array{actor_id: int, now: string, business_timezone: string, storage_root: string}
  */
 function planVersionRaceBase(array $scenario): array
 {
     return [
         'actor_id' => (int) $scenario['actor']->id,
         'now' => planVersionRaceNow()->toDateTimeString(),
+        'business_timezone' => (string) config('measurements.business_timezone'),
         'storage_root' => Storage::disk('local')->path(''),
     ];
 }
@@ -188,7 +195,9 @@ function planVersionRaceBase(array $scenario): array
  * esse arquivo aparecer. Quem recebe `wait_for_marker` só começa depois disso,
  * e `done_marker` avisa que a ação terminou. `lock_wait_ms` é quanto a própria
  * transação esperou pelo lock da Operation; `elapsed_ms`, quanto a ação levou
- * (inclui esperas que terminam em erro, que não chegam ao `DB::listen`).
+ * (inclui esperas que terminam em erro, que não chegam ao `DB::listen`). Na
+ * recusa de validação, `errors` traz os erros por campo, como a tela os
+ * mostraria.
  *
  * Tudo o que o filho executa está aqui dentro: ele só carrega as classes da
  * aplicação e as de `Tests\`, não as funções deste arquivo.
@@ -199,6 +208,7 @@ function planVersionRaceTask(array $instruction): Closure
 {
     return static function () use ($instruction): array {
         Carbon::setTestNow(CarbonImmutable::parse($instruction['now'], 'UTC'));
+        config()->set('measurements.business_timezone', $instruction['business_timezone']);
         config()->set('filesystems.private_disk', 'local');
         config()->set('filesystems.disks.local.root', $instruction['storage_root']);
         Storage::forgetDisk('local');
@@ -379,9 +389,16 @@ function planVersionRaceTask(array $instruction): Closure
 
             $result = $action();
 
-            return ['success' => true, 'exception' => null, 'message' => null, 'result' => $result, 'elapsed_ms' => (hrtime(true) - $started) / 1_000_000] + $observed;
+            return ['success' => true, 'exception' => null, 'message' => null, 'errors' => null, 'result' => $result, 'elapsed_ms' => (hrtime(true) - $started) / 1_000_000] + $observed;
         } catch (Throwable $exception) {
-            return ['success' => false, 'exception' => $exception::class, 'message' => $exception->getMessage(), 'result' => null, 'elapsed_ms' => (hrtime(true) - $started) / 1_000_000] + $observed;
+            return [
+                'success' => false,
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+                'errors' => $exception instanceof ValidationException ? $exception->errors() : null,
+                'result' => null,
+                'elapsed_ms' => (hrtime(true) - $started) / 1_000_000,
+            ] + $observed;
         } finally {
             if (isset($instruction['done_marker'])) {
                 file_put_contents($instruction['done_marker'], 'done');
@@ -674,23 +691,76 @@ it('refuses the activation that arrives after a draft edit as stale, keeping V1 
 
 // ── Envio de medição durante a ativação de uma revisão ───────────────────────
 
-it('refuses a measurement sent on a line of the version the activation just superseded on MySQL', function () {
+/*
+ * A competência decide a versão. Ativada em 12/08/2026, a V2 vale desde
+ * 08/2026, e as competências anteriores continuam regidas pela V1, mesmo
+ * substituída. O arquivo congela no envio a versão que rege a competência da
+ * medição; a disputa pela Operation só decide o que cada escrita enxerga ao
+ * entrar: a ativação, as medições de pé; o envio, a versão que rege o mês.
+ */
+
+it('keeps on V1 a June measurement sent right after the activation of V2, which governs only from August, on MySQL', function () {
     $scenario = planVersionRacePlan();
+    $v1 = planVersionRaceActive($scenario['planSet']);
     $draft = planVersionRaceRevision($scenario);
-    $path = planVersionRaceAssetFile('superseded-june');
+    $june = $scenario['lines']['2026-06'];
+    $path = planVersionRaceAssetFile('after-activation-june');
     $activation = ['action' => 'activate', 'plan_version_id' => (int) $draft->id, 'expected_revision' => (int) $draft->revision] + planVersionRaceBase($scenario);
 
-    [$activated, $submitted] = planVersionRaceRun($activation, planVersionRaceSubmission($scenario, $scenario['lines']['2026-06'], $path));
+    [$activated, $submitted] = planVersionRaceRun($activation, planVersionRaceSubmission($scenario, $june, $path));
+
+    expect([planVersionRaceOutcome($activated), planVersionRaceOutcome($submitted)])->toBe([
+        ['success' => true, 'exception' => null, 'message' => null, 'hold_met' => null],
+        ['success' => true, 'exception' => null, 'message' => null, 'hold_met' => null],
+    ]);
+
+    $asset = MeasurementAsset::query()->where('plan_set_id', $scenario['planSet']->id)->sole();
+    $measurement = Measurement::query()->findOrFail($submitted['result']['measurement_id']);
+    $v2 = $draft->fresh();
 
     // O formulário mostrava a linha de 06/2026 da V1; quando o envio obtém a
-    // Operation, a V1 já foi substituída. A medição não nasce presa a uma
-    // versão que deixou de valer -- nada fica gravado, nem o arquivo.
+    // Operation, a V2 já está vigente -- mas só vale desde 08/2026. Junho
+    // continua regido pela V1, agora substituída, e a medição nasce presa a
+    // ela, com o arquivo gravado. A ativação veio antes: o marco dela não tem
+    // medição nenhuma.
+    expect($activated['result'])->toBe(['status' => 'active'])
+        ->and($submitted['lock_wait_ms'])->toBeGreaterThan(250)
+        ->and((int) $asset->measurement_id)->toBe($measurement->id)
+        ->and((int) $asset->plan_version_id)->toBe($v1->id)
+        ->and((int) $asset->plan_line_id)->toBe($june->id)
+        ->and($asset->line_claim_key)->toBe($june->lineage_key)
+        ->and($measurement->status)->toBe('in_review')
+        ->and(planVersionRaceStatuses($scenario['planSet']))->toBe(['V1:superseded', 'V2:active'])
+        ->and($v2->effective_from->toDateString())->toBe('2026-08-01')
+        ->and($v2->last_measurement_id_at_activation)->toBeNull()
+        ->and(app(MeasurementPlanVersionResolver::class)->forCompetence($scenario['planSet'], '2026-06')?->id)->toBe($v1->id)
+        ->and(Storage::disk('local')->exists($path))->toBeTrue();
+
+    // A Engenharia aprova junho contra a V1 congelada no envio, que rege a
+    // competência, com a V2 já vigente.
+    expect(planVersionRaceEngineeringErrors($scenario, $measurement))->toBe([])
+        ->and(collect($measurement->fresh()->engineering_snapshot['plan_sets'])->pluck('plan_version_id')->all())->toBe([$v1->id]);
+})->group('mysql');
+
+it('refuses a measurement of the activation month sent on the superseded version line right after the activation on MySQL', function () {
+    $scenario = planVersionRacePlan();
+    $draft = planVersionRaceRevision($scenario);
+    $path = planVersionRaceAssetFile('superseded-august');
+    $activation = ['action' => 'activate', 'plan_version_id' => (int) $draft->id, 'expected_revision' => (int) $draft->revision] + planVersionRaceBase($scenario);
+
+    [$activated, $submitted] = planVersionRaceRun($activation, planVersionRaceSubmission($scenario, $scenario['lines']['2026-08'], $path));
+
+    // 08/2026 é o mês da ativação. O formulário mostrava a linha de agosto da
+    // V1; quando o envio obtém a Operation, quem rege agosto já é a V2. A
+    // medição não nasce presa a uma versão que não vale para a competência
+    // dela -- nada fica gravado, nem o arquivo.
     expect($activated['success'])->toBeTrue()
         ->and($submitted['success'])->toBeFalse()
         ->and($submitted['exception'])->toBe(MeasurementWorkflowException::class)
-        ->and($submitted['message'])->toBe(sprintf(MeasurementAsset::SUPERSEDED_PLAN_REFUSAL, 'Plano padrão'))
+        ->and($submitted['message'])->toBe(sprintf(MeasurementAsset::VERSION_NOT_GOVERNING_REFUSAL, '08/2026', 'V1', 'Plano padrão', 'V2'))
         ->and($submitted['lock_wait_ms'])->toBeGreaterThan(250)
         ->and(planVersionRaceStatuses($scenario['planSet']))->toBe(['V1:superseded', 'V2:active'])
+        ->and(app(MeasurementPlanVersionResolver::class)->forCompetence($scenario['planSet'], '2026-08')?->id)->toBe($draft->id)
         ->and(Measurement::query()->where('operation_id', $scenario['operation']->id)->exists())->toBeFalse()
         ->and(MeasurementAsset::query()->where('plan_set_id', $scenario['planSet']->id)->exists())->toBeFalse()
         ->and(Storage::disk('local')->exists($path))->toBeFalse();
@@ -729,6 +799,105 @@ it('keeps on V1 a measurement sent before the activation, which still activates 
         ->and($draft->fresh()->effective_from->toDateString())->toBe('2026-08-01')
         ->and($assetCreated->id)->toBeLessThan($superseded->id);
 })->group('mysql');
+
+it('keeps on V1 the measurement of the activation month sent first and refuses the activation that would replan it on MySQL', function () {
+    $scenario = planVersionRacePlan();
+    $v1 = planVersionRaceActive($scenario['planSet']);
+    $draft = planVersionRaceRevision($scenario);
+    $v1Row = planVersionRaceRow('measurement_plan_versions', $v1->id);
+    $draftRow = planVersionRaceRow('measurement_plan_versions', $draft->id);
+    $august = $scenario['lines']['2026-08'];
+    $activation = ['action' => 'activate', 'plan_version_id' => (int) $draft->id, 'expected_revision' => (int) $draft->revision] + planVersionRaceBase($scenario);
+
+    [$submitted, $activated] = planVersionRaceRun(planVersionRaceSubmission($scenario, $august, planVersionRaceAssetFile('kept-august')), $activation);
+
+    expect(planVersionRaceOutcome($submitted))->toBe(['success' => true, 'exception' => null, 'message' => null, 'hold_met' => null]);
+
+    $asset = MeasurementAsset::query()->where('plan_set_id', $scenario['planSet']->id)->sole();
+    $measurementId = $submitted['result']['measurement_id'];
+
+    // O envio obteve a Operation primeiro, com a V1 ainda regendo 08/2026, e
+    // a medição nasceu presa a ela. A ativação esperou o lock e, ao entrar, vê
+    // a medição de pé: ativada agora, a V2 valeria desde 08/2026 e
+    // replanejaria a competência já medida. Recusa na vigência -- a V1
+    // continua vigente e regendo agosto, e o rascunho continua rascunho.
+    expect((int) $asset->measurement_id)->toBe($measurementId)
+        ->and((int) $asset->plan_version_id)->toBe($v1->id)
+        ->and((int) $asset->plan_line_id)->toBe($august->id)
+        ->and($asset->line_claim_key)->toBe($august->lineage_key)
+        ->and($activated['success'])->toBeFalse()
+        ->and($activated['exception'])->toBe(ValidationException::class)
+        ->and(array_keys($activated['errors']))->toBe(['effective_from'])
+        ->and($activated['errors']['effective_from'][0])->toContain('08/2026', 'medição de pé', "(#{$measurementId})")
+        ->and($activated['lock_wait_ms'])->toBeGreaterThan(250)
+        ->and(planVersionRaceStatuses($scenario['planSet']))->toBe(['V1:active', 'V2:draft'])
+        ->and(planVersionRaceRow('measurement_plan_versions', $v1->id))->toBe($v1Row)
+        ->and(planVersionRaceRow('measurement_plan_versions', $draft->id))->toBe($draftRow)
+        ->and(app(MeasurementPlanVersionResolver::class)->forCompetence($scenario['planSet'], '2026-08')?->id)->toBe($v1->id)
+        ->and(planVersionRaceEvents($scenario['planSet'], 'plan_version_activated'))->toBe([])
+        ->and(planVersionRaceEvents($scenario['planSet'], 'plan_version_superseded'))->toBe([]);
+})->group('mysql');
+
+/**
+ * 10/07/2026, 10h em Brasília: o exemplo de julho. Uma revisão ativada agora
+ * vale desde 07/2026, e junho continua com a V1.
+ */
+function planVersionRaceJulyNow(): CarbonImmutable
+{
+    return CarbonImmutable::parse('2026-07-10 13:00:00', 'UTC');
+}
+
+it('keeps a June measurement on V1 and activates V2 from July, whichever gets the Operation first, on MySQL', function (bool $activationFirst) {
+    // O teste vai a julho antes de montar o cenário, e os filhos recebem o
+    // mesmo instante: a V1, a revisão, o envio e a ativação acontecem no
+    // mesmo dia.
+    $this->travelTo(planVersionRaceJulyNow());
+    $scenario = planVersionRacePlan();
+    $v1 = planVersionRaceActive($scenario['planSet']);
+    $draft = planVersionRaceRevision($scenario);
+    $june = $scenario['lines']['2026-06'];
+    $inJuly = ['now' => planVersionRaceJulyNow()->toDateTimeString()];
+    $activation = $inJuly + ['action' => 'activate', 'plan_version_id' => (int) $draft->id, 'expected_revision' => (int) $draft->revision] + planVersionRaceBase($scenario);
+    $submission = $inJuly + planVersionRaceSubmission($scenario, $june, planVersionRaceAssetFile('july-example-june'));
+
+    if ($activationFirst) {
+        [$activated, $submitted] = planVersionRaceRun($activation, $submission);
+    } else {
+        [$submitted, $activated] = planVersionRaceRun($submission, $activation);
+    }
+
+    // A V2 vale desde 07/2026 e não alcança junho, que é da V1 antes e depois
+    // da ativação: nenhuma das duas escritas recusa, na ordem que for.
+    expect([planVersionRaceOutcome($activated), planVersionRaceOutcome($submitted)])->toBe([
+        ['success' => true, 'exception' => null, 'message' => null, 'hold_met' => null],
+        ['success' => true, 'exception' => null, 'message' => null, 'hold_met' => null],
+    ]);
+
+    $v2 = $draft->fresh();
+    $asset = MeasurementAsset::query()->where('plan_set_id', $scenario['planSet']->id)->sole();
+    $measurementId = $submitted['result']['measurement_id'];
+    $resolver = app(MeasurementPlanVersionResolver::class);
+
+    // Quem chegou depois esperou a Operation. A medição de junho fica na V1, e
+    // a V2 entra em vigor desde julho.
+    expect(($activationFirst ? $submitted : $activated)['lock_wait_ms'])->toBeGreaterThan(250)
+        ->and($activated['result'])->toBe(['status' => 'active'])
+        ->and(planVersionRaceStatuses($scenario['planSet']))->toBe(['V1:superseded', 'V2:active'])
+        ->and($v2->effective_from->toDateString())->toBe('2026-07-01')
+        ->and((int) $asset->measurement_id)->toBe($measurementId)
+        ->and((int) $asset->plan_version_id)->toBe($v1->id)
+        ->and((int) $asset->plan_line_id)->toBe($june->id)
+        ->and($asset->line_claim_key)->toBe($june->lineage_key)
+        ->and($resolver->forCompetence($scenario['planSet'], '2026-06')?->id)->toBe($v1->id)
+        ->and($resolver->forCompetence($scenario['planSet'], '2026-07')?->id)->toBe($v2->id);
+
+    // A ordem só aparece no marco da ativação: a medição enviada antes entra
+    // nele, a enviada depois não.
+    expect($v2->last_measurement_id_at_activation)->toBe($activationFirst ? null : $measurementId);
+})->with([
+    'a ativação primeiro' => [true],
+    'o envio primeiro' => [false],
+])->group('mysql');
 
 // ── O marco da ativação: medição enviada antes ou depois do plano valer ──────
 

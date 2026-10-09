@@ -6,7 +6,10 @@ use App\Concerns\DerivesStoredFileMetadata;
 use App\Enums\MeasurementReceiptReviewStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Services\DocumentStorageService;
+use App\Services\MeasurementEngineeringService;
+use App\Services\MeasurementPlanVersionResolver;
 use Database\Factories\MeasurementFactory;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -74,6 +77,29 @@ class Measurement extends Model
      */
     public const PAID_COMPETENCE_CHANGE_REFUSAL = 'A competência de uma medição com pagamento registrado não pode ser alterada: o pagamento continua vinculado a ela.';
 
+    /**
+     * A competência decide a versão do plano, e a versão fica congelada no
+     * arquivo desde o envio: a competência só muda para outra que a versão
+     * congelada também rege. Argumentos: competência pedida (m/Y), versão
+     * congelada, plano.
+     */
+    public const FROZEN_VERSION_COMPETENCE_CHANGE_REFUSAL = 'A competência %1$s não é regida pela %2$s do plano de %3$s, sob a qual esta medição foi enviada: a competência só muda dentro da vigência dessa versão. Para medir %1$s, recuse esta medição e envie uma nova.';
+
+    /**
+     * A competência é uma só, e a de cada arquivo é a da medição prevista
+     * dele: mudá-la sem trocar as linhas deixaria a medição com duas
+     * competências. Argumentos: plano, mês da linha (m/Y), competência pedida
+     * (m/Y).
+     */
+    public const COMPETENCE_WITHOUT_ITS_LINES_REFUSAL = 'A medição prevista de %1$s é de %2$s: a competência só muda para %3$s junto com a medição prevista de cada empreendimento. Escolha a medição prevista de %3$s em cada arquivo.';
+
+    /**
+     * O Editar não acrescenta arquivo: a competência nova (ou a remoção de um
+     * arquivo) não pode deixar de fora um empreendimento que a Engenharia vai
+     * exigir nela. Argumentos: competência (m/Y), empreendimentos que faltam.
+     */
+    public const COMPETENCE_COVERAGE_REFUSAL = 'A competência %1$s exige também o arquivo de %2$s, e o Editar não acrescenta arquivo: para medir %1$s com esses empreendimentos, recuse esta medição e envie uma nova.';
+
     protected $fillable = [
         'operation_id',
         'reference_month',
@@ -127,6 +153,12 @@ class Measurement extends Model
                     'measurement_id' => $measurement->getKey(),
                     'original_reference_month' => $measurement->getRawOriginal('reference_month'),
                 ]);
+            }
+
+            if ($measurement->exists
+                && $measurement->isDirty('reference_month')
+                && $measurement->reference_month !== null) {
+                $measurement->assertFilesFollowTheCompetence($measurement->reference_month);
             }
 
             if (blank($measurement->filename) && filled($measurement->storage_path)) {
@@ -316,6 +348,120 @@ class Measurement extends Model
     public function isOpen(): bool
     {
         return in_array($this->status, self::OPEN_STATUSES, true);
+    }
+
+    /**
+     * A competência gravada e os arquivos da medição contam a mesma história:
+     * cada arquivo com medição prevista congelou no envio a versão do plano
+     * que regia a competência ({@see MeasurementAsset::$plan_version_id}),
+     * junto com a linha daquela competência. Depois de um Editar que mexa na
+     * competência, nas linhas ou nos arquivos, a competência tem de ser regida
+     * por todas essas versões e ser a de todas as linhas.
+     *
+     * @throws MeasurementWorkflowException
+     */
+    public function assertFilesFollowItsCompetence(): void
+    {
+        if ($this->reference_month instanceof DateTimeInterface) {
+            $this->assertFilesFollowTheCompetence($this->reference_month);
+        }
+    }
+
+    /**
+     * Os arquivos cobrem os empreendimentos que a Engenharia vai exigir na
+     * competência: os que a preveem pela versão que a regia no envio da
+     * medição ({@see MeasurementEngineeringService}). O
+     * Editar não acrescenta arquivo, então mudar a competência para um mês que
+     * outro empreendimento prevê -- ou remover o arquivo de um exigido --
+     * deixaria a medição sem aprovação possível. Com pagamento, a Engenharia
+     * confere só os arquivos da própria medição, e nada aqui se aplica.
+     *
+     * @throws MeasurementWorkflowException
+     */
+    public function assertCoversItsCompetence(): void
+    {
+        if (! $this->reference_month instanceof DateTimeInterface || $this->payments()->exists()) {
+            return;
+        }
+
+        $covered = $this->assets()->whereNotNull('plan_set_id')->pluck('plan_set_id')->map(fn (mixed $id): int => (int) $id)->all();
+        $missing = MeasurementPlanLine::query()
+            ->where('operation_id', $this->operation_id)
+            ->governingTheirCompetence((int) $this->getKey())
+            ->inCompetence($this->reference_month)
+            ->whereNotIn('plan_set_id', $covered)
+            ->distinct()
+            ->orderBy('plan_set_id')
+            ->pluck('plan_set_id');
+
+        if ($missing->isEmpty()) {
+            return;
+        }
+
+        $labels = MeasurementPlanSet::query()
+            ->whereKey($missing->all())
+            ->with('construction')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (MeasurementPlanSet $planSet): string => $planSet->construction?->development_name ?? $planSet->name)
+            ->implode(', ');
+
+        throw new MeasurementWorkflowException(sprintf(self::COMPETENCE_COVERAGE_REFUSAL, $this->reference_month->format('m/Y'), $labels), [
+            'measurement_id' => $this->getKey(),
+            'missing_plan_set_ids' => $missing->map(fn (mixed $id): int => (int) $id)->all(),
+        ]);
+    }
+
+    /**
+     * Cada arquivo com medição prevista congelou no envio a versão do plano
+     * que regia a competência, junto com a linha dela. A competência tem de
+     * ser regida por todas essas versões e ser a de todas as linhas: a medição
+     * muda de competência trocando a linha de cada arquivo, dentro da vigência
+     * da versão congelada. Lido do banco: no Editar, os arquivos já foram
+     * gravados quando a medição grava a competência. O arquivo sem linha não
+     * congelou versão.
+     */
+    private function assertFilesFollowTheCompetence(DateTimeInterface $competence): void
+    {
+        $resolver = app(MeasurementPlanVersionResolver::class);
+        $assets = $this->assets()
+            ->whereNotNull('plan_line_id')
+            ->with(['planVersion', 'planLine', 'planSet.construction'])
+            ->orderBy('id')
+            ->get();
+        $label = fn (MeasurementAsset $asset): string => $asset->planSet?->construction?->development_name ?? $asset->planSet?->name ?? 'o empreendimento';
+
+        foreach ($assets as $asset) {
+            if ($asset->planVersion !== null && ! $resolver->governs($asset->planVersion, $competence)) {
+                throw new MeasurementWorkflowException(sprintf(
+                    self::FROZEN_VERSION_COMPETENCE_CHANGE_REFUSAL,
+                    $competence->format('m/Y'),
+                    $asset->planVersion->label(),
+                    $label($asset),
+                ), [
+                    'measurement_id' => $this->getKey(),
+                    'asset_id' => $asset->getKey(),
+                    'plan_version_id' => $asset->plan_version_id,
+                ]);
+            }
+        }
+
+        foreach ($assets as $asset) {
+            $lineMonth = $asset->planLine?->measurement_date;
+
+            if ($lineMonth !== null && $lineMonth->format('Y-m') !== $competence->format('Y-m')) {
+                throw new MeasurementWorkflowException(sprintf(
+                    self::COMPETENCE_WITHOUT_ITS_LINES_REFUSAL,
+                    $label($asset),
+                    $lineMonth->format('m/Y'),
+                    $competence->format('m/Y'),
+                ), [
+                    'measurement_id' => $this->getKey(),
+                    'asset_id' => $asset->getKey(),
+                    'plan_line_id' => $asset->plan_line_id,
+                ]);
+            }
+        }
     }
 
     /**

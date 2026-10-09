@@ -5,10 +5,12 @@ namespace App\Models;
 use App\Enums\MeasurementPlanRevisionCategory;
 use App\Enums\MeasurementPlanVersionStatus;
 use App\Exceptions\MeasurementWorkflowException;
+use App\Services\MeasurementPlanVersionResolver;
 use App\Services\MeasurementPlanVersionService;
 use App\Support\Money\IntegerMoney;
 use Carbon\CarbonImmutable;
 use Database\Factories\MeasurementPlanVersionFactory;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -24,8 +26,9 @@ use Spatie\Activitylog\Support\LogOptions;
  * O plano ({@see MeasurementPlanSet}) é o contexto da obra na operação e não
  * muda de identidade: dele são o avanço físico inicial, o teto de 100%, os
  * arquivos e os pagamentos. A versão é o que se replaneja. Rascunho é o único
- * estado editável; vigente e substituída são histórico -- a medição criada sob
- * uma versão continua ligada a ela, mesmo depois de outra a substituir.
+ * estado editável; vigente e substituída são histórico -- a medição de uma
+ * competência fica ligada à versão que rege essa competência
+ * ({@see MeasurementPlanVersionResolver}), mesmo depois de outra a substituir.
  *
  * As regras abaixo valem para toda gravação Eloquent; a ordem de locks, as
  * validações de ativação e os eventos de ciclo de vida da trilha ficam em
@@ -195,6 +198,21 @@ class MeasurementPlanVersion extends Model
         return $query->where($query->qualifyColumn('status'), MeasurementPlanVersionStatus::Draft->value);
     }
 
+    /**
+     * As versões que regem a competência -- uma por plano, no máximo
+     * ({@see MeasurementPlanVersionResolver}). Com `$asOfMeasurementId`, o
+     * histórico como estava no envio dessa medição.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeGoverning(Builder $query, DateTimeInterface|string $competence, ?int $asOfMeasurementId = null): Builder
+    {
+        MeasurementPlanVersionResolver::whereGovernsCompetence($query->getQuery(), $this->getTable(), $competence, $asOfMeasurementId);
+
+        return $query;
+    }
+
     public function label(): string
     {
         return 'V'.$this->version_number;
@@ -272,6 +290,8 @@ class MeasurementPlanVersion extends Model
                 'plan_set_id' => $planSet->getKey(),
             ]);
         }
+
+        $this->guardEffectiveFromIsACompetence();
     }
 
     /**
@@ -320,6 +340,28 @@ class MeasurementPlanVersion extends Model
             && ($this->effective_from === null || $this->activated_at === null)) {
             throw new MeasurementWorkflowException('A versão só fica vigente com a data de vigência e o registro da ativação.', [
                 'plan_version_id' => $this->getKey(),
+            ]);
+        }
+
+        if ($to === MeasurementPlanVersionStatus::Active && $from !== $to) {
+            $this->guardEffectiveFromIsACompetence();
+        }
+    }
+
+    /**
+     * A vigência é uma competência: o 1º dia do mês da ativação
+     * ({@see MeasurementPlanVersionService::activationCompetence()}). O
+     * resolvedor compara meses, mas a tela e a trilha mostram o dia.
+     */
+    private function guardEffectiveFromIsACompetence(): void
+    {
+        if ($this->status instanceof MeasurementPlanVersionStatus
+            && $this->status->hasBeenEffective()
+            && $this->effective_from !== null
+            && $this->effective_from->day !== 1) {
+            throw new MeasurementWorkflowException('A vigência de uma versão do plano começa no primeiro dia de um mês.', [
+                'plan_version_id' => $this->getKey(),
+                'effective_from' => $this->effective_from->toDateString(),
             ]);
         }
     }

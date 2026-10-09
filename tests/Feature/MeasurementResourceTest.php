@@ -413,12 +413,14 @@ it('persists one asset per development with its file and starts the review', fun
     ]);
     app(MeasurementWorkflow::class)->startReview($measurement, $admin);
 
-    // Cada arquivo guarda a versão vigente do plano do seu empreendimento.
+    // Um arquivo por empreendimento. Sem a medição prevista, nenhuma versão
+    // do plano fica congelada ainda: ela nasce com a linha escolhida, a da
+    // versão que rege a competência.
     expect($measurement->fresh()->assets()->count())->toBe(2)
         ->and($measurement->fresh()->assets()->pluck('plan_set_id')->sort()->values()->all())
         ->toBe(collect([$planA->id, $planB->id])->sort()->values()->all())
-        ->and($measurement->fresh()->assets()->orderBy('plan_set_id')->pluck('plan_version_id')->map(fn ($id): int => (int) $id)->all())
-        ->toBe(collect([$planA, $planB])->sortBy('id')->map(fn (MeasurementPlanSet $plan): int => (int) $plan->activeVersion()->value('id'))->values()->all())
+        ->and($measurement->fresh()->assets()->orderBy('plan_set_id')->pluck('plan_version_id')->all())
+        ->toBe([null, null])
         ->and($measurement->fresh()->status)->toBe('in_review');
 });
 

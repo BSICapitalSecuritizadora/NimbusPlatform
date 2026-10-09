@@ -12,6 +12,7 @@ use App\Models\MeasurementPlanSet;
 use App\Models\MeasurementPlanVersion;
 use App\Models\Operation;
 use App\Models\User;
+use App\Services\MeasurementPlanVersionResolver;
 use App\Services\MeasurementPlanVersionService;
 use App\Services\MeasurementWorkflow;
 use Carbon\CarbonImmutable;
@@ -28,14 +29,15 @@ use Spatie\Permission\PermissionRegistrar;
 /**
  * A versão do plano que cada arquivo de medição captura, e onde a tela a mostra.
  *
- * Regra escolhida: a captura no envio. O arquivo de cada empreendimento fica
- * ligado, para sempre, à versão do plano vigente quando a medição é enviada: é
- * nela que a Engenharia confere a medição prevista, e é o Fundo de Obra dela
- * que o snapshot congela para o pagamento. Uma revisão ativada depois do envio
- * não alcança a medição; e a medição de uma competência anterior à vigência,
- * enviada depois da ativação, vai para a versão nova -- a aba de versões avisa
- * isso antes da ativação, e o modal de aprovação da Engenharia mostra a versão
- * e o fundo de cada arquivo.
+ * Regra: a competência decide a versão, e o envio a congela. O arquivo de cada
+ * empreendimento fica ligado, para sempre, à versão do plano que rege a
+ * competência da medição: é nela que a Engenharia confere a medição prevista,
+ * e é o Fundo de Obra dela que o snapshot congela para o pagamento. Uma
+ * revisão ativada depois do envio não alcança a medição; e a medição de uma
+ * competência anterior à vigência, enviada depois da ativação, continua na
+ * versão que regia aquela competência -- a aba de versões avisa isso antes da
+ * ativação, e o modal de aprovação da Engenharia mostra a versão e o fundo de
+ * cada arquivo.
  */
 uses(RefreshDatabase::class);
 
@@ -163,7 +165,7 @@ function planVersionCaptureLine(MeasurementPlanVersion $version, string $month):
 
 /**
  * Medição do mês com o arquivo de cada plano informado, na medição prevista
- * da versão vigente, aguardando a Engenharia -- como o envio a grava.
+ * da versão que rege o mês, aguardando a Engenharia -- como o envio a grava.
  *
  * @param  array{actor: User, operation: Operation}  $scenario
  * @param  list<MeasurementPlanSet>  $planSets
@@ -181,12 +183,12 @@ function planVersionCaptureMeasurement(array $scenario, string $month, array $pl
     ]);
 
     foreach ($planSets as $planSet) {
-        $active = MeasurementPlanVersion::query()->where('plan_set_id', $planSet->id)->active()->sole();
+        $governing = app(MeasurementPlanVersionResolver::class)->forCompetence($planSet, "{$month}-01");
         $path = "nimbus_docs/measurements/assets/plan-version-capture-{$measurement->id}-{$planSet->id}.pdf";
         Storage::disk('local')->put($path, "%PDF-1.7 medição {$month} de {$planSet->name}");
         $measurement->assets()->create([
             'plan_set_id' => $planSet->id,
-            'plan_line_id' => planVersionCaptureLine($active, $month)->id,
+            'plan_line_id' => planVersionCaptureLine($governing, $month)->id,
             'storage_path' => $path,
             'storage_disk' => 'local',
         ]);
@@ -317,13 +319,14 @@ it('shows in the Engineering approval modal the plan version each file was sent 
 
 // ── Competência anterior à vigência enviada depois da ativação ───────────────
 
-it('binds the June measurement sent after the July cost revision took effect to the revision and its fund', function () {
+it('binds the June measurement sent after the July cost revision took effect to V1, the version that governs June, and its fund', function () {
     // Torre Aurora com 30% executados até 31/05/2026 e a V1 (R$ 20 milhões)
     // vigente desde 06/2026: 10% previstos por mês de 06/2026 a 08/2026.
     planVersionCaptureTravelTo('2026-06-01');
     $scenario = planVersionCaptureOperation();
     $aurora = planVersionCaptureActivePlan($scenario, 'Torre Aurora', '20000000.00', ['2026-06', '2026-07', '2026-08'], '30.00', '2026-05-31');
-    $juneV1 = planVersionCaptureLine(planVersionCaptureVersion($aurora, 1), '2026-06');
+    $v1 = planVersionCaptureVersion($aurora, 1);
+    $juneV1 = planVersionCaptureLine($v1, '2026-06');
 
     // 02/07: a revisão de custo (R$ 23 milhões) passa a valer desde 07/2026,
     // com junho ainda por medir.
@@ -331,22 +334,26 @@ it('binds the June measurement sent after the July cost revision took effect to 
     $auroraV2 = planVersionCaptureReviseFund($scenario, $aurora, '23000000.00');
     $juneV2 = planVersionCaptureLine($auroraV2, '2026-06');
 
-    // Regra escolhida -- captura no envio: o arquivo fica na versão vigente
-    // quando a medição é enviada, não na que planejou a competência. Junho é
-    // anterior à vigência da V2, mas a medição dele só sai em 05/07, depois da
-    // ativação: o Enviar Medição oferece a junho da V2 -- a mesma medição
-    // prevista da V1, pela linhagem --, e a medição leva a V2 e o Fundo de
-    // Obra de R$ 23 milhões. A aba de versões avisou isso antes da ativação.
+    // Regra: a competência decide a versão. Junho é anterior à vigência da V2,
+    // e a medição dele só sai em 05/07, depois da ativação: o Enviar Medição
+    // oferece a junho da V1 -- não a cópia que a V2 traz, com a mesma
+    // linhagem --, e a medição leva a V1 e o Fundo de Obra de R$ 20 milhões.
     planVersionCaptureTravelTo('2026-07-05');
     $this->actingAs($scenario['actor']);
 
-    Livewire::test(CreateMeasurement::class)
-        ->fillForm(['operation_id' => $scenario['operation']->id])
-        ->fillForm(['reference_month' => '2026-06-01', 'assets' => [[
-            'plan_set_id' => $aurora->id,
-            'plan_line_id' => $juneV2->id,
-            'storage_path' => [UploadedFile::fake()->createWithContent('medicao-junho.pdf', '%PDF-1.7 medição de junho da Torre Aurora')],
-        ]]])
+    $page = Livewire::test(CreateMeasurement::class)
+        ->fillForm(['operation_id' => $scenario['operation']->id]);
+    $row = array_key_first($page->get('data.assets'));
+    $options = $page->instance()->getSchema('form')->getComponentByStatePath("assets.{$row}.plan_line_id")?->getOptions() ?? [];
+
+    expect(array_keys($options))->toContain($juneV1->id)
+        ->not->toContain($juneV2->id);
+
+    $page->fillForm(['reference_month' => '2026-06-01', 'assets' => [[
+        'plan_set_id' => $aurora->id,
+        'plan_line_id' => $juneV1->id,
+        'storage_path' => [UploadedFile::fake()->createWithContent('medicao-junho.pdf', '%PDF-1.7 medição de junho da Torre Aurora')],
+    ]]])
         ->call('create')
         ->assertHasNoFormErrors();
 
@@ -354,11 +361,11 @@ it('binds the June measurement sent after the July cost revision took effect to 
     $asset = $june->assets()->sole();
 
     expect($june->reference_month->toDateString())->toBe('2026-06-01')
-        ->and($asset->plan_version_id)->toBe($auroraV2->id)
-        ->and($asset->plan_line_id)->toBe($juneV2->id)
+        ->and($asset->plan_version_id)->toBe($v1->id)
+        ->and($asset->plan_line_id)->toBe($juneV1->id)
         ->and($asset->line_claim_key)->toBe($juneV1->lineage_key);
 
-    // A Engenharia vê a V2 e o fundo dela no modal, e aprova junho sob ela.
+    // A Engenharia vê a V1 e o fundo dela no modal, e aprova junho sob ela.
     $component = Livewire::test(ViewMeasurement::class, ['record' => $june->getRouteKey()])->mountAction('approve');
 
     expect(planVersionCaptureApprovalContext($component, $aurora->id))->toBe([
@@ -368,7 +375,7 @@ it('binds the June measurement sent after the July cost revision took effect to 
             'Medido no sistema' => '0,00%',
             'Avanço físico atual' => '30,00%',
             'Máximo restante' => '70,00%',
-            'Versão do plano' => 'V2 · Fundo de Obra R$ 23.000.000,00',
+            'Versão do plano' => 'V1 · Fundo de Obra R$ 20.000.000,00',
         ],
     ]);
 
@@ -376,17 +383,20 @@ it('binds the June measurement sent after the July cost revision took effect to 
         ->callMountedAction()
         ->assertHasNoActionErrors();
 
-    // O snapshot congela a V2 e o Fundo de Obra dela; a medição ocupa a junho
-    // da V2, e a da V1 fica sem medição.
+    // O snapshot congela a V1 e o Fundo de Obra dela; a medição grava a junho
+    // da V1, e a cópia da V2 fica sem medição.
     expect(planVersionCaptureSnapshot($june))->toBe([
-        [$aurora->id, $auroraV2->id, 2, '23000000.00', '2026-06-01', $juneV1->lineage_key],
+        [$aurora->id, $v1->id, 1, '20000000.00', '2026-06-01', $juneV1->lineage_key],
     ])
-        ->and($juneV2->fresh()->measurement_id)->toBe($june->id)
-        ->and($juneV1->fresh()->measurement_id)->toBeNull();
+        ->and($juneV1->fresh()->measurement_id)->toBe($june->id)
+        ->and($juneV2->fresh()->measurement_id)->toBeNull()
+        ->and($aurora->fresh()->currentConstructionFundAmount())->toBe('23000000.00');
 
     // Fora do modal, para sempre: o arquivo de junho mostra, na própria
-    // medição, a versão em que foi enviado e o Fundo de Obra dela.
+    // medição, a versão que rege junho e o Fundo de Obra dela -- mesmo com a
+    // V2 vigente.
     Livewire::test(ViewMeasurement::class, ['record' => $june->getRouteKey()])
         ->assertSee('Versão do plano')
-        ->assertSee('V2 · Fundo de Obra R$ 23.000.000,00');
+        ->assertSee('V1 · Fundo de Obra R$ 20.000.000,00')
+        ->assertDontSee('V2 · Fundo de Obra R$ 23.000.000,00');
 });

@@ -14,6 +14,7 @@ use App\Filament\Support\SurfacesUnplacedValidationErrors;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanVersion;
 use App\Models\User;
+use App\Services\MeasurementPlanVersionResolver;
 use App\Services\MeasurementPlanVersionService;
 use App\Support\BusinessTime;
 use App\Support\Money\IntegerMoney;
@@ -70,6 +71,12 @@ class PlanVersionsRelationManager extends RelationManager
     private const ACTION_NO_LONGER_AVAILABLE_MESSAGE = 'A situação da versão mudou desde que você abriu esta ação. Recarregue a página.';
 
     private const CONCURRENT_PLAN_UPDATE_MESSAGE = 'Outra pessoa alterou este plano ao mesmo tempo. Nada foi gravado: recarregue a página e confira antes de tentar de novo.';
+
+    /**
+     * A primeira versão rege também as competências do cronograma anteriores
+     * à vigência dela ({@see MeasurementPlanVersionResolver}).
+     */
+    private const EARLIER_COMPETENCES_SUFFIX = ' (e as competências anteriores do cronograma)';
 
     protected static string $relationship = 'planVersions';
 
@@ -195,7 +202,7 @@ class PlanVersionsRelationManager extends RelationManager
             ->modalHeading(fn (MeasurementPlanVersion $record): string => 'Ativar a '.$record->label().' do plano')
             ->modalDescription(fn (MeasurementPlanVersion $record): string => sprintf(
                 filled($record->previous_version_id)
-                    ? 'A %1$s passa a valer a partir de %2$s, o mês da ativação, e a versão vigente passa a substituída. Medições já enviadas continuam na versão em que foram enviadas. O avanço físico não muda: a %1$s planeja só o que resta.'
+                    ? 'A %1$s passa a valer a partir de %2$s, o mês da ativação, e a versão vigente passa a substituída. Medições já enviadas continuam na versão em que foram enviadas, e as competências anteriores a %2$s continuam na versão que as rege, mesmo medidas depois. O avanço físico não muda: a %1$s planeja só o que resta.'
                     : 'A %1$s passa a valer a partir de %2$s, o mês da ativação, e o plano começa a receber medições.',
                 $record->label(),
                 MeasurementPlanVersionService::activationCompetence()->format('d/m/Y'),
@@ -229,7 +236,12 @@ class PlanVersionsRelationManager extends RelationManager
                 Notification::make()
                     ->success()
                     ->title($record->label().' ativada.')
-                    ->body('As próximas medições deste plano usam esta versão.')
+                    ->body(filled($record->previous_version_id)
+                        ? sprintf(
+                            'As medições das competências a partir de %s usam esta versão; as anteriores continuam na versão que as rege.',
+                            $record->fresh()?->effective_from?->format('m/Y') ?? MeasurementPlanVersionService::activationCompetence()->format('m/Y'),
+                        )
+                        : 'As medições deste plano usam esta versão.')
                     ->send();
             });
     }
@@ -513,25 +525,48 @@ class PlanVersionsRelationManager extends RelationManager
      * ativado. Duas ativações no mesmo mês deixam a primeira sem competência
      * nenhuma -- a seguinte vale a partir do mesmo dia 1º --, e o intervalo
      * invertido não é mostrado.
+     *
+     * É a mesma regra que decide a versão de cada medição
+     * ({@see MeasurementPlanVersionResolver}), inclusive a da primeira versão,
+     * que rege também as competências do cronograma anteriores à vigência
+     * dela: a tela diz isso quando ela tem medição prevista nesses meses.
      */
     private function validity(MeasurementPlanVersion $record): ?string
     {
         $from = $record->effective_from?->format('d/m/Y');
         $until = $record->status === MeasurementPlanVersionStatus::Superseded ? $record->effectiveUntil() : null;
+        $earlier = $this->governsCompetencesBeforeItsVigency($record);
 
         return match ($record->status) {
-            MeasurementPlanVersionStatus::Active => $from === null ? null : 'Desde '.$from,
+            MeasurementPlanVersionStatus::Active => $from === null ? null : 'Desde '.$from.($earlier ? self::EARLIER_COMPETENCES_SUFFIX : ''),
             MeasurementPlanVersionStatus::Superseded => match (true) {
                 $from === null => null,
                 $until === null => $from.' a —',
+                $until->lt($record->effective_from) && $earlier => sprintf('Só as competências anteriores a %s: substituída no mês da própria ativação', $record->effective_from->format('m/Y')),
                 $until->lt($record->effective_from) => $record->assets()->exists()
                     ? 'Substituída no mês da própria ativação: sem competência própria, mas com medições enviadas sob ela'
                     : 'Substituída no mês da própria ativação: não regeu competência',
-                default => $from.' a '.$until->format('d/m/Y'),
+                default => $from.' a '.$until->format('d/m/Y').($earlier ? self::EARLIER_COMPETENCES_SUFFIX : ''),
             },
             MeasurementPlanVersionStatus::Draft => 'Se ativada agora: desde '.MeasurementPlanVersionService::activationCompetence()->format('d/m/Y'),
             MeasurementPlanVersionStatus::Cancelled => null,
         };
+    }
+
+    /**
+     * A primeira versão que valeu, com medição prevista antes da vigência dela
+     * -- o plano criado com a obra em andamento: ela rege essas competências.
+     */
+    private function governsCompetencesBeforeItsVigency(MeasurementPlanVersion $record): bool
+    {
+        if ($record->effective_from === null || ! app(MeasurementPlanVersionResolver::class)->isFirstEffective($record)) {
+            return false;
+        }
+
+        return $record->lines()
+            ->whereNotNull('measurement_date')
+            ->whereRaw(MeasurementPlanVersionResolver::monthKey('measurement_date').' < ?', [$record->effective_from->format('Y-m')])
+            ->exists();
     }
 
     private function money(mixed $amount): ?string
@@ -723,7 +758,7 @@ class PlanVersionsRelationManager extends RelationManager
                 'Previsto ainda não medido antes da vigência',
                 MeasurementPhysicalProgress::format((int) $comparison->pendingBeforeEffectiveBasisPoints),
                 MeasurementPhysicalProgress::format((int) $comparison->pendingBeforeEffectiveBasisPoints),
-                'continua a medir, sob a versão vigente no envio',
+                'continua a medir, sob a versão que rege a competência',
             ]]),
             [
                 'Acumulado previsto ao final',
@@ -762,15 +797,14 @@ class PlanVersionsRelationManager extends RelationManager
                 $base,
                 collect($comparison->openMeasurementIdsOnBase)->map(fn (int $id): string => '#'.$id)->implode(', '),
             )).'</p>';
-        // A medição fica ligada à versão vigente no envio, inclusive a de uma
-        // competência anterior à vigência enviada depois da ativação: a pessoa
-        // decide sabendo qual Fundo de Obra ela vai usar.
+        // A medição fica ligada à versão que rege a competência dela, inclusive
+        // a de uma competência anterior à vigência enviada depois da ativação:
+        // a pessoa decide sabendo que a revisão não alcança esse Fundo de Obra.
         $late = ($comparison->pendingBeforeEffectiveBasisPoints ?? 0) === 0
             ? ''
-            : '<p class="mt-3 text-sm text-gray-700 dark:text-gray-200">'.e(sprintf(
-                'A medição de uma competência anterior à vigência enviada depois da ativação fica ligada à %s e ao Fundo de Obra dela.',
-                $candidate,
-            )).'</p>';
+            : '<p class="mt-3 text-sm text-gray-700 dark:text-gray-200">'.e($comparison->base === null
+                ? sprintf('A medição de uma competência anterior à vigência fica ligada à %s e ao Fundo de Obra dela: é o primeiro cronograma em vigor dessas competências.', $candidate)
+                : sprintf('A medição de uma competência anterior à vigência, mesmo enviada depois da ativação, continua ligada à versão que rege essa competência (a %s ou anterior) e ao Fundo de Obra dela, e não à %s.', $base, $candidate)).'</p>';
 
         return new HtmlString($table.$lines.$open.$late);
     }

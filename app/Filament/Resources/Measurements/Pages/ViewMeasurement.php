@@ -17,6 +17,7 @@ use App\Models\MeasurementPaymentReceiptEvidence;
 use App\Models\MeasurementPlanSet;
 use App\Models\MeasurementPlanVersion;
 use App\Models\User;
+use App\Services\MeasurementEngineeringService;
 use App\Services\MeasurementFinancialReconciliationService;
 use App\Services\MeasurementFinancialRuleService;
 use App\Services\MeasurementPaymentFinancialService;
@@ -46,6 +47,7 @@ use Filament\Support\RawJs;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
 use Illuminate\Validation\ValidationException;
@@ -483,7 +485,9 @@ class ViewMeasurement extends ViewRecord
 
     /**
      * Developments (plan sets) covered by this measurement, derived from its
-     * uploaded assets when available, otherwise from the operation's plan sets.
+     * uploaded assets when available, otherwise from the operation's plan sets
+     * that plan the competence -- pela versão que a regia no envio, como a
+     * Engenharia exige ({@see MeasurementEngineeringService}).
      *
      * @return Collection<int, MeasurementPlanSet>
      */
@@ -501,7 +505,19 @@ class ViewMeasurement extends ViewRecord
             return $fromAssets;
         }
 
-        return $this->record->operation?->planSets()->whereHas('activeVersion')->with('construction')->get() ?? collect();
+        $competence = $this->record->reference_month;
+        $measurementId = (int) $this->record->getKey();
+
+        return $this->record->operation?->planSets()
+            ->when(
+                $competence === null,
+                fn (Builder $plans): Builder => $plans->whereHas('activeVersion'),
+                fn (Builder $plans): Builder => $plans->whereHas('lines', fn (Builder $lines): Builder => $lines
+                    ->governingTheirCompetence($measurementId)
+                    ->inCompetence($competence)),
+            )
+            ->with('construction')
+            ->get() ?? collect();
     }
 
     /**

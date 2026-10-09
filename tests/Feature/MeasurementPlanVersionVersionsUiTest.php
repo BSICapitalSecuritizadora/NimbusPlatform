@@ -621,7 +621,7 @@ it('activates the draft through the modal and supersedes the active version', fu
     // O modal diz a partir de quando a revisão vale e o que muda com ela.
     expect($manager->get('mountedActions.0.data.expected_revision'))->toBe(1)
         ->and($action->getModalHeading())->toBe('Ativar a V2 do plano')
-        ->and($action->getModalDescription())->toBe('A V2 passa a valer a partir de 01/07/2026, o mês da ativação, e a versão vigente passa a substituída. Medições já enviadas continuam na versão em que foram enviadas. O avanço físico não muda: a V2 planeja só o que resta.')
+        ->and($action->getModalDescription())->toBe('A V2 passa a valer a partir de 01/07/2026, o mês da ativação, e a versão vigente passa a substituída. Medições já enviadas continuam na versão em que foram enviadas, e as competências anteriores a 01/07/2026 continuam na versão que as rege, mesmo medidas depois. O avanço físico não muda: a V2 planeja só o que resta.')
         ->and(versionsTabTableRows(versionsTabModalHtml($manager))[0])
         ->toBe(['Custo previsto (Fundo de Obra)', 'R$ 20.000.000,00', 'R$ 23.000.000,00', '+R$ 3.000.000,00 (+15,00%)']);
 
@@ -634,7 +634,7 @@ it('activates the draft through the modal and supersedes the active version', fu
     $v1 = $plan['v1']->fresh();
 
     expect(versionsTabNotifications())->toBe([
-        ['status' => 'success', 'title' => 'V2 ativada.', 'body' => 'As próximas medições deste plano usam esta versão.'],
+        ['status' => 'success', 'title' => 'V2 ativada.', 'body' => 'As medições das competências a partir de 07/2026 usam esta versão; as anteriores continuam na versão que as rege.'],
     ])
         ->and($v2->status)->toBe(MeasurementPlanVersionStatus::Active)
         ->and($v2->effective_from->toDateString())->toBe('2026-07-01')
@@ -1107,15 +1107,15 @@ it('compares the revision with the previous version in cost, completion, progres
         ]);
 });
 
-it('warns before the activation that a late measurement of a month before the vigência is sent under the revision and its fund', function () {
+it('warns before the activation that a late measurement of a month before the vigência stays under the version that governs it and its fund', function () {
     // Torre Aurora com a V1 vigente desde 05/2026 e 35% executados: maio
     // medido e aprovado sob a V1 (10%); junho ainda sem medição.
     $plan = versionsTabActivePlan();
     Scenario::measured([...$plan, 'lines' => versionsTabLines($plan['v1'])], '2026-05', 10);
     $v2 = versionsTabRevise($plan['planSet'], $plan['actor'], MeasurementPlanRevisionCategory::Cost, 'Reajuste do orçamento aprovado pelo comitê.', '23000000.00');
     $this->actingAs($plan['actor']);
-    $note = 'A medição de uma competência anterior à vigência enviada depois da ativação fica ligada à V2 e ao Fundo de Obra dela.';
-    $pendingRow = ['Previsto ainda não medido antes da vigência', '10,00%', '10,00%', 'continua a medir, sob a versão vigente no envio'];
+    $note = 'A medição de uma competência anterior à vigência, mesmo enviada depois da ativação, continua ligada à versão que rege essa competência (a V1 ou anterior) e ao Fundo de Obra dela, e não à V2.';
+    $pendingRow = ['Previsto ainda não medido antes da vigência', '10,00%', '10,00%', 'continua a medir, sob a versão que rege a competência'];
 
     // Ativada ainda em maio, a V2 valeria desde 05/2026: nenhuma competência
     // anterior à vigência fica por medir, e os modais não trazem o aviso.
@@ -1127,9 +1127,9 @@ it('warns before the activation that a late measurement of a month before the vi
     }
 
     // Em 10/07 a vigência seria 07/2026, e o previsto de junho continua a
-    // medir. A medição fica ligada à versão vigente no envio: a de junho,
-    // enviada depois da ativação, usaria a V2 e o Fundo de Obra dela -- os
-    // dois modais dizem isso antes de a pessoa decidir.
+    // medir. A competência decide a versão: a medição de junho, mesmo enviada
+    // depois da ativação, fica na V1 e no Fundo de Obra dela -- os dois
+    // modais dizem isso antes de a pessoa decidir.
     versionsTabTravelTo('2026-07-10');
 
     foreach (['compareVersion', 'activateVersion'] as $action) {
@@ -1142,7 +1142,7 @@ it('warns before the activation that a late measurement of a month before the vi
 
 // ── Cronograma (Acompanhamento) ──────────────────────────────────────────────
 
-it('tracks only the active version lines and opens the lineage measurement from the revised copy', function () {
+it('tracks each competence by the version that governs it and opens the lineage measurement', function () {
     // Obra com 30% executados até 31/05/2026 e a V1 vigente desde 06/2026.
     versionsTabTravelTo('2026-06-01');
     ['actor' => $actor, 'operation' => $operation] = versionsTabOperation();
@@ -1165,34 +1165,44 @@ it('tracks only the active version lines and opens the lineage measurement from 
     $v2Lines = versionsTabLines($v2);
     $july = Scenario::measurement([...$scenario, 'lines' => $v2Lines], '2026-07');
 
-    // Rascunho seguinte e um plano ainda não ativado: nenhum dos dois é
-    // cronograma em vigor.
+    // Rascunho seguinte e um plano ainda não ativado: nenhum dos dois rege
+    // competência.
     $v3 = versionsTabRevise($planSet, $actor, MeasurementPlanRevisionCategory::Schedule, 'Prorrogação do prazo da obra.');
     $pending = versionsTabPlan($operation, $actor, 'Torre Boreal', '8000000.00', ['2026-08' => '10.00']);
     $this->actingAs($actor);
+    $v1Lines = versionsTabLines($v1);
+    $governing = [$v1Lines['2026-06'], $v2Lines['2026-07'], $v2Lines['2026-08'], $v2Lines['2026-09']];
 
+    // Cada competência pela versão que a rege: junho pela V1 -- a mesma versão
+    // da medição de junho --, de julho em diante pela V2. Nem a cópia de junho
+    // que a V2 traz, nem os meses da V1 que a V2 passou a reger.
     $schedule = Livewire::test(PlanLinesRelationManager::class, ['ownerRecord' => $operation->fresh(), 'pageClass' => ViewOperation::class])
         ->assertOk()
         ->assertCountTableRecords(4)
-        ->assertCanSeeTableRecords(array_values($v2Lines))
+        ->assertCanSeeTableRecords($governing)
         ->assertCanNotSeeTableRecords([
-            ...array_values(versionsTabLines($v1)),
+            $v2Lines['2026-06'],
+            $v1Lines['2026-07'],
+            $v1Lines['2026-08'],
+            $v1Lines['2026-09'],
             ...array_values(versionsTabLines($v3)),
             ...array_values(versionsTabLines(versionsTabVersion($pending, 1))),
-        ]);
+        ])
+        ->assertTableColumnFormattedStateSet('version.version_number', 'V1', $v1Lines['2026-06']);
 
-    foreach ($v2Lines as $line) {
-        $schedule->assertTableColumnFormattedStateSet('version.version_number', 'V2', $line);
+    foreach (['2026-07', '2026-08', '2026-09'] as $month) {
+        $schedule->assertTableColumnFormattedStateSet('version.version_number', 'V2', $v2Lines[$month]);
     }
 
-    // A cópia de junho na V2 não guarda a medição: o "Arquivo" a encontra pela
-    // linhagem, na aprovação feita sob a V1. Julho abre a medição que ocupa a
-    // linha agora; agosto e setembro ainda não têm medição.
-    expect($v2Lines['2026-06']->measurement_id)->toBeNull();
+    // O "Arquivo" de junho abre a medição aprovada sob a V1, na própria linha
+    // dela. Julho abre a medição que ocupa a linha agora; agosto e setembro
+    // ainda não têm medição.
+    expect($v1Lines['2026-06']->fresh()->measurement_id)->toBe($june->id)
+        ->and($june->assets()->sole()->plan_version_id)->toBe($v1->id);
 
-    $schedule->assertTableActionVisible('openMeasurement', $v2Lines['2026-06'])
-        ->assertTableActionHasLabel('openMeasurement', 'Arquivo', $v2Lines['2026-06'])
-        ->assertTableActionHasUrl('openMeasurement', MeasurementResource::getUrl('view', ['record' => $june->id]), $v2Lines['2026-06'])
+    $schedule->assertTableActionVisible('openMeasurement', $v1Lines['2026-06'])
+        ->assertTableActionHasLabel('openMeasurement', 'Arquivo', $v1Lines['2026-06'])
+        ->assertTableActionHasUrl('openMeasurement', MeasurementResource::getUrl('view', ['record' => $june->id]), $v1Lines['2026-06'])
         ->assertTableActionHasUrl('openMeasurement', MeasurementResource::getUrl('view', ['record' => $july->id]), $v2Lines['2026-07'])
         ->assertTableActionHidden('openMeasurement', $v2Lines['2026-08'])
         ->assertTableActionHidden('openMeasurement', $v2Lines['2026-09']);

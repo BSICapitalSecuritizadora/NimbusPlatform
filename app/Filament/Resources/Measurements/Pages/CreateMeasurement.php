@@ -12,8 +12,10 @@ use App\Models\Measurement;
 use App\Models\Operation;
 use App\Models\User;
 use App\Services\MeasurementAuthorizationService;
+use App\Services\MeasurementPlanVersionResolver;
 use App\Services\MeasurementWorkflow;
 use App\Services\OperationLifecycleService;
+use DateTimeInterface;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -47,11 +49,13 @@ class CreateMeasurement extends CreateRecord
     private const LINE_CLAIMED_MEANWHILE_MESSAGE = 'A medição prevista escolhida acabou de ser ocupada por outra medição. Recarregue a página e escolha outra.';
 
     /**
-     * Um plano da operação passou a valer (ou deixou de) entre a escolha da
-     * operação e o envio: os arquivos do formulário não cobrem mais os planos
-     * em vigor, e a Engenharia recusaria a medição sem saída.
+     * Os empreendimentos que preveem medição na competência mudaram entre a
+     * montagem do formulário e o envio -- um plano passou a valer, ou uma
+     * revisão acrescentou ou tirou a competência: os arquivos do formulário não
+     * cobrem mais o que a Engenharia vai exigir, e o Editar não acrescenta
+     * arquivo.
      */
-    public const PLANS_IN_FORCE_CHANGED_MESSAGE = 'Os planos de medição em vigor desta operação mudaram desde que você a selecionou. Selecione a operação de novo para atualizar os arquivos por empreendimento.';
+    public const PLANS_IN_FORCE_CHANGED_MESSAGE = 'Os empreendimentos que preveem medição nesta competência mudaram enquanto você preenchia o envio: um plano passou a valer ou foi revisado. A lista de arquivos foi atualizada; confira e envie de novo.';
 
     protected static string $resource = MeasurementResource::class;
 
@@ -176,8 +180,8 @@ class CreateMeasurement extends CreateRecord
      * página, antes da validação.
      *
      * A validação confere a medição prevista de cada arquivo contra as opções
-     * do formulário -- as linhas da versão vigente do plano que ainda estão
-     * livres. Com o lock só no `handleRecordCreation()`, a fotografia do
+     * do formulário -- as linhas livres da versão do plano que rege cada
+     * competência. Com o lock só no `handleRecordCreation()`, a fotografia do
      * REPEATABLE READ nascia na primeira leitura da validação, antes dele: duas
      * abas viam a mesma linha livre, e a segunda enviava sobre a primeira; uma
      * revisão do plano ativada no meio passava despercebida. Com a Operation à
@@ -204,29 +208,48 @@ class CreateMeasurement extends CreateRecord
                 'data.operation_id' => 'Selecione uma operação.',
             ]);
         }
+
+        $this->assertTheFilesCoverTheCompetence($operationId);
     }
 
     /**
-     * Os arquivos do envio são os dos planos em vigor quando a operação foi
-     * escolhida ({@see MeasurementForm::planSetIdsInForce()}). Um plano ativado
-     * entre a escolha e o envio deixaria a medição sem o arquivo dele -- e o
-     * Editar não acrescenta arquivo --, então a conferência é sob o lock da
-     * Operation, que a ativação também segura. Sem a lista no estado (envio
-     * montado por fora do formulário), não há com o que comparar.
+     * Os arquivos do envio têm de ser exatamente os dos empreendimentos que a
+     * Engenharia vai exigir: os planos em vigor que preveem medição na
+     * competência, pela versão que a rege
+     * ({@see MeasurementPlanVersionResolver::planSetsPlannedIn()}). O
+     * formulário monta essa lista ao escolher a competência; um plano ativado
+     * ou revisado entre a montagem e o envio a mudaria -- e o Editar não
+     * acrescenta arquivo --, então a conferência é sob o lock da Operation, que
+     * a ativação também segura, e antes de a validação gravar os arquivos
+     * enviados. Divergindo, a lista é refeita para a competência, com os
+     * arquivos já escolhidos nos empreendimentos que continuam, e a pessoa
+     * confere antes de enviar de novo. Sem a lista no estado (envio montado
+     * por fora do formulário), não há com o que comparar.
      *
      * @throws ValidationException
      */
-    private function assertThePlansInForceDidNotChange(int $operationId): void
+    private function assertTheFilesCoverTheCompetence(int $operationId): void
     {
-        $offered = $this->data['offered_plan_set_ids'] ?? null;
+        $rows = $this->data['assets'] ?? null;
 
-        if (! is_array($offered)) {
+        if (! is_array($rows)) {
             return;
         }
 
-        $offered = collect($offered)->map(fn (mixed $id): int => (int) $id)->sort()->values()->all();
+        $sent = collect($rows)
+            ->map(fn (mixed $row): int => is_array($row) ? (int) ($row['plan_set_id'] ?? 0) : 0)
+            ->sort()
+            ->values()
+            ->all();
+        $inForce = MeasurementForm::planSetIdsInForce($operationId);
+        $competence = $this->data['reference_month'] ?? null;
+        $required = filled($competence)
+            ? app(MeasurementPlanVersionResolver::class)->planSetsPlannedIn($inForce, $competence instanceof DateTimeInterface ? $competence : (string) $competence)
+            : $inForce;
 
-        if ($offered !== MeasurementForm::planSetIdsInForce($operationId)) {
+        if ($sent !== $required) {
+            $this->data['assets'] = MeasurementForm::assetsForCompetence($operationId, $competence, $rows);
+
             throw ValidationException::withMessages([
                 'data.operation_id' => self::PLANS_IN_FORCE_CHANGED_MESSAGE,
             ]);
@@ -325,8 +348,6 @@ class CreateMeasurement extends CreateRecord
                     'data.operation_id' => $exception->getMessage(),
                 ]);
             }
-
-            $this->assertThePlansInForceDidNotChange((int) ($data['operation_id'] ?? 0));
 
             return parent::handleRecordCreation($data);
         }, 3);

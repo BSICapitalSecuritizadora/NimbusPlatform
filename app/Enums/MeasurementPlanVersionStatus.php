@@ -2,15 +2,19 @@
 
 namespace App\Enums;
 
+use App\Services\MeasurementPlanVersionResolver;
+
 /**
  * Situação de uma versão do plano de medição (cronograma e Fundo de Obra de
  * uma obra dentro da operação).
  *
  * Quatro estados e uma tabela de transições, como o lifecycle da operação:
- * `draft` prepara uma versão, `active` é a vigente -- a única que recebe
- * medição nova --, `superseded` é a vigente que outra substituiu e
- * `cancelled` é o rascunho abandonado, que nunca chegou a valer. Vigente e
- * substituída são histórico: o conteúdo delas não muda mais.
+ * `draft` prepara uma versão, `active` é a vigente, `superseded` é a vigente
+ * que outra substituiu e `cancelled` é o rascunho abandonado, que nunca
+ * chegou a valer. Vigente e substituída são histórico: o conteúdo delas não
+ * muda mais, e cada uma rege as competências da própria vigência -- a
+ * substituída continua recebendo a medição atrasada delas
+ * ({@see MeasurementPlanVersionResolver}).
  */
 enum MeasurementPlanVersionStatus: string
 {

@@ -115,11 +115,11 @@ class MeasurementInfolist
                         ->columns(['default' => 1, 'sm' => 2, 'lg' => 3])
                         ->schema([
                             TextEntry::make('planSet.construction.development_name')->label('Empreendimento')->placeholder('—'),
-                            // A versão do plano em que o arquivo foi enviado, para
-                            // sempre: é ela -- e o Fundo de Obra dela -- que a
-                            // Engenharia aprova e o pagamento confere, mesmo com
-                            // outra versão vigente ou com a competência anterior
-                            // à vigência dela.
+                            // A versão do plano congelada no envio -- a que rege a
+                            // competência da medição --, para sempre: é ela -- e o
+                            // Fundo de Obra dela -- que a Engenharia aprova e o
+                            // pagamento confere, mesmo com outra versão vigente
+                            // hoje e mesmo para a competência enviada com atraso.
                             TextEntry::make('plan_version_label')
                                 ->label('Versão do plano')
                                 ->state(fn (MeasurementAsset $record): ?string => $record->planVersion === null

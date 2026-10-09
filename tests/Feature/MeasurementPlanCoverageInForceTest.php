@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\MeasurementPlanRevisionCategory;
+use App\Exceptions\MeasurementWorkflowException;
 use App\Filament\Resources\Measurements\Pages\CreateMeasurement;
 use App\Filament\Resources\Measurements\Pages\EditMeasurement;
 use App\Filament\Resources\Measurements\Pages\ViewMeasurement;
@@ -226,6 +227,22 @@ function planCoverageInForceSubmit(Testable $page, string $month): Testable
 }
 
 /**
+ * Escolhe, linha a linha do formulário, a medição prevista do mês e um PDF,
+ * como a pessoa faz na tela -- sem mexer na lista de arquivos montada.
+ */
+function planCoverageInForceChoose(Testable $page, string $month): Testable
+{
+    foreach ($page->get('data.assets') as $key => $row) {
+        $planSet = MeasurementPlanSet::query()->findOrFail($row['plan_set_id']);
+
+        $page->set("data.assets.{$key}.plan_line_id", planCoverageInForceLine($planSet, $month)->id)
+            ->set("data.assets.{$key}.storage_path", [UploadedFile::fake()->createWithContent("medicao-{$planSet->id}.pdf", "%PDF-1.7 medição {$month} de {$planSet->name}")]);
+    }
+
+    return $page;
+}
+
+/**
  * Decide a etapa pendente pela tela da medição, como quem responde por ela.
  *
  * @param  array<string, mixed>  $data
@@ -409,7 +426,7 @@ it('approves the competence sent again after the refusal of the measurement that
 
 // ── Enviar Medição: os planos em vigor na escolha da operação ────────────────
 
-it('refuses a sending whose plans in force changed after the operation was selected, and sends once the operation is selected again', function () {
+it('refuses a sending whose developments for the competence changed after the files were chosen, and sends once the operation is selected again', function () {
     planCoverageInForceTravelTo('2026-08-10');
     $scenario = planCoverageInForceOperation();
     $alfa = planCoverageInForcePlan($scenario, 'Torre Alfa', isDefault: true);
@@ -418,14 +435,20 @@ it('refuses a sending whose plans in force changed after the operation was selec
     $this->actingAs($scenario['actor']);
     $page = planCoverageInForceSendPage($scenario['operation']);
 
-    expect(planCoverageInForceOfferedPlans($page))->toBe([$alfa->id])
-        ->and($page->get('data.offered_plan_set_ids'))->toBe([$alfa->id]);
+    expect(planCoverageInForceOfferedPlans($page))->toBe([$alfa->id]);
 
-    // Com o formulário aberto, outra pessoa ativa a V1 da Torre Beta: enviada
-    // só com a Torre Alfa, a medição ficaria sem o arquivo de um plano em
-    // vigor, que o Editar não acrescenta.
+    // A pessoa escolhe agosto da Torre Alfa e o arquivo: os arquivos são os
+    // dos planos em vigor que preveem agosto -- só a Torre Alfa, por enquanto.
+    planCoverageInForceChoose($page, '2026-08');
+
+    expect(planCoverageInForceOfferedPlans($page))->toBe([$alfa->id]);
+
+    // Com o formulário preenchido, outra pessoa ativa a V1 da Torre Beta, que
+    // também prevê agosto: enviada só com a Torre Alfa, a medição ficaria sem
+    // o arquivo de um plano que a Engenharia vai exigir, e o Editar não
+    // acrescenta arquivo.
     planCoverageInForceActivate($scenario, $beta);
-    planCoverageInForceSubmit($page, '2026-08');
+    $page->call('create');
 
     expect($page->errors()->toArray())->toBe(['data.operation_id' => [CreateMeasurement::PLANS_IN_FORCE_CHANGED_MESSAGE]])
         ->and(planCoverageInForceNotifications())->toBe([])
@@ -448,6 +471,32 @@ it('refuses a sending whose plans in force changed after the operation was selec
         ->and($measurement->assets()->orderBy('plan_set_id')->pluck('plan_set_id')->all())->toBe([$alfa->id, $beta->id]);
 });
 
+it('adds to Enviar Medição the file of a plan that became effective with the form open, once the competence is chosen', function () {
+    planCoverageInForceTravelTo('2026-08-10');
+    $scenario = planCoverageInForceOperation();
+    $alfa = planCoverageInForcePlan($scenario, 'Torre Alfa', isDefault: true);
+    $beta = planCoverageInForcePlan($scenario, 'Torre Beta');
+    planCoverageInForceActivate($scenario, $alfa);
+    $this->actingAs($scenario['actor']);
+    $page = planCoverageInForceSendPage($scenario['operation']);
+
+    expect(planCoverageInForceOfferedPlans($page))->toBe([$alfa->id]);
+
+    // A Torre Beta passa a valer com a página aberta. Escolhida agosto, os
+    // arquivos são refeitos pelos planos que preveem a competência agora: a
+    // Torre Beta entra sozinha, sem recusa e sem perder o que já foi escolhido.
+    planCoverageInForceActivate($scenario, $beta);
+    $row = array_key_first($page->get('data.assets'));
+    $page->set("data.assets.{$row}.plan_line_id", planCoverageInForceLine($alfa, '2026-08')->id);
+
+    expect(planCoverageInForceOfferedPlans($page))->toBe([$alfa->id, $beta->id])
+        ->and($page->get("data.assets.{$row}.plan_line_id"))->toBe(planCoverageInForceLine($alfa, '2026-08')->id);
+
+    planCoverageInForceSubmit($page, '2026-08')->assertHasNoFormErrors();
+
+    expect($scenario['operation']->measurements()->sole()->assets()->orderBy('plan_set_id')->pluck('plan_set_id')->all())->toBe([$alfa->id, $beta->id]);
+});
+
 it('explains on Enviar Medição that no development has a plan in force and refuses the empty sending', function () {
     planCoverageInForceTravelTo('2026-08-10');
     $scenario = planCoverageInForceOperation();
@@ -465,6 +514,7 @@ it('explains on Enviar Medição that no development has a plan in force and ref
     $page->call('create');
 
     expect($page->errors()->toArray())->toBe([
+        'data.reference_month' => ['Informe a competência de referência.'],
         'data.assets' => ['Nenhum empreendimento desta operação tem plano de medição em vigor: ative a versão do plano (aba Versões dos Planos da operação) antes de enviar medição.'],
     ])
         ->and(planCoverageInForceNotifications())->toBe([])
@@ -515,11 +565,15 @@ it('refuses the schedule line picked on an open edit page when a revision supers
 
     $page->call('save');
 
-    // A troca chega à gravação e é recusada com o motivo, em vez de sumir
-    // calada enquanto a competência ia para setembro.
-    expect(planCoverageInForceNotificationTitles())->toBe(['Medição não atualizada.'])
-        ->and(planCoverageInForceNotificationBody('Medição não atualizada.'))
-        ->toBe(sprintf(MeasurementAsset::SUPERSEDED_VERSION_LINE_CHANGE_REFUSAL, 'V1', 'Torre Alfa'))
+    // Setembro passou a ser da V2: a troca chega à gravação e é recusada no
+    // campo, com o motivo, em vez de sumir calada enquanto a competência ia
+    // para setembro. Pelo model, a recusa é a da versão congelada.
+    expect($page->errors()->toArray())->toBe([
+        "data.assets.record-{$asset->id}.plan_line_id" => ['Esta medição prevista não está mais disponível: o plano foi revisado ou outra medição a ocupou. Recarregue a página e escolha de novo.'],
+    ])
+        ->and(planCoverageInForceNotificationTitles())->toBe([])
+        ->and(fn () => $asset->fresh()->fill(['plan_line_id' => $september->id])->save())
+        ->toThrow(new MeasurementWorkflowException(sprintf(MeasurementAsset::FROZEN_VERSION_COMPETENCE_REFUSAL, 'V1', 'Torre Alfa', '09/2026')))
         ->and($asset->fresh()->only(['plan_version_id', 'plan_line_id', 'line_claim_key']))->toBe([
             'plan_version_id' => $v1->id,
             'plan_line_id' => $august->id,
@@ -553,19 +607,25 @@ it('saves the schedule line picked on the edit page while the version of the mea
         ->and($measurement->fresh()->reference_month->toDateString())->toBe('2026-09-01');
 });
 
-it('locks the schedule line on an edit page opened after the version of the measurement was superseded', function () {
+it('offers on an edit page opened after the version of the measurement was superseded only the competences that version still governs', function () {
     planCoverageInForceTravelTo('2026-08-20');
     $scenario = planCoverageInForceOperation();
     $alfa = planCoverageInForcePlan($scenario, 'Torre Alfa', isDefault: true);
     planCoverageInForceActivate($scenario, $alfa);
+    $august = planCoverageInForceLine($alfa, '2026-08');
     $measurement = planCoverageInForceMeasurement($scenario, '2026-08', [$alfa]);
     $asset = $measurement->assets()->sole();
     planCoverageInForceTravelTo('2026-09-01');
     planCoverageInForceRevise($scenario, $alfa);
     $this->actingAs($scenario['actor']);
 
+    // A V1 congelada no arquivo rege agosto e nada depois (a V2 vale desde
+    // 09/2026): a medição prevista continua editável, mas só entre as
+    // competências da V1 -- aqui, a própria agosto.
     $page = Livewire::test(EditMeasurement::class, ['record' => $measurement->getRouteKey()])
-        ->assertSee('Travada: a medição foi enviada sob uma versão do plano que já foi substituída. Para medir outra competência, recuse-a e envie uma nova sob a versão vigente.');
+        ->assertSee('A medição foi enviada sob a V1 do plano: só as competências regidas por ela aparecem aqui.');
+    $field = $page->instance()->getSchema('form')->getComponentByStatePath("assets.record-{$asset->id}.plan_line_id");
 
-    expect($page->instance()->getSchema('form')->getComponentByStatePath("assets.record-{$asset->id}.plan_line_id")?->isDisabled())->toBeTrue();
+    expect($field?->isDisabled())->toBeFalse()
+        ->and(array_keys($field?->getOptions() ?? []))->toBe([$august->id]);
 });

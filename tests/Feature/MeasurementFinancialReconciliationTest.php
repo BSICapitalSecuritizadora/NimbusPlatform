@@ -169,8 +169,8 @@ function reconciliationApprovedScenario(array $specs): array
             'initial_realized_cumulative_percent' => 0,
             'measurement_date' => '2026-08-01',
         ]);
-        // A medição só é enviada sob a versão vigente do plano: a linha entra
-        // no rascunho da V1, que é ativado antes do arquivo.
+        // A medição só é enviada sob a versão que rege a competência: a linha
+        // entra no rascunho da V1, que é ativado antes do arquivo.
         MeasurementPlanVersionFixture::activate($planSet);
 
         $path = "nimbus_docs/measurements/assets/recon-{$measurement->getKey()}-{$index}.pdf";

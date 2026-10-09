@@ -21,6 +21,7 @@ class MeasurementEngineeringService
     public function __construct(
         private MeasurementFileValidationService $fileValidation,
         private MeasurementPhysicalProgressService $physicalProgress,
+        private MeasurementPlanVersionResolver $versions,
     ) {}
 
     /**
@@ -163,11 +164,31 @@ class MeasurementEngineeringService
                 continue;
             }
 
+            $version = MeasurementPlanVersion::query()->find($asset->plan_version_id);
+
             if ($line->measurement_date === null) {
                 $errors["measurement_date.{$planSet->getKey()}"] = "Informe a data da medição de {$label}.";
             } elseif ($measurement->reference_month !== null
                 && $line->measurement_date->format('Y-m') !== $measurement->reference_month->format('Y-m')) {
                 $errors["measurement_date.{$planSet->getKey()}"] = "A data da medição de {$label} não corresponde à competência informada.";
+            } elseif (! $coversOwnFilesOnly && (! $version instanceof MeasurementPlanVersion || ! $this->versions->governs($version, $line->measurement_date))) {
+                // A versão congelada no envio é a que rege a competência, e a
+                // ativação nunca desloca a de uma medição de pé. Aqui a defesa
+                // cobre o arquivo gravado fora dessa regra: a Engenharia não
+                // aprova uma competência contra o cronograma e o Fundo de Obra
+                // de outra versão. Com pagamento, não: o contexto pago não muda
+                // mais (arquivo, linha e competência estão presos a ele) e a
+                // medição não tem recusa terminal -- recusá-la aqui a deixaria
+                // sem saída. Pela regra atual, nenhuma medição paga chega a
+                // este estado; só o arquivo gravado pela regra anterior.
+                $errors["plan_line.{$planSet->getKey()}"] = sprintf(
+                    'A medição de %s foi enviada sob a %s do plano, que não vale para a competência %s: recuse esta medição e envie uma nova.',
+                    $label,
+                    $version?->label() ?? 'versão',
+                    $line->measurement_date->format('m/Y'),
+                );
+
+                continue;
             }
 
             $monthlyError = $this->monthlyProgressError($monthlyProgress[$planSet->getKey()] ?? null, $label);
@@ -197,8 +218,6 @@ class MeasurementEngineeringService
             $prior = MeasurementPhysicalProgress::decimal($prior);
             $initial = $progress->initialPercent();
             $monthly = MeasurementPhysicalProgress::decimal($monthly);
-
-            $version = MeasurementPlanVersion::query()->find($asset->plan_version_id);
 
             $validatedLines[] = compact('planSet', 'construction', 'line', 'asset', 'version', 'monthly', 'cumulative', 'prior', 'initial');
         }
@@ -236,7 +255,8 @@ class MeasurementEngineeringService
      * cada, travados em ordem de id.
      *
      * Sem pagamento, todos os planos da operação que já estavam em vigor
-     * quando a medição foi enviada e preveem medição na competência dela: a
+     * quando a medição foi enviada e preveem medição na competência dela --
+     * pela versão que regia a competência naquele momento: a
      * Engenharia confirma a competência da obra inteira. O plano que só passou
      * a valer depois do envio não é exigido -- o arquivo dele não se acrescenta
      * pela edição, e a medição ficaria sem saída a cada volta à Engenharia; ele
@@ -285,23 +305,25 @@ class MeasurementEngineeringService
             $measurementId = (int) $measurement->getKey();
             $competence = $measurement->reference_month;
 
-            // E só o plano que prevê medição na competência: o arquivo de um
-            // plano tem de ser de uma medição prevista do mês da medição, e o
-            // plano sem nenhuma ali (a obra que começa depois, ou que já
-            // terminou) deixaria a competência sem como ser medida.
+            // E só o plano que prevê medição na competência pela versão que a
+            // regia no envio ({@see MeasurementPlanVersionResolver}, com o
+            // histórico até esta medição): o arquivo de um plano tem de ser de
+            // uma medição prevista do mês da medição, e o plano sem nenhuma ali
+            // (a obra que começa depois, ou que já terminou) deixaria a
+            // competência sem como ser medida. Uma revisão ativada depois do
+            // envio, que acrescente medição prevista no mês, não muda o que a
+            // medição já enviada precisa cobrir.
             $planSets->where(fn (Builder $required): Builder => $required
                 ->whereHas('assets', fn (Builder $assets): Builder => $assets->where('measurement_id', $measurementId))
-                ->orWhere(fn (Builder $inForce): Builder => $inForce
-                    ->whereHas('versions', fn (Builder $versions): Builder => $versions
+                ->orWhere(fn (Builder $inForce): Builder => $competence === null
+                    ? $inForce->whereHas('versions', fn (Builder $versions): Builder => $versions
                         ->whereNotNull('activated_at')
                         ->where(fn (Builder $before): Builder => $before
                             ->whereNull('last_measurement_id_at_activation')
                             ->orWhere('last_measurement_id_at_activation', '<', $measurementId)))
-                    ->when($competence !== null, fn (Builder $planned): Builder => $planned
-                        ->whereHas('activeVersion.lines', fn (Builder $lines): Builder => $lines->whereBetween('measurement_date', [
-                            $competence->copy()->startOfMonth()->toDateString(),
-                            $competence->copy()->endOfMonth()->toDateString(),
-                        ])))));
+                    : $inForce->whereHas('lines', fn (Builder $lines): Builder => $lines
+                        ->governingTheirCompetence($measurementId)
+                        ->inCompetence($competence))));
         }
 
         return $planSets->orderBy('id')->lockForUpdate()->get();
@@ -478,8 +500,10 @@ class MeasurementEngineeringService
      * antes desta medição na mesma posição. Chaves acrescentadas sem trocar a
      * versão: os leitores conferem só as chaves que conhecem.
      *
-     * O Fundo de Obra é o da versão em que a medição foi enviada (a do
-     * arquivo): uma revisão de custo ativada depois não alcança esta medição.
+     * O Fundo de Obra é o da versão congelada no arquivo -- a que rege a
+     * competência --: uma revisão de custo ativada depois, ou vigente quando
+     * uma competência anterior foi enviada com atraso, não alcança esta
+     * medição.
      *
      * @param  array{planSet: MeasurementPlanSet, construction: Construction|null, line: MeasurementPlanLine, asset: MeasurementAsset, version: MeasurementPlanVersion|null, monthly: string, cumulative: string, prior: string, initial: string}  $validated
      * @return array<string, bool|int|string|null>

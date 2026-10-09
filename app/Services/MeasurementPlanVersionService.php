@@ -18,6 +18,7 @@ use App\Support\ActivityLog\LogBatch;
 use App\Support\BusinessTime;
 use App\Support\Money\IntegerMoney;
 use Carbon\CarbonImmutable;
+use DateTimeInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -53,7 +54,10 @@ use Throwable;
  * nem depois. A versão anterior vale até o último dia do mês anterior. Uma
  * revisão nunca replaneja competência que já tem medição de pé (aberta,
  * aprovada, paga ou finalizada), nem reescreve as competências anteriores à
- * vigência: a vigente traz, igual, o previsto do passado.
+ * vigência: a vigente traz, igual, o previsto do passado. A medição de cada
+ * competência fica sob a versão que a rege ({@see MeasurementPlanVersionResolver}),
+ * mesmo enviada depois de uma revisão: a ativação muda as competências da
+ * vigência em diante, não as anteriores.
  */
 class MeasurementPlanVersionService
 {
@@ -1128,37 +1132,45 @@ class MeasurementPlanVersionService
     /**
      * Competências em que a medição prevista deste plano não tem, hoje, como
      * ser medida: a operação já tem medição de pé nelas (aberta, finalizada,
-     * com Engenharia vigente ou com pagamento) enviada antes de este plano
-     * valer -- que por isso não o cobre -- e outro plano em vigor não tem
-     * medição prevista livre na competência. Uma segunda medição da
-     * competência teria de cobrir esse plano, e a linha dele ali está ocupada.
+     * com Engenharia vigente ou com pagamento) enviada quando o plano não
+     * previa medição na competência -- ainda não valia, ou uma revisão
+     * posterior acrescentou o mês --, que por isso não o cobre, e outro plano
+     * em vigor não tem medição prevista livre na competência. Uma segunda
+     * medição da competência teria de cobrir esse plano, e a linha dele ali
+     * está ocupada.
      *
      * A medição enviada com o plano já em vigor e sem o arquivo dele não entra:
      * ela é que está errada, e a Engenharia a recusa. Recusada a medição de pé,
      * a competência deixa de constar e volta a ser medida com os dois planos.
      *
+     * Quais competências são decide uma regra só, a da linha do cronograma
+     * ({@see MeasurementPlanLine::scopeCompetenceMeasuredWithoutThePlan()}),
+     * que é também a que tira essas linhas do Enviar Medição e da próxima
+     * medição da operação: o que fica fora do pendente não é oferecido. Aqui
+     * se acrescenta a medição de pé de cada uma, para a tela da ativação.
+     *
      * @return array<string, int> competência ('Y-m') => a medição de pé
      */
     public function monthsMeasuredWithoutThePlan(MeasurementPlanSet $planSet): array
     {
-        $firstActivation = MeasurementPlanVersion::query()
+        $months = MeasurementPlanLine::query()
             ->where('plan_set_id', $planSet->getKey())
-            ->whereNotNull('activated_at')
-            ->orderBy('activated_at')
-            ->orderBy('id')
-            ->first(['id', 'last_measurement_id_at_activation']);
+            ->competenceMeasuredWithoutThePlan()
+            ->pluck('measurement_date')
+            ->map(fn (mixed $date): string => MeasurementPlanVersionResolver::competenceStart($date instanceof DateTimeInterface ? $date : (string) $date)->format('Y-m'))
+            ->unique()
+            ->flip();
 
-        // Plano em vigor desde antes de qualquer medição da operação (ou o
-        // legado das versões): toda medição precisa cobri-lo.
-        if ($firstActivation instanceof MeasurementPlanVersion && $firstActivation->last_measurement_id_at_activation === null) {
+        if ($months->isEmpty()) {
             return [];
         }
 
-        $standing = Measurement::query()
+        // A medição de pé de cada competência, sem arquivo do plano e enviada
+        // quando o plano não previa medição nela; a mais recente, quando há
+        // mais de uma.
+        return Measurement::query()
             ->where('operation_id', $planSet->operation_id)
             ->whereNotNull('reference_month')
-            ->when($firstActivation instanceof MeasurementPlanVersion, fn (Builder $before): Builder => $before
-                ->where('id', '<=', (int) $firstActivation->last_measurement_id_at_activation))
             ->where(fn (Builder $holding): Builder => $holding
                 ->whereIn('status', [...Measurement::OPEN_STATUSES, 'finalized'])
                 ->orWhereHas('reviews', fn (Builder $reviews): Builder => $reviews->where('stage', 1)->where('status', 'approved'))
@@ -1166,48 +1178,13 @@ class MeasurementPlanVersionService
             ->whereDoesntHave('assets', fn (Builder $assets): Builder => $assets->where('plan_set_id', $planSet->getKey()))
             ->orderBy('id')
             ->get(['id', 'reference_month'])
-            ->mapWithKeys(fn (Measurement $measurement): array => [$measurement->reference_month->format('Y-m') => (int) $measurement->getKey()]);
-
-        if ($standing->isEmpty()) {
-            return [];
-        }
-
-        // A competência em que este plano já tem medição de pé com arquivo
-        // dele não fica sem medição: aquela o mede.
-        $measuredWithThePlan = Measurement::query()
-            ->where('operation_id', $planSet->operation_id)
-            ->whereNotNull('reference_month')
-            ->where(fn (Builder $holding): Builder => $holding
-                ->whereIn('status', [...Measurement::OPEN_STATUSES, 'finalized'])
-                ->orWhereHas('reviews', fn (Builder $reviews): Builder => $reviews->where('stage', 1)->where('status', 'approved'))
-                ->orWhereHas('payments'))
-            ->whereHas('assets', fn (Builder $assets): Builder => $assets->where('plan_set_id', $planSet->getKey()))
-            ->get(['id', 'reference_month'])
-            ->map(fn (Measurement $measurement): string => $measurement->reference_month->format('Y-m'))
-            ->flip();
-
-        $otherPlansInForce = MeasurementPlanSet::query()
-            ->where('operation_id', $planSet->operation_id)
-            ->whereKeyNot($planSet->getKey())
-            ->whereHas('activeVersion')
-            ->pluck('id');
-
-        // Outra medição da competência teria de cobrir o plano em vigor que
-        // prevê medição nela -- e só fica sem saída se todas as dele ali já
-        // estiverem ocupadas. O plano sem medição prevista no mês não é
-        // exigido nele (MeasurementEngineeringService) e não impede nada.
-        return $standing
-            ->reject(fn (int $measurementId, string $month): bool => $measuredWithThePlan->has($month))
-            ->filter(function (int $measurementId, string $month) use ($otherPlansInForce): bool {
-                $competence = CarbonImmutable::parse($month.'-01');
-                $inMonth = fn (mixed $otherPlanSetId) => MeasurementPlanLine::query()
-                    ->ofActiveVersions()
-                    ->where('plan_set_id', $otherPlanSetId)
-                    ->whereBetween('measurement_date', [$competence->toDateString(), $competence->endOfMonth()->toDateString()]);
-
-                return $otherPlansInForce->contains(fn (mixed $otherPlanSetId): bool => $inMonth($otherPlanSetId)->exists()
-                    && ! $inMonth($otherPlanSetId)->availableForMeasurement()->exists());
-            })
+            ->filter(fn (Measurement $measurement): bool => $months->has($measurement->reference_month->format('Y-m'))
+                && ! MeasurementPlanLine::query()
+                    ->where('plan_set_id', $planSet->getKey())
+                    ->governingTheirCompetence((int) $measurement->getKey())
+                    ->inCompetence($measurement->reference_month)
+                    ->exists())
+            ->mapWithKeys(fn (Measurement $measurement): array => [$measurement->reference_month->format('Y-m') => (int) $measurement->getKey()])
             ->all();
     }
 
@@ -1217,17 +1194,25 @@ class MeasurementPlanVersionService
      * finalizada, com Engenharia vigente ou com pagamento, pelo arquivo dela --
      * e a de cada avanço aprovado. As cópias da mesma linhagem em outras
      * versões (um rascunho cancelado que a mudou de mês, a versão anterior) não
-     * contam: a medição está na linha do próprio arquivo.
+     * contam: a medição está na linha do próprio arquivo. O arquivo de pé
+     * ainda sem medição prevista conta pela competência da medição: a versão
+     * que ele vai congelar, ao ganhar a linha, é a que rege aquela competência,
+     * e a ativação não a desloca.
      *
      * @return array{month: CarbonImmutable, measurement_id: int}|null
      */
     private function lastHeldCompetence(MeasurementPlanSet $planSet, MeasurementPhysicalProgress $progress): ?array
     {
+        $heldMonth = 'COALESCE(held_lines.measurement_date, holding_measurements.reference_month)';
         $held = DB::table('measurement_assets')
             ->join('measurements as holding_measurements', 'holding_measurements.id', '=', 'measurement_assets.measurement_id')
-            ->join('measurement_plan_lines as held_lines', 'held_lines.id', '=', 'measurement_assets.plan_line_id')
+            ->leftJoin('measurement_plan_lines as held_lines', 'held_lines.id', '=', 'measurement_assets.plan_line_id')
             ->where('measurement_assets.plan_set_id', $planSet->getKey())
-            ->whereNotNull('held_lines.measurement_date')
+            ->where(fn (QueryBuilder $dated): QueryBuilder => $dated
+                ->whereNotNull('held_lines.measurement_date')
+                ->orWhere(fn (QueryBuilder $lineless): QueryBuilder => $lineless
+                    ->whereNull('measurement_assets.plan_line_id')
+                    ->whereNotNull('holding_measurements.reference_month')))
             ->where(fn (QueryBuilder $holding): QueryBuilder => $holding
                 ->whereNotNull('measurement_assets.line_claim_key')
                 ->orWhereIn('holding_measurements.status', [...Measurement::OPEN_STATUSES, 'finalized'])
@@ -1239,9 +1224,9 @@ class MeasurementPlanVersionService
                 ->orWhereExists(fn (QueryBuilder $payments): QueryBuilder => $payments
                     ->from('measurement_payments')
                     ->whereColumn('measurement_payments.measurement_id', 'holding_measurements.id')))
-            ->orderByDesc('held_lines.measurement_date')
+            ->orderByDesc(DB::raw($heldMonth))
             ->orderByDesc('measurement_assets.measurement_id')
-            ->first(['held_lines.measurement_date as held_month', 'measurement_assets.measurement_id as holder_id']);
+            ->first([DB::raw("{$heldMonth} as held_month"), 'measurement_assets.measurement_id as holder_id']);
         $last = $held === null ? null : [
             'month' => CarbonImmutable::parse((string) $held->held_month)->startOfMonth(),
             'measurement_id' => (int) $held->holder_id,
@@ -1528,7 +1513,7 @@ class MeasurementPlanVersionService
         }
 
         try {
-            $date = $value instanceof \DateTimeInterface
+            $date = $value instanceof DateTimeInterface
                 ? CarbonImmutable::parse($value->format('Y-m-d'))
                 : CarbonImmutable::parse(preg_match('/^\d{4}-\d{2}$/', (string) $value) === 1 ? $value.'-01' : (string) $value);
         } catch (Throwable) {

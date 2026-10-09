@@ -32,11 +32,18 @@ class PlanLinesRelationManager extends RelationManager
     {
         return $table
             ->heading('Plano de medições cadastrado')
-            ->description('Acompanhe os percentuais previstos e realizados por medição. O cronograma é o da versão vigente de cada plano; o realizado vem das medições com a Engenharia vigente e parte do avanço físico inicial do plano; um mês sem medição mantém o último acumulado.')
-            // Só a versão vigente: ela traz, igual, o previsto das competências
-            // anteriores à vigência (a ativação recusa reescrevê-lo). O
+            ->description('Acompanhe os percentuais previstos e realizados por medição. Cada competência aparece pela versão do plano que vale para ela — a mesma das medições daquela competência; o realizado vem das medições com a Engenharia vigente e parte do avanço físico inicial do plano; um mês sem medição mantém o último acumulado.')
+            // Cada competência pela versão que a rege: junho pela V1 mesmo com a
+            // V2 vigente desde julho. O previsto é o mesmo da cópia que a
+            // vigente traz (a ativação recusa reescrever o passado), e a coluna
+            // Versão passa a dizer o mesmo que a medição da competência. O
             // previsto muda por revisão, na aba Versões dos Planos.
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->ofActiveVersions()->with(['planSet.construction', 'version']))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                ->where(fn (Builder $schedule): Builder => $schedule
+                    ->governingTheirCompetence()
+                    // Linha sem mês não tem competência; a da vigente continua à vista.
+                    ->orWhere(fn (Builder $undated): Builder => $undated->whereNull('measurement_date')->ofActiveVersions()))
+                ->with(['planSet.construction', 'version']))
             // A ordem da conta: competência, e no mesmo mês a sequência.
             ->defaultSort(fn (Builder $query): Builder => $query->orderBy('measurement_date')->orderBy('sequence_number'))
             ->columns([

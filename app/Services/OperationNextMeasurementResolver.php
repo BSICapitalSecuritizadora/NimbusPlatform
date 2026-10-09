@@ -16,15 +16,21 @@ class OperationNextMeasurementResolver
      * O plano é o padrão, ou o primeiro cadastrado, entre os vigentes (com
      * versão ativada) -- como Operation::defaultPlanSet(), mas sem o plano em
      * rascunho, que ainda não recebe medição: com o padrão em rascunho, a
-     * próxima medição vem do vigente seguinte. O cronograma é o da versão
-     * vigente dele.
+     * próxima medição vem do vigente seguinte. Cada competência do cronograma
+     * vem da versão que a rege
+     * ({@see MeasurementPlanLine::scopeGoverningTheirCompetence()}): a
+     * competência atrasada de uma versão já substituída é sugerida pela linha
+     * dela, que é a que o Enviar Medição oferece, e não pela cópia da vigente.
      * Pendente é a linha que ainda pode receber medição
      * ({@see MeasurementPlanLine::scopeAvailableForMeasurement()}): nem
      * reivindicada por Engenharia vigente, nem ocupada por outra medição aberta,
      * finalizada ou com pagamento. As colunas `realized_*`/`measurement_id` da
      * linha não decidem: elas guardam a última aprovação mesmo depois de ela
      * deixar de valer, e prendiam para sempre a competência de uma medição
-     * recusada, excluída ou reaprovada em outra linha.
+     * recusada, excluída ou reaprovada em outra linha. A competência que a
+     * operação já mediu sem o plano também não é sugerida
+     * ({@see MeasurementPlanLine::scopeCompetenceMeasuredWithoutThePlan()}):
+     * enquanto aquela medição estiver de pé, ela não tem como ser medida.
      * A ordem é a do cronograma -- competência, e no mesmo mês a sequência (a
      * posição de {@see MeasurementPhysicalProgress}) --
      * e prevalece sobre a data atual, inclusive para atrasos: uma revisão que
@@ -51,9 +57,9 @@ class OperationNextMeasurementResolver
             ->select($line->qualifyColumn('measurement_date'))
             ->whereColumn($line->qualifyColumn('operation_id'), $operations->getModel()->getQualifiedKeyName())
             ->where('plan_set_id', $defaultPlan)
-            ->ofActiveVersions()
-            ->whereNotNull('measurement_date')
+            ->governingTheirCompetence()
             ->availableForMeasurement()
+            ->whereNot(fn (Builder $orphans): Builder => $orphans->competenceMeasuredWithoutThePlan())
             ->whereDoesntHave('planSet', fn (Builder $plans): Builder => $this->coveringInitialProgress($plans, $line))
             ->orderBy('measurement_date')
             ->orderBy('sequence_number')

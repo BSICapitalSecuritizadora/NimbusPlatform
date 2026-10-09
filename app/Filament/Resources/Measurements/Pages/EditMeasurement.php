@@ -63,6 +63,16 @@ class EditMeasurement extends EditRecord
     private bool $wasApprovedMeanwhile = false;
 
     /**
+     * A competência e a medição prevista de cada arquivo como estavam antes
+     * desta gravação, lidas sob o lock ({@see self::beforeValidate()}): a
+     * conferência do período ({@see self::afterSave()}) só roda quando algo
+     * disso mudou. Não atravessa requisições.
+     *
+     * @var array{competence: string|null, lines: array<int, int|null>}|null
+     */
+    private ?array $periodBeforeSave = null;
+
+    /**
      * Quem não vê a medição continua recebendo 403. Quem a vê, mas a encontra
      * aprovada pela Engenharia -- pelo link de edição ou porque a aprovação
      * chegou com a página aberta --, lê o motivo e vai para a visualização.
@@ -224,6 +234,49 @@ class EditMeasurement extends EditRecord
                 'operation_id' => $locked->operation_id,
             ]);
         }
+
+        $this->periodBeforeSave = $this->period($locked);
+    }
+
+    /**
+     * Ainda dentro da transação da página: se a competência, a medição
+     * prevista de algum arquivo ou os arquivos mudaram, a medição precisa
+     * continuar com uma competência só -- a de todas as linhas, regida pelas
+     * versões congeladas -- e cobrindo os empreendimentos que a Engenharia vai
+     * exigir nela. O `EditRecord` grava os arquivos antes da medição, e a
+     * competência pode voltar ao valor gravado depois de a linha mudar: a
+     * conferência olha o resultado, não o que ficou sujo. A recusa desfaz a
+     * gravação inteira e vira notificação ({@see self::save()}).
+     *
+     * @throws MeasurementWorkflowException
+     */
+    protected function afterSave(): void
+    {
+        $record = $this->getRecord();
+
+        if (! $record instanceof Measurement || $this->periodBeforeSave === $this->period($record)) {
+            return;
+        }
+
+        $record->assertFilesFollowItsCompetence();
+        $record->assertCoversItsCompetence();
+    }
+
+    /**
+     * @return array{competence: string|null, lines: array<int, int|null>}
+     */
+    private function period(Measurement $measurement): array
+    {
+        $competence = Measurement::query()->whereKey($measurement->getKey())->value('reference_month');
+
+        return [
+            'competence' => $competence === null ? null : substr((string) $competence, 0, 7),
+            'lines' => $measurement->assets()
+                ->orderBy('id')
+                ->pluck('plan_line_id', 'id')
+                ->map(fn (mixed $lineId): ?int => $lineId === null ? null : (int) $lineId)
+                ->all(),
+        ];
     }
 
     protected function getHeaderActions(): array

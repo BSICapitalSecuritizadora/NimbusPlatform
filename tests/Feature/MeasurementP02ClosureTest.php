@@ -214,8 +214,8 @@ it('persists the complete versioned Engineering context and approved evidence', 
     $version = $planSet->activeVersion()->firstOrFail();
     $requirement = $snapshot['plan_sets'][0];
 
-    // A medição leva a versão vigente no envio, e o snapshot guarda qual é --
-    // o Fundo de Obra congelado é o dela.
+    // A medição leva a versão que rege a competência (aqui, a vigente), e o
+    // snapshot guarda qual é -- o Fundo de Obra congelado é o dela.
     expect($asset->plan_version_id)->toBe($version->id)
         ->and($line->plan_version_id)->toBe($version->id);
 
