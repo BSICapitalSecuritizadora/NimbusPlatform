@@ -30,7 +30,9 @@ class EmissionPuCurveVersionFactory extends Factory
             'batch_id' => (string) Str::uuid(),
             'status' => PuCurveStatus::Generated->value,
             'engine_version' => 'phase1-cdi-v1',
-            'parameters_snapshot' => null,
+            // A versão de fábrica é de engine CDI (`phase1-cdi-v1`): registra o indexador
+            // como a geração registra -- sem ele, a homologação recusa (Fase 6).
+            'parameters_snapshot' => ['indexer' => 'CDI'],
             'rows_count' => 4,
             'error_message' => null,
             'validation_summary' => null,

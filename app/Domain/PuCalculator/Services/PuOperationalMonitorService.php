@@ -5,9 +5,15 @@ declare(strict_types=1);
 namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Enums\PuIndexerCapability;
+use App\Domain\PuCalculator\Enums\PuMonitorRunStatus;
+use App\Domain\PuCalculator\Enums\PuObligationRefreshStatus;
 use App\Domain\PuCalculator\Enums\PuOfficialCurveFreshness;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
+use App\Models\EmissionPuSettlementConflict;
+use App\Models\PuMonitorRun;
+use App\Models\PuObligationRefreshRequest;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +24,7 @@ class PuOperationalMonitorService
     public function __construct(
         private readonly PuIndexCoverageService $indexCoverageService,
         private readonly PuOfficialCurveFreshnessService $officialFreshness,
+        private readonly PuIndexerCapabilityPolicy $indexers,
     ) {}
 
     /**
@@ -206,7 +213,101 @@ class PuOperationalMonitorService
             );
         }
 
+        if (($unsupported = $this->unsupportedIndexerOfficialCurveCount()) > 0) {
+            $issues[] = sprintf(
+                '%d curva(s) oficial(is) com indexador sem homologacao operacional: nenhuma obrigacao e calculada a partir dela; invalide a versao.',
+                $unsupported,
+            );
+        }
+
+        if (($stuckRefresh = $this->stuckObligationRefreshEmissionCount()) > 0) {
+            $issues[] = sprintf(
+                '%d emissao(oes) com atualizacao das obrigacoes esgotada ou bloqueada: retome com pu:obligations:recover --retry depois de tratar a causa.',
+                $stuckRefresh,
+            );
+        }
+
+        if (($conflicts = EmissionPuSettlementConflict::query()->open()->count()) > 0) {
+            $issues[] = sprintf(
+                '%d conflito(s) de liquidacao aguardando decisao: a liquidacao existente nao e sobrescrita.',
+                $conflicts,
+            );
+        }
+
+        if (($monitor = $this->monitorHealthIssue()) !== null) {
+            $issues[] = $monitor;
+        }
+
         return $issues;
+    }
+
+    /**
+     * Curvas oficiais cujo indexador não tem homologação operacional (Fase 6):
+     * só existem se gravadas antes do portão; não deveriam ser oficiais.
+     */
+    public function unsupportedIndexerOfficialCurveCount(): int
+    {
+        return EmissionPuCurveVersion::query()
+            ->whereIn('id', $this->officialVersionIds())
+            ->get()
+            ->reject(fn (EmissionPuCurveVersion $version): bool => $this->indexers->allows(
+                $this->indexers->versionIndexer($version),
+                PuIndexerCapability::Homologation,
+            ))
+            ->count();
+    }
+
+    /**
+     * Emissões com pedido de atualização das obrigações que a recuperação
+     * automática não resolve mais (esgotado) ou não deve repetir (bloqueado).
+     */
+    public function stuckObligationRefreshEmissionCount(): int
+    {
+        return PuObligationRefreshRequest::query()
+            ->whereIn('status', [PuObligationRefreshStatus::Exhausted->value, PuObligationRefreshStatus::Blocked->value])
+            ->distinct()
+            ->count('emission_id');
+    }
+
+    /**
+     * O próprio monitor (Fase 6): com curva oficial em operação, a última rodada
+     * que não concluiu, ou nenhuma rodada completa dentro do prazo, é problema --
+     * "o monitor não rodou" nunca parece "tudo certo". Sem curva oficial nenhuma
+     * (produção antes do lançamento), não há o que cobrar.
+     */
+    public function monitorHealthIssue(): ?string
+    {
+        if ($this->officialVersionIds()->isEmpty()) {
+            return null;
+        }
+
+        $last = PuMonitorRun::query()->latest('id')->first();
+        $staleMinutes = max(1, (int) config('pu_calculator.monitoring.monitor_stale_after_minutes', 60));
+        $lastSucceeded = PuMonitorRun::query()->where('status', PuMonitorRunStatus::Succeeded->value)->latest('id')->first();
+
+        if ($last instanceof PuMonitorRun && in_array($last->status, [PuMonitorRunStatus::Failed, PuMonitorRunStatus::Partial], true)) {
+            return sprintf('O monitor operacional do PU nao concluiu a ultima verificacao (%s): incidentes podem estar desatualizados.', mb_strtolower($last->status->label()));
+        }
+
+        if (! $lastSucceeded instanceof PuMonitorRun || $lastSucceeded->finished_at === null || $lastSucceeded->finished_at->lt(now()->subMinutes($staleMinutes))) {
+            return sprintf('O monitor operacional do PU nao concluiu uma verificacao completa nos ultimos %d minutos: verifique o agendador (pu:operations:monitor).', $staleMinutes);
+        }
+
+        return null;
+    }
+
+    /**
+     * @return Collection<int, int>
+     */
+    private function officialVersionIds(): Collection
+    {
+        return EmissionPuCurveVersion::query()
+            ->operational()
+            ->homologated()
+            ->selectRaw('MAX(id) as id')
+            ->groupBy('emission_id')
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id);
     }
 
     /**
@@ -249,25 +350,37 @@ class PuOperationalMonitorService
     }
 
     /**
-     * Curvas OFICIAIS cuja extensão percebeu insumos contratuais diferentes dos
-     * aprovados só no futuro (o passado divergente já conta em
-     * {@see self::divergedGovernedCurveCount()}). Uma homologada substituída por
-     * outra mais nova não conta: a pendência foi resolvida pela versão nova.
+     * Curvas OFICIAIS com mudança contratual ainda não homologada só no futuro (o
+     * passado divergente já conta em {@see self::divergedGovernedCurveCount()}).
+     * Uma homologada substituída por outra mais nova não conta: a pendência foi
+     * resolvida pela versão nova.
+     *
+     * Fase 6 (dívida D4): conta também a oficial cuja ATUALIDADE é "nova versão
+     * necessária" -- a que já completou o horizonte aprovado quando a mudança
+     * (prorrogação do vencimento, pagamento novo) foi registrada. Essa a extensão
+     * diária nunca revisita (está completa), então a marca que só a extensão
+     * grava não aparece; a atualidade é a fonte.
      */
     public function pendingContractualChangeCount(): int
     {
-        $officialIds = EmissionPuCurveVersion::query()
-            ->operational()
-            ->homologated()
-            ->selectRaw('MAX(id) as id')
-            ->groupBy('emission_id')
-            ->pluck('id');
+        $officialIds = $this->officialVersionIds();
 
-        return EmissionPuCurveVersion::query()
+        $flagged = EmissionPuCurveVersion::query()
             ->whereIn('id', $officialIds)
             ->whereNotNull('contractual_change_detected_at')
             ->whereNull('extension_diverged_at')
-            ->count();
+            ->pluck('emission_id')
+            ->map(fn ($id): int => (int) $id);
+
+        $newVersionRequired = Emission::query()
+            ->whereIn('id', EmissionPuCurveVersion::query()->whereIn('id', $officialIds)->pluck('emission_id'))
+            ->get()
+            ->filter(fn (Emission $emission): bool => $this->officialFreshness->status($emission)->freshness
+                === PuOfficialCurveFreshness::NewVersionRequired)
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id);
+
+        return $flagged->merge($newVersionRequired)->unique()->count();
     }
 
     /**

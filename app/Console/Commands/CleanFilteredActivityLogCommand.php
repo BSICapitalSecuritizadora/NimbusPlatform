@@ -3,13 +3,14 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 class CleanFilteredActivityLogCommand extends Command
 {
     protected $signature = 'audit:clean-filtered {--dry-run : Apenas relata quantos seriam removidos}';
 
-    protected $description = 'Remove logs de auditoria antigos preservando evidências reguladas de medições/operações (P0.4)';
+    protected $description = 'Remove logs de auditoria antigos preservando evidências reguladas de medições/operações (P0.4) e a evidência financeira do PU (Fase 6)';
 
     public function handle(): int
     {
@@ -38,54 +39,102 @@ class CleanFilteredActivityLogCommand extends Command
             return self::FAILURE;
         }
 
-        // Protected logs: delete only older than workflowDays
-        $protectedCount = DB::table('activity_log')
-            ->whereIn('log_name', $protectedLogs)
+        // Fase 6 (P1-10): evidência protegida também por EVENTO numa trilha
+        // descartável (`pu-calculation`) e pelo tipo do registro (insumos
+        // financeiros do PU que caem em `default`). Mesma regra de segurança: se a
+        // lista de eventos do PU sumir do config, a limpeza não roda -- senão
+        // homologação, correção de índice e liquidação voltariam a expirar em um
+        // ano em silêncio.
+        /** @var array<string, list<string>> $protectedEvents */
+        $protectedEvents = array_filter((array) config('audit.protected_events', []), fn ($events): bool => is_array($events) && $events !== []);
+        /** @var list<string> $protectedSubjectTypes */
+        $protectedSubjectTypes = array_values(array_filter((array) config('audit.protected_subject_types', []), 'is_string'));
+
+        if (! isset($protectedEvents['pu-calculation'])) {
+            $this->error('audit.protected_events não declara a evidência do PU (pu-calculation): a limpeza foi abortada para não descartar evidência financeira.');
+
+            return self::FAILURE;
+        }
+
+        $protectedCount = $this->protectedQuery($protectedLogs, $protectedEvents, $protectedSubjectTypes)
             ->where('created_at', '<', $workflowCutoff)
             ->count();
 
-        // Disposable logs: delete older than disposableDays, but not protected.
-        // O ramo do NULL é explícito porque `NOT IN` não casa com NULL em SQL.
-        $disposableCount = DB::table('activity_log')
-            ->where(function ($q) use ($protectedLogs, $disposableCutoff) {
-                $q->whereNotIn('log_name', $protectedLogs)
-                    ->where('created_at', '<', $disposableCutoff);
-            })
-            ->orWhere(function ($q) use ($disposableCutoff) {
-                $q->whereNull('log_name')
-                    ->where('created_at', '<', $disposableCutoff);
-            })
+        $disposableCount = $this->disposableQuery($protectedLogs, $protectedEvents, $protectedSubjectTypes)
+            ->where('created_at', '<', $disposableCutoff)
             ->count();
 
-        // For correctness, handle protected+disposable separately when deleting.
         if ($dryRun) {
-            $this->info("Dry-run: disposable={$disposableCount} (> {$disposableDays}d), protected_older_than_workflow={$protectedCount} (> {$workflowDays}d, log_name in [".implode(',', $protectedLogs).'])');
+            $this->info("Dry-run: disposable={$disposableCount} (> {$disposableDays}d), protected_older_than_workflow={$protectedCount} (> {$workflowDays}d, log_name in [".implode(',', $protectedLogs).'] + eventos protegidos + tipos protegidos)');
 
             return self::SUCCESS;
         }
 
         $deletedProtected = 0;
         if ($protectedCount > 0) {
-            $deletedProtected = DB::table('activity_log')
-                ->whereIn('log_name', $protectedLogs)
+            $deletedProtected = $this->protectedQuery($protectedLogs, $protectedEvents, $protectedSubjectTypes)
                 ->where('created_at', '<', $workflowCutoff)
                 ->delete();
         }
 
-        $deletedDisposable = DB::table('activity_log')
-            ->where(function ($q) use ($protectedLogs, $disposableCutoff) {
-                $q->whereNotIn('log_name', $protectedLogs)
-                    ->where('created_at', '<', $disposableCutoff);
-            })
-            ->orWhere(function ($q) use ($disposableCutoff) {
-                $q->whereNull('log_name')
-                    ->where('created_at', '<', $disposableCutoff);
-            })
+        $deletedDisposable = $this->disposableQuery($protectedLogs, $protectedEvents, $protectedSubjectTypes)
+            ->where('created_at', '<', $disposableCutoff)
             ->delete();
 
-        // Note: above second delete may double-count if both conditions overlap, but protected vs disposable are disjoint.
         $this->info("Audit cleanup: deleted_disposable={$deletedDisposable}, deleted_protected_expired={$deletedProtected}");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Evidência protegida: categoria inteira, evento protegido de uma trilha, ou
+     * registro de um tipo protegido.
+     *
+     * @param  list<string>  $protectedLogs
+     * @param  array<string, list<string>>  $protectedEvents
+     * @param  list<string>  $protectedSubjectTypes
+     */
+    private function protectedQuery(array $protectedLogs, array $protectedEvents, array $protectedSubjectTypes): Builder
+    {
+        return DB::table('activity_log')->where(fn (Builder $query) => $this->protectedPredicate($query, $protectedLogs, $protectedEvents, $protectedSubjectTypes));
+    }
+
+    /**
+     * Todo o resto. Cada termo do predicado protegido é um booleano definido (os
+     * NULL são testados antes), então o `NOT` não deixa linha nenhuma em
+     * "desconhecido": o que não é protegido continua sendo apagado no prazo
+     * descartável, inclusive as linhas sem log name ou sem evento.
+     *
+     * @param  list<string>  $protectedLogs
+     * @param  array<string, list<string>>  $protectedEvents
+     * @param  list<string>  $protectedSubjectTypes
+     */
+    private function disposableQuery(array $protectedLogs, array $protectedEvents, array $protectedSubjectTypes): Builder
+    {
+        return DB::table('activity_log')->whereNot(fn (Builder $query) => $this->protectedPredicate($query, $protectedLogs, $protectedEvents, $protectedSubjectTypes));
+    }
+
+    /**
+     * @param  list<string>  $protectedLogs
+     * @param  array<string, list<string>>  $protectedEvents
+     * @param  list<string>  $protectedSubjectTypes
+     */
+    private function protectedPredicate(Builder $query, array $protectedLogs, array $protectedEvents, array $protectedSubjectTypes): void
+    {
+        $query->where(fn (Builder $logs) => $logs->whereNotNull('log_name')->whereIn('log_name', $protectedLogs));
+
+        foreach ($protectedEvents as $logName => $events) {
+            $query->orWhere(fn (Builder $event) => $event
+                ->whereNotNull('log_name')
+                ->where('log_name', $logName)
+                ->whereNotNull('event')
+                ->whereIn('event', $events));
+        }
+
+        if ($protectedSubjectTypes !== []) {
+            $query->orWhere(fn (Builder $subject) => $subject
+                ->whereNotNull('subject_type')
+                ->whereIn('subject_type', $protectedSubjectTypes));
+        }
     }
 }

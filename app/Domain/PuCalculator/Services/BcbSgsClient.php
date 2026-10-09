@@ -8,6 +8,7 @@ use App\Domain\PuCalculator\DTOs\BcbSgsBlockFailure;
 use App\Domain\PuCalculator\DTOs\BcbSgsFetchResult;
 use App\Domain\PuCalculator\DTOs\BcbSgsRateData;
 use App\Domain\PuCalculator\DTOs\BcbSgsRawPayload;
+use App\Domain\PuCalculator\Enums\PuOperationalFailureCategory;
 use App\Domain\PuCalculator\Exceptions\BcbSgsException;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
@@ -52,7 +53,7 @@ class BcbSgsClient
             try {
                 $block = $this->fetchBlock($seriesCode, $blockFrom, $blockTo, $config);
             } catch (BcbSgsException $exception) {
-                $failures[] = new BcbSgsBlockFailure($blockFrom, $blockTo, $exception->getMessage());
+                $failures[] = new BcbSgsBlockFailure($blockFrom, $blockTo, $exception->getMessage(), $exception->category);
 
                 Log::warning('Falha ao consultar bloco da série SGS do Banco Central.', [
                     'series_code' => $seriesCode,
@@ -93,7 +94,7 @@ class BcbSgsClient
                 count($blocks),
                 $seriesCode,
                 $failures[count($failures) - 1]->message,
-            ));
+            ), category: $failures[count($failures) - 1]->category);
         }
 
         return new BcbSgsFetchResult(
@@ -163,6 +164,7 @@ class BcbSgsClient
             throw new BcbSgsException(
                 sprintf('Falha de conexão/timeout ao consultar a série %d no Banco Central: %s', $seriesCode, $exception->getMessage()),
                 previous: $exception,
+                category: PuOperationalFailureCategory::ProviderUnavailable,
             );
         }
 
@@ -171,13 +173,18 @@ class BcbSgsClient
                 'A API do Banco Central retornou erro HTTP %d ao consultar a série %d.',
                 $response->status(),
                 $seriesCode,
-            ));
+            ), category: $response->serverError() || $response->status() === 429 || $response->status() === 408
+                ? PuOperationalFailureCategory::ProviderUnavailable
+                : PuOperationalFailureCategory::ProviderConfiguration);
         }
 
         $payload = $response->json();
 
         if (! is_array($payload)) {
-            throw new BcbSgsException(sprintf('Resposta inválida (não-JSON) da série %d do Banco Central.', $seriesCode));
+            throw new BcbSgsException(
+                sprintf('Resposta inválida (não-JSON) da série %d do Banco Central.', $seriesCode),
+                category: PuOperationalFailureCategory::MalformedResponse,
+            );
         }
 
         $rates = [];

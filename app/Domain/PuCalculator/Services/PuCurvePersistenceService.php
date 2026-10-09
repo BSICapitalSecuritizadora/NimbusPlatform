@@ -7,6 +7,8 @@ use App\Actions\Emissions\HomologatePuCurve;
 use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
 use App\Domain\PuCalculator\DTOs\PuCurveInputSnapshot;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Domain\PuCalculator\Enums\PuIndexerCapability;
 use App\Domain\PuCalculator\Exceptions\PuCurveGovernanceException;
 use App\Domain\PuCalculator\Exceptions\PuCurveInputsException;
 use App\Models\Emission;
@@ -36,6 +38,7 @@ class PuCurvePersistenceService
         private readonly PuOperationalProfileGuard $operationalProfiles,
         private readonly PuCurveInputSnapshotService $snapshots,
         private readonly PuCurveChangeImpactClassifier $classifier,
+        private readonly PuIndexerCapabilityPolicy $indexerPolicy,
     ) {}
 
     /**
@@ -57,6 +60,16 @@ class PuCurvePersistenceService
         // reconciliação com o sistema legado não pode virar dado operacional nem por
         // engano de um caminho futuro -- a recusa acontece ANTES de abrir a transação.
         $this->operationalProfiles->assertOperational($result->rows, 'a curva operacional');
+        // Fase 6 (P0-05): só indexador com homologação operacional grava versão --
+        // a fronteira por onde passa toda curva operacional, qualquer que seja o
+        // chamador (tela, job, comando, serviço direto).
+        $this->indexerPolicy->assert(
+            $inputs instanceof PuCurveInputSnapshot
+                ? PuIndexer::tryFrom((string) ($inputs->terms()['indexer'] ?? ''))
+                : $this->indexerPolicy->emissionIndexer($emission),
+            PuIndexerCapability::CurveGeneration,
+            (int) $emission->getKey(),
+        );
 
         $persistedResult = $result;
 

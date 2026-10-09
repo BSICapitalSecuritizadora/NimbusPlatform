@@ -10,6 +10,7 @@ use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
 use App\Domain\PuCalculator\DTOs\PuCurvePrerequisiteCheckResult;
 use App\Domain\PuCalculator\DTOs\PuNumericHomologationComparisonResult;
 use App\Domain\PuCalculator\DTOs\PuNumericHomologationValidationResult;
+use App\Domain\PuCalculator\DTOs\PuObligationRefreshOutcome;
 use App\Domain\PuCalculator\DTOs\PuObligationRefreshResult;
 use App\Domain\PuCalculator\DTOs\PuValidationFieldDifference;
 use App\Domain\PuCalculator\DTOs\PuValidationReport;
@@ -30,6 +31,7 @@ use App\Models\EmissionPuParameter;
 use App\Models\EmissionPuSettlement;
 use App\Models\EmissionPuSettlementConflict;
 use App\Models\IndexRateCorrection;
+use App\Models\PuOperationalIncident;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Spatie\Activitylog\Models\Activity;
@@ -988,6 +990,8 @@ class PuAuditLogService
         string $action,
         string $reason,
         string $purpose,
+        ?string $category = null,
+        int $consecutiveFailures = 1,
     ): void {
         activity(self::LOG_NAME)
             ->performedOn($version->emission)
@@ -998,6 +1002,8 @@ class PuAuditLogService
                 'purpose' => $purpose,
                 'action' => $action,
                 'reason' => $reason,
+                'failure_category' => $category,
+                'consecutive_failures' => $consecutiveFailures,
             ])
             ->event('curve_extension_failed')
             ->log('pu_curve_extension_failed');
@@ -1017,6 +1023,93 @@ class PuAuditLogService
         }
 
         $logger->event('homologation_report_downloaded')->log('pu_homologation_report_downloaded');
+    }
+
+    /**
+     * Recomposição das obrigações retomada pela varredura, pela execução manual
+     * ou depois de falhas (Fase 6). Diagnóstico: o fato financeiro já está nas
+     * tabelas da Fase 5; aqui fica como a recuperação aconteceu.
+     */
+    public function logObligationRefreshRecovered(int $emissionId, PuObligationRefreshOutcome $outcome): void
+    {
+        $this->obligationRefreshActivity($emissionId, null, 'obligation_refresh_recovered', $outcome->toArray());
+    }
+
+    /**
+     * Tentativa de recompor as obrigações que falhou, com a categoria e o que
+     * acontece a seguir (nova tentativa, esgotada, bloqueada). Diagnóstico.
+     */
+    public function logObligationRefreshFailed(int $emissionId, PuObligationRefreshOutcome $outcome): void
+    {
+        $this->obligationRefreshActivity($emissionId, null, 'obligation_refresh_failed', $outcome->toArray());
+    }
+
+    /**
+     * Retomada autorizada de uma recomposição esgotada ou bloqueada: quem pediu,
+     * por quê, quais pedidos e como terminou. Evidência protegida (ação humana
+     * sobre o estado financeiro derivado).
+     *
+     * @param  list<int>  $requestIds
+     * @param  list<array<string, mixed>>  $previous
+     */
+    public function logObligationRefreshRetried(int $emissionId, User $actor, string $reason, array $requestIds, array $previous, PuObligationRefreshOutcome $outcome): void
+    {
+        $this->obligationRefreshActivity($emissionId, $actor, 'obligation_refresh_retried', [
+            'reason' => $reason,
+            'request_ids' => $requestIds,
+            'previous' => $previous,
+            'outcome' => $outcome->toArray(),
+        ]);
+    }
+
+    /**
+     * Incidente operacional reconhecido. Reconhecer não corrige nada financeiro:
+     * só registra quem assumiu e o que disse. Evidência protegida.
+     */
+    public function logIncidentAcknowledged(PuOperationalIncident $incident, User $actor): void
+    {
+        $logger = activity(self::LOG_NAME)
+            ->causedBy($actor)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'incident_id' => $incident->id,
+                'incident_key' => $incident->incident_key,
+                'type' => $incident->type->value,
+                'severity' => $incident->severity->value,
+                'emission_id' => $incident->emission_id,
+                'obligation_id' => $incident->obligation_id,
+                'settlement_conflict_id' => $incident->settlement_conflict_id,
+                'note' => $incident->acknowledgement_note,
+            ]);
+
+        if ($incident->emission_id !== null && ($emission = Emission::query()->find($incident->emission_id)) instanceof Emission) {
+            $logger->performedOn($emission);
+        }
+
+        $logger->event('operational_incident_acknowledged')->log('pu_operational_incident_acknowledged');
+    }
+
+    /**
+     * @param  array<string, mixed>  $properties
+     */
+    private function obligationRefreshActivity(int $emissionId, ?User $actor, string $event, array $properties): void
+    {
+        $logger = activity(self::LOG_NAME)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'emission_id' => $emissionId,
+                ...$properties,
+            ]);
+
+        if (($emission = Emission::query()->find($emissionId)) instanceof Emission) {
+            $logger->performedOn($emission);
+        }
+
+        if ($actor instanceof User) {
+            $logger->causedBy($actor);
+        }
+
+        $logger->event($event)->log('pu_'.$event);
     }
 
     /**
@@ -1063,6 +1156,10 @@ class PuAuditLogService
             'pu_curve_promotion_rejected' => 'Promoção operacional rejeitada',
             'pu_curve_promoted_operational' => 'Curva promovida a operacional',
             'pu_event_changed' => 'Evento de PU alterado',
+            'pu_obligation_refresh_recovered' => 'Obrigações recompostas pela recuperação',
+            'pu_obligation_refresh_failed' => 'Falha ao recompor as obrigações',
+            'pu_obligation_refresh_retried' => 'Recomposição das obrigações retomada manualmente',
+            'pu_operational_incident_acknowledged' => 'Incidente operacional reconhecido',
             default => $description,
         };
     }

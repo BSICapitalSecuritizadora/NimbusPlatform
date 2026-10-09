@@ -5,6 +5,7 @@ namespace App\Actions\Emissions;
 use App\Domain\PuCalculator\DTOs\PuCurveInputSnapshot;
 use App\Domain\PuCalculator\Enums\PuCurveChangeImpact;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Enums\PuIndexerCapability;
 use App\Domain\PuCalculator\Exceptions\PuCurveGovernanceException;
 use App\Domain\PuCalculator\Exceptions\PuMakerCheckerException;
 use App\Domain\PuCalculator\Services\PuAuditLogService;
@@ -12,6 +13,7 @@ use App\Domain\PuCalculator\Services\PuCurveChangeImpactClassifier;
 use App\Domain\PuCalculator\Services\PuCurveInputSnapshotService;
 use App\Domain\PuCalculator\Services\PuCurveVersionService;
 use App\Domain\PuCalculator\Services\PuFinancialObligationService;
+use App\Domain\PuCalculator\Services\PuIndexerCapabilityPolicy;
 use App\Enums\BusinessArea;
 use App\Enums\PuSourceChange;
 use App\Events\PuCalculator\EmissionPuSourceChanged;
@@ -46,6 +48,7 @@ class HomologatePuCurve
         private readonly PuFinancialObligationService $obligations,
         private readonly PuCurveInputSnapshotService $snapshots,
         private readonly PuCurveChangeImpactClassifier $classifier,
+        private readonly PuIndexerCapabilityPolicy $indexerPolicy,
     ) {}
 
     /**
@@ -63,6 +66,11 @@ class HomologatePuCurve
             $lockedEmission = Emission::query()->whereKey($emission->id)->lockForUpdate()->firstOrFail();
             $version = $this->versionService->lockForGovernance($lockedEmission, $calculationVersion);
             $previousStatus = $version->status;
+
+            // Fase 6 (P0-05): só indexador com homologação operacional chega ao PU
+            // oficial -- a versão é lida pelo indexador que ela aprovou, e indexador
+            // desconhecido é recusado. Vale para todo caminho que homologa.
+            $this->indexerPolicy->assertForVersion($version, PuIndexerCapability::Homologation);
 
             if (! $previousStatus->canBeHomologated()) {
                 throw new PuCurveGovernanceException(sprintf(

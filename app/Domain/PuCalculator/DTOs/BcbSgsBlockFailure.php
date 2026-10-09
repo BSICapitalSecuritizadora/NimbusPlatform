@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\DTOs;
 
+use App\Domain\PuCalculator\Enums\PuOperationalFailureCategory;
 use App\Domain\PuCalculator\Exceptions\BcbSgsException;
 use Carbon\CarbonImmutable;
 
@@ -20,6 +21,7 @@ final readonly class BcbSgsBlockFailure
         public CarbonImmutable $from,
         public CarbonImmutable $to,
         public string $message,
+        public ?PuOperationalFailureCategory $category = null,
     ) {}
 
     public function describe(): string

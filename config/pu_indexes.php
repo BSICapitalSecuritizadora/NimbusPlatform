@@ -88,6 +88,19 @@ return [
                  */
                 'publication_lag_business_days' => (int) env('PU_CDI_PUBLICATION_LAG_BUSINESS_DAYS', 1),
                 'available_after' => env('PU_CDI_AVAILABLE_AFTER', '07:00'),
+                /**
+                 * Segunda passada do dia (Fase 6), no fuso de negócio, DEPOIS de `available_after`: a
+                 * sincronização das 06:30 (UTC, 03:30 em Brasília) pode rodar antes de o CDI do dia útil
+                 * anterior estar no SGS. Esta passada consulta de novo e estende as curvas oficiais no
+                 * mesmo dia; sem ela, uma divulgação depois das 03:30 só chegaria na madrugada seguinte.
+                 * Formato HH:MM; valor inválido volta ao padrão.
+                 */
+                'post_publication_sync_at' => preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) env('PU_CDI_POST_PUBLICATION_SYNC_AT', '')) === 1
+                    ? (string) env('PU_CDI_POST_PUBLICATION_SYNC_AT')
+                    : '07:30',
+                'post_publication_extension_at' => preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) env('PU_CDI_POST_PUBLICATION_EXTENSION_AT', '')) === 1
+                    ? (string) env('PU_CDI_POST_PUBLICATION_EXTENSION_AT')
+                    : '08:15',
             ],
             'ipca' => [
                 // 433 = IPCA cheio/headline (variação mensal). Para IPCA Serviços use 10844 via env —

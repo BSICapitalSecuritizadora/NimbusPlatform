@@ -10,6 +10,7 @@ use App\Domain\PuCalculator\DTOs\PuCurvePrerequisiteIssue;
 use App\Domain\PuCalculator\Enums\IpcaProjectionPolicy;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Domain\PuCalculator\Enums\PuIndexerCapability;
 use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Models\Emission;
 use App\Models\EmissionPuEvent;
@@ -26,6 +27,7 @@ class PuCurvePrerequisiteService
         private readonly PuContractualEventScheduleService $contractualEvents,
         private readonly PuCurveInputSnapshotService $snapshots,
         private readonly PuCurveInputValidator $inputValidator,
+        private readonly PuIndexerCapabilityPolicy $indexerPolicy,
     ) {}
 
     public function handle(Emission $emission): PuCurvePrerequisiteCheckResult
@@ -42,6 +44,16 @@ class PuCurvePrerequisiteService
                     'Configure os parametros do calculo de PU antes de gerar a curva.',
                 ),
             ]);
+        }
+
+        // Fase 6 (P0-05): indexador sem homologação operacional não gera curva --
+        // nem de trabalho, nem reprocessamento. A recusa é explícita e com motivo;
+        // a simulação continua disponível.
+        if (! $this->indexerPolicy->allows($parameter->indexer_enum, PuIndexerCapability::CurveGeneration)) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'indexer_not_operationally_homologated',
+                $this->indexerPolicy->refusal($parameter->indexer_enum, PuIndexerCapability::CurveGeneration, (int) $emission->getKey())->getMessage(),
+            );
         }
 
         $startDate = $parameter->curve_start_date !== null

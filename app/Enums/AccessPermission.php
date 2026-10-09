@@ -209,6 +209,8 @@ enum AccessPermission: string
     case PuSettlementCorrect = 'pu.settlement.correct';
     case PuReconciliationView = 'pu.reconciliation.view';
     case PuReconciliationExport = 'pu.reconciliation.export';
+    case PuOperationsMonitor = 'pu.operations.monitor';
+    case PuOperationsRecover = 'pu.operations.recover';
     case ContactMessagesView = 'contact-messages.view';
     case ContactMessagesUpdate = 'contact-messages.update';
     case ReminderLogsView = 'reminder-logs.view';
@@ -468,6 +470,8 @@ enum AccessPermission: string
             self::PuSettlementCorrect => 'Liquidação do PU: corrigir, estornar e decidir conflitos',
             self::PuReconciliationView => 'Liquidação do PU: visualizar conciliação',
             self::PuReconciliationExport => 'Liquidação do PU: exportar conciliação',
+            self::PuOperationsMonitor => 'Monitoramento do PU: ver incidentes operacionais e receber alertas',
+            self::PuOperationsRecover => 'Monitoramento do PU: reconhecer incidentes e retomar atualização de obrigações',
             self::ContactMessagesView => 'Mensagens de contato: visualizar',
             self::ContactMessagesUpdate => 'Mensagens de contato: registrar atendimento',
             self::ReminderLogsView => 'Auditoria de lembretes: visualizar',

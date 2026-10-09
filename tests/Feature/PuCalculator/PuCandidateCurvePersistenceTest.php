@@ -290,6 +290,18 @@ it('allocates calculation versions across every role so candidate and operationa
 
 it('keeps the operational writer lifecycle and links every persisted row to its version', function () {
     $emission = candidatePersistenceEmission();
+    // Fase 6: a gravação operacional exige saber o indexador (indexador desconhecido
+    // é recusado); a emissão é de CDI, como toda curva gerada pela ação.
+    $emission->puParameter()->create([
+        'curve_start_date' => '2026-01-02',
+        'curve_end_date' => '2026-01-05',
+        'initial_unit_value' => '1000.0000000000000000',
+        'spread_rate' => '6.00000000',
+        'indexer' => 'CDI',
+        'business_day_basis' => 252,
+        'calendar_code' => 'B3',
+        'legacy_projection_enabled' => false,
+    ]);
     $writer = app(PuCurvePersistenceService::class);
 
     $first = $writer->handle(

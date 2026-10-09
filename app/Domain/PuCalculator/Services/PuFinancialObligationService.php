@@ -21,7 +21,6 @@ use App\Models\EmissionPuSettlement;
 use App\Models\EmissionPuSettlementConflict;
 use App\Models\Payment;
 use Illuminate\Support\Facades\DB;
-use Throwable;
 
 /**
  * Obrigações financeiras do PU a partir da curva oficial (Fase 5).
@@ -209,25 +208,17 @@ final class PuFinancialObligationService
      * de transação), uma vez por emissão. Para quem mexe num insumo do esperado
      * segurando outras travas -- correção de índice, divergência da extensão,
      * insumo contratual, cronograma informado -- e não pode travar a emissão no
-     * meio sem inverter a ordem de locks. Uma falha aqui não desfaz o fato que a
-     * provocou: fica reportada, e a próxima atualização (ou
-     * `pu:obligations:reconcile`) chega ao mesmo estado.
+     * meio sem inverter a ordem de locks.
+     *
+     * Fase 6: o pedido fica gravado na transação de quem pede
+     * ({@see PuObligationRefreshRecovery}). Uma falha da tentativa pós-commit não
+     * desfaz o fato que a provocou e não se perde: o pedido fica com a falha
+     * classificada e é retomado pela varredura (`pu:obligations:recover`) --
+     * sem depender de um evento futuro qualquer.
      */
     public function refreshAfterCommit(int $emissionId, string $trigger): void
     {
-        app(PuObligationRefreshScheduler::class)->schedule($emissionId, function () use ($emissionId, $trigger): void {
-            $emission = Emission::query()->find($emissionId);
-
-            if (! $emission instanceof Emission) {
-                return;
-            }
-
-            try {
-                $this->refresh($emission, $trigger);
-            } catch (Throwable $exception) {
-                report($exception);
-            }
-        });
+        app(PuObligationRefreshScheduler::class)->schedule($emissionId, $trigger);
     }
 
     private function applyHeader(EmissionPuObligation $obligation, PuObligationDraft $draft): void
