@@ -232,9 +232,17 @@ class MeasurementReceiptEvidenceService
 
     public function allPaymentsApproved(Measurement $measurement): bool
     {
-        return $measurement->payments()->exists()
-            && $measurement->payments()->whereDoesntHave('currentReceiptEvidence', fn ($query) => $query
-                ->where('review_status', MeasurementReceiptReviewStatus::Approved->value))->doesntExist();
+        // A revisão que não precisou de pagamento novo -- a família já pagou o
+        // que ela aprova, o que falta foi justificado, ou não há nada a pagar --
+        // não tem comprovante a esperar; a medição sem revisão continua
+        // precisando de pagamento.
+        if (! $measurement->payments()->exists()) {
+            return $measurement->isRevision()
+                && app(MeasurementRevisionService::class)->allowsApprovalWithoutOwnPayment($measurement);
+        }
+
+        return $measurement->payments()->whereDoesntHave('currentReceiptEvidence', fn ($query) => $query
+            ->where('review_status', MeasurementReceiptReviewStatus::Approved->value))->doesntExist();
     }
 
     public function ensurePaymentsApproved(Measurement $measurement): void

@@ -318,10 +318,16 @@ class PaymentWorkspaceTable
                 ])
                 ->query(function (Builder $query, array $data): Builder {
                     return match ($data['value'] ?? null) {
-                        'awaiting_registration' => $query->where('status', 'awaiting_payment')->whereDoesntHave('payments'),
+                        // A suspensa por uma revisão em análise não espera ninguém, e a
+                        // revisão cuja família já pagou espera só a aprovação.
+                        'awaiting_registration' => $query->where('status', 'awaiting_payment')->whereDoesntHave('payments')->whereDoesntHave('reviewingSuccessor')
+                            ->whereNot(fn (Builder $revisions): Builder => $revisions->withEarlierFamilyPayments()),
                         'awaiting_approval' => $query
                             ->where('status', 'awaiting_payment')
-                            ->whereHas('payments')
+                            ->whereDoesntHave('reviewingSuccessor')
+                            ->where(fn (Builder $ready): Builder => $ready
+                                ->whereHas('payments')
+                                ->orWhere(fn (Builder $revisions): Builder => $revisions->withEarlierFamilyPayments()))
                             ->whereHas('reviews', fn (Builder $reviews): Builder => $reviews
                                 ->where('stage', MeasurementWorkflow::STAGE_PAYMENT)
                                 ->where('status', 'pending')),

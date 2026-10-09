@@ -131,7 +131,8 @@ class MeasurementPaymentFinancialService
 
         return $payments->contains(
             fn (MeasurementPayment $payment): bool => (bool) ($payment->financial_assessment['requires_acceptance'] ?? false),
-        ) || $this->unpaidRequiredPlanSetsAmong($measurement, $payments) !== [];
+        ) || $this->unpaidRequiredPlanSetsAmong($measurement, $payments) !== []
+            || ($measurement->isRevision() && app(MeasurementRevisionService::class)->unresolvedOverpayments($measurement) !== []);
     }
 
     /**
@@ -161,7 +162,10 @@ class MeasurementPaymentFinancialService
     }
 
     /**
-     * Os empreendimentos omitidos como a pessoa lê: nome e valor esperado.
+     * Os empreendimentos omitidos como a pessoa lê: nome e valor em aberto --
+     * o esperado, ou, numa revisão, o esperado menos o que a família já pagou
+     * antes dela (sem pagamento próprio, as duas contas coincidem na medição
+     * sem revisão).
      *
      * @param  list<MeasurementFinancialReconciliationLine>  $lines
      */
@@ -171,7 +175,7 @@ class MeasurementPaymentFinancialService
             ->map(fn (MeasurementFinancialReconciliationLine $line): string => sprintf(
                 '%s (%s)',
                 $line->label,
-                MeasurementFinancialReconciliationService::formatCurrency($line->expectedAmount),
+                MeasurementFinancialReconciliationService::formatCurrency($line->expectedBalance),
             ))
             ->implode(', ');
     }
@@ -224,6 +228,59 @@ class MeasurementPaymentFinancialService
             'justified_by' => $paymentReview->reviewer_user_id === null ? null : (int) $paymentReview->reviewer_user_id,
             'justified_at' => $paymentReview->reviewed_at?->toIso8601String(),
         ], $unpaid);
+    }
+
+    /**
+     * Confere, na Finalização de uma revisão, o valor pago a maior que ela
+     * deixou -- a família pagou, antes dela, mais do que ela aprova -- e devolve
+     * o que foi aceito, para a auditoria congelar. Nada é estornado nem
+     * compensado: os pagamentos registrados ficam como estão, e o aceite é o
+     * reconhecimento expresso de que o valor não foi recuperado no sistema.
+     *
+     * A decisão financeira é a nota da aprovação da etapa Pagamento da própria
+     * revisão; em branco, a revisão volta àquela etapa.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function acceptRevisionOverpaymentsForFinalization(Measurement $measurement, bool $accepted): array
+    {
+        if (! $measurement->isRevision()) {
+            return [];
+        }
+
+        $revisions = app(MeasurementRevisionService::class);
+        $overpayments = $revisions->unresolvedOverpayments($measurement);
+
+        if ($overpayments === []) {
+            return [];
+        }
+
+        $paymentReview = $measurement->reviews()
+            ->where('stage', MeasurementWorkflow::STAGE_PAYMENT)
+            ->where('status', 'approved')
+            ->first();
+        $decision = trim((string) $paymentReview?->notes);
+
+        if (! $paymentReview instanceof MeasurementReview || $decision === '') {
+            throw new MeasurementWorkflowException(
+                'Esta revisão deixa valor pago a maior sem a decisão financeira da etapa Pagamento: '.$revisions->describeOverpayments($overpayments).'. Devolva à etapa Pagamento para registrar a decisão.',
+                ['measurement_id' => $measurement->getKey()],
+            );
+        }
+
+        if (! $accepted) {
+            throw ValidationException::withMessages([
+                'accept_financial_exceptions' => 'Confirme expressamente o aceite do valor pago a maior desta revisão, sem devolução registrada no sistema: '.$revisions->describeOverpayments($overpayments).'.',
+            ]);
+        }
+
+        return array_map(fn ($position): array => [
+            'plan_set_id' => $position->planSetId,
+            'position' => $position->toArray(),
+            'decision' => $decision,
+            'decided_by' => $paymentReview->reviewer_user_id === null ? null : (int) $paymentReview->reviewer_user_id,
+            'decided_at' => $paymentReview->reviewed_at?->toIso8601String(),
+        ], $overpayments);
     }
 
     /**

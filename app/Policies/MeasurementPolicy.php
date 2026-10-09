@@ -45,6 +45,15 @@ class MeasurementPolicy
      */
     public function update(User $user, Measurement $measurement): bool
     {
+        // A revisão (R1, R2...) é conduzida por quem revisa: só o arquivo e as
+        // observações mudam, e só enquanto ela aceita edição -- o rascunho, ou
+        // o fluxo aberto antes da Engenharia aprovar. A encerrada é histórico.
+        if ($measurement->isRevision()) {
+            return $this->authorization->canReviseMeasurement($user, $measurement)
+                && $measurement->acceptsEdits()
+                && ! $measurement->hasApprovedEngineering();
+        }
+
         return $user->can('measurements.update')
             && $measurement->operation instanceof Operation
             && $this->authorization->hasDirectOperationalParticipation($user, $measurement->operation)
@@ -53,11 +62,23 @@ class MeasurementPolicy
     }
 
     /**
+     * Criar uma revisão desta medição (a R1 da original, a R2 da R1...). A
+     * situação da medição -- finalizada, ou parada na etapa Pagamento sem
+     * pagamento -- é conferida pelo serviço de revisões, sob o lock.
+     */
+    public function revise(User $user, Measurement $measurement): bool
+    {
+        return $this->authorization->canReviseMeasurement($user, $measurement);
+    }
+
+    /**
      * Determine whether the user can delete the model.
      */
     public function delete(User $user, Measurement $measurement): bool
     {
-        return $user->can('measurements.delete')
+        // Revisão não se exclui: o rascunho se cancela e fica como histórico.
+        return ! $measurement->isRevision()
+            && $user->can('measurements.delete')
             && $measurement->operation instanceof Operation
             && $this->authorization->hasDirectOperationalParticipation($user, $measurement->operation)
             && $measurement->status !== 'finalized'

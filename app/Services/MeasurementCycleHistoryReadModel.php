@@ -89,6 +89,9 @@ class MeasurementCycleHistoryReadModel
                 'current_stage',
                 'analyzed_by',
                 'analyzed_at',
+                'revision_family_id',
+                'revision_number',
+                'revision_status',
             ]);
 
         $activities = $this->activitiesFor($authorizedMeasurement);
@@ -311,10 +314,13 @@ class MeasurementCycleHistoryReadModel
             ];
         }
 
-        $expectedStage = $measurement->status === 'finalized' ? 5 : 1;
-        $expectedReason = $measurement->status === 'finalized'
-            ? MeasurementStageExitReason::Finalized
-            : MeasurementStageExitReason::RejectedTerminal;
+        // A revisão substituída com o fluxo ainda aberto termina na etapa
+        // Pagamento, encerrada pela revisão que passou a valer.
+        [$expectedStage, $expectedReason] = match ($measurement->status) {
+            'finalized' => [5, MeasurementStageExitReason::Finalized],
+            'superseded' => [MeasurementWorkflow::STAGE_PAYMENT, MeasurementStageExitReason::ClosedByRevision],
+            default => [1, MeasurementStageExitReason::RejectedTerminal],
+        };
 
         if ($lastVisit->exitReason === $expectedReason && $lastVisit->stage === $expectedStage) {
             return [$visits, MeasurementHistoryCompleteness::Complete, []];
@@ -415,6 +421,7 @@ class MeasurementCycleHistoryReadModel
 
         $terminalEvents = $events
             ->filter(fn (MeasurementCycleEvent $event): bool => $event->eventType === MeasurementCycleEventType::Finalized
+                || $event->eventType === MeasurementCycleEventType::ClosedByRevision
                 || ($event->eventType === MeasurementCycleEventType::StageRejected
                     && $event->stageBefore === 1
                     && $event->statusAfter === 'rejected'))
@@ -433,9 +440,11 @@ class MeasurementCycleHistoryReadModel
         } elseif ($terminalEvents->isNotEmpty()) {
             $terminal = $terminalEvents->first();
             $cycleEnd = $terminal->occurredAt;
-            $terminalReason = $terminal->eventType === MeasurementCycleEventType::Finalized
-                ? MeasurementStageExitReason::Finalized
-                : MeasurementStageExitReason::RejectedTerminal;
+            $terminalReason = match ($terminal->eventType) {
+                MeasurementCycleEventType::Finalized => MeasurementStageExitReason::Finalized,
+                MeasurementCycleEventType::ClosedByRevision => MeasurementStageExitReason::ClosedByRevision,
+                default => MeasurementStageExitReason::RejectedTerminal,
+            };
 
             if ($terminalEvents->count() > 1) {
                 $warnings[] = 'duplicate_terminal_events';
@@ -446,9 +455,11 @@ class MeasurementCycleHistoryReadModel
 
             if ($analyzedAt instanceof CarbonImmutable) {
                 $cycleEnd = $analyzedAt;
-                $terminalReason = $measurement->status === 'finalized'
-                    ? MeasurementStageExitReason::Finalized
-                    : MeasurementStageExitReason::RejectedTerminal;
+                $terminalReason = match ($measurement->status) {
+                    'finalized' => MeasurementStageExitReason::Finalized,
+                    'superseded' => MeasurementStageExitReason::ClosedByRevision,
+                    default => MeasurementStageExitReason::RejectedTerminal,
+                };
                 $warnings[] = 'cycle_end_from_current_state_fallback';
                 $completeness = $completeness->combine(MeasurementHistoryCompleteness::Partial);
             } else {

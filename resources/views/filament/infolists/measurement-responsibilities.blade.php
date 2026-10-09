@@ -6,6 +6,8 @@
     $workflow = app(MeasurementWorkflow::class);
     $currentStage = $workflow->unifiedStage($record);
     $reviews = $record->reviews;
+    // A etapa Pagamento da revisão vigente fica suspensa enquanto a revisão dela está em análise.
+    $isFrozenByRevision = $record->isFrozenByRevision();
 
     $roles = [
         1 => [
@@ -54,6 +56,10 @@
                     $statusText = 'Aprovada';
                     $statusClass = 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-500/10 dark:border-emerald-500/20';
                     $dotClass = 'bg-emerald-500';
+                } elseif ($isCurrent && $isFrozenByRevision) {
+                    $statusText = 'Suspensa pela revisão';
+                    $statusClass = 'text-sky-700 bg-sky-50 border-sky-200 dark:text-sky-400 dark:bg-sky-500/10 dark:border-sky-500/20';
+                    $dotClass = 'bg-sky-500';
                 } elseif ($isCurrent) {
                     $statusText = 'Em análise';
                     $statusClass = 'text-[#A06E28] bg-amber-50 border-amber-200 dark:text-bsi-gold-500 dark:bg-bsi-gold-500/10 dark:border-bsi-gold-500/30';

@@ -367,6 +367,10 @@ class MeasurementCycleEventNormalizer
             'measurement_finalized' => MeasurementCycleEventType::Finalized,
             'measurement_engineering_snapshot_created' => MeasurementCycleEventType::EngineeringSnapshotCreated,
             'measurement_engineering_snapshot_invalidated' => MeasurementCycleEventType::EngineeringSnapshotInvalidated,
+            // Só o encerramento do fluxo da revisão substituída entra no ciclo; os
+            // demais eventos de revisão (criada, enviada, vigente...) são da
+            // trilha de revisões e não mudam visita de etapa.
+            'measurement_workflow_closed_by_revision' => MeasurementCycleEventType::ClosedByRevision,
             default => null,
         };
     }
@@ -540,6 +544,20 @@ class MeasurementCycleEventNormalizer
             );
 
             return [$stage, $stage];
+        }
+
+        if ($eventType === MeasurementCycleEventType::ClosedByRevision) {
+            $this->validateTransitionShape(
+                $stage === 4
+                    && $target === null
+                    && $statusBefore === 'awaiting_payment'
+                    && $statusAfter === 'superseded',
+                $properties,
+                $missingReasons,
+                $completeness,
+            );
+
+            return [$stage, null];
         }
 
         if ($eventType === MeasurementCycleEventType::StageResumed) {
@@ -1043,6 +1061,7 @@ class MeasurementCycleEventNormalizer
             MeasurementCycleEventType::ReceiptAttached,
             MeasurementCycleEventType::ReceiptDeleted,
             MeasurementCycleEventType::Finalized,
+            MeasurementCycleEventType::ClosedByRevision,
         ], true);
     }
 

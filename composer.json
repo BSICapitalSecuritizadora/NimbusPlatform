@@ -88,7 +88,7 @@
         ],
         "test:measurements:mysql": [
             "Composer\\Config::disableProcessTimeout",
-            "./scripts/parity-check.sh --compact --fail-on-skipped tests/Feature/MeasurementMysqlConcurrencyTest.php tests/Feature/MeasurementReceiptEvidenceMysqlConcurrencyTest.php tests/Feature/MeasurementPhysicalProgressMysqlConcurrencyTest.php tests/Feature/MeasurementLockOrderMysqlConcurrencyTest.php tests/Feature/MeasurementEditLockMysqlConcurrencyTest.php tests/Feature/MeasurementInitialProgressReportMysqlTest.php tests/Feature/MeasurementPlanVersionMysqlConcurrencyTest.php tests/Feature/MeasurementPlanVersionMigrationMysqlTest.php"
+            "./scripts/parity-check.sh --compact --fail-on-skipped tests/Feature/MeasurementMysqlConcurrencyTest.php tests/Feature/MeasurementReceiptEvidenceMysqlConcurrencyTest.php tests/Feature/MeasurementPhysicalProgressMysqlConcurrencyTest.php tests/Feature/MeasurementLockOrderMysqlConcurrencyTest.php tests/Feature/MeasurementEditLockMysqlConcurrencyTest.php tests/Feature/MeasurementInitialProgressReportMysqlTest.php tests/Feature/MeasurementPlanVersionMysqlConcurrencyTest.php tests/Feature/MeasurementPlanVersionMigrationMysqlTest.php tests/Feature/MeasurementRevisionMysqlConcurrencyTest.php tests/Feature/MeasurementRevisionMigrationMysqlTest.php"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
@@ -129,6 +129,6 @@
     "prefer-stable": true,
     "scripts-descriptions": {
         "test:parity": "Roda os grupos 'parity' e 'mysql' em um banco temporário criado e removido pelo script.",
-        "test:measurements:mysql": "Roda os 53 cenários de Medições no MySQL (concorrência, ordem de locks, edição concorrente, CHECK, reversão, diagnóstico do avanço inicial, versões do plano e as migrations delas) e falha se algum for ignorado."
+        "test:measurements:mysql": "Roda os 69 cenários de Medições no MySQL (concorrência, ordem de locks, edição concorrente, CHECK, reversão, diagnóstico do avanço inicial, versões do plano e as migrations delas, revisões R0/R1/R2) e falha se algum for ignorado."
     }
 }

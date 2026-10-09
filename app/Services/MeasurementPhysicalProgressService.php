@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\DTOs\Measurements\MeasurementPhysicalProgress;
 use App\DTOs\Measurements\MeasurementPhysicalProgressContribution;
+use App\Enums\MeasurementRevisionStatus;
 use App\Models\Measurement;
 use App\Models\MeasurementAsset;
 use App\Models\MeasurementPlanLine;
@@ -115,12 +116,18 @@ class MeasurementPhysicalProgressService
      * Snapshots das medições da operação com a Engenharia vigente e, para as
      * aprovadas antes do snapshot existir, as linhas que elas gravaram.
      *
+     * Uma contribuição por medição lógica: só a revisão vigente conta. A
+     * substituída guarda o snapshot dela como histórico, e a revisão em
+     * análise só passa a contar quando substitui a vigente -- nunca as duas
+     * juntas. A medição sem revisão é sempre a vigente.
+     *
      * @return array{snapshots: array<int, mixed>, legacy_lines: Collection<int, MeasurementPlanLine>, legacy_plan_sets: array<int, list<int>>, lineages: array<int, string>}
      */
     public function sources(int $operationId): array
     {
         $snapshots = Measurement::query()
             ->where('operation_id', $operationId)
+            ->where('revision_status', MeasurementRevisionStatus::Effective->value)
             ->whereHas('reviews', fn ($reviews) => $reviews
                 ->where('stage', MeasurementWorkflow::STAGE_ENGINEERING)
                 ->where('status', 'approved'))

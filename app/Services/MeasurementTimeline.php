@@ -23,10 +23,23 @@ class MeasurementTimeline
     {
         $events = collect();
 
+        // A revisão nasce como rascunho e só depois é enviada à análise; o
+        // motivo dela é o que a pessoa precisa ler na linha do tempo.
+        if ($measurement->isRevision() && $measurement->created_at !== null) {
+            $events->push([
+                'at' => $measurement->created_at,
+                'title' => 'Revisão '.$measurement->revisionLabel().' criada como rascunho',
+                'detail' => $measurement->revision_reason,
+                'actor' => $measurement->revisionCreator?->name,
+                'color' => 'gray',
+                'icon' => 'heroicon-o-document-duplicate',
+            ]);
+        }
+
         if ($measurement->uploaded_at !== null) {
             $events->push([
                 'at' => $measurement->uploaded_at,
-                'title' => 'Medição enviada',
+                'title' => $measurement->isRevision() ? 'Revisão '.$measurement->revisionLabel().' enviada para análise' : 'Medição enviada',
                 'detail' => null,
                 'actor' => $measurement->uploadedByUser?->name,
                 'color' => 'info',
@@ -54,7 +67,7 @@ class MeasurementTimeline
             ->get();
 
         foreach ($activities as $activity) {
-            $event = $this->mapTransition($activity);
+            $event = $this->mapTransition($activity, $measurement);
 
             if ($event === null) {
                 continue;
@@ -74,7 +87,7 @@ class MeasurementTimeline
     /**
      * @return array{title: string, color: string, icon: string}|null
      */
-    private function mapTransition(Activity $activity): ?array
+    private function mapTransition(Activity $activity, Measurement $measurement): ?array
     {
         if ($activity->description === 'measurement_stage_approved'
             && (int) $activity->properties->get('stage') === MeasurementWorkflow::STAGE_PAYMENT) {
@@ -100,11 +113,20 @@ class MeasurementTimeline
         $newStage = (int) ($attributes['current_stage'] ?? $old['current_stage'] ?? 0);
         $oldStage = (int) ($old['current_stage'] ?? 0);
 
+        // O envio da revisão à análise (rascunho na etapa 0 → Engenharia) já
+        // aparece como "Revisão R{n} enviada para análise": não é aprovação.
+        if ($measurement->isRevision() && $oldStage === 0 && $newStage === 1) {
+            return null;
+        }
+
         if ($statusChanged) {
             return match (true) {
+                $newStatus === 'rejected' && $measurement->isRevision() => ['title' => 'Revisão recusada e encerrada — a revisão anterior continua valendo', 'color' => 'danger', 'icon' => 'heroicon-o-x-circle'],
                 $newStatus === 'rejected' => ['title' => 'Medição recusada e encerrada', 'color' => 'danger', 'icon' => 'heroicon-o-x-circle'],
                 $newStatus === 'finalized' => ['title' => 'Medição finalizada', 'color' => 'success', 'icon' => 'heroicon-o-flag'],
-                $newStatus === 'awaiting_payment' && $oldStatus !== 'awaiting_payment' && in_array($oldStatus, ['in_review', 'pending', null], true) => ['title' => 'Aprovada na revisão — aguardando pagamento', 'color' => 'success', 'icon' => 'heroicon-o-banknotes'],
+                $newStatus === 'superseded' => ['title' => 'Encerrada: a revisão seguinte passou a valer', 'color' => 'warning', 'icon' => 'heroicon-o-arrow-path'],
+                $newStatus === 'cancelled' => ['title' => 'Rascunho de revisão cancelado', 'color' => 'gray', 'icon' => 'heroicon-o-x-mark'],
+                $newStatus === 'awaiting_payment' && $oldStatus !== 'awaiting_payment' && in_array($oldStatus, ['in_review', 'pending', null], true) => ['title' => 'Aprovada na Compliance — aguardando pagamento', 'color' => 'success', 'icon' => 'heroicon-o-banknotes'],
                 $newStatus === 'in_review' && in_array($oldStatus, ['awaiting_payment', 'awaiting_receipt'], true) => ['title' => 'Devolvida para Etapa '.$newStage, 'color' => 'warning', 'icon' => 'heroicon-o-arrow-uturn-left'],
                 $newStatus === 'in_review' && $stageChanged && $newStage > $oldStage => ['title' => 'Etapa '.$oldStage.' aprovada — avançou para Etapa '.$newStage, 'color' => 'success', 'icon' => 'heroicon-o-check-circle'],
                 $newStatus === 'in_review' && $stageChanged && $newStage < $oldStage => ['title' => 'Devolvida para Etapa '.$newStage, 'color' => 'warning', 'icon' => 'heroicon-o-arrow-uturn-left'],

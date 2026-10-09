@@ -36,6 +36,18 @@ const PLAN_VERSION_MIGRATION_FILES = [
     '2026_10_07_200300_move_construction_fund_to_plan_versions',
 ];
 
+/**
+ * As migrations das revisões de medição (R0/R1/R2) referenciam o que as das
+ * versões criam -- a versão do plano nos arquivos e nas diferenças de
+ * revisão --, então saem antes delas e voltam depois. A permissão semeada
+ * não depende do esquema e fica: desfazê-la trocaria o id que a varredura
+ * fotografou.
+ */
+const REVISION_MIGRATION_FILES = [
+    '2026_10_09_105904_add_revision_identity_to_measurements_table',
+    '2026_10_09_105906_create_measurement_revision_differences_table',
+];
+
 beforeEach(function () {
     if (DB::getDriverName() !== 'mysql') {
         $this->markTestSkipped('Requer MySQL para o DDL real das migrations das versões do plano. Execute pelo scripts/parity-check.sh com este arquivo.');
@@ -51,6 +63,7 @@ beforeEach(function () {
     $this->committedRows = CommittedRowsSweeper::afterFreshMigration();
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 
+    revisionMigrationRollBackAll();
     planVersionMigrationRollBackAll();
     planVersionMigrationExpectLegacySchema();
 });
@@ -61,6 +74,7 @@ afterEach(function () {
     }
 
     planVersionMigrationRestoreSchema();
+    revisionMigrationRestoreAll();
     $this->committedRows->sweep();
 
     expect($this->committedRows->leftovers())->toBe([]);
@@ -73,6 +87,20 @@ afterEach(function () {
 function planVersionMigration(string $name): Migration
 {
     return require database_path('migrations/'.$name.'.php');
+}
+
+function revisionMigrationRollBackAll(): void
+{
+    foreach (array_reverse(REVISION_MIGRATION_FILES) as $name) {
+        planVersionMigration($name)->down();
+    }
+}
+
+function revisionMigrationRestoreAll(): void
+{
+    foreach (REVISION_MIGRATION_FILES as $name) {
+        planVersionMigration($name)->up();
+    }
 }
 
 function planVersionMigrationUpAll(): void

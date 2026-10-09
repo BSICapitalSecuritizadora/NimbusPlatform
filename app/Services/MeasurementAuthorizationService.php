@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\AccessPermission;
 use App\Enums\MeasurementResponsibility;
 use App\Enums\OperationStatus;
 use App\Models\Measurement;
@@ -46,6 +47,32 @@ class MeasurementAuthorizationService
     public function hasDirectOperationalParticipation(User $user, Operation $operation): bool
     {
         return $this->isWorkflowAdministrator($user) || $operation->hasParticipant($user);
+    }
+
+    /**
+     * Revisar uma medição -- criar a R1, a R2... e enviá-la à análise -- é ato
+     * de gestão da operação, não responsabilidade de etapa, e não se delega:
+     * pede a permissão própria, a operação em andamento (a mesma regra da
+     * medição nova) e a participação direta, ou o bypass administrativo.
+     */
+    public function canReviseMeasurement(User $user, Measurement $measurement): bool
+    {
+        return $user->can(AccessPermission::MeasurementsRevise->value)
+            && $measurement->operation instanceof Operation
+            && $measurement->operation->status->allowsNewMeasurements()
+            && $this->hasDirectOperationalParticipation($user, $measurement->operation);
+    }
+
+    /**
+     * Cancelar o rascunho de uma revisão: quem revisa medições da operação,
+     * mesmo fora de andamento -- o rascunho esquecido não pode ficar sem quem
+     * o encerre.
+     */
+    public function canManageRevision(User $user, Measurement $revision): bool
+    {
+        return $user->can(AccessPermission::MeasurementsRevise->value)
+            && $revision->operation instanceof Operation
+            && $this->hasDirectOperationalParticipation($user, $revision->operation);
     }
 
     public function canDecideStage(User $user, Measurement $measurement, int $stage): bool

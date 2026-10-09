@@ -39,9 +39,14 @@ final readonly class MeasurementOperationalException
 
     public function measurementLabel(): string
     {
-        return filled($this->measurement->filename)
+        $label = filled($this->measurement->filename)
             ? (string) $this->measurement->filename
             : 'Medição '.$this->measurement->getKey();
+
+        // A revisão (R1, R2...) é outra linha da mesma medição lógica.
+        return $this->measurement->isRevision()
+            ? $label.' · '.$this->measurement->revisionLabel()
+            : $label;
     }
 
     public function competenceLabel(): string

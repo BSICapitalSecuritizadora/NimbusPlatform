@@ -56,7 +56,7 @@ class EvaluateMeasurementSlaCommand extends Command
 
         Measurement::query()
             ->withPendingWork()
-            ->with(['operation', 'reviews', 'pauses', 'payments.currentReceiptEvidence'])
+            ->with(['operation', 'reviews', 'pauses', 'payments.currentReceiptEvidence', 'reviewingSuccessor:id,previous_revision_id,revision_number,revision_status'])
             ->lazyById(100)
             ->each(function (Measurement $measurement) use (
                 $sla,

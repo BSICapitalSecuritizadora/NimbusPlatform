@@ -36,7 +36,13 @@ class MeasurementInfolist
                         ->label('Situação')
                         ->extraAttributes(['class' => 'bsi-summary-status'])
                         ->badge()
-                        ->formatStateUsing(fn (string $state): string => Measurement::STATUS_OPTIONS[$state] ?? $state),
+                        ->formatStateUsing(fn (Measurement $record): string => $record->workflowStatusLabel()),
+                    TextEntry::make('revision_number')
+                        ->label('Revisão')
+                        ->badge()
+                        ->state(fn (Measurement $record): string => ($record->isRevision() ? $record->revisionLabel() : 'R0 · Original').' · '.$record->revisionStatus()->label())
+                        ->color(fn (Measurement $record): string => $record->revisionStatus()->color())
+                        ->visible(fn (Measurement $record): bool => $record->isRevision() || $record->hasRevisionSuccessors()),
                     TextEntry::make('current_stage')
                         ->label('Etapa atual')
                         ->extraAttributes(['class' => 'bsi-summary-stage'])
@@ -68,6 +74,18 @@ class MeasurementInfolist
                         ->placeholder('—')
                         ->columnSpanFull()
                         ->visible(fn (Measurement $record): bool => filled($record->notes)),
+                ]),
+
+            // Revisões da medição lógica: a família, a comparação com a revisão
+            // anterior e a posição financeira -- só quando há revisão.
+            Section::make('Revisões da medição')
+                ->description('Cada revisão é uma medição com fluxo próprio. Só a revisão vigente conta no avanço físico; as anteriores ficam como histórico, com os arquivos e os pagamentos delas.')
+                ->columnSpanFull()
+                ->visible(fn (Measurement $record): bool => $record->isRevision() || $record->hasRevisionSuccessors())
+                ->schema([
+                    ViewEntry::make('revision_overview')
+                        ->label('')
+                        ->view('filament.infolists.measurement-revision-overview'),
                 ]),
 
             // 2. Aprovação por Responsabilidade (Full Width, grid interno de 5 mini-cards lado a lado)

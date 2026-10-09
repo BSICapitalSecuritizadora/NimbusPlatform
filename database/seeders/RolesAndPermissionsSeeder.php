@@ -73,6 +73,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'operations.view', 'operations.create', 'operations.update',
             'measurements.view', 'measurements.create', 'measurements.update',
             'measurements.review', 'measurements.pay', 'measurements.receipts', 'measurements.finalize', 'measurements.export',
+            'measurements.revise',
             'measurements.exceptions.view',
             'measurements.cycle-reports.view',
             'measurements.cycle-reports.export',

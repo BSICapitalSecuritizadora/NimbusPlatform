@@ -103,6 +103,18 @@ class MeasurementStageVisitBuilder
                         $completeness,
                     );
                     break;
+                case MeasurementCycleEventType::ClosedByRevision:
+                    $this->closeAndOpen(
+                        $event,
+                        MeasurementStageExitReason::ClosedByRevision,
+                        null,
+                        $open,
+                        $records,
+                        $sequences,
+                        $warnings,
+                        $completeness,
+                    );
+                    break;
                 default:
                     break;
             }

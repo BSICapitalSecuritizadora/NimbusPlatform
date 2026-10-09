@@ -57,6 +57,20 @@ class MeasurementPayment extends Model
                     'payment_id' => $payment->getKey(),
                 ]);
             }
+
+            // O que foi pago é fato histórico: a revisão da medição compara com
+            // ele e nunca o reescreve. Não há estorno nem edição de pagamento.
+            if ($payment->isDirty(['amount', 'pay_date'])) {
+                throw new MeasurementWorkflowException('O valor e a data de um pagamento registrado não podem ser alterados: o pagamento é histórico e continua como foi registrado.', [
+                    'payment_id' => $payment->getKey(),
+                ]);
+            }
+        });
+
+        static::deleting(function (self $payment): never {
+            throw new MeasurementWorkflowException('Um pagamento registrado não pode ser excluído: o pagamento é histórico e continua vinculado à medição em que foi registrado.', [
+                'payment_id' => $payment->getKey(),
+            ]);
         });
 
         static::saving(function (self $payment): void {

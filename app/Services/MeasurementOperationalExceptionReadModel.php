@@ -161,8 +161,12 @@ class MeasurementOperationalExceptionReadModel
                 'measurements.current_stage',
                 'measurements.created_at',
                 'measurements.updated_at',
+                'measurements.revision_family_id',
+                'measurements.revision_number',
+                'measurements.revision_status',
             ])
             ->with([
+                'reviewingSuccessor:id,previous_revision_id,revision_number,revision_status',
                 'operation:id,emission_id,code,title,assigned_user_id,responsible_user_id,stage2_reviewer_user_id,stage3_reviewer_user_id,payment_manager_user_id,payment_receipt_uploader_user_id,payment_finalizer_user_id',
                 'operation.emission:id,name',
                 'operation.responsibleUser:id,name,is_active,approved_at',

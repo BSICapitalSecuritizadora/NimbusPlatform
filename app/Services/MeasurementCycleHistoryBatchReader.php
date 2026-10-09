@@ -64,6 +64,9 @@ class MeasurementCycleHistoryBatchReader
                 'current_stage',
                 'analyzed_by',
                 'analyzed_at',
+                'revision_family_id',
+                'revision_number',
+                'revision_status',
             ]);
 
         if ($measurements->isEmpty()) {

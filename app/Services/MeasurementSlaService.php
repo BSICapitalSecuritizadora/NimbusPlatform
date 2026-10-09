@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Domain\PuCalculator\Contracts\BusinessDayCalendar;
 use App\Enums\MeasurementReceiptReviewStatus;
 use App\Enums\MeasurementResponsibility;
+use App\Enums\MeasurementRevisionStatus;
 use App\Models\BusinessCalendar;
 use App\Models\BusinessCalendarYear;
 use App\Models\Measurement;
@@ -53,6 +54,13 @@ class MeasurementSlaService
 
     public const STATUS_CALENDAR_UNAVAILABLE = 'calendar_unavailable';
 
+    /**
+     * A revisão vigente parada na etapa Pagamento enquanto a revisão dela está
+     * em análise: ninguém pode agir, e o prazo não corre nem conta como vencido.
+     * Se a revisão for recusada, o intervalo vira pausa encerrada da etapa.
+     */
+    public const STATUS_SUSPENDED_BY_REVISION = 'suspended_by_revision';
+
     public function __construct(private BusinessDayCalendar $calendar) {}
 
     /**
@@ -65,6 +73,16 @@ class MeasurementSlaService
     {
         $now ??= CarbonImmutable::now();
         $stage = app(MeasurementWorkflow::class)->unifiedStage($measurement);
+
+        if ($measurement->isFrozenByRevision()) {
+            return $this->result($stage, status: self::STATUS_SUSPENDED_BY_REVISION);
+        }
+
+        // O rascunho de revisão nunca entrou no fluxo: não há prazo correndo,
+        // nem concluído.
+        if (($measurement->getAttributes()['revision_status'] ?? null) === MeasurementRevisionStatus::Draft->value) {
+            return $this->result($stage, status: self::STATUS_NOT_APPLICABLE);
+        }
         $correctionStartedAt = $measurement->status === 'finalized'
             ? $this->correctionStartedAt($measurement, $responsibility)
             : null;

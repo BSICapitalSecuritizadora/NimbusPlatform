@@ -15,6 +15,7 @@ use App\DTOs\Measurements\MeasurementStageVisit;
 use App\Enums\AccessPermission;
 use App\Enums\MeasurementHistoryCompleteness;
 use App\Enums\MeasurementResponsibility;
+use App\Enums\MeasurementRevisionStatus;
 use App\Enums\MeasurementStageExitReason;
 use App\Models\Measurement;
 use App\Models\Operation;
@@ -205,7 +206,14 @@ class MeasurementCycleReportingService
         Builder $query,
         MeasurementCycleReportFilters $filters,
     ): Builder {
+        // A revisão que nunca entrou no fluxo -- rascunho, ou cancelada antes do
+        // envio -- não tem ciclo. Aqui, e não só na listagem, para o detalhe, as
+        // opções e a carga atual concordarem.
         return $query
+            ->whereNotIn('measurements.revision_status', [
+                MeasurementRevisionStatus::Draft->value,
+                MeasurementRevisionStatus::Cancelled->value,
+            ])
             ->when($filters->operationId !== null, fn (Builder $measurements): Builder => $measurements
                 ->where('measurements.operation_id', $filters->operationId))
             ->when($filters->emissionId !== null, fn (Builder $measurements): Builder => $measurements
@@ -259,7 +267,7 @@ class MeasurementCycleReportingService
 
         return new MeasurementCycleReportRow(
             measurementId: (int) $measurement->getKey(),
-            measurementLabel: $measurement->filename ?: 'Medição #'.$measurement->getKey(),
+            measurementLabel: $this->measurementLabel($measurement),
             operationId: (int) $measurement->operation_id,
             operationLabel: $this->operationLabel($operation),
             emissionId: $emission?->getKey() !== null ? (int) $emission->getKey() : null,
@@ -457,10 +465,13 @@ class MeasurementCycleReportingService
         MeasurementCycleHistory $history,
         MeasurementCycleReportFilters $filters,
     ): bool {
+        // O fluxo encerrado porque outra revisão passou a valer não é um ciclo
+        // concluído: a duração dele mediria só até a substituição.
         if ($history->completeness !== MeasurementHistoryCompleteness::Complete
             || $history->cycleStart === null
             || $history->cycleEnd === null
-            || $history->cycleEnd < $history->cycleStart) {
+            || $history->cycleEnd < $history->cycleStart
+            || $history->terminalReason === MeasurementStageExitReason::ClosedByRevision) {
             return false;
         }
 
@@ -480,6 +491,7 @@ class MeasurementCycleReportingService
             'reviews:id,measurement_id,stage,status,paused_at,created_at',
             'pauses:id,measurement_id,stage,paused_at,resumed_at',
             'payments.currentReceiptEvidence',
+            'reviewingSuccessor:id,previous_revision_id,revision_number,revision_status',
         ]);
 
         $query
@@ -624,11 +636,25 @@ class MeasurementCycleReportingService
         $operation = $measurement->operation;
         $emission = $operation?->emission;
         $operationOptions[(int) $measurement->operation_id] = $this->operationLabel($operation);
-        $measurementOptions[(int) $measurement->getKey()] = $measurement->filename ?: 'Medição #'.$measurement->getKey();
+        $measurementOptions[(int) $measurement->getKey()] = $this->measurementLabel($measurement);
 
         if ($emission?->getKey() !== null) {
             $emissionOptions[(int) $emission->getKey()] = $this->emissionLabel($emission);
         }
+    }
+
+    /**
+     * A revisão (R1, R2...) aparece ligada à medição original: sem isso, a R1
+     * de junho era só outra "Medição #25", sem relação com a #10 que ela
+     * substitui.
+     */
+    private function measurementLabel(Measurement $measurement): string
+    {
+        if (! $measurement->isRevision()) {
+            return $measurement->filename ?: 'Medição #'.$measurement->getKey();
+        }
+
+        return ($measurement->filename ?: 'Medição #'.$measurement->familyRootId()).' · '.$measurement->revisionLabel();
     }
 
     /** @param array<int, string> $options @return array<int, string> */

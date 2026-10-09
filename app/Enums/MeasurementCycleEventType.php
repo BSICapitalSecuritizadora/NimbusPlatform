@@ -18,6 +18,12 @@ enum MeasurementCycleEventType: string
     case EngineeringSnapshotCreated = 'engineering_snapshot_created';
     case EngineeringSnapshotInvalidated = 'engineering_snapshot_invalidated';
 
+    /**
+     * O fluxo ainda aberto (etapa Pagamento, sem pagamento) da revisão que
+     * outra revisão substituiu: a visita da etapa termina aqui, sem decisão.
+     */
+    case ClosedByRevision = 'closed_by_revision';
+
     public function changesStageVisit(): bool
     {
         return in_array($this, [
@@ -26,6 +32,7 @@ enum MeasurementCycleEventType: string
             self::StageRejected,
             self::FinalizationReturned,
             self::Finalized,
+            self::ClosedByRevision,
         ], true);
     }
 }

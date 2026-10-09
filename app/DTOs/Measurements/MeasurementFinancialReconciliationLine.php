@@ -12,6 +12,11 @@ use Illuminate\Contracts\Support\Arrayable;
  * nunca float -- porque a comparação entre esperado e informado é o produto
  * do serviço, e um erro de representação binária viraria divergência falsa.
  *
+ * Numa revisão de medição (R1, R2...), `historicalPaidAmount` é o que as
+ * revisões anteriores da mesma medição lógica já pagaram: o saldo esperado
+ * desconta esse valor, para a revisão nunca pedir de novo o que já foi pago.
+ * Na medição sem revisão ele é sempre zero.
+ *
  * @implements Arrayable<string, mixed>
  */
 final readonly class MeasurementFinancialReconciliationLine implements Arrayable
@@ -29,6 +34,7 @@ final readonly class MeasurementFinancialReconciliationLine implements Arrayable
         public ?string $divergenceAmount,
         public ?string $divergencePercent,
         public MeasurementReconciliationStatus $status,
+        public string $historicalPaidAmount = '0.00',
     ) {}
 
     public function hasFinancialReference(): bool
@@ -52,6 +58,7 @@ final readonly class MeasurementFinancialReconciliationLine implements Arrayable
             'divergence_amount' => $this->divergenceAmount,
             'divergence_percent' => $this->divergencePercent,
             'status' => $this->status->value,
+            'historical_paid_amount' => $this->historicalPaidAmount,
         ];
     }
 }

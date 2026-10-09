@@ -20,11 +20,19 @@ class MeasurementCockpitService
             return $this->emptySummary();
         }
 
-        $query = $this->readModel->applyFilters(
+        $allRows = $this->readModel->applyFilters(
             $this->readModel->scopedQueryFor($user),
             $filters,
             $user,
         );
+
+        // Contam as revisões correntes -- a vigente e a que está em andamento,
+        // que é trabalho próprio e conta ao lado dela --, o mesmo recorte padrão
+        // da listagem de medições, para o número do cartão e o da lista
+        // coincidirem. O histórico (substituídas, recusadas, canceladas) fica
+        // de fora. Os pagamentos ficam na revisão em que foram registrados e
+        // somam todos.
+        $query = (clone $allRows)->currentRevisions();
 
         $stageCounts = (clone $query)
             ->reorder()
@@ -48,7 +56,7 @@ class MeasurementCockpitService
 
         (clone $query)
             ->withPendingWork()
-            ->with(['reviews', 'pauses', 'payments.currentReceiptEvidence'])
+            ->with(['reviews', 'pauses', 'payments.currentReceiptEvidence', 'reviewingSuccessor:id,previous_revision_id,revision_number,revision_status'])
             ->reorder('measurements.id')
             ->lazyById(100, column: 'measurements.id', alias: 'id')
             ->each(function (Measurement $measurement) use (&$slaCounts): void {
@@ -59,7 +67,7 @@ class MeasurementCockpitService
                 }
             });
 
-        $measurementIds = (clone $query)->reorder()->select('measurements.id');
+        $measurementIds = (clone $allRows)->reorder()->select('measurements.id');
         $paymentSummary = MeasurementPayment::query()
             ->whereIn('measurement_id', $measurementIds)
             ->selectRaw('COUNT(*) as payment_count')

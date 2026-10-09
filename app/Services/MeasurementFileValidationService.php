@@ -127,6 +127,40 @@ class MeasurementFileValidationService
         $this->validate($path, $disk, 'measurement', 'asset', allowLegacyPublic: true);
     }
 
+    /**
+     * O arquivo que a revisão herda da revisão anterior: o mesmo arquivo
+     * gravado, referenciado de novo por um arquivo da revisão. Tem de estar
+     * num armazenamento de escrita -- nunca no legado público --, passar pelo
+     * tipo real, extensão e tamanho, e o conteúdo lido agora (`$actualSha256`,
+     * calculado do disco na gravação) tem de ser o que a Engenharia aprovou na
+     * revisão anterior. A varredura antivírus roda antes, fora da transação e
+     * dos locks ({@see self::scanInheritedAsset()}); o SHA-256 conferido aqui,
+     * sob o lock, prova que o conteúdo varrido é o que a revisão herdou.
+     */
+    public function validateInheritedAsset(string $path, string $disk, ?string $actualSha256, ?string $expectedSha256): void
+    {
+        $this->validate($path, $disk, 'measurement', 'asset', allowLegacyPublic: false);
+
+        if (! is_string($actualSha256)
+            || ! is_string($expectedSha256)
+            || mb_strlen($expectedSha256) !== 64
+            || ! hash_equals($expectedSha256, $actualSha256)) {
+            throw ValidationException::withMessages([
+                'asset' => 'O arquivo herdado da revisão anterior não corresponde mais ao conteúdo aprovado pela Engenharia (SHA-256 divergente).',
+            ]);
+        }
+    }
+
+    /**
+     * Varredura antivírus do arquivo que uma revisão vai herdar. O arquivo pode
+     * ter chegado antes do antivírus (legado protegido depois pelo comando de
+     * migração, que não varre), então a herança não presume a varredura antiga.
+     */
+    public function scanInheritedAsset(string $path, string $disk): void
+    {
+        $this->scanStoredFile($path, $disk, 'asset');
+    }
+
     public function validateReceipt(string $path, string $disk): void
     {
         $this->validate($path, $disk, 'measurement_receipt', 'receipt', allowLegacyPublic: false);

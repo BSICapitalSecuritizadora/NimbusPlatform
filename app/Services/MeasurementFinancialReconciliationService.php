@@ -47,6 +47,7 @@ class MeasurementFinancialReconciliationService
     {
         $planSets = $this->snapshotPlanSets($measurement);
         $registeredByPlanSet = $this->registeredAmountsByPlanSet($measurement);
+        $historicalByPlanSet = $this->historicalPaidByPlanSet($measurement);
 
         $lines = [];
 
@@ -61,10 +62,61 @@ class MeasurementFinancialReconciliationService
                 $planSet,
                 $registeredByPlanSet[$planSetId] ?? $this->zero(),
                 $enteredAmounts[$planSetId] ?? null,
+                $historicalByPlanSet[$planSetId] ?? $this->zero(),
             );
         }
 
-        return $this->aggregate((int) $measurement->getKey(), $lines);
+        return $this->aggregate((int) $measurement->getKey(), $lines, $measurement->isRevision());
+    }
+
+    /**
+     * O que as revisões anteriores da mesma medição lógica já pagaram, por
+     * empreendimento -- vazio para a medição que não é revisão.
+     *
+     * Os pagamentos ficam na revisão em que foram registrados e nunca migram:
+     * a R1 lê os da R0 como histórico, a R2 os da R0 e da R1. Todos pertencem
+     * a revisões já finalizadas -- só se revisa a finalizada ou a ainda não
+     * paga --, então nenhum muda depois.
+     *
+     * @return array<int, string>
+     */
+    public function historicalPaidByPlanSet(Measurement $measurement): array
+    {
+        if (! $measurement->isRevision()) {
+            return [];
+        }
+
+        $earlierRevisions = Measurement::query()
+            ->where('revision_family_id', $measurement->familyRootId())
+            ->where('revision_number', '<', $measurement->revisionNumber())
+            ->select('id');
+        $totals = [];
+
+        foreach (MeasurementPayment::query()
+            ->whereIn('measurement_id', $earlierRevisions)
+            ->whereNotNull('plan_set_id')
+            ->orderBy('id')
+            ->get(['id', 'plan_set_id', 'amount']) as $payment) {
+            $planSetId = (int) $payment->plan_set_id;
+            $totals[$planSetId] = $this->add($totals[$planSetId] ?? $this->zero(), $this->money((string) $payment->amount));
+        }
+
+        return $totals;
+    }
+
+    /**
+     * Valor aprovado de um empreendimento por uma entrada `plan_sets[]` do
+     * snapshot da Engenharia: a mesma normalização e a mesma conta da
+     * conciliação, para a diferença de revisões nunca divergir dela.
+     *
+     * @param  array<string, mixed>  $planSet
+     */
+    public function expectedAmountForSnapshotEntry(array $planSet): ?string
+    {
+        return $this->expectedAmount(
+            $this->nullableMoney($planSet['construction_fund_amount'] ?? null),
+            $this->percent($planSet['realized_monthly_percent'] ?? '0'),
+        );
     }
 
     /**
@@ -152,14 +204,14 @@ class MeasurementFinancialReconciliationService
     /**
      * @param  array<string, mixed>  $planSet
      */
-    private function buildLine(array $planSet, string $registeredAmount, mixed $enteredAmount): MeasurementFinancialReconciliationLine
+    private function buildLine(array $planSet, string $registeredAmount, mixed $enteredAmount, string $historicalPaidAmount): MeasurementFinancialReconciliationLine
     {
         $fundAmount = $this->nullableMoney($planSet['construction_fund_amount'] ?? null);
         $realizedMonthlyPercent = $this->percent($planSet['realized_monthly_percent'] ?? '0');
         $expectedAmount = $this->expectedAmount($fundAmount, $realizedMonthlyPercent);
         $expectedBalance = $expectedAmount === null
             ? null
-            : $this->subtract($expectedAmount, $registeredAmount);
+            : $this->subtract($this->subtract($expectedAmount, $registeredAmount), $historicalPaidAmount);
         $entered = $this->normalizeAmount($enteredAmount);
         $divergenceAmount = $expectedBalance === null
             ? null
@@ -180,15 +232,22 @@ class MeasurementFinancialReconciliationService
             divergenceAmount: $divergenceAmount,
             divergencePercent: $this->divergencePercent($divergenceAmount, $expectedBalance),
             status: $this->status($divergenceAmount),
+            historicalPaidAmount: $historicalPaidAmount,
         );
     }
 
     /**
+     * Numa revisão, os empreendimentos não se compensam: a sobra de um não
+     * paga a falta de outro, e o total não pode ler "Conciliado" com um
+     * empreendimento a pagar e outro pago a maior. A situação do agregado é a
+     * pior das linhas.
+     *
      * @param  array<int, MeasurementFinancialReconciliationLine>  $lines
      */
-    private function aggregate(int $measurementId, array $lines): MeasurementFinancialReconciliation
+    private function aggregate(int $measurementId, array $lines, bool $isRevision = false): MeasurementFinancialReconciliation
     {
         $registeredAmount = $this->zero();
+        $historicalPaidAmount = $this->zero();
         $enteredAmount = $this->zero();
         $expectedAmount = null;
         $expectedBalance = null;
@@ -197,6 +256,7 @@ class MeasurementFinancialReconciliationService
 
         foreach ($lines as $line) {
             $registeredAmount = $this->add($registeredAmount, $line->registeredAmount);
+            $historicalPaidAmount = $this->add($historicalPaidAmount, $line->historicalPaidAmount);
             $enteredAmount = $this->add($enteredAmount, $line->enteredAmount);
 
             if (! $line->hasFinancialReference()) {
@@ -210,6 +270,12 @@ class MeasurementFinancialReconciliationService
             $divergenceAmount = $this->add($divergenceAmount ?? $this->zero(), (string) $line->divergenceAmount);
         }
 
+        $status = match (true) {
+            ! $referenceComplete => MeasurementReconciliationStatus::ReferenceUnavailable,
+            $isRevision => $this->worstLineStatus($lines),
+            default => $this->status($divergenceAmount),
+        };
+
         return new MeasurementFinancialReconciliation(
             measurementId: $measurementId,
             lines: $lines,
@@ -220,10 +286,23 @@ class MeasurementFinancialReconciliationService
             enteredAmount: $enteredAmount,
             divergenceAmount: $divergenceAmount,
             divergencePercent: $this->divergencePercent($divergenceAmount, $expectedBalance),
-            status: $referenceComplete
-                ? $this->status($divergenceAmount)
-                : MeasurementReconciliationStatus::ReferenceUnavailable,
+            status: $status,
+            historicalPaidAmount: $historicalPaidAmount,
         );
+    }
+
+    /**
+     * @param  array<int, MeasurementFinancialReconciliationLine>  $lines
+     */
+    private function worstLineStatus(array $lines): MeasurementReconciliationStatus
+    {
+        $statuses = array_map(fn (MeasurementFinancialReconciliationLine $line): MeasurementReconciliationStatus => $line->status, $lines);
+
+        return match (true) {
+            in_array(MeasurementReconciliationStatus::Over, $statuses, true) => MeasurementReconciliationStatus::Over,
+            in_array(MeasurementReconciliationStatus::Under, $statuses, true) => MeasurementReconciliationStatus::Under,
+            default => MeasurementReconciliationStatus::Matched,
+        };
     }
 
     /**

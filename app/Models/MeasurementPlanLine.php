@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MeasurementPlanVersionStatus;
+use App\Enums\MeasurementRevisionStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Services\MeasurementEngineeringService;
 use App\Services\MeasurementPlanVersionResolver;
@@ -83,11 +84,14 @@ class MeasurementPlanLine extends Model
         });
 
         static::saving(function (self $line): void {
-            if ($line->exists
-                && $line->isDirty()
-                && $line->assets()->whereHas('measurement.reviews', fn ($reviews) => $reviews
-                    ->where('stage', 1)
-                    ->where('status', 'approved'))->exists()) {
+            // Quem grava a nova posse da linha (a aprovação da Engenharia, ou a
+            // revisão que acaba de virar a vigente) não trava a si mesma; a
+            // edição do plano nunca muda a posse, e continua travada.
+            $writer = $line->exists && $line->isDirty('measurement_id') && filled($line->measurement_id)
+                ? (int) $line->measurement_id
+                : null;
+
+            if ($line->exists && $line->isDirty() && $line->isLockedByCurrentEngineering($writer)) {
                 throw new MeasurementWorkflowException('A linha de cronograma usada por uma Engenharia aprovada está bloqueada.');
             }
 
@@ -97,9 +101,7 @@ class MeasurementPlanLine extends Model
         });
 
         static::deleting(function (self $line): void {
-            if ($line->assets()->whereHas('measurement.reviews', fn ($reviews) => $reviews
-                ->where('stage', 1)
-                ->where('status', 'approved'))->exists()) {
+            if ($line->isLockedByCurrentEngineering()) {
                 throw new MeasurementWorkflowException('A linha de cronograma usada por uma Engenharia aprovada não pode ser removida.');
             }
 
@@ -168,6 +170,25 @@ class MeasurementPlanLine extends Model
     public function assets(): HasMany
     {
         return $this->hasMany(MeasurementAsset::class, 'plan_line_id');
+    }
+
+    /**
+     * A linha está presa a uma Engenharia aprovada que ainda vale: a da
+     * revisão vigente de uma medição. A aprovação de uma revisão substituída é
+     * histórico -- o snapshot dela guarda o que foi aprovado -- e não trava a
+     * linha que a revisão vigente regrava. Para a medição sem revisão (sempre
+     * vigente) nada muda.
+     */
+    public function isLockedByCurrentEngineering(?int $exceptMeasurementId = null): bool
+    {
+        return $this->assets()
+            ->when($exceptMeasurementId !== null, fn (Builder $assets): Builder => $assets->where('measurement_id', '!=', $exceptMeasurementId))
+            ->whereHas('measurement', fn (Builder $measurements): Builder => $measurements
+                ->where('revision_status', MeasurementRevisionStatus::Effective->value)
+                ->whereHas('reviews', fn (Builder $reviews): Builder => $reviews
+                    ->where('stage', 1)
+                    ->where('status', 'approved')))
+            ->exists();
     }
 
     /**
@@ -379,10 +400,12 @@ class MeasurementPlanLine extends Model
             ->whereNotNull("{$lines}.measurement_date")
             ->whereExists(fn (QueryBuilder $standing): QueryBuilder => $standingInTheCompetence($standing, 'orphan_standing')
                 ->whereNotExists(fn (QueryBuilder $assets): QueryBuilder => $withAFileOfThePlan($assets, 'orphan_standing', 'orphan_standing_assets'))
+                // Conforme o envio da medição original: a revisão herda o
+                // contexto da R0 e é lida pelo histórico do plano até ela.
                 ->whereNotExists(fn (QueryBuilder $required): QueryBuilder => self::whereGoverningTheirCompetence($required
                     ->from('measurement_plan_lines as orphan_required')
                     ->whereColumn('orphan_required.plan_set_id', "{$lines}.plan_set_id")
-                    ->whereRaw("{$month('orphan_required.measurement_date')} = {$lineMonth}"), 'orphan_required', DB::raw('orphan_standing.id'))))
+                    ->whereRaw("{$month('orphan_required.measurement_date')} = {$lineMonth}"), 'orphan_required', DB::raw('COALESCE(orphan_standing.revision_family_id, orphan_standing.id)'))))
             ->whereNotExists(fn (QueryBuilder $measured): QueryBuilder => $standingInTheCompetence($measured, 'orphan_measured')
                 ->whereExists(fn (QueryBuilder $assets): QueryBuilder => $withAFileOfThePlan($assets, 'orphan_measured', 'orphan_measured_assets')))
             ->whereExists(fn (QueryBuilder $others): QueryBuilder => $others

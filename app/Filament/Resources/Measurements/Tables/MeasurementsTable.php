@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Measurements\Tables;
 
+use App\Enums\MeasurementRevisionDifferenceType;
+use App\Enums\MeasurementRevisionStatus;
 use App\Filament\Forms\Components\MonthPicker;
 use App\Filament\Resources\Measurements\MeasurementResource;
 use App\Filament\Support\AnchoredFilterDropdown;
@@ -17,6 +19,7 @@ use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -133,6 +136,18 @@ class MeasurementsTable
                     ->placeholder('—')
                     ->sortable(),
 
+                TextColumn::make('revision_number')
+                    ->label('Revisão')
+                    ->badge()
+                    ->state(fn (Measurement $record): string => $record->isRevision() ? $record->revisionLabel() : 'Original')
+                    ->description(fn (Measurement $record): ?string => $record->isRevision() || ! $record->isEffectiveRevision()
+                        ? $record->revisionStatus()->label()
+                        : null)
+                    ->color(fn (Measurement $record): string => $record->isRevision() || ! $record->isEffectiveRevision()
+                        ? $record->revisionStatus()->color()
+                        : 'gray')
+                    ->toggleable(),
+
                 TextColumn::make('assets_count')
                     ->label('Arquivos')
                     ->counts('assets')
@@ -149,8 +164,9 @@ class MeasurementsTable
                 TextColumn::make('status')
                     ->label('Situação')
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => Measurement::STATUS_OPTIONS[$state] ?? $state)
+                    ->formatStateUsing(fn (Measurement $record): string => $record->workflowStatusLabel())
                     ->description(fn (Measurement $record): ?string => in_array($record->status, ['awaiting_receipt', 'approved', 'finalized'], true)
+                        || $record->isFrozenByRevision()
                         ? static::readModel()->pendingLabel($record)
                         : null)
                     ->color(fn (string $state): string => match ($state) {
@@ -196,6 +212,39 @@ class MeasurementsTable
                         SelectFilter::make('status')
                             ->label('Situação')
                             ->options(Measurement::STATUS_OPTIONS),
+
+                        // Sem escolha, a lista mostra a medição lógica uma vez: a
+                        // revisão vigente e a que está em andamento. As revisões
+                        // substituídas, recusadas e canceladas são histórico, lido
+                        // na própria medição ou por este filtro.
+                        TernaryFilter::make('revision_scope')
+                            ->label('Revisões')
+                            ->placeholder('Revisões correntes')
+                            ->trueLabel('Todas as revisões')
+                            ->falseLabel('Somente revisões encerradas')
+                            ->queries(
+                                true: fn (Builder $query): Builder => $query,
+                                false: fn (Builder $query): Builder => $query->whereIn('revision_status', [
+                                    MeasurementRevisionStatus::Superseded->value,
+                                    MeasurementRevisionStatus::Rejected->value,
+                                    MeasurementRevisionStatus::Cancelled->value,
+                                ]),
+                                blank: fn (Builder $query): Builder => $query->currentRevisions(),
+                            ),
+
+                        SelectFilter::make('revision_difference')
+                            ->label('Diferença financeira da revisão')
+                            ->options([
+                                MeasurementRevisionDifferenceType::PositiveDifference->value => MeasurementRevisionDifferenceType::PositiveDifference->label(),
+                                MeasurementRevisionDifferenceType::NegativeDifference->value => MeasurementRevisionDifferenceType::NegativeDifference->label(),
+                                MeasurementRevisionDifferenceType::NoDifference->value => MeasurementRevisionDifferenceType::NoDifference->label(),
+                                MeasurementRevisionDifferenceType::ReferenceUnavailable->value => MeasurementRevisionDifferenceType::ReferenceUnavailable->label(),
+                            ])
+                            ->query(fn (Builder $query, array $data): Builder => $query
+                                ->when(filled($data['value'] ?? null), fn (Builder $measurements): Builder => $measurements
+                                    ->whereHas('revisionDifferences', fn (Builder $differences): Builder => $differences
+                                        ->whereNull('superseded_at')
+                                        ->where('difference_type', (string) $data['value'])))),
 
                         SelectFilter::make('operation_id')
                             ->label('Operação')

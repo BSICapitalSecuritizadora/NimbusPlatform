@@ -51,7 +51,7 @@
                                             <x-filament::badge color="warning" size="sm">SLA em atenção</x-filament::badge>
                                         @endif
                                     </span>
-                                    <span class="mt-1 block text-xs text-gray-500 dark:text-gray-400">{{ $pendingMeasurement['action_label'] }} · referência {{ $pendingMeasurement['reference_month'] ?? 'não informada' }}</span>
+                                    <span class="mt-1 block text-xs text-gray-500 dark:text-gray-400">{{ $pendingMeasurement['action_label'] }} · referência {{ $pendingMeasurement['reference_month'] ?? 'não informada' }}@if (filled($pendingMeasurement['revision_label'] ?? null)) · {{ $pendingMeasurement['revision_label'] }}@endif</span>
                                     @if($pendingMeasurement['delegated'])
                                         <span class="mt-1 block text-xs font-medium text-info-700 dark:text-info-300">
                                             Responsabilidade original de {{ $pendingMeasurement['delegator_name'] }}; delegada para você até {{ $pendingMeasurement['delegation_ends_at']?->format('d/m/Y H:i') }}.

@@ -30,6 +30,10 @@ class MeasurementWorkflowNotification extends Notification implements ShouldQueu
         'awaiting_receipt' => 'Pagamento aprovado — aguardando comprovante',
         'receipt_attached' => 'Comprovante anexado',
         'finalized' => 'Medição finalizada',
+        'revision_submitted' => 'Revisão de medição para análise',
+        'revision_rejected' => 'Revisão de medição recusada',
+        'revision_effective' => 'Revisão de medição passou a valer',
+        'workflow_closed_by_revision' => 'Medição substituída por revisão',
     ];
 
     /**
@@ -49,6 +53,10 @@ class MeasurementWorkflowNotification extends Notification implements ShouldQueu
         'returned' => 'A medição foi devolvida para esta etapa e precisa ser reavaliada.',
         'receipt_attached' => 'O comprovante de pagamento foi anexado. A prontidão completa será verificada na ação de Finalização.',
         'finalized' => 'A medição foi finalizada e o fluxo está concluído.',
+        'revision_submitted' => 'Uma revisão de medição foi enviada e aguarda sua análise na etapa de Engenharia. A revisão anterior continua valendo até esta ser aprovada pela Compliance.',
+        'revision_rejected' => 'A revisão foi recusada na etapa de Engenharia e encerrada. A revisão anterior continua valendo, sem nenhuma alteração.',
+        'revision_effective' => 'A revisão foi aprovada pela Compliance e passou a valer no lugar da anterior. Os pagamentos já registrados não foram alterados; confira a diferença financeira na etapa Pagamento.',
+        'workflow_closed_by_revision' => 'A medição que aguardava pagamento foi substituída por uma revisão aprovada. O pagamento deve ser registrado na revisão que passou a valer.',
     ];
 
     /**
@@ -83,6 +91,10 @@ class MeasurementWorkflowNotification extends Notification implements ShouldQueu
         'awaiting_receipt' => ['tone' => 'gold', 'icon' => '&#129534;'],
         'receipt_attached' => ['tone' => 'success', 'icon' => '&#128206;'],
         'finalized' => ['tone' => 'success', 'icon' => '&#10004;'],
+        'revision_submitted' => ['tone' => 'info', 'icon' => '&#128196;'],
+        'revision_rejected' => ['tone' => 'danger', 'icon' => '&#10006;'],
+        'revision_effective' => ['tone' => 'success', 'icon' => '&#10004;'],
+        'workflow_closed_by_revision' => ['tone' => 'warning', 'icon' => '&#8617;'],
     ];
 
     public function __construct(

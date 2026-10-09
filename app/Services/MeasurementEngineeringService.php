@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\DTOs\Measurements\MeasurementPhysicalProgress;
+use App\Exceptions\MeasurementWorkflowException;
 use App\Models\Construction;
 use App\Models\Measurement;
 use App\Models\MeasurementAsset;
@@ -64,7 +65,10 @@ class MeasurementEngineeringService
      *         sha256: string,
      *         mime_type: string,
      *         file_size: int
-     *     }>
+     *     }>,
+     *     revision_family_id?: int,
+     *     revision_number?: int,
+     *     previous_revision_id?: int
      * }
      */
     public function validateAndRecord(Measurement $measurement, array $monthlyProgress): array
@@ -76,8 +80,26 @@ class MeasurementEngineeringService
             $errors['reference_month'] = 'Informe a competência da medição antes de aprovar a Engenharia.';
         }
 
-        $coversOwnFilesOnly = $measurement->payments()->exists();
+        // A revisão (R1, R2...) cobre exatamente os empreendimentos da revisão
+        // que ela substitui, pelos arquivos herdados um a um, no contexto
+        // congelado da original: nem a obra que entrou depois, nem a defesa da
+        // versão que rege a competência (a versão é a herdada, e a ativação
+        // nunca desloca a de uma medição de pé). Enquanto pendente, ela não
+        // toma a linha nem a ocupação da vigente, e o teto é conferido com a
+        // contribuição dela no lugar da vigente -- atual − vigente + revisão.
+        $revisions = app(MeasurementRevisionService::class);
+        $isRevision = $measurement->isRevision();
+        $isPendingRevision = $isRevision && $measurement->isPendingRevision();
+        $coversOwnFilesOnly = $isRevision || $measurement->payments()->exists();
         $planSets = $this->requiredPlanSets($measurement, $coversOwnFilesOnly);
+
+        if ($isRevision) {
+            try {
+                $revisions->inheritedAssetPairs($measurement);
+            } catch (MeasurementWorkflowException $refusal) {
+                $errors['assets.coverage'] = $refusal->getMessage();
+            }
+        }
 
         if ($planSets->isEmpty()) {
             $errors['plan'] = $coversOwnFilesOnly
@@ -93,7 +115,7 @@ class MeasurementEngineeringService
         $physicalProgress = $this->physicalProgress->compose(
             $this->physicalProgress->sources((int) $measurement->operation_id),
             $planSets,
-            (int) $measurement->getKey(),
+            $revisions->progressExclusionId($measurement),
         );
         $validatedLines = [];
 
@@ -202,7 +224,9 @@ class MeasurementEngineeringService
             $monthly = (int) $this->basisPoints($monthlyProgress[$planSet->getKey()]);
             $progress = $physicalProgress[(int) $planSet->getKey()];
             $physicalError = $this->physicalProgressError($progress, $line, $label, $monthly)
-                ?? $this->lineClaimError($measurement, $asset, $line, $label);
+                ?? ($isPendingRevision
+                    ? $revisions->pendingRevisionClaimError($measurement, $asset, $line, $label)
+                    : $this->lineClaimError($measurement, $asset, $line, $label));
 
             if ($physicalError !== null) {
                 $errors["realized.{$planSet->getKey()}"] = $physicalError;
@@ -226,12 +250,16 @@ class MeasurementEngineeringService
             throw ValidationException::withMessages($errors);
         }
 
-        foreach ($validatedLines as $validated) {
-            $validated['line']->forceFill([
-                'realized_monthly_percent' => $validated['monthly'],
-                'realized_cumulative_percent' => $validated['cumulative'],
-                'measurement_id' => $measurement->getKey(),
-            ])->save();
+        // A linha do cronograma mostra a revisão vigente: a revisão pendente só
+        // a regrava quando passa a valer ({@see MeasurementRevisionService::makeEffective()}).
+        if (! $isPendingRevision) {
+            foreach ($validatedLines as $validated) {
+                $validated['line']->forceFill([
+                    'realized_monthly_percent' => $validated['monthly'],
+                    'realized_cumulative_percent' => $validated['cumulative'],
+                    'measurement_id' => $measurement->getKey(),
+                ])->save();
+            }
         }
 
         return [
@@ -247,6 +275,11 @@ class MeasurementEngineeringService
                 ->sortBy('plan_set_id')
                 ->values()
                 ->all(),
+            ...($isRevision ? [
+                'revision_family_id' => $measurement->familyRootId(),
+                'revision_number' => $measurement->revisionNumber(),
+                'previous_revision_id' => (int) $measurement->previous_revision_id,
+            ] : []),
         ];
     }
 
@@ -535,8 +568,11 @@ class MeasurementEngineeringService
             'planned_monthly_percent' => $this->decimal($line->planned_monthly_percent),
             'planned_cumulative_percent' => $this->decimal($line->planned_cumulative_percent),
             'initial_realized_cumulative_percent' => $this->decimal($line->initial_realized_cumulative_percent),
-            'realized_monthly_percent' => $this->decimal($line->realized_monthly_percent),
-            'realized_cumulative_percent' => $this->decimal($line->realized_cumulative_percent),
+            // O que a Engenharia validou, e não o que está na linha: a linha só
+            // é regravada pela medição que vale, e a revisão pendente a deixa
+            // com o valor da vigente até passar a valer.
+            'realized_monthly_percent' => $validated['monthly'],
+            'realized_cumulative_percent' => $validated['cumulative'],
             'plan_initial_physical_progress_percent' => $validated['initial'],
             'prior_realized_cumulative_percent' => $validated['prior'],
             'asset_id' => (int) $asset->getKey(),

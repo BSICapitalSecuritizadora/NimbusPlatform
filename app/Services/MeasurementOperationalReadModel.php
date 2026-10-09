@@ -43,6 +43,7 @@ class MeasurementOperationalReadModel
                 'payments.currentReceiptEvidence',
                 'reviews.reviewer:id,name',
                 'pauses:id,measurement_id,stage,paused_at,resumed_at',
+                'reviewingSuccessor:id,previous_revision_id,revision_number,revision_status',
             ])
             ->withCount([
                 'payments',
@@ -195,7 +196,7 @@ class MeasurementOperationalReadModel
         }
 
         $matchingIds = (clone $query)
-            ->with(['reviews', 'pauses', 'payments.currentReceiptEvidence'])
+            ->with(['reviews', 'pauses', 'payments.currentReceiptEvidence', 'reviewingSuccessor:id,previous_revision_id,revision_number,revision_status'])
             ->reorder('measurements.id')
             ->lazyById(100, column: 'measurements.id', alias: 'id')
             ->filter(fn (Measurement $measurement): bool => $this->slaEvaluation($measurement)['status'] === $status)
@@ -228,8 +229,19 @@ class MeasurementOperationalReadModel
             return 'Etapa pausada';
         }
 
+        if ($measurement->isFrozenByRevision()) {
+            return 'Bloqueada pela revisão em análise';
+        }
+
+        if ($measurement->isDraftRevision()) {
+            return 'Rascunho de revisão';
+        }
+
         if ($measurement->status === 'awaiting_payment') {
+            // A revisão cuja família já pagou não registra pagamento para ser
+            // aprovada: o filtro da área de pagamentos usa a mesma regra.
             return (int) $measurement->payments_count === 0
+                && ! ($measurement->isRevision() && app(MeasurementRevisionService::class)->familyHasHistoricalPayments($measurement))
                 ? 'Aguardando registro'
                 : 'Aguardando aprovação';
         }
@@ -279,6 +291,7 @@ class MeasurementOperationalReadModel
             MeasurementSlaService::STATUS_APPROACHING => 'Em atenção',
             MeasurementSlaService::STATUS_OVERDUE => 'Vencido',
             MeasurementSlaService::STATUS_PAUSED => 'Pausado',
+            MeasurementSlaService::STATUS_SUSPENDED_BY_REVISION => 'Suspenso pela revisão',
             MeasurementSlaService::STATUS_COMPLETED => 'Concluído',
             MeasurementSlaService::STATUS_CALENDAR_UNAVAILABLE => 'Calendário indisponível',
             MeasurementSlaService::STATUS_INVALID_CONFIG => 'Configuração inválida',

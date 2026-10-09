@@ -9,6 +9,7 @@ enum MeasurementStageExitReason: string
     case ReturnedByRejection = 'returned_by_rejection';
     case ReturnedFromFinalization = 'returned_from_finalization';
     case Finalized = 'finalized';
+    case ClosedByRevision = 'closed_by_revision';
     case Open = 'open';
     case Unknown = 'unknown';
 }

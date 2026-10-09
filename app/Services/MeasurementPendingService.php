@@ -46,10 +46,14 @@ class MeasurementPendingService
                 'current_stage',
                 'workflow_revision',
                 'created_at',
+                'revision_family_id',
+                'revision_number',
+                'revision_status',
             ])
             ->visibleTo($user)
             ->withPendingWork()
             ->with([
+                'reviewingSuccessor:id,previous_revision_id,revision_number,revision_status',
                 'operation:id,code,title,assigned_user_id,responsible_user_id,stage2_reviewer_user_id,stage3_reviewer_user_id,payment_manager_user_id,payment_receipt_uploader_user_id,payment_finalizer_user_id',
                 'reviews:id,measurement_id,stage,status,paused_at,created_at',
                 'pauses:id,measurement_id,stage,paused_at,resumed_at',
@@ -222,6 +226,7 @@ class MeasurementPendingService
             'operation_code' => $measurement->operation?->code,
             'operation_title' => $measurement->operation?->title,
             'reference_month' => $measurement->reference_month?->format('m/Y'),
+            'revision_label' => $measurement->isRevision() ? 'Revisão '.$measurement->revisionLabel() : null,
             'stage' => $evaluation['stage'],
             'stage_label' => MeasurementWorkflow::STAGE_LABELS[$evaluation['stage']] ?? 'Etapa operacional',
             'action_label' => $action['label'],

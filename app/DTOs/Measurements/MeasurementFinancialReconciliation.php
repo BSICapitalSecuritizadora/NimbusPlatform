@@ -29,7 +29,16 @@ final readonly class MeasurementFinancialReconciliation implements Arrayable
         public ?string $divergenceAmount,
         public ?string $divergencePercent,
         public MeasurementReconciliationStatus $status,
+        public string $historicalPaidAmount = '0.00',
     ) {}
+
+    /**
+     * Há pagamento de revisão anterior da mesma medição lógica no cálculo?
+     */
+    public function hasHistoricalPayments(): bool
+    {
+        return bccomp($this->historicalPaidAmount, '0', 2) > 0;
+    }
 
     public function line(int $planSetId): ?MeasurementFinancialReconciliationLine
     {
@@ -60,6 +69,7 @@ final readonly class MeasurementFinancialReconciliation implements Arrayable
             'divergence_amount' => $this->divergenceAmount,
             'divergence_percent' => $this->divergencePercent,
             'status' => $this->status->value,
+            'historical_paid_amount' => $this->historicalPaidAmount,
             'lines' => array_map(
                 fn (MeasurementFinancialReconciliationLine $line): array => $line->toArray(),
                 $this->lines,

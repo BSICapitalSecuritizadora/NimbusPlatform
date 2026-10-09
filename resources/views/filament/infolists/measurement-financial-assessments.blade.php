@@ -20,7 +20,20 @@
     $missingJustification = '';
     $acceptedUnpaidPlanSetIds = [];
 
-    if ($unpaidPlanSets !== []) {
+    /*
+     * Na revisão (R1, R2...), o valor pago a maior que ela deixou -- a família
+     * pagou antes dela mais do que ela aprova -- precisa da decisão da etapa
+     * Pagamento e do aceite expresso do Finalizador: a conferência mostra o
+     * que está sendo aceito. Nada é estornado.
+     */
+    $revisions = app(\App\Services\MeasurementRevisionService::class);
+    $isRevision = $measurement->isRevision();
+    $revisionOverpayments = $isRevision && $workflow->unifiedStage($measurement) >= \App\Services\MeasurementWorkflow::STAGE_PAYMENT
+        ? $revisions->unresolvedOverpayments($measurement)
+        : [];
+    $revisionNeedsNoOwnPayment = $isRevision && $measurement->payments->isEmpty() && $revisions->allowsApprovalWithoutOwnPayment($measurement);
+
+    if ($unpaidPlanSets !== [] || $revisionOverpayments !== []) {
         $paymentApproval = $measurement->reviews()
             ->where('stage', \App\Services\MeasurementWorkflow::STAGE_PAYMENT)
             ->where('status', 'approved')
@@ -81,7 +94,11 @@
             @endif
         </section>
     @empty
-        <p class="text-gray-500 dark:text-gray-400">O enquadramento financeiro aparecerá após o registro dos pagamentos.</p>
+        @if ($revisionNeedsNoOwnPayment)
+            <p class="text-gray-500 dark:text-gray-400">Esta revisão não registrou pagamento próprio: o que a família já pagou antes dela cobre o valor aprovado revisado, ou não há valor a pagar. A posição financeira está abaixo.</p>
+        @else
+            <p class="text-gray-500 dark:text-gray-400">O enquadramento financeiro aparecerá após o registro dos pagamentos.</p>
+        @endif
     @endforelse
 
     @if ($unpaidPlanSets !== [])
@@ -94,6 +111,10 @@
                         <dl class="grid gap-3 sm:grid-cols-2">
                             <div><dt class="text-gray-500 dark:text-gray-400">Empreendimento</dt><dd>{{ $line->label }}</dd></div>
                             <div><dt class="text-gray-500 dark:text-gray-400">Valor esperado</dt><dd>{{ $money($line->expectedAmount) }}</dd></div>
+                            @if (bccomp($line->historicalPaidAmount, '0', 2) > 0)
+                                <div><dt class="text-gray-500 dark:text-gray-400">Pago antes da revisão</dt><dd>{{ $money($line->historicalPaidAmount) }}</dd></div>
+                                <div><dt class="text-gray-500 dark:text-gray-400">Saldo em aberto</dt><dd>{{ $money($line->expectedBalance) }}</dd></div>
+                            @endif
                         </dl>
                         <p class="mt-1 text-amber-700 dark:text-amber-400">
                             @if ($measurement->status !== 'finalized')
@@ -109,6 +130,33 @@
             </ul>
             <dl>
                 <div><dt class="text-gray-500 dark:text-gray-400">Justificativa da etapa Pagamento</dt><dd class="whitespace-pre-wrap break-words">{{ $unpaidJustification !== '' ? $unpaidJustification : $missingJustification }}</dd></div>
+            </dl>
+        </section>
+    @endif
+
+    @if ($revisionOverpayments !== [])
+        <section wire:key="financial-revision-overpayments" class="space-y-3 border-b border-gray-200 pb-4 dark:border-white/10">
+            <h4 class="font-semibold">Valor pago a maior nesta revisão</h4>
+            <p class="text-gray-500 dark:text-gray-400">A revisão aprova menos do que já foi pago antes dela. O sistema não registra estorno, devolução nem compensação: os pagamentos ficam como estão, e o aceite reconhece o valor pago a maior sem devolução registrada.</p>
+            <ul class="space-y-3">
+                @foreach ($revisionOverpayments as $position)
+                    <li wire:key="financial-revision-overpayment-{{ $position->planSetId }}">
+                        <dl class="grid gap-3 sm:grid-cols-2">
+                            <div><dt class="text-gray-500 dark:text-gray-400">Empreendimento</dt><dd>{{ $position->label }}</dd></div>
+                            <div><dt class="text-gray-500 dark:text-gray-400">Aprovado revisado</dt><dd>{{ $money($position->revisedApprovedAmount) }}</dd></div>
+                            <div><dt class="text-gray-500 dark:text-gray-400">Pago antes da revisão</dt><dd>{{ $money($position->historicalPaidAmount) }}</dd></div>
+                            <div><dt class="text-gray-500 dark:text-gray-400">Pago a maior</dt><dd>{{ $money($position->unresolvedOverpaymentAmount) }}</dd></div>
+                        </dl>
+                        <p class="mt-1 text-amber-700 dark:text-amber-400">
+                            {{ $measurement->status === 'finalized'
+                                ? 'Valor pago a maior aceito expressamente na finalização, sem devolução registrada. Decisão registrada no histórico de auditoria.'
+                                : 'Aceite pendente: o Finalizador precisa aceitar expressamente o valor pago a maior ao finalizar.' }}
+                        </p>
+                    </li>
+                @endforeach
+            </ul>
+            <dl>
+                <div><dt class="text-gray-500 dark:text-gray-400">Decisão financeira da etapa Pagamento</dt><dd class="whitespace-pre-wrap break-words">{{ $unpaidJustification !== '' ? $unpaidJustification : $missingJustification }}</dd></div>
             </dl>
         </section>
     @endif

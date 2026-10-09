@@ -281,6 +281,7 @@ class MeasurementCycleReport extends Page
             MeasurementStageExitReason::ReturnedByRejection => 'Retorno por rejeição',
             MeasurementStageExitReason::ReturnedFromFinalization => 'Retorno da finalização',
             MeasurementStageExitReason::Finalized => 'Finalizada',
+            MeasurementStageExitReason::ClosedByRevision => 'Encerrada por revisão',
             MeasurementStageExitReason::Open => 'Aberta',
             MeasurementStageExitReason::Unknown => 'Desconhecida',
         };
@@ -302,6 +303,7 @@ class MeasurementCycleReport extends Page
             MeasurementCycleEventType::Finalized => 'Medição finalizada',
             MeasurementCycleEventType::EngineeringSnapshotCreated => 'Snapshot criado',
             MeasurementCycleEventType::EngineeringSnapshotInvalidated => 'Snapshot invalidado',
+            MeasurementCycleEventType::ClosedByRevision => 'Encerrada por revisão',
         };
     }
 

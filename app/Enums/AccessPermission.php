@@ -146,6 +146,7 @@ enum AccessPermission: string
     case MeasurementsCycleReportsExport = 'measurements.cycle-reports.export';
     case MeasurementsFinancialRulesView = 'measurements.financial-rules.view';
     case MeasurementsFinancialRulesManage = 'measurements.financial-rules.manage';
+    case MeasurementsRevise = 'measurements.revise';
     case DelegationsView = 'delegations.view';
     case DelegationsCreate = 'delegations.create';
     case DelegationsRevoke = 'delegations.revoke';
@@ -405,6 +406,7 @@ enum AccessPermission: string
             self::MeasurementsCycleReportsExport => 'Medições: exportar relatório de ciclo',
             self::MeasurementsFinancialRulesView => 'Medições: visualizar regras financeiras',
             self::MeasurementsFinancialRulesManage => 'Medições: gerenciar regras financeiras',
+            self::MeasurementsRevise => 'Medições: criar e conduzir revisões (R1, R2...)',
             self::DelegationsView => 'Delegações: visualizar',
             self::DelegationsCreate => 'Delegações: criar',
             self::DelegationsRevoke => 'Delegações: revogar',
@@ -627,6 +629,7 @@ enum AccessPermission: string
                 self::MeasurementsCycleReportsExport,
                 self::MeasurementsFinancialRulesView,
                 self::MeasurementsFinancialRulesManage,
+                self::MeasurementsRevise,
             ], true) => 'Gestão',
             default => 'Outros',
         };

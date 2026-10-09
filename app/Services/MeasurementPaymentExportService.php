@@ -79,6 +79,7 @@ class MeasurementPaymentExportService
                     'payments.currentReceiptEvidence',
                     'reviews.reviewer:id,name',
                     'pauses:id,measurement_id,stage,paused_at,resumed_at',
+                    'reviewingSuccessor:id,previous_revision_id,revision_number,revision_status',
                 ])
                 ->reorder('measurements.id')
                 ->lazyById(200, column: 'measurements.id', alias: 'id')
@@ -152,6 +153,11 @@ class MeasurementPaymentExportService
             'Prazo SLA',
             'Criado em',
             'Atualizado em',
+            // No fim, para as colunas anteriores manterem a posição: a revisão
+            // (R1, R2...) liga a linha à medição original que ela corrige.
+            'Medição original',
+            'Revisão',
+            'Situação da revisão',
         ];
     }
 
@@ -200,12 +206,19 @@ class MeasurementPaymentExportService
             $this->text($payment?->method),
             $this->text($payment?->createdByUser?->name),
             $this->text($paymentApproval?->reviewer?->name),
-            $this->text($payment === null ? 'Pagamento não registrado' : ($payment->hasReceipt() ? 'Anexado' : 'Pendente')),
+            $this->text(match (true) {
+                $payment !== null => $payment->hasReceipt() ? 'Anexado' : 'Pendente',
+                $measurement->isRevision() && app(MeasurementRevisionService::class)->familyHasHistoricalPayments($measurement) => 'Sem pagamento nesta revisão — pago em revisão anterior',
+                default => 'Pagamento não registrado',
+            }),
             $this->text($payment?->receiptUploadedByUser?->name),
             $this->text($this->readModel->slaLabel($measurement)),
             $this->dateTime($sla['deadline_at'], $format),
             $this->dateTime($source->created_at, $format),
             $this->dateTime($source->updated_at, $format),
+            $measurement->familyRootId(),
+            $this->text($measurement->isRevision() ? $measurement->revisionLabel() : 'R0 · Original'),
+            $this->text($measurement->revisionStatus()->label()),
         ];
     }
 

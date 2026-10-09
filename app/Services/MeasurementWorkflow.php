@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\DTOs\Measurements\MeasurementFinancialReconciliationLine;
 use App\Enums\MeasurementResponsibility;
+use App\Enums\MeasurementRevisionStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Models\Construction;
 use App\Models\Measurement;
@@ -20,6 +21,7 @@ use App\Notifications\MeasurementWorkflowNotification;
 use App\Support\Delegations\ResponsibilityAuthorization;
 use App\Support\Delegations\ResponsibilityAuthorizationCapture;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -65,6 +67,13 @@ class MeasurementWorkflow
      */
     public const TERMINAL_REJECTION_WITH_PAYMENTS = 'Esta medição tem pagamento registrado e não pode ser encerrada por recusa. Corrija os dados e aprove a Engenharia: o pagamento continua vinculado a esta medição.';
 
+    /**
+     * Por que a Engenharia não pode encerrar por recusa a revisão vigente: ela
+     * já substituiu a anterior, que não volta a valer -- recusá-la deixaria a
+     * medição lógica sem nenhuma revisão vigente.
+     */
+    public const TERMINAL_REJECTION_OF_EFFECTIVE_REVISION = 'Esta revisão já substituiu a revisão anterior e não pode ser encerrada por recusa: a anterior não volta a valer. Corrija os dados e aprove a Engenharia de novo.';
+
     public function __construct(
         private MeasurementAuthorizationService $authorization,
         private MeasurementEngineeringService $engineering,
@@ -104,6 +113,12 @@ class MeasurementWorkflow
     /** @return list<MeasurementResponsibility> */
     public function pendingResponsibilities(Measurement $measurement): array
     {
+        // Suspensa por uma revisão em análise: ninguém age até ela terminar. O
+        // rascunho de revisão (etapa 0) também não pede nada.
+        if ($measurement->isFrozenByRevision()) {
+            return [];
+        }
+
         if (in_array($measurement->status, ['awaiting_receipt', 'approved', 'finalized'], true)) {
             return app(MeasurementReceiptEvidenceService::class)->pendingResponsibilities($measurement);
         }
@@ -141,6 +156,10 @@ class MeasurementWorkflow
     {
         if ($this->unifiedStage($measurement) !== self::STAGE_ENGINEERING) {
             return null;
+        }
+
+        if ($measurement->isRevision() && $measurement->isEffectiveRevision()) {
+            return self::TERMINAL_REJECTION_OF_EFFECTIVE_REVISION;
         }
 
         $hasPayment = $measurement->relationLoaded('payments')
@@ -186,6 +205,7 @@ class MeasurementWorkflow
         return $measurement->status === 'awaiting_payment'
             && (int) $measurement->current_stage === self::STAGE_PAYMENT
             && $hasPendingReview
+            && ! $measurement->isFrozenByRevision()
             && $this->authorizes($actor, $measurement, MeasurementResponsibility::PaymentManager, $capture);
     }
 
@@ -221,7 +241,18 @@ class MeasurementWorkflow
         $locked = DB::transaction(function () use ($measurement, $actor): Measurement {
             $locked = $this->lockMeasurementWithOperation($measurement);
 
-            if (! $this->authorization->canCreateMeasurement($actor, $locked->operation)) {
+            // A revisão entra no fluxo pelo envio do serviço de revisões, que
+            // a passa a "em análise" antes, na mesma transação, e a conduz quem
+            // revisa -- não quem envia medições.
+            if ($locked->isRevision()) {
+                if (! $this->authorization->canReviseMeasurement($actor, $locked)) {
+                    throw new AuthorizationException('Você não pode revisar medições desta operação.');
+                }
+
+                if ($locked->revisionStatus() !== MeasurementRevisionStatus::UnderReview) {
+                    throw $this->invalidState($locked, 'A revisão entra no fluxo pelo envio da revisão.');
+                }
+            } elseif (! $this->authorization->canCreateMeasurement($actor, $locked->operation)) {
                 throw new AuthorizationException('Você não pode iniciar uma medição nesta operação.');
             }
 
@@ -257,7 +288,7 @@ class MeasurementWorkflow
             return $locked;
         });
 
-        $this->notifyUsers($locked, 'submitted', [$locked->operation->stageResponsibleId(self::STAGE_ENGINEERING)]);
+        $this->notifyUsers($locked, $locked->isRevision() ? 'revision_submitted' : 'submitted', [$locked->operation->stageResponsibleId(self::STAGE_ENGINEERING)]);
     }
 
     /**
@@ -275,12 +306,26 @@ class MeasurementWorkflow
         $expectedRevision ??= (int) $measurement->workflow_revision;
 
         $result = DB::transaction(function () use ($measurement, $actor, $expectedStage, $expectedRevision, $notes, $engineeringProgress): array {
-            $locked = $expectedStage === self::STAGE_ENGINEERING
-                ? $this->lockMeasurementWithOperation($measurement)
-                : $this->lockMeasurement($measurement);
+            // A revisão trava a Operation e a família inteira (a vigente que ela
+            // vai substituir inclusive) na Engenharia e na Compliance: a
+            // Engenharia confere a ocupação da linha pela vigente e o teto sem
+            // ela, e a Compliance faz a revisão valer. A identidade da revisão é
+            // imutável, então ler `revision_number` antes do lock é seguro.
+            $members = null;
+
+            if ($measurement->isRevision() && in_array($expectedStage, [self::STAGE_ENGINEERING, 3], true)) {
+                ['members' => $members] = $this->revisions()->lockFamilyWithOperation($measurement);
+                $locked = $this->lockedMember($members, $measurement);
+            } else {
+                $locked = $expectedStage === self::STAGE_ENGINEERING
+                    ? $this->lockMeasurementWithOperation($measurement)
+                    : $this->lockMeasurement($measurement);
+            }
+
             $stage = $this->unifiedStage($locked);
 
             $this->assertExpectedState($locked, $expectedRevision, $expectedStage);
+            $this->assertNotFrozenByRevision($locked);
 
             $this->authorizeStageDecision($locked, $actor, $stage);
             $review = $this->lockPendingReview($locked, $stage);
@@ -297,10 +342,12 @@ class MeasurementWorkflow
             }
 
             $unpaidPlanSets = [];
+            $revisionOverpayments = [];
 
             if ($stage === self::STAGE_PAYMENT) {
                 $this->ensureValidPaymentExists($locked);
                 $unpaidPlanSets = $this->ensureUnpaidPlanSetsAreJustified($locked, $notes);
+                $revisionOverpayments = $this->ensureRevisionOverpaymentsAreJustified($locked, $notes);
             }
 
             $fromStatus = $locked->status;
@@ -311,6 +358,21 @@ class MeasurementWorkflow
                 'notes' => filled($notes) ? trim((string) $notes) : null,
                 'reviewed_at' => now(),
             ])->save();
+
+            // A Compliance aprovou a revisão em análise: ela passa a valer agora,
+            // antes de a situação do fluxo dela avançar para a etapa Pagamento.
+            if ($stage === 3 && $locked->isRevision() && $locked->isPendingRevision()) {
+                if (! $members instanceof EloquentCollection) {
+                    throw $this->invalidState($locked, 'A revisão só passa a valer com a família travada.');
+                }
+
+                $this->revisions()->makeEffective(
+                    $locked,
+                    $members,
+                    $actor,
+                    $this->authorization->resolveAuthorization($actor, $locked, 3),
+                );
+            }
 
             if ($stage < self::STAGE_PAYMENT) {
                 $nextStage = $stage + 1;
@@ -366,9 +428,32 @@ class MeasurementWorkflow
 
             if ($stage === self::STAGE_PAYMENT) {
                 $approval['unpaid_plan_sets'] = $unpaidPlanSets;
+
+                if ($locked->isRevision()) {
+                    $approval['revision_overpayments'] = $revisionOverpayments;
+                }
             }
 
             $this->audit($locked, $actor, 'measurement_stage_approved', $approval);
+
+            // A revisão vigente reaprovada pela Engenharia (depois de devolvida)
+            // tem um registro novo: a diferença financeira é recalculada sobre
+            // ele, e a anterior fica como histórico.
+            if ($stage === self::STAGE_ENGINEERING && $locked->isRevision() && $locked->isEffectiveRevision()) {
+                $differences = $this->revisions()->recordDifferences($locked, $members);
+
+                $this->audit($locked, $actor, 'measurement_revision_financial_difference_recomputed', [
+                    'stage' => self::STAGE_ENGINEERING,
+                    'differences' => $differences->map(fn ($difference): array => [
+                        'plan_set_id' => (int) $difference->plan_set_id,
+                        'computation' => (int) $difference->computation,
+                        'engineering_snapshot_sha256' => $difference->engineering_snapshot_sha256,
+                        'financial_difference_amount' => $difference->financial_difference_amount === null ? null : (string) $difference->financial_difference_amount,
+                        'difference_type' => $difference->difference_type?->value,
+                        'unresolved_overpayment_amount' => (string) $difference->unresolved_overpayment_amount,
+                    ])->values()->all(),
+                ]);
+            }
 
             return [
                 'measurement' => $locked,
@@ -426,20 +511,39 @@ class MeasurementWorkflow
             // medição ocupava (Measurement::updated), e a disponibilidade delas
             // é lida pelo envio sob o lock da Operation: a recusa trava a
             // Operation antes, como o envio e a aprovação da Engenharia. As
-            // demais recusas só devolvem a etapa e travam só a medição.
-            $locked = $expectedStage === self::STAGE_ENGINEERING
-                ? $this->lockMeasurementWithOperation($measurement)
-                : $this->lockMeasurement($measurement);
+            // demais recusas só devolvem a etapa e travam só a medição. A
+            // recusa de uma revisão na Engenharia trava a família: a vigente
+            // pode ganhar a pausa do intervalo em que ficou suspensa.
+            $members = null;
+
+            if ($measurement->isRevision() && $expectedStage === self::STAGE_ENGINEERING) {
+                ['members' => $members] = $this->revisions()->lockFamilyWithOperation($measurement);
+                $locked = $this->lockedMember($members, $measurement);
+            } else {
+                $locked = $expectedStage === self::STAGE_ENGINEERING
+                    ? $this->lockMeasurementWithOperation($measurement)
+                    : $this->lockMeasurement($measurement);
+            }
+
             $stage = $this->unifiedStage($locked);
 
             $this->assertExpectedState($locked, $expectedRevision, $expectedStage);
+            $this->assertNotFrozenByRevision($locked);
 
             $this->authorizeStageDecision($locked, $actor, $stage);
             $review = $this->lockPendingReview($locked, $stage);
 
+            if ($stage === self::STAGE_ENGINEERING && $locked->isRevision() && $locked->isEffectiveRevision()) {
+                throw $this->invalidState($locked, self::TERMINAL_REJECTION_OF_EFFECTIVE_REVISION);
+            }
+
             if ($stage === self::STAGE_ENGINEERING && $locked->payments()->exists()) {
                 throw $this->invalidState($locked, self::TERMINAL_REJECTION_WITH_PAYMENTS);
             }
+
+            $closesPendingRevision = $stage === self::STAGE_ENGINEERING
+                && $locked->isRevision()
+                && $locked->isPendingRevision();
 
             $fromStatus = $locked->status;
 
@@ -453,11 +557,18 @@ class MeasurementWorkflow
             if ($stage === self::STAGE_ENGINEERING) {
                 $targetStage = 0;
                 $toStatus = 'rejected';
-                $locked->forceFill([
+                // A revisão recusada na Engenharia encerra como revisão também, na
+                // mesma gravação: a vigente continua sendo a anterior.
+                $locked->forceFill(array_merge([
                     'status' => $toStatus,
                     'analyzed_by' => $actor->getKey(),
                     'analyzed_at' => now(),
-                ])->save();
+                ], $closesPendingRevision ? [
+                    'revision_status' => MeasurementRevisionStatus::Rejected,
+                    'revision_closed_at' => now(),
+                    'revision_closed_by' => $actor->getKey(),
+                    'revision_closed_reason' => $notes,
+                ] : []))->save();
             } else {
                 $targetStage = $stage - 1;
                 $toStatus = $targetStage === self::STAGE_PAYMENT ? 'awaiting_payment' : 'in_review';
@@ -476,11 +587,34 @@ class MeasurementWorkflow
                 'expected_responsible_user_id' => $locked->operation->stageResponsibleId($stage),
             ]);
 
-            return compact('locked', 'stage', 'targetStage');
+            if ($closesPendingRevision) {
+                if (! $members instanceof EloquentCollection) {
+                    throw $this->invalidState($locked, 'A revisão só é recusada com a família travada.');
+                }
+
+                $this->revisions()->afterPendingRevisionRejected(
+                    $locked,
+                    $members,
+                    $actor,
+                    $notes,
+                    $this->authorization->resolveAuthorization($actor, $locked, self::STAGE_ENGINEERING),
+                );
+            }
+
+            return compact('locked', 'stage', 'targetStage', 'closesPendingRevision');
         });
 
         /** @var Measurement $locked */
         $locked = $result['locked'];
+
+        // A revisão recusada não encerra a medição: a vigente segue. Quem criou
+        // a revisão é avisado; a lista de recusa da Engenharia não, porque ela
+        // trata do encerramento de medições.
+        if ($result['closesPendingRevision']) {
+            $this->notifyUsers($locked, 'revision_rejected', [$locked->revision_created_by, $locked->uploaded_by]);
+
+            return;
+        }
 
         if ($result['stage'] === self::STAGE_ENGINEERING) {
             $recipientIds = $locked->operation->rejectionNotifyUsers()->pluck('users.id')->all();
@@ -585,6 +719,7 @@ class MeasurementWorkflow
             $stage = $this->unifiedStage($locked);
 
             $this->assertExpectedState($locked, $expectedRevision, $expectedStage);
+            $this->assertNotFrozenByRevision($locked);
 
             if (! $this->canPause($locked, $actor)) {
                 $this->throwAuthorizationOrState(
@@ -742,6 +877,7 @@ class MeasurementWorkflow
             $locked = $this->lockMeasurementWithOperation($measurement);
 
             $this->assertExpectedState($locked, $expectedRevision, self::STAGE_PAYMENT, 'awaiting_payment');
+            $this->assertNotFrozenByRevision($locked);
 
             if (! $this->canRegisterPayment($locked, $actor)) {
                 $this->throwAuthorizationOrState(
@@ -819,6 +955,10 @@ class MeasurementWorkflow
             $payments = collect($validated)->map(function (array $row, int $index) use ($locked, $actor, $defaultPlanSetId): MeasurementPayment {
                 $row['plan_set_id'] ??= $defaultPlanSetId;
                 $row['pay_date'] = Carbon::parse($row['pay_date'])->toDateString();
+                // Na revisão, cada linha é conferida contra o saldo em aberto já
+                // descontado do que a família pagou antes e das linhas anteriores
+                // deste mesmo registro: o que já foi pago não se paga de novo.
+                $this->revisions()->assertRevisionPaymentFits($locked, $row, $index);
                 try {
                     $assessment = app(MeasurementPaymentFinancialService::class)->assess($locked, $row);
                 } catch (ValidationException $exception) {
@@ -884,6 +1024,7 @@ class MeasurementWorkflow
         DB::transaction(function () use ($payment, $actor, $data, $expectedRevision): void {
             $locked = $this->lockMeasurement($payment->measurement);
             $this->assertExpectedState($locked, $expectedRevision, self::STAGE_PAYMENT, 'awaiting_payment');
+            $this->assertNotFrozenByRevision($locked);
             if (! $this->authorization->canRegisterPayment($actor, $locked)) {
                 throw new AuthorizationException;
             }
@@ -968,6 +1109,7 @@ class MeasurementWorkflow
             $financial = app(MeasurementPaymentFinancialService::class);
             $financialExceptions = $financial->acceptForFinalization($locked, $acceptFinancialExceptions);
             $unpaidPlanSetsAccepted = $financial->acceptUnpaidPlanSetsForFinalization($locked, $acceptFinancialExceptions);
+            $revisionOverpaymentsAccepted = $financial->acceptRevisionOverpaymentsForFinalization($locked, $acceptFinancialExceptions);
 
             $fromStatus = $locked->status;
             $locked->reviews()->updateOrCreate(
@@ -990,6 +1132,13 @@ class MeasurementWorkflow
             $this->audit($locked, $actor, 'measurement_finalized', [
                 'financial_exceptions_accepted' => $financialExceptions,
                 'unpaid_plan_sets_accepted' => $unpaidPlanSetsAccepted,
+                ...($locked->isRevision() ? [
+                    'revision_overpayments_accepted' => $revisionOverpaymentsAccepted,
+                    'revision_positions' => array_map(
+                        fn ($position): array => $position->toArray(),
+                        $this->revisions()->positions($locked),
+                    ),
+                ] : []),
                 'stage' => self::STAGE_FINALIZATION,
                 'from_status' => $fromStatus,
                 'to_status' => 'finalized',
@@ -1109,6 +1258,45 @@ class MeasurementWorkflow
         return $locked;
     }
 
+    /**
+     * @param  EloquentCollection<int, Measurement>  $members
+     */
+    private function lockedMember(EloquentCollection $members, Measurement $measurement): Measurement
+    {
+        $locked = $members->firstWhere('id', (int) $measurement->getKey());
+
+        if (! $locked instanceof Measurement) {
+            throw new MeasurementWorkflowException('A medição não foi encontrada.');
+        }
+
+        return $locked;
+    }
+
+    /**
+     * A revisão vigente parada na etapa Pagamento fica suspensa enquanto a
+     * revisão dela está em análise: nenhuma transição do fluxo dela. Lido sob o
+     * lock da medição; o envio, a recusa e a vigência da revisão travam esta
+     * mesma linha.
+     */
+    private function assertNotFrozenByRevision(Measurement $measurement): void
+    {
+        if (! $measurement->isFrozenByRevision()) {
+            return;
+        }
+
+        $successor = $measurement->reviewingSuccessor()->first(['id', 'revision_number']);
+
+        throw $this->invalidState($measurement, sprintf(
+            MeasurementRevisionService::FROZEN_WORKFLOW_REFUSAL,
+            $successor instanceof Measurement ? $successor->revisionLabel() : 'seguinte',
+        ));
+    }
+
+    private function revisions(): MeasurementRevisionService
+    {
+        return app(MeasurementRevisionService::class);
+    }
+
     private function authorizeStageDecision(Measurement $measurement, User $actor, int $stage): void
     {
         if (! $this->authorization->canDecideStage($actor, $measurement, $stage)) {
@@ -1156,7 +1344,7 @@ class MeasurementWorkflow
 
     private function hasPendingDecisionState(Measurement $measurement, int $stage): bool
     {
-        if ($measurement->status === 'paused' || $stage < 1 || $stage > self::STAGE_PAYMENT) {
+        if ($measurement->status === 'paused' || $stage < 1 || $stage > self::STAGE_PAYMENT || $measurement->isFrozenByRevision()) {
             return false;
         }
 
@@ -1205,6 +1393,12 @@ class MeasurementWorkflow
 
         $measurement->forceFill($state)->save();
 
+        // O registro da Engenharia deixou de valer, e a diferença financeira
+        // calculada sobre ele também; a reaprovação grava outra.
+        if ($target === self::STAGE_ENGINEERING && $measurement->isRevision()) {
+            $this->revisions()->supersedeCurrentDifferences($measurement);
+        }
+
         if (is_array($previousSnapshot) && $previousSnapshot !== []) {
             $this->audit($measurement, $actor, 'measurement_engineering_snapshot_invalidated', [
                 'reason' => $note,
@@ -1227,6 +1421,14 @@ class MeasurementWorkflow
     public function hasValidPayment(Measurement $measurement): bool
     {
         $paymentCount = $measurement->payments()->count();
+
+        // A revisão cuja família já pagou, ou que não tem nada a pagar, não
+        // precisa de pagamento novo: o que falta ou sobra é a posição
+        // financeira dela, conferida à parte (saldo em aberto justificado, valor
+        // pago a maior decidido).
+        if ($paymentCount === 0 && $measurement->isRevision()) {
+            return $this->revisions()->allowsApprovalWithoutOwnPayment($measurement);
+        }
 
         return $paymentCount > 0
             && $paymentCount === $measurement->payments()
@@ -1291,6 +1493,32 @@ class MeasurementWorkflow
             fn (MeasurementFinancialReconciliationLine $line): array => $line->toArray(),
             $unpaid,
         );
+    }
+
+    /**
+     * A revisão que aprova menos do que a família já pagou deixa valor pago a
+     * maior. O sistema não tem estorno, devolução nem compensação, e os
+     * pagamentos registrados nunca são alterados: a etapa Pagamento não
+     * bloqueia, mas exige a decisão financeira expressa, na nota da aprovação,
+     * que o Finalizador precisará aceitar.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function ensureRevisionOverpaymentsAreJustified(Measurement $measurement, ?string $notes): array
+    {
+        if (! $measurement->isRevision()) {
+            return [];
+        }
+
+        $overpayments = $this->revisions()->unresolvedOverpayments($measurement);
+
+        if ($overpayments !== [] && blank($notes)) {
+            throw ValidationException::withMessages([
+                'notes' => 'Esta revisão aprova menos do que já foi pago antes dela -- '.$this->revisions()->describeOverpayments($overpayments).'. Registre a decisão financeira sobre o valor pago a maior; o Finalizador precisará aceitá-la expressamente. Os pagamentos registrados não são alterados nem estornados.',
+            ]);
+        }
+
+        return array_map(fn ($position): array => $position->toArray(), $overpayments);
     }
 
     /**
@@ -1626,7 +1854,10 @@ class MeasurementWorkflow
                 'admin_override' => $authorization->isAdminOverride(),
                 'actual_actor_user_id' => $actor->getKey(),
                 'workflow_revision' => (int) $measurement->workflow_revision,
-            ], $properties))
+            ], $measurement->isRevision() ? [
+                'revision_family_id' => $measurement->familyRootId(),
+                'revision_number' => $measurement->revisionNumber(),
+            ] : [], $properties))
             ->log($event);
     }
 

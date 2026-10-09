@@ -89,6 +89,36 @@ class MeasurementAsset extends Model
      */
     public const LINE_ALREADY_CLAIMED_REFUSAL = 'A medição %s (%s) do cronograma de %s já está ocupada pela medição #%d. Escolha outra medição prevista ou aguarde a recusa daquela medição.';
 
+    /**
+     * Mudar a medição dona do arquivo contornaria as travas da dona original
+     * (Engenharia aprovada, pagamento, revisão encerrada).
+     */
+    public const REPARENT_REFUSAL = 'O arquivo pertence à medição em que foi enviado e não pode ser transferido para outra.';
+
+    /**
+     * Os arquivos de uma revisão são os da revisão que ela substitui, um para
+     * cada empreendimento, com o mesmo plano, a mesma versão e a mesma linha:
+     * a revisão corrige a medição, não acrescenta nem tira empreendimento.
+     */
+    public const REVISION_ASSET_SET_REFUSAL = 'Os arquivos de uma revisão são herdados da revisão anterior, um por empreendimento: não se acrescenta nem se remove arquivo de uma revisão. Para medir outro empreendimento ou competência, envie uma nova medição.';
+
+    /**
+     * O contexto do plano da revisão é o da medição original, congelado.
+     */
+    public const REVISION_CONTEXT_REFUSAL = 'A revisão mantém o plano, a versão e a medição prevista da medição original: só o arquivo pode ser trocado.';
+
+    /**
+     * A revisão encerrada é histórico.
+     */
+    public const CLOSED_REVISION_FILE_REFUSAL = 'Os arquivos desta medição não podem mais ser alterados: a revisão está encerrada ou já foi substituída.';
+
+    /**
+     * O arquivo que uma revisão herdou fica ligado a ela -- o banco também o
+     * prende, pela FK do contexto herdado. O arquivo pode ser trocado; o
+     * empreendimento, a versão e a medição prevista dele, não, e ele não sai.
+     */
+    public const INHERITED_SOURCE_REFUSAL = 'Este arquivo foi herdado pela revisão %s desta medição e fica ligado a ela como histórico: o empreendimento, a versão e a medição prevista dele não mudam, e ele não pode ser removido. O arquivo pode ser trocado; para medir outra competência ou outro empreendimento, recuse esta medição na Engenharia e envie uma nova.';
+
     protected $attributes = [
         'storage_disk' => DocumentStorageService::DEFAULT_PRIVATE_DISK,
     ];
@@ -117,7 +147,25 @@ class MeasurementAsset extends Model
             }
 
             try {
+                if ($asset->exists && $asset->isDirty('measurement_id')) {
+                    throw new MeasurementWorkflowException(self::REPARENT_REFUSAL, [
+                        'asset_id' => $asset->getKey(),
+                        'original_measurement_id' => $asset->getRawOriginal('measurement_id'),
+                    ]);
+                }
+
+                if ($asset->exists && $asset->isDirty(['plan_set_id', 'plan_line_id', 'plan_version_id'])) {
+                    $asset->refuseWhenInherited();
+                }
+
                 $measurement = $asset->measurement()->first();
+
+                if ($measurement instanceof Measurement && ! $measurement->acceptsEdits()) {
+                    throw new MeasurementWorkflowException(self::CLOSED_REVISION_FILE_REFUSAL, [
+                        'measurement_id' => $measurement->getKey(),
+                        'asset_id' => $asset->getKey(),
+                    ]);
+                }
 
                 if ($measurement?->hasApprovedEngineering()) {
                     throw new MeasurementWorkflowException('Os arquivos aprovados pela Engenharia estão bloqueados. Devolva a medição à Engenharia para alterá-los.', [
@@ -138,7 +186,18 @@ class MeasurementAsset extends Model
                 $asset->bindPlanContext($measurement);
 
                 if ($newFile) {
-                    $asset->validateNewFile($validation);
+                    $inheritedSource = $asset->unchangedInheritedSource();
+
+                    if ($inheritedSource instanceof self) {
+                        $validation->validateInheritedAsset(
+                            (string) $asset->storage_path,
+                            $asset->resolved_storage_disk,
+                            $asset->sha256,
+                            $inheritedSource->sha256,
+                        );
+                    } else {
+                        $asset->validateNewFile($validation);
+                    }
                 }
             } catch (Throwable $exception) {
                 if ($newFile) {
@@ -158,7 +217,16 @@ class MeasurementAsset extends Model
         });
 
         static::deleting(function (self $asset): void {
+            $asset->refuseWhenInherited();
+
             $measurement = $asset->measurement()->first();
+
+            if ($measurement instanceof Measurement && $measurement->isRevision()) {
+                throw new MeasurementWorkflowException(self::REVISION_ASSET_SET_REFUSAL, [
+                    'measurement_id' => $measurement->getKey(),
+                    'asset_id' => $asset->getKey(),
+                ]);
+            }
 
             if ($measurement?->hasApprovedEngineering()) {
                 throw new MeasurementWorkflowException('Um arquivo aprovado pela Engenharia não pode ser removido sem devolver a medição à Engenharia.', [
@@ -189,12 +257,63 @@ class MeasurementAsset extends Model
         return [
             'size' => 'integer',
             'uploaded_at' => 'datetime',
+            'inherited_from_asset_id' => 'integer',
         ];
     }
 
     public function measurement(): BelongsTo
     {
         return $this->belongsTo(Measurement::class);
+    }
+
+    /**
+     * O arquivo da revisão anterior de que este herdou o contexto do plano --
+     * e, enquanto não for trocado, o próprio arquivo gravado.
+     */
+    public function inheritedFrom(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'inherited_from_asset_id');
+    }
+
+    /**
+     * Alguma revisão herdou este arquivo (de qualquer situação -- a cancelada
+     * e a recusada também ficam como histórico)? Recusa, então, mudar o
+     * contexto dele ou removê-lo, com o motivo, antes de o banco recusar.
+     */
+    public function refuseWhenInherited(): void
+    {
+        if (! $this->exists) {
+            return;
+        }
+
+        $heir = self::query()
+            ->where('inherited_from_asset_id', $this->getKey())
+            ->with('measurement:id,revision_number')
+            ->orderBy('id')
+            ->first();
+
+        if ($heir instanceof self) {
+            throw new MeasurementWorkflowException(sprintf(
+                self::INHERITED_SOURCE_REFUSAL,
+                $heir->measurement instanceof Measurement ? $heir->measurement->revisionLabel() : 'seguinte',
+            ), [
+                'asset_id' => $this->getKey(),
+                'inheriting_asset_id' => $heir->getKey(),
+            ]);
+        }
+    }
+
+    /**
+     * O arquivo continua sendo o mesmo gravado da revisão anterior?
+     */
+    public function reusesInheritedFile(): bool
+    {
+        $source = $this->relationLoaded('inheritedFrom') ? $this->inheritedFrom : $this->inheritedFrom()->first();
+
+        return $source instanceof self
+            && $source->storage_path === $this->storage_path
+            && $source->resolved_storage_disk === $this->resolved_storage_disk
+            && $source->sha256 === $this->sha256;
     }
 
     public function planSet(): BelongsTo
@@ -334,6 +453,19 @@ class MeasurementAsset extends Model
      */
     private function bindPlanContext(?Measurement $measurement): void
     {
+        if ($measurement instanceof Measurement && $measurement->isRevision()) {
+            $this->bindInheritedPlanContext($measurement);
+
+            return;
+        }
+
+        if (filled($this->getAttribute('inherited_from_asset_id'))) {
+            throw new MeasurementWorkflowException(self::REVISION_ASSET_SET_REFUSAL, [
+                'asset_id' => $this->getKey(),
+                'inherited_from_asset_id' => $this->getAttribute('inherited_from_asset_id'),
+            ]);
+        }
+
         if (blank($this->plan_line_id)) {
             // Sem a medição prevista não há o que congelar: a versão é a da
             // linha e nasce com ela, quando a linha for escolhida -- a
@@ -443,6 +575,98 @@ class MeasurementAsset extends Model
     }
 
     /**
+     * O arquivo de uma revisão herda o contexto do plano do arquivo da revisão
+     * anterior -- plano, versão e medição prevista congelados no envio da
+     * original --, sem consultar o histórico atual do plano: a revisão de
+     * junho continua na V1 mesmo com a V2 vigente. Nasce só pelo serviço de
+     * revisões (que grava a herança), nunca pelo formulário; depois, o
+     * contexto e a herança não mudam, só o arquivo pode ser trocado.
+     *
+     * A revisão pendente não ocupa a linha: a ocupação continua com a revisão
+     * vigente e passa para esta, numa transação só, quando ela vira a vigente.
+     */
+    private function bindInheritedPlanContext(Measurement $measurement): void
+    {
+        $sourceId = $this->getAttribute('inherited_from_asset_id');
+
+        if (blank($sourceId) || ($this->exists && $this->isDirty('inherited_from_asset_id'))) {
+            throw new MeasurementWorkflowException(self::REVISION_ASSET_SET_REFUSAL, [
+                'measurement_id' => $measurement->getKey(),
+                'asset_id' => $this->getKey(),
+            ]);
+        }
+
+        $source = self::query()->find($sourceId);
+
+        if (! $source instanceof self
+            || (int) $source->measurement_id !== (int) $measurement->previous_revision_id
+            || blank($source->plan_set_id)
+            || blank($source->plan_line_id)
+            || blank($source->plan_version_id)) {
+            throw new MeasurementWorkflowException(self::REVISION_ASSET_SET_REFUSAL, [
+                'measurement_id' => $measurement->getKey(),
+                'inherited_from_asset_id' => $sourceId,
+            ]);
+        }
+
+        foreach (['plan_set_id', 'plan_line_id', 'plan_version_id'] as $column) {
+            $current = $this->getAttribute($column);
+
+            if ($this->exists ? $this->isDirty($column) : (filled($current) && (int) $current !== (int) $source->getAttribute($column))) {
+                throw new MeasurementWorkflowException(self::REVISION_CONTEXT_REFUSAL, [
+                    'measurement_id' => $measurement->getKey(),
+                    'asset_id' => $this->getKey(),
+                    'column' => $column,
+                ]);
+            }
+
+            $this->setAttribute($column, $source->getAttribute($column));
+        }
+
+        $lineage = MeasurementPlanLine::query()->whereKey($this->plan_line_id)->value('lineage_key');
+
+        $this->line_claim_key = $measurement->holdsPlanLineClaims() && filled($lineage) ? (string) $lineage : null;
+
+        if ($this->line_claim_key === null) {
+            return;
+        }
+
+        $holder = self::query()
+            ->where('line_claim_key', $this->line_claim_key)
+            ->when($this->exists, fn ($others) => $others->whereKeyNot($this->getKey()))
+            ->value('measurement_id');
+
+        if ($holder !== null && (int) $holder !== (int) $this->measurement_id) {
+            throw new MeasurementWorkflowException(self::REVISION_CONTEXT_REFUSAL, [
+                'measurement_id' => $measurement->getKey(),
+                'holder_measurement_id' => (int) $holder,
+            ]);
+        }
+    }
+
+    /**
+     * O arquivo da revisão que ainda é o mesmo gravado da revisão anterior:
+     * confere-se o conteúdo contra o que a Engenharia aprovou, em vez de
+     * tratá-lo como envio novo.
+     */
+    private function unchangedInheritedSource(): ?self
+    {
+        $sourceId = $this->getAttribute('inherited_from_asset_id');
+
+        if (blank($sourceId)) {
+            return null;
+        }
+
+        $source = self::query()->find($sourceId);
+
+        return $source instanceof self
+            && $source->storage_path === $this->storage_path
+            && $source->resolved_storage_disk === $this->resolved_storage_disk
+                ? $source
+                : null;
+    }
+
+    /**
      * A linha precisa ser da versão que rege o mês dela. Sem nenhuma versão
      * que valeu, o plano nunca entrou em vigor; com outra versão regendo o mês
      * -- a revisão ativada depois que o formulário abriu, a versão anterior
@@ -511,6 +735,7 @@ class MeasurementAsset extends Model
                 'plan_line_id' => $this->plan_line_id,
                 'plan_version_id' => $this->plan_version_id,
                 'line_claim_key' => $this->line_claim_key,
+                'inherited_from_asset_id' => $this->getAttribute('inherited_from_asset_id'),
                 'old_sha256' => $oldHash,
                 'new_sha256' => $event === 'measurement_asset_removed' ? null : $this->sha256,
                 'actor_user_id' => auth()->id(),

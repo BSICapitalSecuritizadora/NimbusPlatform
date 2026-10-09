@@ -128,8 +128,9 @@ class MeasurementForm
                             // A competência decide a versão do plano de cada arquivo:
                             // a medição não nasce, nem fica, sem ela.
                             ->required()
-                            ->disabled(fn (?Model $record): bool => static::hasRegisteredPayment($record))
+                            ->disabled(fn (?Model $record): bool => static::hasRegisteredPayment($record) || static::isRevision($record))
                             ->helperText(fn (?Model $record, string $operation): string => match (true) {
+                                static::isRevision($record) => 'Travada: a competência de uma revisão é a da medição original.',
                                 static::hasRegisteredPayment($record) => 'Travada: esta medição tem pagamento registrado, e o pagamento continua vinculado a esta competência.',
                                 $operation === 'create' => 'Preenchida automaticamente pela medição selecionada no cronograma. É a competência que decide a versão do plano de cada empreendimento.',
                                 default => 'A versão do plano de cada arquivo ficou congelada no envio: a competência só muda junto com a medição prevista de cada arquivo, para outra que essa versão rege.',
@@ -194,7 +195,10 @@ class MeasurementForm
                             // mais (MeasurementAsset::PAID_FILE_REMOVAL_REFUSAL): a
                             // Engenharia dela confere justamente os
                             // empreendimentos destes arquivos.
-                            ->deletable(fn (?Model $record, string $operation): bool => $operation !== 'create' && ! static::hasRegisteredPayment($record))
+                            // Os arquivos de uma revisão são os herdados, um por
+                            // empreendimento (MeasurementAsset::REVISION_ASSET_SET_REFUSAL):
+                            // só o arquivo de cada um pode ser trocado.
+                            ->deletable(fn (?Model $record, string $operation): bool => $operation !== 'create' && ! static::hasRegisteredPayment($record) && ! static::isRevision($record))
                             ->deleteAction(fn (Action $action) => $action->tooltip('Remover empreendimento deste envio'))
                             ->reorderable(false)
                             ->minItems(1)
@@ -233,7 +237,7 @@ class MeasurementForm
                                     // arquivo já enviado só troca por outra competência da
                                     // versão congelada (FROZEN_VERSION_COMPETENCE_REFUSAL):
                                     // as opções são só essas, e a gravação confere de novo.
-                                    ->disabled(fn (?Model $record): bool => static::hasRegisteredPayment($record))
+                                    ->disabled(fn (?Model $record): bool => static::hasRegisteredPayment($record) || static::isRevision($record) || static::isInheritedByRevision($record))
                                     ->afterStateUpdated(function (Get $get, Set $set, ?string $state, string $operation): void {
                                         $date = filled($state)
                                             ? static::visiblePlanLinesQuery()->whereKey($state)->value('measurement_date')
@@ -255,6 +259,8 @@ class MeasurementForm
                                         }
                                     })
                                     ->helperText(fn (?Model $record): string => match (true) {
+                                        static::isRevision($record) => 'Travada: a revisão mantém a medição prevista e a versão do plano da medição original.',
+                                        static::isInheritedByRevision($record) => 'Travada: este arquivo foi herdado por uma revisão desta medição, e a medição prevista dele fica como histórico. O arquivo ainda pode ser trocado.',
                                         static::hasRegisteredPayment($record) => 'Travada: esta medição tem pagamento registrado, e o pagamento continua vinculado a esta linha.',
                                         $record instanceof MeasurementAsset && filled($record->plan_line_id) && $record->planVersion instanceof MeasurementPlanVersion => sprintf(
                                             'A medição foi enviada sob a %s do plano: só as competências regidas por ela aparecem aqui.',
@@ -334,6 +340,34 @@ class MeasurementForm
      * A medição do formulário -- ou a dona do arquivo do item -- já tem
      * pagamento registrado? Na criação não há registro, e a resposta é não.
      */
+    /**
+     * A medição (ou o arquivo dela) é uma revisão -- R1, R2...: competência,
+     * empreendimentos e medição prevista são os da original, congelados.
+     */
+    protected static function isRevision(?Model $record): bool
+    {
+        $measurement = match (true) {
+            $record instanceof Measurement => $record,
+            $record instanceof MeasurementAsset => $record->measurement,
+            default => null,
+        };
+
+        return $measurement instanceof Measurement
+            && $measurement->exists
+            && $measurement->isRevision();
+    }
+
+    /**
+     * O arquivo de uma medição que uma revisão herdou: o contexto dele fica
+     * preso à revisão ({@see MeasurementAsset::INHERITED_SOURCE_REFUSAL}).
+     */
+    protected static function isInheritedByRevision(?Model $record): bool
+    {
+        return $record instanceof MeasurementAsset
+            && $record->exists
+            && MeasurementAsset::query()->where('inherited_from_asset_id', $record->getKey())->exists();
+    }
+
     protected static function hasRegisteredPayment(?Model $record): bool
     {
         $measurement = match (true) {

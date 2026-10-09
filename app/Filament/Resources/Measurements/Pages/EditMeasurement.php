@@ -36,6 +36,11 @@ class EditMeasurement extends EditRecord
 
     private const NO_LONGER_EDITABLE_MESSAGE = 'Esta medição não pode mais ser editada por você. Atualize a página para ver a situação atual.';
 
+    /**
+     * A revisão encerrada -- substituída, recusada ou cancelada -- é histórico.
+     */
+    private const CLOSED_REVISION_MESSAGE = 'Esta revisão da medição está encerrada e é só histórico: ela não pode mais ser editada.';
+
     private const UNAVAILABLE_MESSAGE = 'A medição não está mais disponível para edição. Atualize a página.';
 
     protected static string $resource = MeasurementResource::class;
@@ -98,14 +103,16 @@ class EditMeasurement extends EditRecord
             return;
         }
 
+        $isClosedRevision = $record instanceof Measurement && ! $record->acceptsEdits();
+
         abort_unless(
-            $resource::canView($record) && ($record instanceof Measurement) && $record->hasApprovedEngineering(),
+            $resource::canView($record) && ($record instanceof Measurement) && ($record->hasApprovedEngineering() || $isClosedRevision),
             403,
         );
 
         $this->wasApprovedMeanwhile = true;
 
-        $this->refuse(self::ALREADY_APPROVED_MESSAGE);
+        $this->refuse($record->hasApprovedEngineering() ? self::ALREADY_APPROVED_MESSAGE : self::CLOSED_REVISION_MESSAGE);
 
         $this->redirect($resource::getUrl('view', ['record' => $record]));
     }
