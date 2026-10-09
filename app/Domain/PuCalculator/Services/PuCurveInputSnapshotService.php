@@ -190,7 +190,9 @@ final class PuCurveInputSnapshotService
                 : null;
         }
 
-        if ($type === PuEventType::Amortization) {
+        // A amortização extraordinária (Fase 5) usa o mesmo par tipo/valor da
+        // ordinária; o tratamento dos juros e da redução vai no efeito financeiro.
+        if ($type === PuEventType::Amortization || $type === PuEventType::ExtraordinaryAmortization) {
             $amortizationType = PuAmortizationType::tryFrom((string) $event->amortization_type);
             $canonical['amortization_type'] = (string) $event->amortization_type;
             $canonical['amortization_value'] = in_array($amortizationType, [PuAmortizationType::Percentage, PuAmortizationType::UnitValue], true)

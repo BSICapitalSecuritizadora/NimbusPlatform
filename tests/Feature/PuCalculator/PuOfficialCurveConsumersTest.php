@@ -9,18 +9,22 @@ use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
+use App\Domain\PuCalculator\Enums\PuObligationCalculationState;
+use App\Domain\PuCalculator\Enums\PuObligationComponent;
+use App\Domain\PuCalculator\Enums\PuObligationType;
 use App\Domain\PuCalculator\Services\DecimalRounder;
 use App\Domain\PuCalculator\Services\EmissionPuReader;
 use App\Domain\PuCalculator\Services\IndexRateLookupService;
 use App\Domain\PuCalculator\Services\IndexRateService;
 use App\Domain\PuCalculator\Services\PuCurveExtensionService;
-use App\Domain\PuCalculator\Services\PuPaymentScheduleService;
+use App\Domain\PuCalculator\Services\PuFinancialObligationService;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuHistoriesRelationManager;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Models\Emission;
 use App\Models\EmissionPuDailyCurve;
 use App\Models\EmissionPuEvent;
+use App\Models\EmissionPuObligation;
 use App\Models\IndexRate;
 use App\Models\Payment;
 use App\Models\PuHistory;
@@ -194,112 +198,130 @@ it('takes the next event of the report from the contractual schedule', function 
     expect($report['header']['next_event'])->toBe('08/05/2031');
 });
 
-it('replaces the forecast of every payment the official curve calculated and keeps it as expected', function () {
+it('calculates the expected value of every official obligation without ever writing the informed schedule', function () {
+    // Fase 5: o cronograma informado (planilha/manual) e o esperado oficial são
+    // fatos diferentes. A homologação calcula a obrigação; a linha informada fica
+    // exatamente como estava -- inclusive na data contratual de 08/03.
     $emission = officialCurveEmission();
-    $movedForecast = forecastPayment($emission, '2026-03-08', '999.00');
+    $contractualForecast = forecastPayment($emission, '2026-03-08', '999.00');
     $strayForecast = forecastPayment($emission, '2026-03-05', '50.00');
     $futureForecast = forecastPayment($emission, '2026-04-09', '777.00');
 
     homologateOfficialCurve($emission);
 
-    $payment = $movedForecast->fresh();
+    $obligation = EmissionPuObligation::query()->whereBelongsTo($emission)->sole();
     $row = officialCurveRow($emission, '2026-03-09');
-    $activity = Activity::query()->where('description', 'pu_payments_reconciled')->sole();
+    $activity = Activity::query()->where('description', 'pu_obligations_refreshed')->sole();
 
-    expect($payment->payment_date->toDateString())->toBe('2026-03-09')
-        ->and($payment->isCalculatedByOfficialCurve())->toBeTrue()
-        ->and((string) $payment->interest_value)->toBe(app(DecimalRounder::class)->round((string) $row->interest_payment_value, 2))
-        ->and(bccomp((string) $payment->interest_value, '0', 2))->toBe(1)
-        ->and((string) $payment->expected_interest_value)->toBe('999.00')
-        ->and($payment->pu_curve_version_id)->toBe($emission->currentPuCurveVersion()->id)
-        ->and($strayForecast->fresh()->value_source)->toBeNull()
+    expect($obligation->obligation_type)->toBe(PuObligationType::ScheduledPayment)
+        ->and($obligation->contractual_date->toDateString())->toBe('2026-03-08')
+        ->and($obligation->due_date->toDateString())->toBe('2026-03-09')
+        ->and($obligation->calculation_state)->toBe(PuObligationCalculationState::Calculated)
+        ->and($obligation->payment_id)->toBe($contractualForecast->id)
+        ->and($obligation->currentCalculation->componentAmount(PuObligationComponent::OrdinaryInterest))
+        ->toBe(app(DecimalRounder::class)->round((string) $row->interest_payment_value, 2))
+        ->and(bccomp((string) $obligation->currentCalculation->total_amount, '0', 2))->toBe(1)
+        ->and($obligation->currentCalculation->curve_version_id)->toBe($emission->currentPuCurveVersion()->id)
+        ->and($contractualForecast->fresh()->payment_date->toDateString())->toBe('2026-03-08')
+        ->and((string) $contractualForecast->fresh()->interest_value)->toBe('999.00')
         ->and((string) $strayForecast->fresh()->interest_value)->toBe('50.00')
         ->and((string) $futureForecast->fresh()->interest_value)->toBe('777.00')
         ->and(Payment::query()->whereBelongsTo($emission)->count())->toBe(3)
-        ->and($activity->properties['moved'])->toBe(1)
-        ->and($activity->properties['unmatched_forecast_dates'])->toBe(['2026-03-05']);
+        ->and($activity->properties['unmatched_informed_dates'])->toBe(['2026-03-05']);
 
     app(InvalidatePuCurve::class)->handle($emission->fresh(), 'v1', User::factory()->create()->id);
+    $obligation->refresh();
 
-    expect($payment->fresh()->value_source)->toBeNull()
-        ->and((string) $payment->fresh()->interest_value)->toBe('999.00')
-        ->and($payment->fresh()->expected_interest_value)->toBeNull();
+    // Sem curva oficial: a obrigação continua no contrato, sem valor esperado; o
+    // cálculo da v1 fica, substituído, para explicar o passado.
+    expect($obligation->isActive())->toBeTrue()
+        ->and($obligation->current_calculation_id)->toBeNull()
+        ->and($obligation->calculation_state)->toBe(PuObligationCalculationState::NoOfficialCalculation)
+        ->and($obligation->calculations()->sole()->supersession_reason)->toBe('official_version_invalidated')
+        ->and((string) $contractualForecast->fresh()->interest_value)->toBe('999.00');
 });
 
-it('creates the calculated payment when there was no forecast and does nothing on a second run', function () {
+it('creates each obligation once and writes nothing on a second refresh', function () {
     $emission = officialCurveEmission();
     homologateOfficialCurve($emission);
 
-    $payment = Payment::query()->whereBelongsTo($emission)->sole();
-    $again = app(PuPaymentScheduleService::class)->reconcile($emission->fresh());
+    $obligation = EmissionPuObligation::query()->whereBelongsTo($emission)->sole();
+    $again = app(PuFinancialObligationService::class)->refresh($emission->fresh(), 'test');
 
-    expect($payment->payment_date->toDateString())->toBe('2026-03-09')
-        ->and($payment->isCalculatedByOfficialCurve())->toBeTrue()
-        ->and($payment->expectedTotal())->toBeNull()
-        ->and([$again['updated'], $again['created'], $again['moved'], $again['reverted']])->toBe([0, 0, 0, 0])
-        ->and(Activity::query()->where('description', 'pu_payments_reconciled')->count())->toBe(1);
+    expect($obligation->due_date->toDateString())->toBe('2026-03-09')
+        ->and($again->changedAnything())->toBeFalse()
+        ->and(EmissionPuObligation::query()->whereBelongsTo($emission)->count())->toBe(1)
+        ->and($obligation->calculations()->count())->toBe(1)
+        ->and(Payment::query()->whereBelongsTo($emission)->count())->toBe(0)
+        ->and(Activity::query()->where('description', 'pu_obligations_refreshed')->count())->toBe(1);
 });
 
-it('lets the spreadsheet update only the expected value of a calculated payment', function () {
+it('lets the spreadsheet change only the informed schedule, never the official calculation', function () {
     Storage::fake('local');
     $emission = officialCurveEmission();
     homologateOfficialCurve($emission);
-    $payment = Payment::query()->whereBelongsTo($emission)->sole();
-    $calculated = (string) $payment->interest_value;
+    $calculation = EmissionPuObligation::query()->whereBelongsTo($emission)->sole()->currentCalculation;
     Storage::disk('local')->put('imports/official-curve.csv', "Data,Juros\n08/03/2026,\"1234,56\"\n");
 
     app(ImportPaymentsFromSpreadsheet::class)->handle(Storage::disk('local')->path('imports/official-curve.csv'), $emission->fresh());
+    $obligation = EmissionPuObligation::query()->whereBelongsTo($emission)->sole();
 
-    expect(Payment::query()->whereBelongsTo($emission)->count())->toBe(1)
-        ->and((string) $payment->fresh()->interest_value)->toBe($calculated)
-        ->and((string) $payment->fresh()->expected_interest_value)->toBe('1234.56');
+    expect((string) Payment::query()->whereBelongsTo($emission)->sole()->interest_value)->toBe('1234.56')
+        ->and($obligation->current_calculation_id)->toBe($calculation->id)
+        ->and($obligation->currentCalculation->componentAmount(PuObligationComponent::OrdinaryInterest))
+        ->toBe($calculation->componentAmount(PuObligationComponent::OrdinaryInterest));
 });
 
-it('brings the new payments of a homologated curve in with the daily extension', function () {
+it('makes a scheduled obligation calculable with the daily extension, never before', function () {
     // Fase 4: o cupom de 20/03 só chega pela extensão porque a versão homologada já
-    // o aprovou no retrato de insumos. Cadastrado DEPOIS da homologação, ele não
-    // entraria na versão (ver PuContractualLifecycleTest).
+    // o aprovou no retrato de insumos. Fase 5: até lá a obrigação existe, mas
+    // aguarda o índice -- nada é projetado.
     $emission = officialCurveEmission();
     officialCurveInterestEvent($emission, '2026-03-20', '2026-03-20');
     app(GeneratePuDailyCurve::class)->handle($emission->fresh());
     homologateOfficialCurve($emission, 'v2');
-    publishOfficialCurveCdi('2026-03-16', '2026-03-25');
+    $coupon = fn (): EmissionPuObligation => EmissionPuObligation::query()->whereBelongsTo($emission)->whereDate('due_date', '2026-03-20')->sole();
 
+    expect($coupon()->calculation_state)->toBe(PuObligationCalculationState::AwaitingIndex)
+        ->and($coupon()->current_calculation_id)->toBeNull();
+
+    publishOfficialCurveCdi('2026-03-16', '2026-03-25');
     $result = app(PuCurveExtensionService::class)->extend($emission->fresh());
 
     expect($result->action)->toBe(PuCurveExtensionService::ACTION_EXTENDED)
-        ->and(Payment::query()->whereBelongsTo($emission)->whereDate('payment_date', '2026-03-20')->sole()->isCalculatedByOfficialCurve())
-        ->toBeTrue();
+        ->and($coupon()->calculation_state)->toBe(PuObligationCalculationState::Calculated)
+        ->and(bccomp((string) $coupon()->currentCalculation->total_amount, '0', 2))->toBe(1);
 });
 
 it('reconciles emissions with the old legacy projection flag through the official writer only', function () {
     $emission = officialCurveEmission(legacyProjection: true);
 
-    $beforeHomologation = app(PuPaymentScheduleService::class)->reconcile($emission);
+    $beforeHomologation = app(PuFinancialObligationService::class)->refresh($emission, 'test');
 
-    expect($beforeHomologation['action'])->toBe(PuPaymentScheduleService::ACTION_RECONCILED)
-        ->and($beforeHomologation['version'])->toBeNull()
+    expect($beforeHomologation->calculationVersion)->toBeNull()
+        ->and(EmissionPuObligation::query()->whereBelongsTo($emission)->count())->toBe(0)
         ->and(Payment::query()->whereBelongsTo($emission)->count())->toBe(0)
         ->and(PuHistory::query()->whereBelongsTo($emission)->count())->toBe(0);
 
     homologateOfficialCurve($emission);
 
-    expect(Payment::query()->whereBelongsTo($emission)->sole()->isCalculatedByOfficialCurve())->toBeTrue()
+    expect(EmissionPuObligation::query()->whereBelongsTo($emission)->sole()->calculation_state)->toBe(PuObligationCalculationState::Calculated)
+        ->and(Payment::query()->whereBelongsTo($emission)->count())->toBe(0)
         ->and(PuHistory::query()->whereBelongsTo($emission)->count())->toBe(0);
 });
 
-it('shows on the emission tabs that the official curve feeds the PU and the payments', function () {
+it('shows on the emission tabs that the official curve feeds the PU and that the schedule tab is the informed one', function () {
     $this->seed(RolesAndPermissionsSeeder::class);
     $emission = officialCurveEmission();
     homologateOfficialCurve($emission);
-    $payment = Payment::query()->whereBelongsTo($emission)->sole();
+    $payment = forecastPayment($emission, '2026-03-08', '999.00');
     $this->actingAs(makeAdminUser());
 
     Livewire::test(PuHistoriesRelationManager::class, ['ownerRecord' => $emission->fresh(), 'pageClass' => EditEmission::class])
         ->assertSee('Esta emissão tem curva oficial homologada (v1)');
 
     Livewire::test(PaymentsRelationManager::class, ['ownerRecord' => $emission->fresh(), 'pageClass' => EditEmission::class])
-        ->assertSee('Curva oficial')
+        ->assertSee('Previsto')
         ->assertActionVisible(TestAction::make('reconcileWithOfficialCurve')->table())
-        ->assertActionHidden(TestAction::make('edit')->table($payment));
+        ->assertActionVisible(TestAction::make('edit')->table($payment));
 });

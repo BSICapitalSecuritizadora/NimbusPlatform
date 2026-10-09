@@ -6,7 +6,7 @@ use App\Domain\PuCalculator\Enums\PuCurveStatus;
 use App\Domain\PuCalculator\Exceptions\PuCurveGovernanceException;
 use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Domain\PuCalculator\Services\PuCurveVersionService;
-use App\Domain\PuCalculator\Services\PuPaymentScheduleService;
+use App\Domain\PuCalculator\Services\PuFinancialObligationService;
 use App\Enums\PuSourceChange;
 use App\Events\PuCalculator\EmissionPuSourceChanged;
 use App\Models\Emission;
@@ -14,8 +14,8 @@ use App\Models\EmissionPuCurveVersion;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Invalidação da versão NOMEADA, numa única transação com a conciliação dos
- * pagamentos.
+ * Invalidação da versão NOMEADA, numa única transação com a atualização das
+ * obrigações financeiras.
  *
  * A versão vira `obsolete` (motivo `invalidated`) e fica preservada para
  * auditoria. Uma versão em `processing` é recusada: a geração ainda é dona dela.
@@ -28,7 +28,7 @@ class InvalidatePuCurve
     public function __construct(
         private readonly PuCurveVersionService $versionService,
         private readonly PuAuditLogService $auditLogService,
-        private readonly PuPaymentScheduleService $paymentSchedule,
+        private readonly PuFinancialObligationService $obligations,
     ) {}
 
     /**
@@ -66,9 +66,10 @@ class InvalidatePuCurve
                 $reason,
             );
 
-            // Se a versão invalidada era a oficial, os pagamentos calculados por ela
-            // voltam ao previsto (ou passam para a homologada anterior).
-            $this->paymentSchedule->reconcile($lockedEmission, $requestedByUserId);
+            // Se a versão invalidada era a oficial, o esperado das obrigações passa
+            // para a homologada anterior (ou fica sem curva oficial). A liquidação
+            // registrada não muda.
+            $this->obligations->refresh($lockedEmission, 'curve_invalidated', $requestedByUserId);
 
             // E o saldo devedor das garantias também volta a outra fonte.
             EmissionPuSourceChanged::dispatch(

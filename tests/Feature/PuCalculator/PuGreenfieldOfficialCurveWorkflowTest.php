@@ -7,6 +7,7 @@ use App\Domain\PuCalculator\Enums\PuCurveStatus;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
+use App\Domain\PuCalculator\Enums\PuObligationCalculationState;
 use App\Domain\PuCalculator\Enums\PuOfficialCurveFreshness;
 use App\Domain\PuCalculator\Services\BusinessDayCalendarService;
 use App\Domain\PuCalculator\Services\EmissionPuReader;
@@ -17,6 +18,7 @@ use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuEvent;
+use App\Models\EmissionPuObligation;
 use App\Models\IndexRate;
 use App\Models\Payment;
 use App\Models\User;
@@ -509,7 +511,7 @@ it('governs a contractual change after the first homologation from candidate to 
         ->and($eventRow->calculation_memory['event_types'])->toBe(['interest_payment', 'amortization'])
         ->and((string) $eventRow->amortization_ratio)->toBe('0.1000000000000000')
         ->and(p3gLastDate($v2))->toBe('2026-09-02')
-        ->and(Payment::query()->whereBelongsTo($emission)->whereDate('payment_date', '2026-09-01')->sole()->isCalculatedByOfficialCurve())->toBeTrue()
+        ->and(EmissionPuObligation::query()->where('emission_id', $emission->id)->whereDate('due_date', '2026-09-01')->sole()->calculation_state)->toBe(PuObligationCalculationState::Calculated)
         ->and($reader->officialStatus($emission->fresh())->freshness)->toBe(PuOfficialCurveFreshness::Current);
 
     // 13-14. Integralização retroativa: reprocessamento exigido, nada anexado.

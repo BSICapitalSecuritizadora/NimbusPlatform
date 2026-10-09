@@ -115,7 +115,7 @@ final class PuCurveExtensionService
         private readonly PuPersistedCurveChecksumService $checksums,
         private readonly PuOperationalProfileGuard $operationalProfiles,
         private readonly PuAuditLogService $auditLog,
-        private readonly PuPaymentScheduleService $paymentSchedule,
+        private readonly PuFinancialObligationService $obligations,
         private readonly PuCurveInputSnapshotService $snapshots,
         private readonly PuCurveChangeImpactClassifier $classifier,
     ) {}
@@ -285,12 +285,19 @@ final class PuCurveExtensionService
         }
 
         if ($version->extension_diverged_at !== null || $version->extension_failed_at !== null) {
+            $wasDiverged = $version->extension_diverged_at !== null;
             $version->forceFill([
                 'extension_diverged_at' => null,
                 'extension_divergence' => null,
                 'extension_failed_at' => null,
                 'extension_failure' => null,
             ])->save();
+
+            // O passado voltou a ser reproduzível: o esperado das obrigações volta
+            // a ser confiável.
+            if ($wasDiverged && $version->status->isOfficial()) {
+                $this->obligations->refreshAfterCommit((int) $version->emission_id, 'official_curve_reproducible');
+            }
         }
 
         $this->syncContractualChange($version, $assessment);
@@ -370,10 +377,10 @@ final class PuCurveExtensionService
                 'last_extended_at' => $timestamp,
             ])->save();
 
-            // Dias novos da curva oficial podem trazer pagamentos: o Cronograma de
-            // Pagamentos acompanha na mesma rodada.
+            // Dias novos da curva oficial podem tornar obrigações calculáveis: o
+            // esperado delas entra na mesma rodada (a liquidação não muda).
             if ($locked->status->isOfficial()) {
-                $this->paymentSchedule->reconcile($lockedEmission);
+                $this->obligations->refresh($lockedEmission, 'curve_extended');
             }
 
             return [$locked, $tail];
@@ -454,6 +461,9 @@ final class PuCurveExtensionService
             ],
         ])->save();
         $this->auditLog->logCurveExtensionDiverged($version, $earliest, $assessment->summary(), true);
+        // O esperado que a oficial calculou a partir dessa data deixou de ser
+        // confiável: a conciliação das obrigações fica indeterminada até nova versão.
+        $this->obligations->refreshAfterCommit((int) $version->emission_id, 'official_curve_diverged');
 
         return new PuCurveExtensionResult(
             action: self::ACTION_DIVERGED_GOVERNED,
@@ -668,6 +678,10 @@ final class PuCurveExtensionService
         }
 
         $this->auditLog->logCurveExtensionDiverged($version, $firstDivergentDate, $reason, $governed);
+
+        if ($governed) {
+            $this->obligations->refreshAfterCommit((int) $version->emission_id, 'official_curve_diverged');
+        }
 
         return new PuCurveExtensionResult(
             action: $governed ? self::ACTION_DIVERGED_GOVERNED : self::ACTION_DIVERGED,

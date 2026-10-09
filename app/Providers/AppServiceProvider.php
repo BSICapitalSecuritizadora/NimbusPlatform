@@ -12,6 +12,7 @@ use App\Domain\PuCalculator\Services\BusinessDayCalendarService;
 use App\Domain\PuCalculator\Services\DecimalRounder;
 use App\Domain\PuCalculator\Services\IndexRateLookupService;
 use App\Domain\PuCalculator\Services\IndexRateService;
+use App\Domain\PuCalculator\Services\PuObligationRefreshScheduler;
 use App\Domain\PuCalculator\Services\RoundingService;
 use App\Filament\Support\AuthorizesThroughModelPolicy;
 use App\Listeners\LogNotificationListener;
@@ -105,6 +106,12 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(RealizedIndexRateProvider::class, IndexRateService::class);
 
         $this->app->scoped(LogBatch::class);
+
+        /**
+         * Scoped: a atualização pendente das obrigações do PU vale para uma
+         * requisição ou um job, nunca para o seguinte.
+         */
+        $this->app->scoped(PuObligationRefreshScheduler::class);
 
         /**
          * Scoped pelo mesmo motivo do LogBatch: o memo da conferência vale para

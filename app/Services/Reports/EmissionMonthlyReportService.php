@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Reports;
 
 use App\Domain\PuCalculator\DTOs\PuReading;
+use App\Domain\PuCalculator\Enums\PuObligationCalculationState;
+use App\Domain\PuCalculator\Enums\PuObligationComponent;
+use App\Domain\PuCalculator\Enums\PuObligationType;
 use App\Domain\PuCalculator\Services\EmissionPuReader;
+use App\Domain\PuCalculator\Services\PuObligationReader;
 use App\DTOs\ConstructionProgressData;
 use App\DTOs\Guarantees\GuaranteePositionData;
 use App\DTOs\SalesBoards\ConstructionSalesPosition;
@@ -18,6 +22,7 @@ use App\Models\Contract;
 use App\Models\Emission;
 use App\Models\EmissionMonthlyReportNote;
 use App\Models\EmissionPuEvent;
+use App\Models\EmissionPuObligation;
 use App\Models\Expense;
 use App\Models\ExpenseHistory;
 use App\Models\GuaranteeMonthlyPosition;
@@ -35,6 +40,7 @@ use App\Support\BusinessTime;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -75,6 +81,7 @@ class EmissionMonthlyReportService
         private readonly SalesBoardPositionReader $salesBoardPositionReader,
         private readonly EmissionPuReader $puReader,
         private readonly SalesBoardPublicationGapClassifier $publicationGapClassifier,
+        private readonly PuObligationReader $obligationReader,
     ) {}
 
     /**
@@ -295,7 +302,6 @@ class EmissionMonthlyReportService
             [...$unitsHistoryCompetences, $monthStart],
         );
         $negotiationsData = $this->buildNegotiations($emission, $monthStart, $monthEnd);
-        $payment = $this->lastPaymentUntil($emission, $monthEnd);
         $upcomingEvents = $this->upcomingEventsFrom($emission, $monthStart);
         $constructions = $emission->constructions()->orderBy('development_name')->get();
 
@@ -307,7 +313,9 @@ class EmissionMonthlyReportService
             ],
             'header' => $this->buildHeader($emission, $monthStart, $monthEnd),
             'characteristics' => $this->buildCharacteristics($emission),
-            'payment' => $this->buildPayment($payment),
+            'payment' => $this->obligationReader->isGoverned($emission)
+                ? $this->buildObligationPayment($this->obligationReader->lastDueObligations($emission, $monthEnd))
+                : $this->buildPayment($this->lastPaymentUntil($emission, $monthEnd)),
             'calendar' => $this->buildCalendar($upcomingEvents),
             'debt_balance' => $this->buildDebtBalance($emission, $monthEnd),
             'guarantees' => $this->buildGuarantees($emission, $monthStart),
@@ -476,6 +484,65 @@ class EmissionMonthlyReportService
             ['label' => 'Fundo de Despesas', 'value' => $this->yesNo($emission->expense_fund)],
             ['label' => 'Fundo de Reserva', 'value' => $this->yesNo($emission->reserve_fund)],
             ['label' => 'Fundo de Obras', 'value' => $this->yesNo($emission->works_fund)],
+        ];
+    }
+
+    /**
+     * Pagamento de emissão governada pela curva oficial (Fase 5): o último
+     * pagamento previsto até o fim do mês, com o valor ESPERADO oficial por
+     * componente, o valor LIQUIDADO, a data da liquidação, a divergência
+     * (liquidado − esperado) e a situação da conciliação -- fatos diferentes, em
+     * linhas diferentes. Esperado indisponível aparece como indisponível, nunca
+     * como zero; não liquidado aparece como não liquidado.
+     *
+     * @param  EloquentCollection<int, EmissionPuObligation>  $obligations
+     * @return array<string, mixed>
+     */
+    private function buildObligationPayment(EloquentCollection $obligations): array
+    {
+        if ($obligations->isEmpty()) {
+            return ['has_data' => false, 'empty_message' => self::NO_DATA];
+        }
+
+        $several = $obligations->count() > 1;
+        $rows = [];
+
+        foreach ($obligations as $obligation) {
+            $prefix = $several ? $obligation->obligation_type->label().' — ' : '';
+            $calculation = $obligation->calculation_state === PuObligationCalculationState::Calculated
+                && ($obligation->currentCalculation?->isComplete() ?? false)
+                ? $obligation->currentCalculation
+                : null;
+            $component = fn (array $components): string => $calculation !== null
+                ? $this->money((float) $this->obligationReader->sum($calculation, $components))
+                : self::NOT_AVAILABLE;
+            $settlement = $obligation->activeSettlement;
+            $reconciliation = $obligation->latestReconciliation;
+
+            $rows[] = ['label' => $prefix.'Prêmio', 'value' => $component([PuObligationComponent::Premium])];
+            $rows[] = ['label' => $prefix.'Juros', 'value' => $component([PuObligationComponent::OrdinaryInterest])];
+            $rows[] = ['label' => $prefix.'Amortização', 'value' => $component([PuObligationComponent::OrdinaryAmortization])];
+            $rows[] = ['label' => $prefix.'Amortização Extraordinária', 'value' => $component([PuObligationComponent::ExtraordinaryAmortization])];
+
+            if ($obligation->obligation_type === PuObligationType::EarlyMaturity) {
+                $rows[] = ['label' => $prefix.'Principal acelerado (vencimento antecipado)', 'value' => $component([PuObligationComponent::AcceleratedPrincipal])];
+            }
+
+            $rows[] = ['label' => $prefix.'Total previsto (curva oficial)', 'value' => $calculation !== null
+                ? $this->money((float) $calculation->total_amount)
+                : self::NOT_AVAILABLE.' — '.mb_strtolower($obligation->calculation_state->label())];
+            $rows[] = ['label' => $prefix.'Valor liquidado', 'value' => $settlement !== null ? $this->money((float) $settlement->amount) : 'Não liquidado'];
+            $rows[] = ['label' => $prefix.'Data da liquidação', 'value' => $settlement !== null ? $this->date($settlement->settlement_date) : '—'];
+            $rows[] = ['label' => $prefix.'Divergência (liquidado − previsto)', 'value' => $reconciliation?->difference !== null
+                ? $this->money((float) $reconciliation->difference)
+                : '—'];
+            $rows[] = ['label' => $prefix.'Conciliação', 'value' => $obligation->reconciliation_status->label()];
+        }
+
+        return [
+            'has_data' => true,
+            'payment_date' => $this->date($obligations->first()->due_date),
+            'rows' => $rows,
         ];
     }
 

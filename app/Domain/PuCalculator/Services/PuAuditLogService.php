@@ -10,6 +10,7 @@ use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
 use App\Domain\PuCalculator\DTOs\PuCurvePrerequisiteCheckResult;
 use App\Domain\PuCalculator\DTOs\PuNumericHomologationComparisonResult;
 use App\Domain\PuCalculator\DTOs\PuNumericHomologationValidationResult;
+use App\Domain\PuCalculator\DTOs\PuObligationRefreshResult;
 use App\Domain\PuCalculator\DTOs\PuValidationFieldDifference;
 use App\Domain\PuCalculator\DTOs\PuValidationReport;
 use App\Domain\PuCalculator\DTOs\PuValidationRowResult;
@@ -23,7 +24,11 @@ use App\Models\EmissionPuCurvePromotion;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuExternalBenchmark;
 use App\Models\EmissionPuExternalValidation;
+use App\Models\EmissionPuObligation;
+use App\Models\EmissionPuObligationCalculation;
 use App\Models\EmissionPuParameter;
+use App\Models\EmissionPuSettlement;
+use App\Models\EmissionPuSettlementConflict;
 use App\Models\IndexRateCorrection;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -695,31 +700,177 @@ class PuAuditLogService
     }
 
     /**
-     * @param  array{updated: int, created: int, moved: int, reverted: int, restored_components?: int, settled_kept?: int, settled_divergent_dates?: list<string>}  $counts
-     * @param  list<string>  $unmatchedDates
+     * Atualização das obrigações pela curva oficial (Fase 5): contagens, datas do
+     * cronograma informado sem obrigação e obrigações liquidadas cujo esperado mudou.
      */
-    public function logPaymentsReconciled(
-        Emission $emission,
-        ?string $calculationVersion,
-        array $counts,
-        array $unmatchedDates,
-        ?int $requestedByUserId,
-    ): void {
+    public function logObligationsRefreshed(Emission $emission, PuObligationRefreshResult $result, string $trigger, ?int $requestedByUserId): void
+    {
         $logger = activity(self::LOG_NAME)
             ->performedOn($emission)
             ->withProperties([
                 'engine_version' => self::ENGINE_VERSION,
-                'action' => 'payments_reconciled',
-                'calculation_version' => $calculationVersion,
-                ...$counts,
-                'unmatched_forecast_dates' => $unmatchedDates,
+                'action' => 'obligations_refreshed',
+                'trigger' => $trigger,
+                'calculation_version' => $result->calculationVersion,
+                ...$result->counts,
+                'unmatched_informed_dates' => $result->unmatchedInformedDates,
+                'settled_obligations_with_changed_calculation' => $result->settledWithChangedCalculation,
             ]);
 
         if (($causer = $this->causer($requestedByUserId)) !== null) {
             $logger->causedBy($causer);
         }
 
-        $logger->event('payments_reconciled')->log('pu_payments_reconciled');
+        $logger->event('obligations_refreshed')->log('pu_obligations_refreshed');
+    }
+
+    /**
+     * O valor esperado oficial de uma obrigação JÁ liquidada mudou (nova versão
+     * homologada, invalidação, cronograma). A liquidação continua a mesma.
+     */
+    public function logSettledObligationCalculationChanged(
+        EmissionPuObligation $obligation,
+        EmissionPuSettlement $settlement,
+        ?EmissionPuObligationCalculation $before,
+        ?EmissionPuObligationCalculation $after,
+    ): void {
+        activity(self::LOG_NAME)
+            ->performedOn($obligation)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'emission_id' => $obligation->emission_id,
+                'obligation' => $obligation->key(),
+                'settlement_id' => $settlement->id,
+                'settled_amount' => (string) $settlement->amount,
+                'previous_calculation_id' => $before?->id,
+                'previous_calculation_version' => $before?->calculation_version,
+                'previous_expected_total' => $before?->total_amount !== null ? (string) $before->total_amount : null,
+                'current_calculation_id' => $after?->id,
+                'current_calculation_version' => $after?->calculation_version,
+                'current_expected_total' => $after?->total_amount !== null ? (string) $after->total_amount : null,
+            ])
+            ->event('settled_obligation_calculation_changed')
+            ->log('pu_settled_obligation_calculation_changed');
+    }
+
+    public function logSettlementRecorded(EmissionPuSettlement $settlement): void
+    {
+        $this->settlementActivity($settlement->obligation, $settlement->recorded_by, 'settlement_recorded', [
+            ...$this->settlementFacts($settlement),
+        ]);
+    }
+
+    public function logSettlementCorrected(EmissionPuSettlement $previous, EmissionPuSettlement $correction): void
+    {
+        $this->settlementActivity($correction->obligation, $correction->recorded_by, 'settlement_corrected', [
+            'previous' => $this->settlementFacts($previous),
+            'correction' => $this->settlementFacts($correction),
+            'reason' => $correction->reason,
+        ]);
+    }
+
+    public function logSettlementReversed(EmissionPuSettlement $previous, EmissionPuSettlement $reversal): void
+    {
+        $this->settlementActivity($reversal->obligation, $reversal->recorded_by, 'settlement_reversed', [
+            'reversed' => $this->settlementFacts($previous),
+            'reversal_id' => $reversal->id,
+            'reason' => $reversal->reason,
+        ]);
+    }
+
+    public function logSettlementConflictDetected(EmissionPuSettlementConflict $conflict): void
+    {
+        $this->settlementActivity($conflict->obligation, $conflict->detected_by, 'settlement_conflict_detected', [
+            'conflict_id' => $conflict->id,
+            'kind' => $conflict->kind->value,
+            'existing_settlement_id' => $conflict->existing_settlement_id,
+            'source' => $conflict->source->value,
+            'external_reference' => $conflict->external_reference,
+            'incoming' => $conflict->incoming_payload,
+            'detected_via' => $conflict->detected_via,
+        ]);
+    }
+
+    public function logSettlementConflictResolved(EmissionPuSettlementConflict $conflict): void
+    {
+        $this->settlementActivity($conflict->obligation, $conflict->resolved_by, 'settlement_conflict_resolved', [
+            'conflict_id' => $conflict->id,
+            'status' => $conflict->status->value,
+            'resolution_settlement_id' => $conflict->resolution_settlement_id,
+            'reason' => $conflict->resolution_reason,
+        ]);
+    }
+
+    /**
+     * Fato de liquidação recusado antes de gravar (obrigação inexistente, dados
+     * inválidos, liquidação não vigente): fica a tentativa, com o que chegou.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function logSettlementRejected(?Emission $emission, string $reason, array $payload, string $via, ?int $requestedByUserId): void
+    {
+        $logger = activity(self::LOG_NAME)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'reason' => $reason,
+                'payload' => $payload,
+                'via' => $via,
+            ]);
+
+        if ($emission instanceof Emission) {
+            $logger->performedOn($emission);
+        }
+
+        if (($causer = $this->causer($requestedByUserId)) !== null) {
+            $logger->causedBy($causer);
+        }
+
+        $logger->event('settlement_rejected')->log('pu_settlement_rejected');
+    }
+
+    /**
+     * @param  array<string, mixed>  $properties
+     */
+    private function settlementActivity(?EmissionPuObligation $obligation, ?int $causerId, string $event, array $properties): void
+    {
+        $logger = activity(self::LOG_NAME)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'emission_id' => $obligation?->emission_id,
+                'obligation' => $obligation?->key(),
+                ...$properties,
+            ]);
+
+        if ($obligation instanceof EmissionPuObligation) {
+            $logger->performedOn($obligation);
+        }
+
+        if (($causer = $this->causer($causerId)) !== null) {
+            $logger->causedBy($causer);
+        }
+
+        $logger->event($event)->log('pu_'.$event);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function settlementFacts(EmissionPuSettlement $settlement): array
+    {
+        return [
+            'settlement_id' => $settlement->id,
+            'entry_type' => $settlement->entry_type->value,
+            'status' => $settlement->status->value,
+            'settlement_date' => $settlement->settlement_date?->toDateString(),
+            'amount' => $settlement->amount !== null ? (string) $settlement->amount : null,
+            'currency' => $settlement->currency,
+            'components' => $settlement->components,
+            'source' => $settlement->source->value,
+            'external_reference' => $settlement->external_reference,
+            'expected_calculation_id' => $settlement->expected_calculation_id,
+            'recorded_via' => $settlement->recorded_via,
+            'predecessor_id' => $settlement->predecessor_id,
+        ];
     }
 
     public function logCurveExtended(

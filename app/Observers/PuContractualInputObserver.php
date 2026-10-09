@@ -7,6 +7,7 @@ use App\Domain\PuCalculator\Enums\PuEventStatus;
 use App\Domain\PuCalculator\Exceptions\PuCurveInputsException;
 use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Domain\PuCalculator\Services\PuCurveChangeImpactClassifier;
+use App\Domain\PuCalculator\Services\PuFinancialObligationService;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuEvent;
@@ -24,6 +25,10 @@ use Illuminate\Database\Eloquent\Model;
  * o impacto da mudança em cada versão viva da curva (a oficial e a de trabalho),
  * decidido pelo classificador central. Nada aqui muda a curva: é a extensão, a
  * homologação e a atualidade que aplicam a decisão.
+ *
+ * Fase 5: depois do commit, as obrigações financeiras da emissão são refeitas --
+ * uma mudança que alcança o trecho já calculado da oficial deixa o esperado em
+ * dúvida (reprocessamento), e a conciliação acompanha.
  */
 class PuContractualInputObserver
 {
@@ -37,6 +42,7 @@ class PuContractualInputObserver
     public function __construct(
         private readonly PuCurveChangeImpactClassifier $classifier,
         private readonly PuAuditLogService $auditLog,
+        private readonly PuFinancialObligationService $obligations,
     ) {}
 
     public function saved(Model $model): void
@@ -115,6 +121,8 @@ class PuContractualInputObserver
             affectedVersions: $this->affectedVersions($emission),
             requestedByUserId: auth()->id() !== null ? (int) auth()->id() : null,
         );
+
+        $this->obligations->refreshAfterCommit($emissionId, 'contractual_input_changed');
     }
 
     /**

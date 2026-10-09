@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\Enums;
 
+use App\Domain\PuCalculator\Services\PuFinancialEffectSupport;
+
 /**
  * Catálogo de eventos contratuais de PU.
  *
@@ -11,13 +13,16 @@ namespace App\Domain\PuCalculator\Enums;
  * caso diz a sua classe de efeito, se tem vigência (início e fim), em que ordem é
  * aplicado numa mesma data e quais engines sabem calculá-lo.
  *
- * Hoje a engine calcula três efeitos: pagamento de juros, amortização (ordinária ou
- * extraordinária, pelo tipo e valor da amortização) e alteração de spread no início
- * de um período de capitalização (só CDI). Os demais casos existem para que o ciclo
- * de vida -- retrato, fingerprint, classificação de impacto, cancelamento -- já os
- * represente sem ambiguidade; o cálculo financeiro de cada um é da Fase 5. Um evento
- * ativo que a engine não sabe calcular BLOQUEIA a geração, com o motivo: nunca é
- * ignorado em silêncio.
+ * Efeitos que a engine calcula: pagamento de juros, amortização ORDINÁRIA (pelo tipo
+ * e valor da amortização), alteração de spread no início de um período de
+ * capitalização (só CDI) e, desde a Fase 5, amortização EXTRAORDINÁRIA e vencimento
+ * antecipado com efeito financeiro declarado (só CDI), além do waiver declarado sem
+ * efeito no PU. Amortização extraordinária é tipo próprio: nunca é inferida de uma
+ * amortização ordinária grande. Os demais casos existem para que o ciclo de vida --
+ * retrato, fingerprint, classificação de impacto, cancelamento -- já os represente
+ * sem ambiguidade. Um evento ativo cujo efeito não é suportado BLOQUEIA a geração,
+ * com o motivo: nunca é ignorado em silêncio nem vira zero
+ * ({@see PuFinancialEffectSupport}).
  *
  * Integralização não é evento desta tabela: tem modelo próprio
  * (`IntegralizationHistory`) e entra no retrato da curva como linha do tempo de
@@ -28,6 +33,7 @@ enum PuEventType: string
 {
     case InterestPayment = 'interest_payment';
     case Amortization = 'amortization';
+    case ExtraordinaryAmortization = 'extraordinary_amortization';
     case SpreadAmendment = 'spread_amendment';
     case ExtraordinaryInterest = 'extraordinary_interest';
     case Premium = 'premium';
@@ -50,6 +56,7 @@ enum PuEventType: string
         return match ($this) {
             self::InterestPayment => 'Pagamento de juros',
             self::Amortization => 'Amortização',
+            self::ExtraordinaryAmortization => 'Amortização extraordinária',
             self::SpreadAmendment => 'Alteração de spread',
             self::ExtraordinaryInterest => 'Juros extraordinários',
             self::Premium => 'Prêmio',
@@ -74,6 +81,7 @@ enum PuEventType: string
         return match ($this) {
             self::InterestPayment,
             self::Amortization,
+            self::ExtraordinaryAmortization,
             self::ExtraordinaryInterest,
             self::Premium,
             self::ContractualCharge => PuEventEffectClass::Payment,
@@ -113,17 +121,30 @@ enum PuEventType: string
     }
 
     /**
+     * Evento que reduz o principal na data efetiva e, por isso, encerra o período
+     * de capitalização: amortização ordinária, amortização extraordinária e
+     * vencimento antecipado (que liquida o saldo inteiro).
+     */
+    public function reducesPrincipal(): bool
+    {
+        return in_array($this, [self::Amortization, self::ExtraordinaryAmortization, self::EarlyMaturity], true);
+    }
+
+    /**
      * Engines que calculam o efeito financeiro deste tipo. Lista vazia: o tipo é
      * representado no ciclo de vida, mas a geração recusa a curva enquanto houver
-     * um evento ativo dele.
+     * um evento ativo dele. Estar na lista não basta: o efeito declarado do evento
+     * também precisa ser suportado (waiver só sem efeito no PU; amortização
+     * extraordinária e vencimento antecipado só com a regra explícita) -- quem decide
+     * é {@see PuFinancialEffectSupport}.
      *
      * @return list<PuCalculationMethod>
      */
     public function supportedBy(): array
     {
         return match ($this) {
-            self::InterestPayment, self::Amortization => PuCalculationMethod::cases(),
-            self::SpreadAmendment => [PuCalculationMethod::CdiSpread],
+            self::InterestPayment, self::Amortization, self::Waiver => PuCalculationMethod::cases(),
+            self::SpreadAmendment, self::ExtraordinaryAmortization, self::EarlyMaturity => [PuCalculationMethod::CdiSpread],
             default => [],
         };
     }
@@ -143,6 +164,7 @@ enum PuEventType: string
         return match ($this) {
             self::InterestPayment => 10,
             self::Amortization => 20,
+            self::ExtraordinaryAmortization => 25,
             self::ExtraordinaryInterest => 30,
             self::Premium => 40,
             self::ContractualCharge => 50,

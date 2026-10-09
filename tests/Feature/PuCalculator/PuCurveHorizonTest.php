@@ -8,6 +8,7 @@ use App\Domain\PuCalculator\Enums\PuEventDateChangeReason;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
+use App\Domain\PuCalculator\Enums\PuObligationCalculationState;
 use App\Domain\PuCalculator\Enums\PuOfficialCurveFreshness;
 use App\Domain\PuCalculator\Services\BusinessDayCalendarService;
 use App\Domain\PuCalculator\Services\PuCurveInputSnapshotService;
@@ -17,8 +18,8 @@ use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuEvent;
+use App\Models\EmissionPuObligation;
 use App\Models\IndexRate;
-use App\Models\Payment;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -154,7 +155,7 @@ it('P1-05: extends the curve to the business day the maturity payment moved to',
 
     expect($status->freshness)->toBe(PuOfficialCurveFreshness::Complete)
         ->and($status->curveEndDate?->toDateString())->toBe($paymentDate)
-        ->and(Payment::query()->whereBelongsTo($emission)->whereDate('payment_date', $paymentDate)->sole()->isCalculatedByOfficialCurve())->toBeTrue();
+        ->and(EmissionPuObligation::query()->where('emission_id', $emission->id)->whereDate('due_date', $paymentDate)->sole()->calculation_state)->toBe(PuObligationCalculationState::Calculated);
 })->with([
     'vencimento no sábado' => ['2026-03-14', '2026-03-16'],
     'vencimento no domingo' => ['2026-03-15', '2026-03-16'],

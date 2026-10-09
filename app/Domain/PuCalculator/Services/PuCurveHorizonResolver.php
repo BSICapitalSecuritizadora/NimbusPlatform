@@ -25,6 +25,11 @@ use Carbon\CarbonImmutable;
  * Um pagamento depois do vencimento SEM data contratual dentro do prazo não estende
  * nada: é configuração inconsistente e o {@see PuCurveInputValidator} a recusa.
  * Nenhum outro serviço deriva o fim da curva -- quem precisa dele lê o retrato.
+ *
+ * Fase 5: um vencimento antecipado ativo ENCURTA o horizonte para a data efetiva
+ * dele -- a operação termina ali, com o saldo acelerado. Os pagamentos ordinários
+ * posteriores continuam no retrato (rastreáveis) e as obrigações deles ficam
+ * superadas; a engine não os calcula.
  */
 final class PuCurveHorizonResolver
 {
@@ -60,7 +65,36 @@ final class PuCurveHorizonResolver
             }
         }
 
+        $earlyMaturity = $this->earlyMaturityDate($events);
+
+        if ($earlyMaturity !== null && $earlyMaturity < $end) {
+            $end = $earlyMaturity;
+            $contributors[] = [
+                'source' => 'early_maturity',
+                'effective_date' => $earlyMaturity,
+            ];
+        }
+
         return ['curve_end_date' => $end, 'contributors' => $contributors];
+    }
+
+    /**
+     * Data efetiva do vencimento antecipado ativo (a mais cedo, se houver mais de um
+     * -- o validador recusa esse caso), ou nula.
+     *
+     * @param  list<array<string, mixed>>  $events
+     */
+    public function earlyMaturityDate(array $events): ?string
+    {
+        $dates = [];
+
+        foreach ($events as $event) {
+            if (PuEventType::tryFrom((string) ($event['event_type'] ?? '')) === PuEventType::EarlyMaturity) {
+                $dates[] = (string) $event['effective_date'];
+            }
+        }
+
+        return $dates === [] ? null : min($dates);
     }
 
     /**
