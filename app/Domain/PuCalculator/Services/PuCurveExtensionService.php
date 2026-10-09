@@ -12,6 +12,8 @@ use App\Domain\PuCalculator\Enums\PuCurveChangeImpact;
 use App\Domain\PuCalculator\Enums\PuCurveReviewStatus;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Domain\PuCalculator\Enums\PuIndexerCapability;
+use App\Domain\PuCalculator\Enums\PuOperationalFailureCategory;
 use App\Domain\PuCalculator\Exceptions\PuCurveInputsException;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
@@ -101,6 +103,8 @@ final class PuCurveExtensionService
 
     public const CAUSE_CONTRACTUAL_INPUT_CHANGED = 'contractual_input_changed';
 
+    public const ACTION_INDEXER_NOT_OPERATIONAL = 'indexer_not_operational';
+
     /** @var list<PuCurveStatus> */
     private const EXTENDABLE_STATUSES = [
         PuCurveStatus::Generated,
@@ -118,6 +122,8 @@ final class PuCurveExtensionService
         private readonly PuFinancialObligationService $obligations,
         private readonly PuCurveInputSnapshotService $snapshots,
         private readonly PuCurveChangeImpactClassifier $classifier,
+        private readonly PuIndexerCapabilityPolicy $indexerPolicy,
+        private readonly PuOperationalFailureClassifier $failures,
     ) {}
 
     /**
@@ -226,12 +232,29 @@ final class PuCurveExtensionService
             );
         }
 
+        // Fase 6 (P0-05): o indexador que a versão APROVOU precisa de homologação
+        // operacional para avançar a oficial (ou a de trabalho).
+        $approvedIndexer = PuIndexer::tryFrom((string) ($approved->terms()['indexer'] ?? ''));
+        $capability = $purpose === self::PURPOSE_OFFICIAL ? PuIndexerCapability::OfficialExtension : PuIndexerCapability::CurveGeneration;
+
+        if (! $this->indexerPolicy->allows($approvedIndexer, $capability)) {
+            $reason = $this->indexerPolicy->refusal($approvedIndexer, $capability, (int) $emission->getKey())->getMessage();
+            $this->recordFailure($version, self::ACTION_INDEXER_NOT_OPERATIONAL, $reason, $purpose, PuOperationalFailureCategory::Unsupported);
+
+            return new PuCurveExtensionResult(
+                action: self::ACTION_INDEXER_NOT_OPERATIONAL,
+                versionId: $version->id,
+                reason: $reason,
+                purpose: $purpose,
+            );
+        }
+
         try {
             $prerequisites = $this->prerequisites->handle($emission);
 
             if (! $prerequisites->passes()) {
                 $reason = $prerequisites->blockingSummary();
-                $this->recordFailure($version, self::ACTION_PREREQUISITES_BLOCKED, $reason, $purpose);
+                $this->recordFailure($version, self::ACTION_PREREQUISITES_BLOCKED, $reason, $purpose, PuOperationalFailureCategory::InvalidInputs);
 
                 return new PuCurveExtensionResult(
                     action: self::ACTION_PREREQUISITES_BLOCKED,
@@ -256,7 +279,7 @@ final class PuCurveExtensionService
             $this->operationalProfiles->assertOperational($computedRows, 'a extensão da curva operacional');
             $persistedRows = $this->checksums->persistedRows($version);
         } catch (Throwable $exception) {
-            $this->recordFailure($version, 'error', $exception->getMessage(), $purpose);
+            $this->recordFailure($version, 'error', $exception->getMessage(), $purpose, $this->failures->classify($exception));
 
             throw $exception;
         }
@@ -558,7 +581,7 @@ final class PuCurveExtensionService
             return $this->diverged($version, null, $reason, $purpose);
         }
 
-        $this->recordFailure($version, self::ACTION_NOT_EXTENDABLE, $reason, $purpose);
+        $this->recordFailure($version, self::ACTION_NOT_EXTENDABLE, $reason, $purpose, PuOperationalFailureCategory::InvalidInputs);
 
         return new PuCurveExtensionResult(
             action: self::ACTION_NOT_EXTENDABLE,
@@ -640,21 +663,34 @@ final class PuCurveExtensionService
 
     /**
      * A extensão não rodou: fica gravado na versão por quê, até a próxima que
-     * rodar limpar.
+     * rodar limpar. Fase 6: com a categoria da falha (o monitor separa a recusa
+     * permanente da falha passageira) e quantas vezes seguidas ela falhou -- é o
+     * que torna o incidente crítico.
      */
-    private function recordFailure(EmissionPuCurveVersion $version, string $action, string $reason, string $purpose): void
-    {
+    private function recordFailure(
+        EmissionPuCurveVersion $version,
+        string $action,
+        string $reason,
+        string $purpose,
+        PuOperationalFailureCategory $category = PuOperationalFailureCategory::Unknown,
+    ): void {
+        $previous = is_array($version->extension_failure) && $version->extension_failed_at !== null ? $version->extension_failure : [];
+        $consecutive = (int) ($previous['consecutive_failures'] ?? 0) + 1;
+
         $version->forceFill([
             'extension_failed_at' => $version->extension_failed_at ?? now(),
             'extension_failure' => [
                 'action' => $action,
                 'purpose' => $purpose,
                 'reason' => $reason,
+                'category' => $category->value,
+                'retryable' => $category->isRetryable(),
+                'consecutive_failures' => $consecutive,
                 'checked_at' => now()->toIso8601String(),
             ],
         ])->save();
 
-        $this->auditLog->logCurveExtensionFailed($version, $action, $reason, $purpose);
+        $this->auditLog->logCurveExtensionFailed($version, $action, $reason, $purpose, $category->value, $consecutive);
     }
 
     private function diverged(

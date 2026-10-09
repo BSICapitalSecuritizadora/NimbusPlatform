@@ -10,6 +10,7 @@ use App\Domain\PuCalculator\DTOs\PuObligationDraft;
 use App\Domain\PuCalculator\DTOs\PuObligationSchedule;
 use App\Domain\PuCalculator\DTOs\PuOfficialCurveStatus;
 use App\Domain\PuCalculator\Enums\PuEventType;
+use App\Domain\PuCalculator\Enums\PuIndexerCapability;
 use App\Domain\PuCalculator\Enums\PuObligationCalculationState;
 use App\Domain\PuCalculator\Enums\PuObligationComponent;
 use App\Domain\PuCalculator\Enums\PuObligationComponentOwner;
@@ -55,6 +56,7 @@ final class PuObligationScheduleBuilder
         private readonly PuOfficialCurveFreshnessService $freshness,
         private readonly PuCurveHorizonResolver $horizons,
         private readonly DecimalRounder $rounder,
+        private readonly PuIndexerCapabilityPolicy $indexerPolicy,
     ) {}
 
     /**
@@ -83,6 +85,7 @@ final class PuObligationScheduleBuilder
             : $this->fromRows($rows, $status);
 
         [$entries, $unmatched] = $this->attachInformedSchedule($entries, $payments, $rows, $realizedThrough);
+        $entries = $this->withoutUnsupportedIndexer($entries, $official);
 
         return new PuObligationSchedule(
             $official->id,
@@ -520,6 +523,29 @@ final class PuObligationScheduleBuilder
             ->all();
 
         return [$entries, $unmatched];
+    }
+
+    /**
+     * Fase 6 (P0-05): curva oficial de indexador sem homologação operacional (só
+     * possível se anterior ao portão) não calcula esperado. A obrigação continua
+     * descrita, sem valor e com o motivo -- nunca zero, nunca conciliada.
+     *
+     * @param  list<array<string, mixed>>  $entries
+     * @return list<array<string, mixed>>
+     */
+    private function withoutUnsupportedIndexer(array $entries, EmissionPuCurveVersion $official): array
+    {
+        $indexer = $this->indexerPolicy->versionIndexer($official);
+
+        if ($this->indexerPolicy->allows($indexer, PuIndexerCapability::FinancialObligations)) {
+            return $entries;
+        }
+
+        $reason = $this->indexerPolicy->refusal($indexer, PuIndexerCapability::FinancialObligations, (int) $official->emission_id)->getMessage();
+
+        return array_map(fn (array $entry): array => $entry['lifecycle'] === PuObligationLifecycle::Active
+            ? [...$entry, 'state' => PuObligationCalculationState::Unsupported, 'state_reason' => $reason, 'engine' => null, 'row' => null]
+            : $entry, $entries);
     }
 
     /**

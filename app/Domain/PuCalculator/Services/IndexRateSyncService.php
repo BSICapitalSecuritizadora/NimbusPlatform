@@ -51,6 +51,7 @@ class IndexRateSyncService
         private readonly PuAuditLogService $auditLogService,
         private readonly IndexRateObservationRecorder $recorder,
         private readonly IndexRateCorrectionService $corrections,
+        private readonly PuIndexSyncAttemptRecorder $attempts,
     ) {}
 
     /**
@@ -74,6 +75,10 @@ class IndexRateSyncService
         return $this->seriesConfig($indexer);
     }
 
+    /**
+     * Fase 6: toda sincronização que grava (não a simulação) deixa uma tentativa
+     * registrada, com o resultado classificado ou a falha higienizada.
+     */
     public function sync(
         PuIndexer $indexer,
         CarbonImmutable $from,
@@ -81,6 +86,31 @@ class IndexRateSyncService
         bool $dryRun = false,
         ?int $userId = null,
         ?string $overwritePolicy = null,
+    ): IndexRateSyncResult {
+        $attempt = $dryRun ? null : $this->attempts->start($indexer, (string) $this->seriesConfig($indexer)['source'], $from, $to, $userId);
+        $invalidEntries = 0;
+
+        try {
+            $result = $this->performSync($indexer, $from, $to, $dryRun, $userId, $overwritePolicy, $invalidEntries);
+        } catch (\Throwable $exception) {
+            $this->attempts->fail($attempt, $exception);
+
+            throw $exception;
+        }
+
+        $this->attempts->finish($attempt, $result, $invalidEntries);
+
+        return $result;
+    }
+
+    private function performSync(
+        PuIndexer $indexer,
+        CarbonImmutable $from,
+        CarbonImmutable $to,
+        bool $dryRun,
+        ?int $userId,
+        ?string $overwritePolicy,
+        int &$invalidEntries,
     ): IndexRateSyncResult {
         $config = $this->seriesConfig($indexer);
         $policy = $this->resolvePolicy($overwritePolicy);
@@ -98,6 +128,7 @@ class IndexRateSyncService
 
         $fetch = $this->client->fetchSeries((int) $config['code'], $from, $to);
         $rates = $fetch->rates;
+        $invalidEntries = count($fetch->invalidEntries);
         $result->fetched = count($rates);
         $result->blocksTotal = $fetch->blocksTotal;
 

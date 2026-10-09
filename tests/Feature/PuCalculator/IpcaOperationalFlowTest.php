@@ -1,9 +1,12 @@
 <?php
 
 use App\Actions\Emissions\HomologatePuCurve;
+use App\Domain\PuCalculator\Calculators\IpcaCurveCalculator;
 use App\Domain\PuCalculator\Enums\IndexProjectionSeriesStatus;
 use App\Domain\PuCalculator\Enums\IpcaProjectionPolicy;
+use App\Domain\PuCalculator\Enums\PuCurveStatus;
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Domain\PuCalculator\Exceptions\PuIndexerCapabilityException;
 use App\Domain\PuCalculator\Services\PuCurvePrerequisiteService;
 use App\Domain\PuCalculator\Services\PuIpcaHomologationStatusService;
 use App\Jobs\GeneratePuDailyCurveJob;
@@ -126,7 +129,7 @@ it('blocks IPCA projection when the policy is published-only', function () {
         ->and($result->blockingSummary())->toContain('política');
 });
 
-it('generates an IPCA curve with an approved projected series and records the index source in memory', function () {
+it('keeps the IPCA engine for simulation only: with an approved projected series it calculates in memory and records the index source, but no curve is generated', function () {
     $user = User::factory()->create();
     $emission = makeIpcaOperationalEmission(IpcaProjectionPolicy::Market->value);
     seedPublishedIpca('2023-09-01', '6500.00000000');
@@ -143,23 +146,32 @@ it('generates an IPCA curve with an approved projected series and records the in
         'index_projection_series_id' => $series->id,
     ]);
 
-    expect(app(PuCurvePrerequisiteService::class)->handle($emission)->passes())->toBeTrue();
+    // Fase 6 (P0-05): os dados estão completos, e mesmo assim a geração é recusada
+    // pelo indexador -- só ele bloqueia.
+    $check = app(PuCurvePrerequisiteService::class)->handle($emission);
+
+    expect($check->passes())->toBeFalse()
+        ->and(collect($check->toArray()['blocking'])->pluck('key')->all())->toBe(['indexer_not_operationally_homologated']);
 
     app()->call([new GeneratePuDailyCurveJob($emission->id, $user->id), 'handle']);
 
-    $curves = $emission->fresh()->puDailyCurves()->orderBy('curve_date')->get();
-    expect($curves)->toHaveCount(3);
+    expect($emission->fresh()->puDailyCurves()->count())->toBe(0)
+        ->and(EmissionPuCurveVersion::query()->where('emission_id', $emission->id)->exists())->toBeFalse();
 
-    $projectedRow = $curves->first(fn ($row) => ($row->calculation_memory['index_is_projected'] ?? false) === true);
+    // A engine continua disponível em memória (conferência contra gabarito).
+    $rows = collect(app(IpcaCurveCalculator::class)->calculate($emission->fresh(['puParameter', 'puEvents', 'integralizationHistories']))->rows);
+    expect($rows)->toHaveCount(3);
+
+    $projectedRow = $rows->first(fn ($row) => ($row->calculationMemory['index_is_projected'] ?? false) === true);
     expect($projectedRow)->not->toBeNull()
-        ->and($projectedRow->calculation_memory['index_rate_type'])->toBe('projected')
-        ->and($projectedRow->calculation_memory['index_projection_source'])->toBe('ANBIMA');
+        ->and($projectedRow->calculationMemory['index_rate_type'])->toBe('projected')
+        ->and($projectedRow->calculationMemory['index_projection_source'])->toBe('ANBIMA');
 
-    $publishedRow = $curves->first(fn ($row) => ($row->calculation_memory['index_is_projected'] ?? null) === false);
-    expect($publishedRow->calculation_memory['index_rate_type'])->toBe('published');
+    $publishedRow = $rows->first(fn ($row) => ($row->calculationMemory['index_is_projected'] ?? null) === false);
+    expect($publishedRow->calculationMemory['index_rate_type'])->toBe('published');
 });
 
-it('keeps the IPCA engine flag false but flips contextual homologation only after homologation with approved series', function () {
+it('keeps IPCA out of the official PU: no maker/checker path turns it operational, not even a version recorded before the gate', function () {
     $maker = User::factory()->create();
     $checker = User::factory()->create();
     $emission = makeIpcaOperationalEmission(IpcaProjectionPolicy::Market->value);
@@ -180,13 +192,18 @@ it('keeps the IPCA engine flag false but flips contextual homologation only afte
     expect(PuIndexer::Ipca->isHomologated())->toBeFalse()
         ->and($status->isOperationallyHomologated($emission))->toBeFalse();
 
-    app()->call([new GeneratePuDailyCurveJob($emission->id, $maker->id), 'handle']);
+    // Uma versão IPCA que só um dado anterior a este portão teria.
+    EmissionPuCurveVersion::factory()->create([
+        'emission_id' => $emission->id,
+        'calculation_version' => 'v1',
+        'status' => PuCurveStatus::Generated->value,
+        'parameters_snapshot' => ['indexer' => PuIndexer::Ipca->value],
+        'generated_by' => $maker->id,
+    ]);
 
-    expect($status->isOperationallyHomologated($emission->fresh()))->toBeFalse();
-
-    app(HomologatePuCurve::class)->handle($emission->fresh(), $emission->fresh()->currentPuCurveVersion()->calculation_version, $checker->id);
-
-    expect(PuIndexer::Ipca->isHomologated())->toBeFalse()
-        ->and(EmissionPuCurveVersion::query()->where('emission_id', $emission->id)->homologated()->exists())->toBeTrue()
-        ->and($status->isOperationallyHomologated($emission->fresh()))->toBeTrue();
+    expect(fn () => app(HomologatePuCurve::class)->handle($emission->fresh(), 'v1', $checker->id))
+        ->toThrow(PuIndexerCapabilityException::class, 'INDEXER_NOT_OPERATIONALLY_HOMOLOGATED')
+        ->and(EmissionPuCurveVersion::query()->where('emission_id', $emission->id)->homologated()->exists())->toBeFalse()
+        ->and($status->isOperationallyHomologated($emission->fresh()))->toBeFalse()
+        ->and(PuIndexer::Ipca->isHomologated())->toBeFalse();
 });

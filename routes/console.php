@@ -4,6 +4,7 @@ use App\Jobs\ProcessNimbusNotificationOutbox;
 use App\Jobs\SyncContaAzulExpensesJob;
 use App\Models\Nimbus\AccessToken;
 use App\Models\Nimbus\NotificationOutbox;
+use App\Support\BusinessTime;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -122,6 +123,40 @@ Schedule::command('pu:curves:generate-realized')
     ->dailyAt('07:15')
     ->name('pu-curves-generate-realized')
     ->withoutOverlapping();
+
+// Fase 6 -- segunda passada do CDI, no fuso de negócio e DEPOIS da divulgação esperada
+// (`pu_indexes.bcb.series.cdi.available_after`). A passada das 06:30 acima roda em UTC (03:30 em
+// Brasília) e pode chegar antes de o CDI do dia útil anterior estar no SGS; sem esta, a oficial só
+// avançaria na madrugada seguinte. Sincroniza (insert-only, idempotente) e estende as curvas
+// vigentes, como a das 07:15. O monitor só acusa CDI ausente depois de uma consulta à fonte
+// posterior à divulgação esperada -- nunca de madrugada, antes dela.
+Schedule::command('pu:index-rates:sync --indexer=cdi')
+    ->timezone(BusinessTime::timezone())
+    ->dailyAt((string) config('pu_indexes.bcb.series.cdi.post_publication_sync_at', '07:30'))
+    ->name('pu-index-sync-cdi-post-publication')
+    ->withoutOverlapping();
+
+Schedule::command('pu:curves:generate-realized')
+    ->timezone(BusinessTime::timezone())
+    ->dailyAt((string) config('pu_indexes.bcb.series.cdi.post_publication_extension_at', '08:15'))
+    ->name('pu-curves-generate-realized-post-publication')
+    ->withoutOverlapping();
+
+// Fase 6 -- monitor operacional do PU: só observa. Abre, atualiza e resolve incidentes
+// (deduplicados pela identidade) e avisa no painel quem tem `pu.operations.monitor`. A
+// execução fica registrada: "não rodou" nunca parece "tudo certo".
+Schedule::command('pu:operations:monitor')
+    ->everyFifteenMinutes()
+    ->name('pu-operations-monitor')
+    ->withoutOverlapping(30);
+
+// Fase 6 -- varredura da atualização durável das obrigações: retoma o pedido que ficou para
+// trás (processo que morreu depois do commit, falha passageira com nova tentativa vencida,
+// execução interrompida). Esgotado ou bloqueado só volta por retomada autorizada.
+Schedule::command('pu:obligations:recover')
+    ->everyFiveMinutes()
+    ->name('pu-obligations-recover')
+    ->withoutOverlapping(15);
 
 // Garantias: marca as competências encerradas cujo saldo devedor gravado deixou de ser o
 // que a fonte de PU responde hoje. Roda depois da extensão diária das curvas (07:15), que

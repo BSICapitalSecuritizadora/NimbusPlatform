@@ -7,6 +7,7 @@ namespace App\Domain\PuCalculator\Services;
 use App\Domain\PuCalculator\DTOs\PuCandidateCurve;
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\DTOs\PuNumericHomologationPlan;
+use App\Domain\PuCalculator\Enums\PuIndexerCapability;
 use App\Models\Emission;
 use App\Models\EmissionPuEvent;
 use App\Models\EmissionPuParameter;
@@ -27,6 +28,7 @@ class PuCandidateCurveService
         private readonly PuNumericHomologationFingerprintService $fingerprints,
         private readonly IndexRateLookupService $indexRateLookup,
         private readonly PuOperationalProfileGuard $operationalProfiles,
+        private readonly PuIndexerCapabilityPolicy $indexerPolicy,
     ) {}
 
     public function generate(Emission $emission, PuNumericHomologationPlan $plan): PuCandidateCurve
@@ -43,6 +45,10 @@ class PuCandidateCurveService
         if (! $parameter instanceof EmissionPuParameter) {
             throw new InvalidArgumentException('O parâmetro persistido da homologação não está mais disponível.');
         }
+
+        // A candidata alimenta homologação e promoção: indexador sem homologação
+        // operacional não chega até ela (Fase 6, P0-05).
+        $this->indexerPolicy->assert($parameter->indexer_enum, PuIndexerCapability::CurveGeneration, (int) $emission->getKey());
 
         $effectiveEndDate = CarbonImmutable::parse($plan->homologationEndDate)->startOfDay();
         $scenarioParameter = clone $parameter;

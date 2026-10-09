@@ -6,6 +6,7 @@ namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\Enums\IpcaProjectionPolicy;
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Domain\PuCalculator\Enums\PuIndexerCapability;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\IndexProjectionSeries;
@@ -29,6 +30,13 @@ class PuIpcaHomologationStatusService
         $parameter = $emission->puParameter;
 
         if ($parameter === null || $parameter->indexer_enum !== PuIndexer::Ipca) {
+            return false;
+        }
+
+        // Fase 6 (P0-05): enquanto o indexador não tiver homologação operacional,
+        // nenhuma versão homologada -- nem uma anterior a este portão -- o torna
+        // operacional.
+        if (! app(PuIndexerCapabilityPolicy::class)->allows(PuIndexer::Ipca, PuIndexerCapability::Homologation)) {
             return false;
         }
 

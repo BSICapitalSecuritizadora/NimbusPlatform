@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\Services;
 
-use App\Domain\PuCalculator\Contracts\BusinessDayCalendar;
 use App\Domain\PuCalculator\Contracts\RealizedIndexRateProvider;
 use App\Domain\PuCalculator\DTOs\PuCurveChangeAssessment;
 use App\Domain\PuCalculator\DTOs\PuCurveInputSnapshot;
@@ -18,7 +17,6 @@ use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuDailyCurve;
 use App\Models\EmissionPuParameter;
-use App\Support\BusinessTime;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Throwable;
@@ -53,9 +51,9 @@ final class PuOfficialCurveFreshnessService
     public function __construct(
         private readonly PuIndexRateRequirementResolver $requirements,
         private readonly RealizedIndexRateProvider $realizedRates,
-        private readonly BusinessDayCalendar $calendar,
         private readonly PuCurveInputSnapshotService $snapshots,
         private readonly PuCurveChangeImpactClassifier $classifier,
+        private readonly PuIndexPublicationPolicy $publication,
     ) {}
 
     public function status(Emission $emission, ?CarbonInterface $now = null): PuOfficialCurveStatus
@@ -293,18 +291,7 @@ final class PuOfficialCurveFreshnessService
     public function expectedLatestRateDate(EmissionPuParameter $parameter, CarbonInterface $now): ?CarbonImmutable
     {
         // O mesmo calendário de divulgação que decide a data de observação na engine.
-        $calendarCode = $this->requirements->observationCalendarCode($parameter);
-        $lag = max(0, (int) config('pu_indexes.bcb.series.cdi.publication_lag_business_days', 1));
-        $availableAfter = (string) config('pu_indexes.bcb.series.cdi.available_after', '07:00');
-        $local = BusinessTime::at($now);
-        $today = CarbonImmutable::parse($local->toDateString())->startOfDay();
-        $publishedToday = $local->format('H:i') >= $availableAfter
-            && $this->calendar->isBusinessDay($today, $calendarCode);
-        $publicationDay = $publishedToday ? $today : $this->calendar->shiftBusinessDays($today, -1, $calendarCode);
-
-        return $lag === 0
-            ? $publicationDay
-            : $this->calendar->shiftBusinessDays($publicationDay, -$lag, $calendarCode);
+        return $this->publication->expectedLatestRateDate($this->requirements->observationCalendarCode($parameter), $now);
     }
 
     /**

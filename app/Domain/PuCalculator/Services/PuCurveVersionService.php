@@ -7,6 +7,7 @@ namespace App\Domain\PuCalculator\Services;
 use App\Domain\PuCalculator\Enums\PuCurveReviewStatus;
 use App\Domain\PuCalculator\Enums\PuCurveRole;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Enums\PuIndexerCapability;
 use App\Domain\PuCalculator\Exceptions\PuCurveGovernanceException;
 use App\Domain\PuCalculator\Support\PuVersionNumber;
 use App\Models\Emission;
@@ -126,6 +127,12 @@ class PuCurveVersionService
     ): EmissionPuCurveVersion {
         return DB::transaction(function () use ($version, $approved, $summary, $validatedByUserId): EmissionPuCurveVersion {
             $locked = $this->lockVersion($version);
+
+            // Fase 6 (P0-05): a validação alimenta a homologação; indexador sem
+            // homologação operacional não registra resultado numa versão operacional.
+            if ($locked->isOperational()) {
+                app(PuIndexerCapabilityPolicy::class)->assertForVersion($locked, PuIndexerCapability::Validation);
+            }
 
             if (! $locked->status->acceptsValidationResult()) {
                 throw new PuCurveGovernanceException(sprintf(
