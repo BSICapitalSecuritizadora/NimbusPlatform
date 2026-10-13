@@ -6,7 +6,6 @@ use App\Models\MeasurementPayment;
 use App\Models\MeasurementPaymentReceiptEvidence;
 use App\Models\User;
 use App\Services\MeasurementReceiptEvidenceService;
-use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Concurrency;
@@ -15,6 +14,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\CommittedRowsSweeper;
 use Tests\Support\MeasurementReceiptEvidenceScenario as Scenario;
 
 beforeEach(function () {
@@ -29,9 +29,19 @@ beforeEach(function () {
     );
 
     Artisan::call('migrate:fresh', ['--no-interaction' => true]);
+    $this->committedRows = CommittedRowsSweeper::afterFreshMigration();
     app(PermissionRegistrar::class)->forgetCachedPermissions();
-    $this->seed(RolesAndPermissionsSeeder::class);
     Notification::fake();
+});
+
+afterEach(function () {
+    if (DB::getDriverName() !== 'mysql' || ! isset($this->committedRows)) {
+        return;
+    }
+
+    $this->committedRows->sweep();
+
+    expect($this->committedRows->leftovers())->toBe([]);
 });
 
 /** @param array{action: string, actor_id: int, payment_id: int, evidence_id: ?int, storage_root: string, lock_marker?: string, wait_marker?: string} $instruction */
