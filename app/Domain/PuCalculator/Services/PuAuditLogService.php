@@ -19,6 +19,7 @@ use App\Domain\PuCalculator\Enums\PuCandidateReviewDecision;
 use App\Domain\PuCalculator\Enums\PuCurvePromotionDecision;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
 use App\Domain\PuCalculator\Enums\PuExternalValidationDecision;
+use App\Domain\PuCalculator\Enums\PuOperationalActivationStatus;
 use App\Enums\BusinessArea;
 use App\Models\Emission;
 use App\Models\EmissionPuCurvePromotion;
@@ -27,6 +28,7 @@ use App\Models\EmissionPuExternalBenchmark;
 use App\Models\EmissionPuExternalValidation;
 use App\Models\EmissionPuObligation;
 use App\Models\EmissionPuObligationCalculation;
+use App\Models\EmissionPuOperationalStatusChange;
 use App\Models\EmissionPuParameter;
 use App\Models\EmissionPuSettlement;
 use App\Models\EmissionPuSettlementConflict;
@@ -1087,6 +1089,35 @@ class PuAuditLogService
         }
 
         $logger->event('operational_incident_acknowledged')->log('pu_operational_incident_acknowledged');
+    }
+
+    /**
+     * Fase 7: decisão de ativar ou suspender a operação do PU de uma emissão --
+     * situação anterior e nova, quem, quando, por quê, referência da aprovação e a
+     * avaliação de prontidão usada. Trilha protegida.
+     */
+    public function logOperationalStatusChanged(Emission $emission, EmissionPuOperationalStatusChange $change, User $actor): void
+    {
+        $activated = $change->status === PuOperationalActivationStatus::Activated;
+
+        activity(self::LOG_NAME)
+            ->performedOn($emission)
+            ->causedBy($actor)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'status_change_id' => $change->id,
+                'previous_status' => $change->previous_status->value,
+                'new_status' => $change->status->value,
+                'reason' => $change->reason,
+                'approval_reference' => $change->approval_reference,
+                'readiness_status' => $change->readiness_status,
+                'readiness_blockers' => $change->readiness_snapshot['blockers'] ?? [],
+                'readiness_review_items' => $change->readiness_snapshot['review_items'] ?? [],
+                'decided_via' => $change->decided_via,
+                'decided_at' => $change->decided_at?->toIso8601String(),
+            ])
+            ->event($activated ? 'operations_activated' : 'operations_suspended')
+            ->log($activated ? 'pu_operations_activated' : 'pu_operations_suspended');
     }
 
     /**

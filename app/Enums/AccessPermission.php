@@ -212,6 +212,7 @@ enum AccessPermission: string
     case PuReconciliationExport = 'pu.reconciliation.export';
     case PuOperationsMonitor = 'pu.operations.monitor';
     case PuOperationsRecover = 'pu.operations.recover';
+    case PuOperationsActivate = 'pu.operations.activate';
     case ContactMessagesView = 'contact-messages.view';
     case ContactMessagesUpdate = 'contact-messages.update';
     case ReminderLogsView = 'reminder-logs.view';
@@ -474,6 +475,7 @@ enum AccessPermission: string
             self::PuReconciliationExport => 'Liquidação do PU: exportar conciliação',
             self::PuOperationsMonitor => 'Monitoramento do PU: ver incidentes operacionais e receber alertas',
             self::PuOperationsRecover => 'Monitoramento do PU: reconhecer incidentes e retomar atualização de obrigações',
+            self::PuOperationsActivate => 'Operação do PU: ativar ou suspender a operação do PU de uma emissão',
             self::ContactMessagesView => 'Mensagens de contato: visualizar',
             self::ContactMessagesUpdate => 'Mensagens de contato: registrar atendimento',
             self::ReminderLogsView => 'Auditoria de lembretes: visualizar',
@@ -712,6 +714,7 @@ enum AccessPermission: string
             || str_contains($this->value, '.release')
             || str_contains($this->value, 'manage-responsibilities')
             || $this === self::AreasManage
+            || $this === self::PuOperationsActivate
             || str_contains($this->value, 'roles.')
             || str_contains($this->value, 'permissions');
     }

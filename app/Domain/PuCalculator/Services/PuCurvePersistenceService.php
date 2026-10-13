@@ -39,6 +39,7 @@ class PuCurvePersistenceService
         private readonly PuCurveInputSnapshotService $snapshots,
         private readonly PuCurveChangeImpactClassifier $classifier,
         private readonly PuIndexerCapabilityPolicy $indexerPolicy,
+        private readonly PuOperationalActivationPolicy $activation,
     ) {}
 
     /**
@@ -74,6 +75,14 @@ class PuCurvePersistenceService
         $persistedResult = $result;
 
         DB::transaction(function () use ($emission, $result, $calculationVersion, $inputs, &$persistedResult): void {
+            // Fase 7: a emissão é travada ANTES de qualquer leitura e o portão de
+            // ativação é conferido sob a trava (leitura travada do livro): uma
+            // suspensão que comitou durante o cálculo é vista aqui e nada é gravado;
+            // uma que chega agora espera esta transação. Vale para todo chamador --
+            // job, tela, comando de referência, chamada direta.
+            $lockedEmission = Emission::query()->whereKey($emission->id)->lockForUpdate()->firstOrFail();
+            $this->activation->assert($lockedEmission, PuIndexerCapability::CurveGeneration, lockForShare: true);
+
             $requestedCalculationVersion = $calculationVersion ?? $result->calculationVersion;
             $version = $requestedCalculationVersion === null
                 ? null

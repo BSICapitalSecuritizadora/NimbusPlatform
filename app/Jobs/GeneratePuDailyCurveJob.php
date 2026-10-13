@@ -3,9 +3,12 @@
 namespace App\Jobs;
 
 use App\Actions\Emissions\GeneratePuDailyCurve;
+use App\Domain\PuCalculator\Enums\PuIndexerCapability;
+use App\Domain\PuCalculator\Exceptions\PuOperationalActivationException;
 use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Domain\PuCalculator\Services\PuCurvePrerequisiteService;
 use App\Domain\PuCalculator\Services\PuCurveVersionService;
+use App\Domain\PuCalculator\Services\PuOperationalActivationPolicy;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -32,6 +35,7 @@ class GeneratePuDailyCurveJob implements ShouldQueue
         PuCurvePrerequisiteService $prerequisiteService,
         PuAuditLogService $auditLogService,
         PuCurveVersionService $versionService,
+        PuOperationalActivationPolicy $activation,
     ): void {
         if (function_exists('set_time_limit')) {
             @set_time_limit(0);
@@ -52,6 +56,20 @@ class GeneratePuDailyCurveJob implements ShouldQueue
 
         try {
             $emission = Emission::findOrFail($this->emissionId);
+
+            // Fase 7: a decisão vale na EXECUÇÃO, não no despacho. Um job enfileirado
+            // antes de uma suspensão (ou com as operações desligadas no ambiente) não
+            // cria nem a versão em processamento; a gravação reconfere sob a trava
+            // da emissão.
+            $refusal = $activation->refusalFor($emission, PuIndexerCapability::CurveGeneration);
+
+            if ($refusal instanceof PuOperationalActivationException) {
+                $auditLogService->logGenerationFailed($emission, $refusal->getMessage(), $this->requestedByUserId);
+
+                Cache::put($this->cacheKey(), ['status' => 'failed', 'error' => $refusal->getMessage()], 1800);
+
+                return;
+            }
 
             if ($versionService->hasHomologatedVersion($emission) && ! $this->confirmedReprocess) {
                 $message = 'Existe uma curva homologada. Reprocessamento exige confirmacao explicita.';

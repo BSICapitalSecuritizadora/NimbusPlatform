@@ -105,6 +105,9 @@ final class PuCurveExtensionService
 
     public const ACTION_INDEXER_NOT_OPERATIONAL = 'indexer_not_operational';
 
+    /** Fase 7: operações do PU desligadas no ambiente, emissão não ativada ou suspensa. */
+    public const ACTION_OPERATIONS_NOT_ACTIVE = 'operations_not_active';
+
     /** @var list<PuCurveStatus> */
     private const EXTENDABLE_STATUSES = [
         PuCurveStatus::Generated,
@@ -124,6 +127,7 @@ final class PuCurveExtensionService
         private readonly PuCurveChangeImpactClassifier $classifier,
         private readonly PuIndexerCapabilityPolicy $indexerPolicy,
         private readonly PuOperationalFailureClassifier $failures,
+        private readonly PuOperationalActivationPolicy $activation,
     ) {}
 
     /**
@@ -143,6 +147,10 @@ final class PuCurveExtensionService
      */
     public function extendOfficial(Emission $emission): PuCurveExtensionResult
     {
+        if (($refusal = $this->operationsRefusal($emission, self::PURPOSE_OFFICIAL)) instanceof PuCurveExtensionResult) {
+            return $refusal;
+        }
+
         $official = $emission->officialPuCurveVersion();
 
         if (! $official instanceof EmissionPuCurveVersion) {
@@ -162,6 +170,12 @@ final class PuCurveExtensionService
      */
     public function extendWorking(Emission $emission): PuCurveExtensionResult
     {
+        // Antes de procurar a versão: sem a operação ativa, nem "não há versão de
+        // trabalho" pode virar pedido de geração completa.
+        if (($refusal = $this->operationsRefusal($emission, self::PURPOSE_WORKING)) instanceof PuCurveExtensionResult) {
+            return $refusal;
+        }
+
         $current = $emission->currentPuCurveVersion();
 
         if (! $current instanceof EmissionPuCurveVersion) {
@@ -204,8 +218,31 @@ final class PuCurveExtensionService
             || $version->review_status === PuCurveReviewStatus::Approved;
     }
 
+    /**
+     * Fase 7: a extensão só roda com a operação do PU ativa. A recusa não é falha
+     * da versão (nada é gravado nela, nem `extension_failed_at`): suspender é uma
+     * decisão, e a curva parada por ela fica visível pela atualidade e pelo monitor.
+     */
+    private function operationsRefusal(Emission $emission, string $purpose): ?PuCurveExtensionResult
+    {
+        $refusal = $this->activation->refusalFor(
+            $emission,
+            $purpose === self::PURPOSE_OFFICIAL ? PuIndexerCapability::OfficialExtension : PuIndexerCapability::CurveGeneration,
+        );
+
+        return $refusal === null ? null : new PuCurveExtensionResult(
+            action: self::ACTION_OPERATIONS_NOT_ACTIVE,
+            reason: $refusal->getMessage(),
+            purpose: $purpose,
+        );
+    }
+
     private function extendVersion(Emission $emission, EmissionPuCurveVersion $version, string $purpose): PuCurveExtensionResult
     {
+        if (($refusal = $this->operationsRefusal($emission, $purpose)) instanceof PuCurveExtensionResult) {
+            return $refusal;
+        }
+
         if (! in_array($version->status, self::EXTENDABLE_STATUSES, true)) {
             return new PuCurveExtensionResult(
                 action: self::ACTION_NOT_EXTENDABLE,
@@ -347,8 +384,22 @@ final class PuCurveExtensionService
         // pagamentos dos dias novos são conciliados na mesma transação -- ou
         // entram as linhas e os pagamentos, ou nada.
         $lockedAssessment = null;
-        $extended = DB::transaction(function () use ($emission, $version, $limitedTail, $purpose, $approved, &$lockedAssessment): array|string {
+        $activationRefusal = null;
+        $extended = DB::transaction(function () use ($emission, $version, $limitedTail, $purpose, $approved, &$lockedAssessment, &$activationRefusal): array|string {
             $lockedEmission = Emission::query()->whereKey($emission->id)->lockForUpdate()->firstOrFail();
+
+            // Fase 7: relida sob a trava da emissão -- a suspensão que comitou durante
+            // o recálculo é vista aqui e nenhum dia é anexado.
+            $activationRefusal = $this->activation->refusalFor(
+                $lockedEmission,
+                $purpose === self::PURPOSE_OFFICIAL ? PuIndexerCapability::OfficialExtension : PuIndexerCapability::CurveGeneration,
+                lockForShare: true,
+            );
+
+            if ($activationRefusal !== null) {
+                return $activationRefusal->getMessage();
+            }
+
             $locked = EmissionPuCurveVersion::query()->whereKey($version->id)->lockForUpdate()->firstOrFail();
 
             if (! in_array($locked->status, self::EXTENDABLE_STATUSES, true)) {
@@ -376,6 +427,19 @@ final class PuCurveExtensionService
 
             if ($tail === []) {
                 return sprintf('Os insumos contratuais mudaram durante a extensão; nada foi anexado nesta rodada. %s', $lockedAssessment->summary());
+            }
+
+            // Fase 7 (idempotência): outra execução pode ter anexado parte destes dias
+            // entre o recálculo e a trava. Sob a trava, só entra o que ainda falta --
+            // os dias já gravados vieram do mesmo retrato e do mesmo índice.
+            $lastLockedDate = $lockedAssessment->lastPersistedDate?->toDateString();
+            $tail = array_values(array_filter(
+                $tail,
+                fn (PuDailyCurveRowData $row): bool => $lastLockedDate === null || $row->date->toDateString() > $lastLockedDate,
+            ));
+
+            if ($tail === []) {
+                return sprintf('A versão %s já foi estendida por outra execução; nada a anexar nesta rodada.', $locked->calculation_version);
             }
 
             if (($changedObservation = $this->changedTailObservation($lockedEmission, $tail)) !== null) {
@@ -410,6 +474,15 @@ final class PuCurveExtensionService
         });
 
         if (! is_array($extended)) {
+            if ($activationRefusal !== null) {
+                return new PuCurveExtensionResult(
+                    action: self::ACTION_OPERATIONS_NOT_ACTIVE,
+                    versionId: $version->id,
+                    reason: $extended,
+                    purpose: $purpose,
+                );
+            }
+
             if ($lockedAssessment instanceof PuCurveChangeAssessment
                 && ($contractual = $this->contractualOutcome($version->fresh() ?? $version, $lockedAssessment, $purpose)) instanceof PuCurveExtensionResult) {
                 return $contractual;

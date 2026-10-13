@@ -21,7 +21,9 @@ use App\Domain\PuCalculator\Enums\PuOperationalSeverity;
  *  - condição de índice sem nenhuma emissão em operação daquele indexador é
  *    informativa (produção começa sem curva oficial: nada de alerta antes do
  *    lançamento);
- *  - emissão inativa só alerta o que põe o passado oficial em dúvida.
+ *  - emissão inativa só alerta o que põe o passado oficial em dúvida;
+ *  - operação do PU não ativada ou suspensa (Fase 7) é informativa, e pede
+ *    atenção só quando há curva oficial que deixou de avançar.
  *
  * Nenhum limiar aqui é prazo de negócio: são parâmetros operacionais em config.
  */
@@ -47,6 +49,12 @@ final class PuOperationalSeverityPolicy
                 : $severity,
             PuOperationalConditionType::IndexSyncFailed => (int) ($context['consecutive_failures'] ?? 1) >= $this->threshold('index_sync_failure_critical_after')
                 ? PuOperationalSeverity::Critical
+                : $severity,
+            // Fase 7: sem curva oficial, não ativada/suspensa é só informação; com
+            // curva oficial, ela deixou de avançar -- pede atenção.
+            PuOperationalConditionType::OperationsNotActivated,
+            PuOperationalConditionType::OperationsSuspended => ($context['has_official_curve'] ?? false) === true
+                ? $this->atLeast($severity, PuOperationalSeverity::Warning)
                 : $severity,
             default => $severity,
         };

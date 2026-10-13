@@ -14,6 +14,7 @@ use App\Domain\PuCalculator\Enums\PuSettlementConflictStatus;
 use App\Domain\PuCalculator\Enums\PuSettlementEntryType;
 use App\Domain\PuCalculator\Enums\PuSettlementOutcome;
 use App\Domain\PuCalculator\Enums\PuSettlementStatus;
+use App\Domain\PuCalculator\Exceptions\PuOperationalActivationException;
 use App\Enums\AccessPermission;
 use App\Models\Emission;
 use App\Models\EmissionPuObligation;
@@ -60,6 +61,7 @@ final class PuSettlementService
     public function __construct(
         private readonly PuFinancialObligationService $obligations,
         private readonly PuAuditLogService $auditLog,
+        private readonly PuOperationalActivationPolicy $activation,
     ) {}
 
     public function record(PuSettlementData $data, PuSettlementActor $actor): PuSettlementResult
@@ -80,6 +82,15 @@ final class PuSettlementService
 
             if (! $emission instanceof Emission) {
                 return $this->reject(null, 'A emissão da liquidação não existe.', $payload, $actor);
+            }
+
+            // Fase 7: liquidação real só com as operações do PU ligadas no ambiente e
+            // numa emissão que já entrou no pipeline (ativada, ou suspensa depois:
+            // o que aconteceu no mundo continua registrável). Conferido sob a trava.
+            try {
+                $this->activation->assertSettlementRecording((int) $emission->getKey(), lockForShare: true);
+            } catch (PuOperationalActivationException $refusal) {
+                return $this->reject($emission, $refusal->getMessage(), $payload, $actor);
             }
 
             $obligation = $this->locateObligation($emission, $data);

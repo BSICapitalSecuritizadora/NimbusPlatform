@@ -111,11 +111,13 @@ function p6iLegacyIpcaOfficial(): array
     return [$emission->fresh(), $official->fresh()];
 }
 
-it('declares the operational capability matrix: CDI and prefixed as declared homologated, IPCA only for simulation', function () {
+it('declares the operational capability matrix: CDI operational, prefixed and IPCA only for simulation', function () {
     $matrix = app(PuIndexerCapabilityPolicy::class)->matrix();
 
+    // Fase 7: o prefixado deixou de ser operacional (sem referência independente).
     expect($matrix['CDI'])->each->toBeTrue()
-        ->and($matrix['PREFIXED'])->each->toBeTrue()
+        ->and($matrix['PREFIXED'][PuIndexerCapability::Simulation->value])->toBeTrue()
+        ->and(collect($matrix['PREFIXED'])->except(PuIndexerCapability::Simulation->value)->unique()->values()->all())->toBe([false])
         ->and($matrix['IPCA'][PuIndexerCapability::Simulation->value])->toBeTrue()
         ->and(collect($matrix['IPCA'])->except(PuIndexerCapability::Simulation->value)->unique()->values()->all())->toBe([false])
         ->and(app(PuIndexerCapabilityPolicy::class)->allows(null, PuIndexerCapability::Homologation))->toBeFalse();

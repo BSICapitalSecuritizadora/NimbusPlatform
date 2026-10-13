@@ -17,6 +17,7 @@ use App\Domain\PuCalculator\Enums\PuMonitorRunStatus;
 use App\Domain\PuCalculator\Enums\PuObligationCalculationState;
 use App\Domain\PuCalculator\Enums\PuObligationRefreshStatus;
 use App\Domain\PuCalculator\Enums\PuOfficialCurveFreshness;
+use App\Domain\PuCalculator\Enums\PuOperationalActivationStatus;
 use App\Domain\PuCalculator\Enums\PuOperationalConditionType;
 use App\Domain\PuCalculator\Enums\PuOperationalEligibility;
 use App\Domain\PuCalculator\Enums\PuReconciliationStatus;
@@ -82,6 +83,13 @@ final class PuOperationalHealthService
 
     private const MAX_IDS_IN_CONTEXT = 50;
 
+    /**
+     * Situação de ativação das emissões do retrato em curso (Fase 7), numa consulta.
+     *
+     * @var array<int, PuOperationalActivationStatus>
+     */
+    private array $activationStatuses = [];
+
     public function __construct(
         private readonly PuOfficialCurveFreshnessService $freshness,
         private readonly PuIndexerCapabilityPolicy $indexers,
@@ -90,6 +98,7 @@ final class PuOperationalHealthService
         private readonly PuIndexRateRequirementResolver $requirements,
         private readonly PuOperationalFailureClassifier $failures,
         private readonly BusinessDayCalendar $calendar,
+        private readonly PuOperationalActivationPolicy $activation,
     ) {}
 
     /**
@@ -100,6 +109,7 @@ final class PuOperationalHealthService
         $now = CarbonImmutable::instance($now ?? now());
         $checks = [];
         $emissions = $this->relevantEmissions($emissionIds);
+        $this->activationStatuses = $this->activation->statuses($emissions->keys()->map(fn ($id): int => (int) $id)->all());
         $officials = $this->latestVersions($emissions->keys()->all(), official: true);
         $attempts = $this->latestVersions($emissions->keys()->all(), official: false);
         $syncAttempts = $this->recentSyncAttempts();
@@ -278,7 +288,13 @@ final class PuOperationalHealthService
         $indexer = $parameter?->indexer_enum;
         $conditions = [];
         $eligibility = $this->eligibilityWithoutCurveCheck($emission, $official);
-        $inactive = $eligibility === PuOperationalEligibility::Inactive;
+        // Fase 7: não ativada e suspensa contam como fora de operação -- a curva
+        // oficial parada não vira atraso, e só o que põe o passado em dúvida alerta.
+        $inactive = in_array($eligibility, [
+            PuOperationalEligibility::Inactive,
+            PuOperationalEligibility::NotActivated,
+            PuOperationalEligibility::Suspended,
+        ], true);
 
         if ($eligibility === PuOperationalEligibility::NotConfigured) {
             return ['eligibility' => $eligibility, 'status' => null, 'conditions' => []];
@@ -304,6 +320,23 @@ final class PuOperationalHealthService
                 'Configurada e ainda sem curva oficial: nada é publicado até a primeira homologação.',
                 ['emission_id' => $id],
             );
+        }
+
+        if ($eligibility === PuOperationalEligibility::NotActivated) {
+            $conditions[] = $this->condition(PuOperationalConditionType::OperationsNotActivated, sprintf(
+                '%s%s',
+                $this->activation->globallyEnabled()
+                    ? 'Configurada e com a operação do PU não ativada: nenhuma curva é gerada, estendida ou homologada até uma ativação autorizada.'
+                    : 'Operações do PU desligadas neste ambiente (PU_OPERATIONS_ENABLED): nenhuma curva é gerada, estendida ou homologada.',
+                $official instanceof EmissionPuCurveVersion ? sprintf(' A curva oficial %s não avança.', $official->calculation_version) : '',
+            ), ['emission_id' => $id], ['has_official_curve' => $official instanceof EmissionPuCurveVersion]);
+        }
+
+        if ($eligibility === PuOperationalEligibility::Suspended) {
+            $conditions[] = $this->condition(PuOperationalConditionType::OperationsSuspended, sprintf(
+                'Operação do PU suspensa: nenhuma curva é gerada, estendida ou homologada.%s',
+                $official instanceof EmissionPuCurveVersion ? sprintf(' A curva oficial %s não avança até a reativação.', $official->calculation_version) : '',
+            ), ['emission_id' => $id], ['has_official_curve' => $official instanceof EmissionPuCurveVersion]);
         }
 
         if ($latestAttempt instanceof EmissionPuCurveVersion && $eligibility !== PuOperationalEligibility::UnsupportedIndexer) {
@@ -336,7 +369,12 @@ final class PuOperationalHealthService
         $status = null;
 
         if ($official instanceof EmissionPuCurveVersion
-            && in_array($eligibility, [PuOperationalEligibility::Operational, PuOperationalEligibility::Inactive], true)) {
+            && in_array($eligibility, [
+                PuOperationalEligibility::Operational,
+                PuOperationalEligibility::Inactive,
+                PuOperationalEligibility::NotActivated,
+                PuOperationalEligibility::Suspended,
+            ], true)) {
             $status = $this->freshness->status($emission, $now);
             array_push($conditions, ...$this->officialConditions($emission, $official, $status, $syncAttempts, $now, $inactive));
         }
@@ -525,6 +563,17 @@ final class PuOperationalHealthService
 
         if ($emission->status !== 'active') {
             return PuOperationalEligibility::Inactive;
+        }
+
+        // Fase 7: estar ativa no cadastro não ativa a operação do PU.
+        $activation = $this->activationStatuses[(int) $emission->id] ?? $this->activation->status($emission);
+
+        if ($activation === PuOperationalActivationStatus::Suspended) {
+            return PuOperationalEligibility::Suspended;
+        }
+
+        if (! $this->activation->globallyEnabled() || ! $activation->isOperational()) {
+            return PuOperationalEligibility::NotActivated;
         }
 
         return $official instanceof EmissionPuCurveVersion

@@ -824,6 +824,31 @@ class PuCurveGenerationService
             )),
         };
 
+        // Fase 7: teto contratual só quando declarado no evento, sobre a mesma base do
+        // percentual. Acima dele a curva é recusada -- nunca truncada no teto.
+        if (is_array($event->financial_effect) && array_key_exists(PuFinancialEffectSupport::KEY_MAXIMUM_PRINCIPAL_FRACTION, $event->financial_effect)) {
+            $cap = PuFinancialEffectSupport::maximumPrincipalFraction($event->financial_effect);
+
+            if ($cap === null) {
+                throw new PuCurveInputsException(sprintf(
+                    'A amortização extraordinária de %s declara um teto contratual malformado; a curva não foi calculada.',
+                    $date->format('d/m/Y'),
+                ));
+            }
+
+            $capUnitValue = $this->precision->unitValue(bcmul($baseUnitValue, $cap, DecimalRounder::CALCULATION_SCALE + 4));
+
+            if (bccomp($requested, $capUnitValue, DecimalRounder::CALCULATION_SCALE) === 1) {
+                throw new PuCurveInputsException(sprintf(
+                    'A amortização extraordinária de %s (%s por unidade) excede o teto contratual declarado (%s da base, %s por unidade); a curva não foi calculada e a amortização não é truncada.',
+                    $date->format('d/m/Y'),
+                    $requested,
+                    $cap,
+                    $capUnitValue,
+                ));
+            }
+        }
+
         if (bccomp($requested, $remainingResidualUnitValue, DecimalRounder::CALCULATION_SCALE) === 1) {
             throw new PuCurveInputsException(sprintf(
                 'A amortização extraordinária de %s (%s por unidade) é maior que o saldo disponível na data (%s por unidade); a curva não foi calculada.',

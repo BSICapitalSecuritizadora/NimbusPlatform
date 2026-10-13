@@ -48,5 +48,9 @@
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="NIMBUS_PII_BLIND_INDEX_KEY" value="test-only-blind-index-key-32b!!"/>
+        <!-- Operações do PU ligadas na suíte (Fase 7); cada emissão ainda precisa da
+             própria decisão de ativação (Tests\Support\Pu\PuOperationalActivationFixture).
+             Os testes do portão desligam o interruptor explicitamente. -->
+        <env name="PU_OPERATIONS_ENABLED" value="true" force="true"/>
     </php>
 </phpunit>

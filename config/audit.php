@@ -121,6 +121,8 @@ return [
             'settled_obligation_calculation_changed',
             // Ação humana sobre o operacional (Fase 6).
             'obligation_refresh_retried', 'operational_incident_acknowledged',
+            // Decisão de ativar ou suspender a operação do PU de uma emissão (Fase 7).
+            'operations_activated', 'operations_suspended',
         ],
     ],
 

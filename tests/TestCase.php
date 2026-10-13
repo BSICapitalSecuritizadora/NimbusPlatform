@@ -7,6 +7,7 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\Pu\PuOperationalActivationFixture;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -55,6 +56,10 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
 
         $this->isolateStorageFromRealFilesystem();
+
+        // Contexto operacional simulado do PU (Fase 7): o portão de ativação é o
+        // de produção; o fixture grava a decisão de teste que ele lê.
+        PuOperationalActivationFixture::register();
     }
 
     protected function tearDown(): void

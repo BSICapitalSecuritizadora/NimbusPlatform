@@ -33,6 +33,7 @@ use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\Pu\PuCandidateGovernanceFixture;
+use Tests\Support\Pu\PuOperationalActivationFixture;
 
 uses(RefreshDatabase::class);
 
@@ -615,4 +616,21 @@ it('exposes the candidate dossier route only to a reviewer', function () {
     $this->actingAs($exporter)->get($candidateRoute)->assertNotFound();
     $this->actingAs($exporter)->get($operationalRoute)->assertSuccessful();
     $this->actingAs($reviewer)->get($candidateRoute)->assertSuccessful();
+});
+
+it('refuses to persist a candidate while the emission PU operation is suspended, writing nothing', function () {
+    // Fase 7: candidata persistida é estado governado -- só com a operação do PU ativa.
+    $asOf = PuCandidateGovernanceFixture::asOf();
+    $emission = PuCandidateGovernanceFixture::readyEmission($asOf);
+    candidatePersistenceOperationalVersion($emission, 'v1', '2026-05-15');
+    PuOperationalActivationFixture::suspend($emission->id);
+    $before = PuCandidateGovernanceFixture::counts();
+
+    $result = app(PuCandidateCurvePersistenceService::class)->write($emission->fresh(), $asOf, PuCandidateGovernanceFixture::maker()->email);
+
+    expect($result->action)->toBe(PuCandidateCurvePersistenceService::ACTION_OPERATIONS_NOT_ACTIVE)
+        ->and($result->reason)->toContain('PU_OPERATIONS_SUSPENDED')
+        ->and($result->writes)->toBe(0)
+        ->and($result->candidateVersionId)->toBeNull()
+        ->and(PuCandidateGovernanceFixture::counts())->toBe($before);
 });

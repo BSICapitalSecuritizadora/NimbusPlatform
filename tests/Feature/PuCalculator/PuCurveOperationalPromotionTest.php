@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\Http;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\Pu\PuCandidateGovernanceFixture;
+use Tests\Support\Pu\PuOperationalActivationFixture;
 
 uses(RefreshDatabase::class);
 
@@ -751,4 +752,20 @@ it('executes the atomic switch through the command', function () {
         ->and($scenario['operational']->fresh()->status)->toBe(PuCurveStatus::Obsolete)
         ->and($scenario['emission']->fresh()->latestPuCurveVersion()->first()?->id)
         ->toBe($scenario['candidate']->id);
+});
+
+it('refuses to execute an approved promotion while the emission PU operation is suspended, writing nothing', function () {
+    // Fase 7: a promoção cria versão operacional -- só com a operação do PU ativa.
+    $scenario = approvedPromotionScenario();
+    PuOperationalActivationFixture::suspend($scenario['emission']->id);
+    $identity = PuCandidateGovernanceFixture::curveIdentitySnapshot($scenario['candidate']);
+
+    $result = operationalPromotions()->write($scenario['promotion'], (string) $scenario['executor']->id);
+
+    expect($result->action)->toBe(PuCurveOperationalPromotionService::ACTION_OPERATIONS_NOT_ACTIVE)
+        ->and($result->reason)->toContain('PU_OPERATIONS_SUSPENDED')
+        ->and($scenario['candidate']->fresh()->curve_role)->toBe(PuCurveRole::Candidate)
+        ->and($scenario['operational']->fresh()->status)->not->toBe(PuCurveStatus::Obsolete)
+        ->and($scenario['promotion']->fresh()->status)->not->toBe(PuCurvePromotionStatus::Executed)
+        ->and(PuCandidateGovernanceFixture::curveIdentitySnapshot($scenario['candidate']))->toBe($identity);
 });

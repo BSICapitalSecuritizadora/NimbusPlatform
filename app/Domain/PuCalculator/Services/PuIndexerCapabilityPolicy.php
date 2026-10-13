@@ -15,10 +15,10 @@ use App\Models\EmissionPuParameter;
 /**
  * Portão único de elegibilidade operacional por indexador (Fase 6, P0-05).
  *
- * Implementar o indexador na engine não o aprova. Só o indexador declarado
- * homologado para uso operacional ({@see PuIndexer::isHomologated()}: hoje CDI e
- * prefixado) grava curva, valida, homologa, estende a oficial e calcula
- * obrigações. Os demais -- IPCA -- só simulam: a engine continua disponível em
+ * Implementar o indexador na engine não o aprova. Só o indexador certificado
+ * para uso operacional ({@see PuIndexer::certification()}: desde a Fase 7, só o
+ * CDI) grava curva, valida, homologa, estende a oficial e calcula obrigações. Os
+ * demais -- prefixado (sem referência independente) e IPCA -- só simulam: a engine continua disponível em
  * memória, para conferência contra gabarito, e nada do que ela calcula chega a
  * uma versão, ao PU oficial ou ao esperado das obrigações.
  *

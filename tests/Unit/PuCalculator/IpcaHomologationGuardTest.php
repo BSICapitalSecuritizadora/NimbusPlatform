@@ -3,11 +3,17 @@
 use App\Domain\PuCalculator\Calculators\IpcaCurveCalculator;
 use App\Domain\PuCalculator\Enums\PuCalculationMethod;
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Domain\PuCalculator\Enums\PuIndexerCertification;
 
-it('keeps CDI and Prefixado homologated while IPCA stays experimental', function () {
+it('keeps only CDI operational while Prefixado and IPCA stay simulation-only until independently certified', function () {
+    // Fase 7: o prefixado era "homologado" por declaração, sem referência
+    // independente; perdeu o uso operacional até ser certificado.
     expect(PuIndexer::Cdi->isHomologated())->toBeTrue()
-        ->and(PuIndexer::Prefixed->isHomologated())->toBeTrue()
-        ->and(PuIndexer::Ipca->isHomologated())->toBeFalse();
+        ->and(PuIndexer::Cdi->certification())->toBe(PuIndexerCertification::ConditionallyCertified)
+        ->and(PuIndexer::Prefixed->isHomologated())->toBeFalse()
+        ->and(PuIndexer::Prefixed->certification())->toBe(PuIndexerCertification::NotCertified)
+        ->and(PuIndexer::Ipca->isHomologated())->toBeFalse()
+        ->and(PuIndexer::Ipca->certification())->toBe(PuIndexerCertification::NotCertified);
 });
 
 it('labels IPCA as in preparation', function () {
