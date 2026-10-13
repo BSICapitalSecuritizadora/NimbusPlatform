@@ -34,6 +34,7 @@ return [
         'PATRIMONIO SEPARADO' => 'Patrimônio Separado',
         'DESPESA PATRIMONIO SEPARADO' => 'Patrimônio Separado',
         'SERVICE' => 'Service',
+        'SISTEMA' => 'Sistema',
         'TAXA ANBIMA' => 'Taxa Anbima',
         'TAXA CVM' => 'Taxa CVM',
     ],

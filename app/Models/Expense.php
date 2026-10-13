@@ -36,6 +36,7 @@ class Expense extends Model
         'IPTU' => 'IPTU',
         'Patrimônio Separado' => 'Patrimônio Separado',
         'Service' => 'Service',
+        'Sistema' => 'Sistema',
         'Taxa Anbima' => 'Taxa Anbima',
         'Taxa CVM' => 'Taxa CVM',
     ];
