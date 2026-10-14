@@ -200,6 +200,7 @@ enum AccessPermission: string
     case PuDashboardView = 'pu.dashboard.view';
     case PuIndexImport = 'pu.index.import';
     case PuIndexSync = 'pu.index.sync';
+    case PuIndexCorrect = 'pu.index.correct';
     case PuProjectionApprove = 'pu.projection.approve';
     case PuCalendarManage = 'pu.calendar.manage';
     case PuHolidayImport = 'pu.holiday.import';
@@ -463,6 +464,7 @@ enum AccessPermission: string
             self::PuDashboardView => 'Curva de PU: painel operacional',
             self::PuIndexImport => 'Curva de PU: importar índices',
             self::PuIndexSync => 'Curva de PU: sincronizar índices (Banco Central)',
+            self::PuIndexCorrect => 'Curva de PU: corrigir observação histórica de índice (marca curvas para reprocessamento)',
             self::PuProjectionApprove => 'Curva de PU: aprovar série projetada',
             self::PuCalendarManage => 'Curva de PU: completar calendário de dias úteis',
             self::PuHolidayImport => 'Curva de PU: importar feriados ANBIMA',
@@ -715,6 +717,7 @@ enum AccessPermission: string
             || str_contains($this->value, 'manage-responsibilities')
             || $this === self::AreasManage
             || $this === self::PuOperationsActivate
+            || $this === self::PuIndexCorrect
             || str_contains($this->value, 'roles.')
             || str_contains($this->value, 'permissions');
     }

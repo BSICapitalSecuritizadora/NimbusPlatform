@@ -6,6 +6,7 @@ use App\Domain\PuCalculator\Services\PuBaselineReadinessService;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Widgets\PuCalculator\PuBaselineReadinessWidget;
 use App\Models\Emission;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Contracts\Support\Htmlable;
@@ -49,6 +50,13 @@ class ViewEmission extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('puOperation')
+                ->label('Operação do PU')
+                ->icon('heroicon-o-shield-check')
+                ->color('gray')
+                ->outlined()
+                ->visible(fn (): bool => auth()->user()?->can('pu.curve.view') ?? false)
+                ->url(fn (): string => EmissionResource::getUrl('pu-operation', ['record' => $this->getRecord()])),
             EditAction::make()
                 ->label('Editar')
                 ->icon('heroicon-m-pencil-square')

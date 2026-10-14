@@ -11,6 +11,9 @@
         ? $latestAttempt
         : null;
     $canExport = auth()->user()?->can('pu.curve.export') ?? false;
+    $activationStatus ??= null;
+    $globallyEnabled ??= null;
+    $operationUrl ??= null;
 @endphp
 
 <div class="space-y-6">
@@ -18,6 +21,28 @@
         Geração e validação da curva rodam em segundo plano (fila). O status abaixo é atualizado
         automaticamente conforme os jobs concluem.
     </p>
+
+    @if ($activationStatus !== null)
+        <div class="pu-ops-next" role="note">
+            <p class="pu-ops-card-label">Operação do PU</p>
+            <p class="mt-1 flex flex-wrap items-center gap-2">
+                <x-filament::badge :color="\App\Support\PuCalculator\PuDisplay::activationColor($activationStatus)" :icon="\App\Support\PuCalculator\PuDisplay::activationIcon($activationStatus)">{{ $activationStatus->label() }}</x-filament::badge>
+                <x-filament::badge :color="$globallyEnabled ? 'success' : 'gray'">{{ $globallyEnabled ? 'Operações ligadas neste ambiente' : 'Operações desligadas neste ambiente' }}</x-filament::badge>
+            </p>
+            <p class="mt-2 text-secondary">
+                @if (! $globallyEnabled)
+                    Com o interruptor global desligado, nenhuma curva é gerada, estendida ou homologada aqui, mesmo que a emissão esteja configurada.
+                @elseif (! $activationStatus->isOperational())
+                    Sem ativação registrada (ou suspensa), a geração, a extensão diária e a homologação desta emissão são recusadas.
+                @else
+                    Emissão ativada: geração e homologação seguem governadas por maker/checker.
+                @endif
+                @if ($operationUrl !== null)
+                    <x-filament::link :href="$operationUrl" icon="heroicon-m-arrow-top-right-on-square">Abrir Operação do PU</x-filament::link>
+                @endif
+            </p>
+        </div>
+    @endif
 
     @if ($version !== null && $canExport)
         <div>
@@ -44,7 +69,7 @@
             </p>
         </div>
         <div class="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
-            <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Versao atual</p>
+            <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Versão de trabalho vigente</p>
             <p class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {{ $version?->calculation_version ?? '-' }}
             </p>
@@ -81,7 +106,7 @@
         <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Curva oficial</p>
         <p class="mt-2 text-sm text-gray-700 dark:text-gray-200">
             @if ($officialVersion !== null)
-                Versão <strong>{{ $officialVersion->calculation_version }}</strong>, homologada em {{ $officialVersion->homologated_at?->format('d/m/Y H:i') ?? '-' }}: é a única que alimenta relatório, garantias, site e Cronograma de Pagamentos.
+                Versão <strong>{{ $officialVersion->calculation_version }}</strong>, homologada em {{ $officialVersion->homologated_at?->format('d/m/Y H:i') ?? '-' }}: é a única que alimenta relatório, garantias, site e o esperado das obrigações financeiras (o Cronograma de Pagamentos continua sendo só o informado).
             @else
                 Nenhuma curva homologada. Curvas geradas ou validadas não valem como PU oficial.
             @endif

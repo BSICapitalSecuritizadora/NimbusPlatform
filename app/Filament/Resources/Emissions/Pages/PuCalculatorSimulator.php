@@ -18,6 +18,7 @@ use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Enums\AccessPermission;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Models\EmissionPuParameter;
+use App\Support\PuCalculator\PuDisplay;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -627,8 +628,10 @@ class PuCalculatorSimulator extends Page
     {
         $options = [];
 
+        // O mesmo vocabulário da configuração: simular é livre, mas o rótulo diz o
+        // que a certificação permite fora da simulação.
         foreach (PuIndexer::cases() as $indexer) {
-            $options[$indexer->value] = $indexer->label();
+            $options[$indexer->value] = PuDisplay::indexerOption($indexer);
         }
 
         return $options;

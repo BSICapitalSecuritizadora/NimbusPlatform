@@ -78,6 +78,7 @@ uses(RefreshDatabase::class);
 function emissionFilterSourceFiles(): array
 {
     return [
+        'app/Filament/Pages/PuOperationalIncidents.php',
         'app/Filament/Resources/Constructions/Tables/ConstructionsTable.php',
         'app/Filament/Resources/ConstructionUnits/Tables/ConstructionUnitsTable.php',
         'app/Filament/Resources/ContractInstallments/Tables/ContractInstallmentsTable.php',
@@ -341,7 +342,7 @@ it('wires every SelectFilter labeled Emissão to the shared dropdown', function 
     // quando os dois moram na mesma tabela; este confere filtro a filtro. Os filtros do
     // campo emissão rotulados "Série" (um por arquivo) ficam com o de cima; os rotulados
     // "Operação", com o contrato de Operação abaixo.
-    expect($chains)->toHaveCount(14)
+    expect($chains)->toHaveCount(15)
         ->and($unwired)->toBe([]);
 });
 
@@ -2327,6 +2328,7 @@ it('keeps the shared dropdown out of registration forms, modals and relation man
         'app/Filament/Support/AnchoredFilterDropdown.php',
         'app/Filament/Pages/Dashboard.php',
         'app/Filament/Pages/ObligationDashboard.php',
+        'app/Filament/Pages/PuOperationalIncidents.php',
         'app/Filament/Widgets/Obligations/ObligationOperationalTableWidget.php',
     ];
 

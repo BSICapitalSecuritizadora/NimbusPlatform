@@ -7,11 +7,14 @@ namespace App\Domain\PuCalculator\Services;
 use App\Domain\PuCalculator\Enums\PuCurveRole;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Enums\AccessPermission;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\IndexRate;
 use App\Models\IndexRateCorrection;
+use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -174,6 +177,62 @@ final class IndexRateCorrectionService
         $this->auditLog->logIndexRateCorrected($correction);
 
         return $correction;
+    }
+
+    /**
+     * Correção pedida por uma pessoa pela tela (Fase 8): exige a autoridade
+     * `pu.index.correct` e um usuário ativo; o resto é exatamente {@see correct()}.
+     * O terminal e a revisão do provedor continuam pelo método original.
+     *
+     * @throws AuthorizationException
+     */
+    public function correctAs(
+        User $actor,
+        PuIndexer $indexer,
+        string $rateDate,
+        string $newValue,
+        string $reason,
+        ?string $newSource = null,
+        ?string $newSourceReference = null,
+    ): IndexRateCorrection {
+        if (! $actor->isOperational() || ! $actor->can(AccessPermission::PuIndexCorrect->value)) {
+            throw new AuthorizationException(sprintf(
+                'Corrigir observação histórica de índice exige a permissão %s e um usuário ativo.',
+                AccessPermission::PuIndexCorrect->value,
+            ));
+        }
+
+        return $this->correct(
+            indexer: $indexer,
+            rateDate: $rateDate,
+            newValue: $newValue,
+            reason: $reason,
+            correctedByUserId: (int) $actor->getKey(),
+            newSource: $newSource,
+            newSourceReference: $newSourceReference,
+        );
+    }
+
+    /**
+     * Prévia somente leitura: as versões operacionais vivas que usaram a
+     * observação, com a primeira data afetada. A lista definitiva é relida sob as
+     * travas na correção.
+     *
+     * @return list<array{id: int, emission_id: int, calculation_version: string, status: string, first_dependent_date: string}>
+     */
+    public function dependentVersions(PuIndexer $indexer, string $rateDate): array
+    {
+        return $this->dependentVersionsQuery($indexer, CarbonImmutable::parse($rateDate)->toDateString())
+            ->get()
+            ->map(fn ($row): array => [
+                'id' => (int) $row->id,
+                'emission_id' => (int) $row->emission_id,
+                'calculation_version' => (string) $row->calculation_version,
+                'status' => (string) $row->status,
+                'first_dependent_date' => CarbonImmutable::parse((string) $row->first_dependent_date)->toDateString(),
+            ])
+            ->values()
+            ->all();
     }
 
     /**

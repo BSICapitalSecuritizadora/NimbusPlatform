@@ -132,6 +132,25 @@
             </dl>
         </section>
 
+        {{-- Portões da operação do PU (Fase 7) e incidentes duráveis (Fase 6) --}}
+        <section class="pu-ops-next" aria-labelledby="pu-operations-gate">
+            <p id="pu-operations-gate" class="pu-ops-card-label">Operação do PU</p>
+            <p class="mt-1 flex flex-wrap items-center gap-2">
+                <x-filament::badge :color="$operations['globally_enabled'] ? 'success' : 'gray'" :icon="$operations['globally_enabled'] ? 'heroicon-m-power' : 'heroicon-m-no-symbol'">
+                    {{ $operations['globally_enabled'] ? 'Operações ligadas neste ambiente' : 'Operações desligadas neste ambiente' }}
+                </x-filament::badge>
+                <x-filament::badge color="success" icon="heroicon-m-play-circle">{{ $operations['activated'] }} ativada(s)</x-filament::badge>
+                <x-filament::badge color="warning" icon="heroicon-m-pause-circle">{{ $operations['suspended'] }} suspensa(s)</x-filament::badge>
+                <x-filament::badge color="gray" icon="heroicon-m-stop-circle">{{ $operations['inactive'] }} não ativada(s)</x-filament::badge>
+            </p>
+            <p class="mt-2 text-sm text-secondary">
+                {{ $operations['globally_enabled'] ? 'Só emissões ativadas geram, estendem e homologam curvas.' : 'Com o interruptor global desligado, nenhuma curva é gerada, estendida ou homologada e nenhuma liquidação real é registrada neste ambiente — curvas homologadas não significam operação liberada.' }}
+                @if (\App\Filament\Pages\PuOperationalIncidents::canAccess())
+                    <x-filament::link :href="\App\Filament\Pages\PuOperationalIncidents::getUrl()" icon="heroicon-m-arrow-top-right-on-square">Ver incidentes do PU</x-filament::link>
+                @endif
+            </p>
+        </section>
+
         {{-- Estado geral: volume configurado e posicao na esteira --}}
         <x-filament::section
             heading="Estado geral"

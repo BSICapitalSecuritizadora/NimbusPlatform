@@ -2,8 +2,12 @@
 
 namespace App\Notifications;
 
+use App\Filament\Pages\PuOperationalIncidents;
+use App\Filament\Resources\Emissions\EmissionResource;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Notifications\Notification;
+use Throwable;
 
 /**
  * Aviso no sino do painel com os incidentes operacionais do PU que acabaram de
@@ -18,7 +22,7 @@ use Illuminate\Notifications\Notification;
 class PuOperationalIncidentsNotification extends Notification
 {
     /**
-     * @param  list<array{severity: string, label: string, reason: string, emission: string|null}>  $incidents
+     * @param  list<array{id?: int, severity: string, label: string, reason: string, emission: string|null, emission_id?: int|null}>  $incidents
      */
     public function __construct(
         public readonly array $incidents,
@@ -58,7 +62,44 @@ class PuOperationalIncidentsNotification extends Notification
             ->title(sprintf('Curva de PU — %d incidente(s) operacional(is)', $this->total))
             ->body(implode("\n", $lines))
             ->status($critical ? 'danger' : 'warning')
+            ->actions($this->actions())
             ->getDatabaseMessage();
+    }
+
+    /**
+     * Links para onde o aviso é tratado. A lista de incidentes sempre existe (e
+     * respeita a permissão de quem abre); a emissão só entra quando o aviso é de
+     * uma emissão só. A tela de destino confere de novo a autorização.
+     *
+     * @return list<Action>
+     */
+    private function actions(): array
+    {
+        $actions = [];
+
+        try {
+            $actions[] = Action::make('incidents')
+                ->label('Ver incidentes')
+                ->url(PuOperationalIncidents::getUrl(panel: 'admin'))
+                ->markAsRead();
+
+            $emissionIds = array_values(array_unique(array_filter(array_map(
+                fn (array $incident): ?int => $incident['emission_id'] ?? null,
+                $this->incidents,
+            ))));
+
+            if (count($emissionIds) === 1) {
+                $actions[] = Action::make('emission')
+                    ->label('Abrir operação do PU da emissão')
+                    ->url(EmissionResource::getUrl('pu-operation', ['record' => $emissionIds[0]], panel: 'admin'))
+                    ->markAsRead();
+            }
+        } catch (Throwable $exception) {
+            // Sem rota (painel não registrado no contexto): o aviso sai sem link.
+            report($exception);
+        }
+
+        return $actions;
     }
 
     /**

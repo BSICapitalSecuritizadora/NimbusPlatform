@@ -10,6 +10,8 @@ use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Domain\PuCalculator\Services\PuBaselineCandidateFactory;
 use App\Domain\PuCalculator\Services\PuContractualEventScheduleService;
 use App\Domain\PuCalculator\Services\PuContractualEventService;
+use App\Domain\PuCalculator\Services\PuFinancialEffectSupport;
+use App\Filament\Resources\Emissions\Schemas\PuContractualEventFields;
 use App\Models\Emission;
 use App\Models\EmissionPuEvent;
 use App\Models\User;
@@ -29,9 +31,11 @@ use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
 
 class PuEventsRelationManager extends RelationManager
 {
@@ -49,21 +53,26 @@ class PuEventsRelationManager extends RelationManager
             ->schema([
                 Select::make('event_type')
                     ->label('Tipo de evento')
-                    ->options([
-                        PuEventType::InterestPayment->value => 'Pagamento de juros',
-                        PuEventType::Amortization->value => 'Amortização',
-                    ])
+                    ->options(PuContractualEventFields::typeOptions())
+                    ->helperText('Mora, carência, diferimento, prêmio, multa, juros extraordinários, liquidação antecipada e troca de indexador não têm regra de cálculo e não são oferecidos: cadastrá-los bloquearia a curva. Veja "Tipos de evento e suporte".')
                     ->live()
                     ->required(),
                 DatePicker::make('original_date')
                     ->label('Data original')
                     ->helperText('Data do cronograma do Termo.')
+                    ->visible(fn (Get $get): bool => self::isScheduledPayment($get))
                     ->live(),
                 DatePicker::make('effective_date')
-                    ->label('Data efetiva')
-                    ->helperText('Data em que o pagamento acontece e até onde os juros correm.')
+                    ->label(fn (Get $get): string => match ($get('event_type')) {
+                        PuEventType::ExtraordinaryAmortization->value => 'Data efetiva (redução do principal)',
+                        PuEventType::EarlyMaturity->value => 'Data efetiva do vencimento antecipado',
+                        PuEventType::Waiver->value => 'Vigente a partir de',
+                        default => 'Data efetiva',
+                    })
+                    ->helperText(fn (Get $get): ?string => self::isScheduledPayment($get) ? 'Data em que o pagamento acontece e até onde os juros correm.' : null)
+                    ->visible(fn (Get $get): bool => $get('event_type') !== PuEventType::SpreadAmendment->value)
                     ->live()
-                    ->required(),
+                    ->required(fn (Get $get): bool => $get('event_type') !== PuEventType::SpreadAmendment->value),
                 Select::make('effective_date_reason')
                     ->label('Motivo da mudança de data')
                     ->options(PuEventDateChangeReason::options())
@@ -93,12 +102,15 @@ class PuEventsRelationManager extends RelationManager
                         PuAmortizationType::UnitValue->value => 'Valor unitário',
                     ])
                     ->default(PuAmortizationType::None->value)
-                    ->required(),
+                    ->visible(fn (Get $get): bool => self::isScheduledPayment($get))
+                    ->required(fn (Get $get): bool => self::isScheduledPayment($get)),
                 TextInput::make('amortization_value')
                     ->label('Valor da amortização')
+                    ->helperText('Percentual: fração da base, como a engine aplica (0,10 = 10%). Valor unitário: R$ por título.')
                     ->inputMode('decimal')
                     ->visible(fn (Get $get): bool => $get('event_type') === PuEventType::Amortization->value)
                     ->required(fn (Get $get): bool => $get('event_type') === PuEventType::Amortization->value),
+                ...PuContractualEventFields::components(fn (): Emission => $this->getOwnerRecord()),
                 TextInput::make('sequence')
                     ->label('Sequência')
                     ->numeric()
@@ -133,7 +145,26 @@ class PuEventsRelationManager extends RelationManager
                         PuEventType::InterestPayment->value => 'info',
                         PuEventType::Amortization->value => 'warning',
                         default => 'gray',
-                    }),
+                    })
+                    ->description(fn (EmissionPuEvent $record): ?string => PuEventType::tryFrom((string) $record->event_type)?->isScheduledPayment() ?? false
+                        ? null
+                        : PuContractualEventFields::effectSummary($record)),
+                TextColumn::make('financial_support')
+                    ->label('Efeito no cálculo')
+                    ->badge()
+                    ->state(fn (EmissionPuEvent $record): string => $this->supportLabel($record))
+                    ->color(fn (string $state): string => match ($state) {
+                        'Calculado' => 'success',
+                        'Sem efeito no PU' => 'gray',
+                        'Cancelado' => 'gray',
+                        default => 'danger',
+                    })
+                    ->icon(fn (string $state): string => match ($state) {
+                        'Calculado' => 'heroicon-m-check-badge',
+                        'Sem efeito no PU', 'Cancelado' => 'heroicon-m-minus-circle',
+                        default => 'heroicon-m-no-symbol',
+                    })
+                    ->tooltip(fn (EmissionPuEvent $record): ?string => $this->supportIssues($record) !== [] ? implode(' ', $this->supportIssues($record)) : null),
                 TextColumn::make('status')
                     ->label('Situação')
                     ->badge()
@@ -167,7 +198,9 @@ class PuEventsRelationManager extends RelationManager
                     }),
                 TextColumn::make('amortization_value')
                     ->label('Valor')
-                    ->numeric(8, ',', '.')
+                    ->state(fn (EmissionPuEvent $record): ?string => in_array(PuAmortizationType::tryFrom((string) $record->amortization_type), [PuAmortizationType::Percentage, PuAmortizationType::UnitValue, PuAmortizationType::Residual], true)
+                        ? PuContractualEventFields::amortizationLabel($record)
+                        : null)
                     ->placeholder('—')
                     ->alignEnd()
                     ->sortable(),
@@ -188,10 +221,7 @@ class PuEventsRelationManager extends RelationManager
             ->filters([
                 SelectFilter::make('event_type')
                     ->label('Tipo de Evento')
-                    ->options([
-                        PuEventType::InterestPayment->value => 'Pagamento de Juros',
-                        PuEventType::Amortization->value => 'Amortização',
-                    ]),
+                    ->options(collect(PuEventType::cases())->mapWithKeys(fn (PuEventType $type): array => [$type->value => $type->label()])->all()),
             ])
             ->headerActions([
                 Action::make('generateContractualSchedule')
@@ -211,17 +241,32 @@ class PuEventsRelationManager extends RelationManager
                     ->label('Novo Evento PU')
                     ->icon('heroicon-m-plus')
                     ->tooltip('Cadastrar evento de PU manualmente')
+                    ->modalWidth(Width::ThreeExtraLarge)
                     ->visible(fn (): bool => auth()->user()?->can('pu.parameters.configure') ?? false)
+                    ->mutateDataUsing(fn (array $data, CreateAction $action): array => $this->guardedPayload($data, $action))
                     ->after(fn (): null => $this->logEventChange('created')),
+                Action::make('effectSupportMatrix')
+                    ->label('Tipos de evento e suporte')
+                    ->icon('heroicon-m-information-circle')
+                    ->color('gray')
+                    ->modalHeading('Tipos de evento contratual e suporte financeiro')
+                    ->modalDescription('O que a engine calcula, o que é só informado e o que bloqueia a curva por não ter regra. Nada aqui é configurável pela tela.')
+                    ->modalWidth(Width::FiveExtraLarge)
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar')
+                    ->modalContent(fn (): Htmlable => view('filament.emissions.pu-effect-support-matrix', [
+                        'rows' => app(PuFinancialEffectSupport::class)->matrix(),
+                    ])),
             ])
             ->actions([
                 ActionGroup::make([
                     EditAction::make()
                         // O formulário cobre os pagamentos do cronograma; os demais tipos do
-                        // catálogo não são editados por aqui.
+                        // catálogo não são editados por aqui (cancelar e cadastrar de novo).
                         ->visible(fn (EmissionPuEvent $record): bool => $record->isActive()
                             && (PuEventType::tryFrom((string) $record->event_type)?->isScheduledPayment() ?? false)
                             && (auth()->user()?->can('pu.parameters.configure') ?? false))
+                        ->mutateDataUsing(fn (array $data): array => PuContractualEventFields::payload($data))
                         ->after(fn (): null => $this->logEventChange('updated')),
                     Action::make('cancelEvent')
                         ->label('Cancelar evento')
@@ -367,6 +412,83 @@ class PuEventsRelationManager extends RelationManager
         };
 
         return null;
+    }
+
+    /**
+     * Eventos ativos da emissão no formato canônico, lidos uma vez por requisição
+     * para a coluna de suporte.
+     *
+     * @var list<array<string, mixed>>|null
+     */
+    private ?array $activeEventsForSupport = null;
+
+    /**
+     * Payload do evento a partir do formulário guiado; recusa, sem gravar, o que
+     * a geração da curva recusaria.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function guardedPayload(array $data, CreateAction $action): array
+    {
+        /** @var Emission $emission */
+        $emission = $this->getOwnerRecord();
+        $payload = PuContractualEventFields::payload($data);
+        $issues = PuContractualEventFields::issues($payload, $emission);
+
+        if ($issues !== []) {
+            Notification::make()
+                ->title('Evento não cadastrado: a curva o recusaria.')
+                ->body(implode(' ', $issues).' Nada foi gravado.')
+                ->danger()
+                ->persistent()
+                ->send();
+
+            $action->halt();
+        }
+
+        return $payload;
+    }
+
+    private function supportLabel(EmissionPuEvent $record): string
+    {
+        if (! $record->isActive()) {
+            return 'Cancelado';
+        }
+
+        if ($this->supportIssues($record) !== []) {
+            return 'Bloqueia a curva';
+        }
+
+        return app(PuFinancialEffectSupport::class)->isInert(PuFinancialEffectSupport::fromModel($record)) ? 'Sem efeito no PU' : 'Calculado';
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function supportIssues(EmissionPuEvent $record): array
+    {
+        if (! $record->isActive()) {
+            return [];
+        }
+
+        /** @var Emission $emission */
+        $emission = $this->getOwnerRecord();
+        $this->activeEventsForSupport ??= $emission->puEvents()->active()->get()
+            ->map(fn (EmissionPuEvent $event): array => PuFinancialEffectSupport::fromModel($event))
+            ->values()
+            ->all();
+
+        return app(PuFinancialEffectSupport::class)->issues(
+            PuFinancialEffectSupport::fromModel($record),
+            $this->activeEventsForSupport,
+            $emission->puParameter?->resolvedCalculationMethod(),
+        );
+    }
+
+    private static function isScheduledPayment(Get $get): bool
+    {
+        return PuEventType::tryFrom((string) $get('event_type'))?->isScheduledPayment() ?? true;
     }
 
     /**

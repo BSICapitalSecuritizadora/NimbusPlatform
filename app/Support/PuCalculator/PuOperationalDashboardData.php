@@ -5,7 +5,12 @@ declare(strict_types=1);
 namespace App\Support\PuCalculator;
 
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Enums\PuOperationalActivationStatus;
+use App\Domain\PuCalculator\Enums\PuOperationalSeverity;
+use App\Domain\PuCalculator\Services\PuOperationalActivationPolicy;
 use App\Domain\PuCalculator\Services\PuOperationalMonitorService;
+use App\Models\EmissionPuParameter;
+use App\Models\PuOperationalIncident;
 
 /**
  * Compoe, para a camada de apresentacao, os indicadores ja calculados pelo
@@ -58,6 +63,7 @@ class PuOperationalDashboardData
 
     public function __construct(
         private readonly PuOperationalMonitorService $monitor,
+        private readonly PuOperationalActivationPolicy $activation,
     ) {}
 
     /**
@@ -71,6 +77,7 @@ class PuOperationalDashboardData
      *     exception_total: int,
      *     queue_total: int,
      *     health: array{tone: string, label: string, headline: string, description: string, icon: string, chips: list<array{label: string, value: int, tone: string}>},
+     *     operations: array{globally_enabled: bool, activated: int, suspended: int, inactive: int},
      * }
      */
     public function overview(): array
@@ -78,6 +85,7 @@ class PuOperationalDashboardData
         $counts = $this->monitor->statusCounts();
         $queue = $this->monitor->queueMetrics();
         $missingCdi = $this->monitor->missingCdiCount();
+        $incidents = $this->openIncidents();
 
         $exceptions = $this->exceptions($counts, $queue, $missingCdi);
         $queueIndicators = $this->queueIndicators($counts, $queue);
@@ -91,7 +99,46 @@ class PuOperationalDashboardData
             'queue' => $queueIndicators,
             'exception_total' => $this->sumValues($exceptions),
             'queue_total' => $this->sumValues($queueIndicators),
-            'health' => $this->health($counts, $queue, $missingCdi),
+            'health' => $this->health($counts, $queue, $missingCdi, $incidents),
+            'operations' => $this->operations(),
+        ];
+    }
+
+    /**
+     * Incidentes duráveis abertos por severidade (Fase 6): o painel não fica
+     * "normal" com incidente aberto, só porque as curvas estão homologadas.
+     *
+     * @return array{critical: int, warning: int}
+     */
+    private function openIncidents(): array
+    {
+        $bySeverity = PuOperationalIncident::query()
+            ->open()
+            ->selectRaw('severity, count(*) as aggregate')
+            ->groupBy('severity')
+            ->pluck('aggregate', 'severity');
+
+        return [
+            'critical' => (int) ($bySeverity[PuOperationalSeverity::Critical->value] ?? 0),
+            'warning' => (int) ($bySeverity[PuOperationalSeverity::Warning->value] ?? 0),
+        ];
+    }
+
+    /**
+     * Interruptor global e decisões de ativação das emissões configuradas (Fase 7).
+     *
+     * @return array{globally_enabled: bool, activated: int, suspended: int, inactive: int}
+     */
+    private function operations(): array
+    {
+        $ids = array_map('intval', EmissionPuParameter::query()->pluck('emission_id')->all());
+        $statuses = collect($this->activation->statuses($ids))->countBy(fn (PuOperationalActivationStatus $status): string => $status->value);
+
+        return [
+            'globally_enabled' => $this->activation->globallyEnabled(),
+            'activated' => (int) $statuses->get(PuOperationalActivationStatus::Activated->value, 0),
+            'suspended' => (int) $statuses->get(PuOperationalActivationStatus::Suspended->value, 0),
+            'inactive' => (int) $statuses->get(PuOperationalActivationStatus::Inactive->value, 0),
         ];
     }
 
@@ -247,17 +294,19 @@ class PuOperationalDashboardData
      * @param  array{pending_jobs: int, failed_pu_jobs: int, failed_jobs_total: int, stuck_versions: int}  $queue
      * @return array{tone: string, label: string, headline: string, description: string, icon: string, chips: list<array{label: string, value: int, tone: string}>}
      */
-    private function health(array $counts, array $queue, int $missingCdi): array
+    private function health(array $counts, array $queue, int $missingCdi, array $incidents = ['critical' => 0, 'warning' => 0]): array
     {
         $failures = $counts[PuCurveStatus::Error->value] + $queue['failed_pu_jobs'] + $queue['stuck_versions'];
         $divergences = $counts[PuCurveStatus::Divergent->value];
-        $attention = $divergences + $counts['sem_curva'] + $counts[PuCurveStatus::Obsolete->value];
-        $critical = $failures + $missingCdi;
+        $attention = $divergences + $counts['sem_curva'] + $counts[PuCurveStatus::Obsolete->value] + $incidents['warning'];
+        $critical = $failures + $missingCdi + $incidents['critical'];
 
         $chips = [
             ['label' => $failures === 1 ? 'falha' : 'falhas', 'value' => $failures, 'tone' => $failures > 0 ? 'danger' : 'neutral'],
             ['label' => $divergences === 1 ? 'divergência' : 'divergências', 'value' => $divergences, 'tone' => $divergences > 0 ? 'warning' : 'neutral'],
             ['label' => $missingCdi === 1 ? 'CDI faltante' : 'CDIs faltantes', 'value' => $missingCdi, 'tone' => $missingCdi > 0 ? 'danger' : 'neutral'],
+            ['label' => $incidents['critical'] === 1 ? 'incidente crítico' : 'incidentes críticos', 'value' => $incidents['critical'], 'tone' => $incidents['critical'] > 0 ? 'danger' : 'neutral'],
+            ['label' => $incidents['warning'] === 1 ? 'incidente de atenção' : 'incidentes de atenção', 'value' => $incidents['warning'], 'tone' => $incidents['warning'] > 0 ? 'warning' : 'neutral'],
             ['label' => $queue['pending_jobs'] === 1 ? 'job pendente' : 'jobs pendentes', 'value' => $queue['pending_jobs'], 'tone' => 'neutral'],
         ];
 
@@ -268,7 +317,7 @@ class PuOperationalDashboardData
                 'headline' => $critical === 1
                     ? '1 ocorrência crítica exige ação imediata'
                     : sprintf('%d ocorrências críticas exigem ação imediata', $critical),
-                'description' => 'Falhas de processamento ou lacunas de índice estão bloqueando a evolução das curvas. Priorize os indicadores destacados abaixo.',
+                'description' => 'Falhas de processamento, lacunas de índice ou incidentes críticos abertos exigem ação. Priorize os indicadores destacados e a lista de incidentes do PU.',
                 'icon' => 'heroicon-o-exclamation-triangle',
                 'chips' => $chips,
             ];
@@ -281,7 +330,7 @@ class PuOperationalDashboardData
                 'headline' => $attention === 1
                     ? '1 ocorrência exige atenção'
                     : sprintf('%d ocorrências exigem atenção', $attention),
-                'description' => 'Nenhuma falha crítica, mas há curvas fora do estado final de homologação.',
+                'description' => 'Nenhuma falha crítica, mas há curvas fora do estado final de homologação ou incidentes de atenção abertos.',
                 'icon' => 'heroicon-o-eye',
                 'chips' => $chips,
             ];
@@ -293,7 +342,7 @@ class PuOperationalDashboardData
             'headline' => 'Sem ocorrências críticas',
             'description' => $counts['total'] === 0
                 ? 'Nenhuma emissão com parâmetros de PU configurados até o momento.'
-                : 'Curvas, índices e fila de processamento dentro do esperado.',
+                : 'Curvas, índices e fila de processamento dentro do esperado, sem incidente aberto.',
             'icon' => 'heroicon-o-shield-check',
             'chips' => $chips,
         ];

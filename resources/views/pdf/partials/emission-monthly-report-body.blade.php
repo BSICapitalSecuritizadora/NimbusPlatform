@@ -37,14 +37,34 @@
 <div class="section-title">Pagamento aos Investidores</div>
 @if ($payment['has_data'])
     <p class="note">Último pagamento: <strong>{{ $payment['payment_date'] }}</strong></p>
-    <table class="data">
-        <thead><tr><th>Componente</th><th class="num">Valor</th></tr></thead>
-        <tbody>
-            @foreach ($payment['rows'] as $row)
-                <tr><td>{{ $row['label'] }}</td><td class="num">{{ $row['value'] }}</td></tr>
-            @endforeach
-        </tbody>
-    </table>
+    @if (! empty($payment['obligations']))
+        {{-- Uma tabela por obrigação: previsto pela curva oficial, liquidado e
+             divergência nunca se misturam entre obrigações da mesma data. --}}
+        <p class="note">Previsto = curva oficial homologada; liquidado = fato registrado; divergência = liquidado − previsto. Não há liquidação parcial.</p>
+        @foreach ($payment['obligations'] as $obligation)
+            <p class="note"><strong>{{ $obligation['title'] }}</strong></p>
+            <table class="data">
+                <thead><tr><th>Componente previsto</th><th class="num">Valor</th></tr></thead>
+                <tbody>
+                    @foreach ($obligation['components'] as $row)
+                        <tr><td>{{ $row['label'] }}</td><td class="num">{{ $row['value'] }}</td></tr>
+                    @endforeach
+                    @foreach ($obligation['summary'] as $row)
+                        <tr><td><strong>{{ $row['label'] }}</strong></td><td class="num">{{ $row['value'] }}</td></tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endforeach
+    @else
+        <table class="data">
+            <thead><tr><th>Componente</th><th class="num">Valor</th></tr></thead>
+            <tbody>
+                @foreach ($payment['rows'] as $row)
+                    <tr><td>{{ $row['label'] }}</td><td class="num">{{ $row['value'] }}</td></tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
 @else
     <p class="no-data">{{ $payment['empty_message'] }}</p>
 @endif
