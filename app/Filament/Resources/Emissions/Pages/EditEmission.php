@@ -26,7 +26,6 @@ use App\Domain\PuCalculator\Services\PuCurvePrerequisiteService;
 use App\Domain\PuCalculator\Services\PuCurveVersionService;
 use App\Domain\PuCalculator\Services\PuIndexCoverageService;
 use App\Domain\PuCalculator\Services\PuIndexerCapabilityPolicy;
-use App\Domain\PuCalculator\Services\PuIndexRateRequirementResolver;
 use App\Domain\PuCalculator\Services\PuOperationalActivationPolicy;
 use App\Domain\PuCalculator\Services\PuValidationSpreadsheetLocatorService;
 use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
@@ -896,19 +895,6 @@ class EditEmission extends EditRecord
         return $this->puGateBlockers[$capability->value] = $blocker;
     }
 
-    /**
-     * O padrão que o domínio aplica quando o calendário de divulgação fica vazio
-     * ({@see PuIndexRateRequirementResolver::observationCalendarCode()}).
-     */
-    private function defaultCdiPublicationCalendarLabel(mixed $calendarCode): string
-    {
-        $code = trim((string) $calendarCode);
-
-        return $code !== '' && BusinessCalendarRegistry::isCdiPublicationCalendar($code)
-            ? sprintf('Padrão: o calendário da curva (%s), que já é de divulgação do CDI', BusinessCalendarRegistry::label($code))
-            : sprintf('Padrão: %s (calendário canônico de divulgação do CDI)', BusinessCalendarRegistry::label(BusinessCalendarRegistry::CDI_PUBLICATION_CALENDAR));
-    }
-
     private function indexerCertificationHint(mixed $indexer): ?string
     {
         $selected = PuIndexer::tryFrom((string) $indexer);
@@ -1083,7 +1069,7 @@ class EditEmission extends EditRecord
                 ->label('Calendário de divulgação do CDI')
                 ->options(fn (): array => app(BusinessCalendarCatalogService::class)
                     ->optionsForNewConfiguration($this->getRecord()->puParameter?->index_rate_calendar_code))
-                ->placeholder(fn (Get $get): string => $this->defaultCdiPublicationCalendarLabel($get('calendar_code')))
+                ->placeholder(fn (Get $get): string => PuDisplay::cdiPublicationCalendarDefault($get('calendar_code')))
                 ->helperText('Calendário em que os dias úteis da defasagem são contados. Sem escolha, vale o padrão mostrado no campo: o calendário da curva só quando ele já é de divulgação do CDI; senão, o calendário canônico de divulgação. A remuneração continua no calendário da curva.')
                 ->searchable()
                 ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value && $get('index_rate_lookup_mode') === PuIndexRateLookupMode::BusinessDayLagExact->value),

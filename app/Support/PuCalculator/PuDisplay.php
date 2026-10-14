@@ -18,6 +18,8 @@ use App\Domain\PuCalculator\Enums\PuSettlementConflictStatus;
 use App\Domain\PuCalculator\Enums\PuSettlementState;
 use App\Domain\PuCalculator\Enums\PuSettlementStatus;
 use App\Domain\PuCalculator\Services\DecimalRounder;
+use App\Domain\PuCalculator\Services\PuIndexRateRequirementResolver;
+use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Support\BusinessTime;
 use DateTimeInterface;
 
@@ -308,6 +310,20 @@ final class PuDisplay
             PuIndexerCertification::NotCertified => 'danger',
             default => 'gray',
         };
+    }
+
+    /**
+     * O calendário de divulgação que o domínio aplica a uma emissão CDI quando o
+     * campo fica vazio ({@see PuIndexRateRequirementResolver::observationCalendarCode()}):
+     * o da curva só quando ele já é de divulgação do CDI; senão, o canônico.
+     */
+    public static function cdiPublicationCalendarDefault(mixed $curveCalendarCode): string
+    {
+        $code = trim((string) $curveCalendarCode);
+
+        return $code !== '' && BusinessCalendarRegistry::isCdiPublicationCalendar($code)
+            ? sprintf('Padrão: o calendário da curva (%s), que já é de divulgação do CDI', BusinessCalendarRegistry::label($code))
+            : sprintf('Padrão: %s (calendário canônico de divulgação do CDI)', BusinessCalendarRegistry::label(BusinessCalendarRegistry::CDI_PUBLICATION_CALENDAR));
     }
 
     /**

@@ -9,8 +9,10 @@ use App\Domain\PuCalculator\Enums\PuObligationType;
 use App\Domain\PuCalculator\Enums\PuOperationalConditionType;
 use App\Domain\PuCalculator\Enums\PuOperationalSeverity;
 use App\Domain\PuCalculator\Services\PuFinancialEffectSupport as Effect;
+use App\Domain\PuCalculator\Services\PuIndexRateRequirementResolver;
 use App\Domain\PuCalculator\Services\PuObligationReader;
 use App\Domain\PuCalculator\Services\PuOperationalAlertDispatcher;
+use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Enums\AccessPermission;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
@@ -77,6 +79,32 @@ it('labels prefixed and IPCA as simulation only wherever the indexer is chosen',
     Livewire::test(EditEmission::class, ['record' => $emission->getRouteKey()])
         ->mountAction('configurePuCalculation')
         ->assertMountedActionModalSee(['Prefixado — não certificado: somente simulação', 'IPCA — não certificado: somente simulação', 'Padrão:']);
+});
+
+it('names the CDI publication calendar the domain applies when the field is left empty', function () {
+    $resolver = app(PuIndexRateRequirementResolver::class);
+    $emission = Fx::emission();
+    $parameter = $emission->puParameter;
+
+    foreach ([BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS, BusinessCalendarRegistry::CDI_PUBLICATION_CALENDAR] as $curveCalendar) {
+        $applied = $resolver->observationCalendarCode((clone $parameter)->forceFill(['calendar_code' => $curveCalendar]));
+
+        expect(PuDisplay::cdiPublicationCalendarDefault($curveCalendar))->toContain(BusinessCalendarRegistry::label($applied));
+    }
+
+    expect(PuDisplay::cdiPublicationCalendarDefault(BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS))->toContain('canônico')
+        ->and(PuDisplay::cdiPublicationCalendarDefault(BusinessCalendarRegistry::CDI_PUBLICATION_CALENDAR))->toContain('o calendário da curva');
+
+    $expected = PuDisplay::cdiPublicationCalendarDefault($parameter->calendar_code);
+    expect($expected)->toContain(BusinessCalendarRegistry::label($resolver->observationCalendarCode($parameter)));
+    $this->actingAs(makeAdminUser());
+
+    expect(Livewire::test(PuCalculatorSimulator::class, ['record' => $emission->getRouteKey()])->instance()->indexRateCalendarOptions()[''])
+        ->toBe($expected);
+
+    Livewire::test(EditEmission::class, ['record' => $emission->getRouteKey()])
+        ->mountAction('configurePuCalculation')
+        ->assertMountedActionModalSee($expected);
 });
 
 it('disables curve generation with the reason while PU operations are off, and a forged call queues nothing', function () {
