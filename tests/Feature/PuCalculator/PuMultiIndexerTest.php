@@ -1,6 +1,9 @@
 <?php
 
-use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Enums\PuCalculationMethod;
+use App\Domain\PuCalculator\Enums\PuEventType;
+use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Domain\PuCalculator\Services\PuCurveGeneratorService;
 use App\Domain\PuCalculator\Services\PuCurvePrerequisiteService;
 use App\Jobs\GeneratePuDailyCurveJob;
 use App\Models\EmissionPuCurveVersion;
@@ -9,15 +12,19 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\Pu\PuObligationFixture;
 
 uses(RefreshDatabase::class);
 
-it('passes prerequisites for a prefixed emission without any CDI', function () {
+it('requires no CDI for a prefixed emission and blocks it only for lacking operational certification', function () {
     $emission = makePrefixedEmission();
 
     $check = app(PuCurvePrerequisiteService::class)->handle($emission);
 
-    expect($check->passes())->toBeTrue();
+    // Fase 7: os pré-requisitos de dado do prefixado passam sem CDI; o único
+    // bloqueio é o indexador sem certificação operacional.
+    expect($check->passes())->toBeFalse()
+        ->and(array_map(fn ($issue): string => $issue->key, $check->blockingIssues()))->toBe(['indexer_not_operationally_homologated']);
 });
 
 it('blocks generation for prefixed emissions missing the annual rate', function () {
@@ -39,18 +46,18 @@ it('blocks IPCA generation as experimental with a clear message', function () {
         ->and(implode(' ', $check->blockingMessages()))->toContain('IPCA');
 });
 
-it('generates a prefixed curve through the queued job and records the method in the snapshot', function () {
+it('refuses a prefixed curve through the queued job, keeping the fixed-rate engine available in memory', function () {
     $emission = makePrefixedEmission();
 
     app()->call([new GeneratePuDailyCurveJob($emission->id, null), 'handle']);
 
-    $version = EmissionPuCurveVersion::query()->where('emission_id', $emission->id)->latest('id')->first();
-
-    expect(Cache::get("pu_curve_generation_{$emission->id}_status"))->toMatchArray(['status' => 'completed'])
-        ->and($version->status)->toBe(PuCurveStatus::Generated)
-        ->and($version->parameters_snapshot['indexer'])->toBe('PREFIXED')
-        ->and($version->parameters_snapshot['calculation_method'])->toBe('fixed_rate')
-        ->and($version->parameters_snapshot['method_version'])->toBe('phase3-fixed-v1');
+    // Fase 7: sem certificação operacional, o job não grava versão nenhuma.
+    expect(Cache::get("pu_curve_generation_{$emission->id}_status"))->toMatchArray(['status' => 'failed'])
+        ->and(Cache::get("pu_curve_generation_{$emission->id}_status")['error'])->toContain('INDEXER_NOT_OPERATIONALLY_HOMOLOGATED')
+        ->and(EmissionPuCurveVersion::query()->where('emission_id', $emission->id)->exists())->toBeFalse()
+        ->and(PuCalculationMethod::forIndexer(PuIndexer::Prefixed)->value)->toBe('fixed_rate')
+        ->and(PuCalculationMethod::FixedRate->engineVersion())->toBe('phase3-fixed-v1')
+        ->and(app(PuCurveGeneratorService::class)->handle($emission->fresh())->rows)->toHaveCount(3);
 });
 
 it('includes the indexer and calculation method in the CSV export', function () {
@@ -61,7 +68,8 @@ it('includes the indexer and calculation method in the CSV export', function () 
     $admin->assignRole('admin');
     $this->actingAs($admin);
 
-    $emission = makePrefixedEmission();
+    // Fase 7: o prefixado não grava curva; a exportação é conferida numa curva CDI.
+    $emission = PuObligationFixture::emission([[PuEventType::InterestPayment, '2026-03-09']]);
     app()->call([new GeneratePuDailyCurveJob($emission->id, $admin->id), 'handle']);
 
     $version = EmissionPuCurveVersion::query()->where('emission_id', $emission->id)->latest('id')->first();
@@ -75,6 +83,6 @@ it('includes the indexer and calculation method in the CSV export', function () 
     expect($response->streamedContent())
         ->toContain('indexador')
         ->toContain('metodo_calculo')
-        ->toContain('PREFIXED')
-        ->toContain('fixed_rate');
+        ->toContain('CDI')
+        ->toContain(PuCalculationMethod::forIndexer(PuIndexer::Cdi)->value);
 });

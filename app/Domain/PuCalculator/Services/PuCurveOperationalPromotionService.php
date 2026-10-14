@@ -8,6 +8,7 @@ use App\Domain\PuCalculator\DTOs\PuCurvePromotionResult;
 use App\Domain\PuCalculator\Enums\PuCurvePromotionStatus;
 use App\Domain\PuCalculator\Enums\PuCurveRole;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Enums\PuIndexerCapability;
 use App\Models\Emission;
 use App\Models\EmissionPuCurvePromotion;
 use App\Models\EmissionPuCurveVersion;
@@ -64,12 +65,16 @@ class PuCurveOperationalPromotionService
 
     public const ACTION_EXECUTOR_UNAUTHORIZED = 'promotion_executor_unauthorized';
 
+    /** Fase 7: operações do PU desligadas no ambiente, emissão não ativada ou suspensa. */
+    public const ACTION_OPERATIONS_NOT_ACTIVE = 'promotion_operations_not_active';
+
     public const OBSOLETE_REASON = 'superseded_by_promotion';
 
     public function __construct(
         private readonly PuCurvePromotionEligibilityService $eligibility,
         private readonly PuCurvePromotionActorService $actors,
         private readonly PuAuditLogService $auditLog,
+        private readonly PuOperationalActivationPolicy $activation,
     ) {}
 
     /**
@@ -198,7 +203,16 @@ class PuCurveOperationalPromotionService
         }
 
         return DB::transaction(function () use ($promotion, $executorIdentifier): PuCurvePromotionResult {
-            Emission::query()->whereKey($promotion->emission_id)->lockForUpdate()->firstOrFail();
+            $lockedEmission = Emission::query()->whereKey($promotion->emission_id)->lockForUpdate()->firstOrFail();
+
+            // Fase 7: a promoção cria versão operacional -- só com a operação do PU
+            // ativa, conferida sob a trava da emissão.
+            $refusal = $this->activation->refusalFor($lockedEmission, PuIndexerCapability::CurveGeneration, lockForShare: true);
+
+            if ($refusal !== null) {
+                return $this->result($promotion, self::ACTION_OPERATIONS_NOT_ACTIVE, $refusal->getMessage());
+            }
+
             $lockedPromotion = EmissionPuCurvePromotion::query()
                 ->whereKey($promotion->id)
                 ->lockForUpdate()

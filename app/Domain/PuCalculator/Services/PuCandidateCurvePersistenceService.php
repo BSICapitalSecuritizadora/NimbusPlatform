@@ -12,6 +12,7 @@ use App\Domain\PuCalculator\Enums\PuCurveInternalValidationStatus;
 use App\Domain\PuCalculator\Enums\PuCurveReviewStatus;
 use App\Domain\PuCalculator\Enums\PuCurveRole;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Enums\PuIndexerCapability;
 use App\Enums\AccessPermission;
 use App\Exceptions\PuCandidateCurveIntegrityException;
 use App\Models\BusinessCalendarYear;
@@ -51,12 +52,16 @@ final class PuCandidateCurvePersistenceService
 
     public const ACTION_ACTOR_UNAUTHORIZED = 'candidate_persistence_unauthorized';
 
+    /** Fase 7: operações do PU desligadas no ambiente, emissão não ativada ou suspensa. */
+    public const ACTION_OPERATIONS_NOT_ACTIVE = 'candidate_persistence_operations_not_active';
+
     public function __construct(
         private readonly PuCandidateCurvePersistencePlanService $plans,
         private readonly PuNumericHomologationPlanService $homologationPlans,
         private readonly PuCurveVersionService $curveVersions,
         private readonly PuPersistedCurveChecksumService $persistedChecksums,
         private readonly PuAuditLogService $auditLog,
+        private readonly PuOperationalActivationPolicy $activation,
     ) {}
 
     public function dryRun(
@@ -95,10 +100,20 @@ final class PuCandidateCurvePersistenceService
                     ->whereKey($emission->id)
                     ->lockForUpdate()
                     ->firstOrFail();
+
                 [$actor, $actorAction, $actorReason] = $this->actorForWrite($actorIdentifier);
 
                 if (! $actor instanceof User) {
                     return $this->outcomeFromPlan($initialPlan, $actorAction, $actorReason);
+                }
+
+                // Fase 7: candidata persistida também é estado governado -- só com a
+                // operação do PU ativa, conferida sob a trava da emissão, antes de
+                // qualquer escrita.
+                $refusal = $this->activation->refusalFor($lockedEmission, PuIndexerCapability::CurveGeneration, lockForShare: true);
+
+                if ($refusal !== null) {
+                    return $this->outcomeFromPlan($initialPlan, self::ACTION_OPERATIONS_NOT_ACTIVE, $refusal->getMessage(), actorId: $actor->id);
                 }
 
                 if ($initialPlan->action !== PuCandidateCurvePersistencePlanService::ACTION_READY_TO_PERSIST) {

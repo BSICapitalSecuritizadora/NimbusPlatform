@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\PuCalculator\Services\PuGovernedHistoryGuard;
 use App\Enums\MalwareScanStatus;
 use App\Enums\SalesBoardSource;
 use App\Observers\EmissionObserver;
@@ -51,6 +52,13 @@ class Emission extends Model
             $emission->forceFill([
                 'bsi_code' => self::generateBsiCode($emission),
             ])->saveQuietly();
+        });
+
+        // Histórico financeiro governado do PU (curva homologada, obrigações,
+        // liquidações) não sai em cascata com a emissão: a recusa vem aqui, com o
+        // motivo; exclusão em massa e `DELETE` direto param na âncora RESTRICT.
+        static::deleting(function (self $emission): void {
+            app(PuGovernedHistoryGuard::class)->assertDeletable($emission);
         });
     }
 

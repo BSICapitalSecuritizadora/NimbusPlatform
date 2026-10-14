@@ -1,5 +1,7 @@
 <?php
 
+use App\Domain\PuCalculator\Support\PuOperationsConfig;
+
 /*
  * Inteiro operacional lido do ambiente com recusa explícita: texto inválido,
  * vazio ou abaixo do mínimo cai no padrão -- nunca em 0, que num limiar quer
@@ -40,6 +42,23 @@ $operationalSeconds = static function (string $key, array $default): array {
 };
 
 return [
+    /*
+    |--------------------------------------------------------------------------
+    | Operações do PU neste ambiente (Fase 7)
+    |--------------------------------------------------------------------------
+    |
+    | Interruptor GLOBAL das operações que gravam estado financeiro governado:
+    | gerar e estender curva, promover, homologar e registrar liquidação. Desligado
+    | quando ausente, vazio ou ilegível ("off", "no", erro de digitação): só um
+    | afirmativo inequívoco liga ({@see PuOperationsConfig}). Ligar o ambiente não
+    | ativa emissão nenhuma -- cada uma precisa da própria decisão autorizada de
+    | ativação (`pu:operations:activate`). Fora do interruptor: simulação,
+    | sincronização de índice, monitoramento e leitura.
+    */
+    'operations' => [
+        'enabled' => PuOperationsConfig::flag(env('PU_OPERATIONS_ENABLED', false)),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Monitoramento operacional da calculadora de PU

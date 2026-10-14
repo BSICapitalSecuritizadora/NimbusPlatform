@@ -2,14 +2,19 @@
 
 use App\Actions\Emissions\GeneratePuDailyCurve;
 use App\Domain\PuCalculator\Calculators\DailyFactorCalculator;
+use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Services\DecimalRounder;
+use App\Domain\PuCalculator\Services\PuCurveGeneratorService;
 use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
+use App\Models\EmissionPuCurveVersion;
+use App\Models\EmissionPuDailyCurve;
 use App\Models\IndexRate;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 
 uses(RefreshDatabase::class);
 
@@ -53,14 +58,36 @@ function makePrefixedEmission(string $start = '2026-02-02', string $end = '2026-
     return $emission;
 }
 
+/**
+ * Fase 7: o prefixado não tem certificação operacional (nenhuma referência
+ * independente das convenções) e não grava curva -- a engine continua disponível
+ * em memória, que é o que estes testes verificam. As linhas vêm na forma de
+ * persistência (mesmas colunas que a curva gravada teria).
+ *
+ * @return Collection<int, object>
+ */
+function prefixedSimulatedRows(Emission $emission): Collection
+{
+    return collect(app(PuCurveGeneratorService::class)->handle($emission->fresh())->rows)
+        ->map(fn (PuDailyCurveRowData $row): object => (object) $row->toPersistenceArray((int) $emission->id, 'simulacao'))
+        ->values();
+}
+
+it('refuses to persist a prefixed curve: the fixed-rate engine has no operational certification', function () {
+    $emission = makePrefixedEmission();
+
+    expect(fn () => app(GeneratePuDailyCurve::class)->handle($emission, syncLegacyProjections: false))
+        ->toThrow(InvalidArgumentException::class, 'INDEXER_NOT_OPERATIONALLY_HOMOLOGATED')
+        ->and(EmissionPuCurveVersion::query()->count())->toBe(0)
+        ->and(EmissionPuDailyCurve::query()->count())->toBe(0);
+});
+
 it('generates a prefixed curve without requiring CDI', function () {
     $emission = makePrefixedEmission();
 
     expect(IndexRate::query()->count())->toBe(0); // nenhum CDI cadastrado
 
-    app(GeneratePuDailyCurve::class)->handle($emission, syncLegacyProjections: false);
-
-    $rows = $emission->fresh()->puDailyCurves()->orderBy('curve_date')->get();
+    $rows = prefixedSimulatedRows($emission);
 
     expect($rows)->toHaveCount(3)
         ->and((string) $rows[0]->updated_unit_value)->toBe('1000.0000000000000000')
@@ -72,9 +99,7 @@ it('generates a prefixed curve without requiring CDI', function () {
 it('applies the annual fixed factor (1 + rate/100)^(DUP/252)', function () {
     $emission = makePrefixedEmission();
 
-    app(GeneratePuDailyCurve::class)->handle($emission, syncLegacyProjections: false);
-
-    $secondRow = $emission->fresh()->puDailyCurves()->orderBy('curve_date')->get()[1];
+    $secondRow = prefixedSimulatedRows($emission)[1];
 
     $rounder = app(DecimalRounder::class);
     $expectedFactor = $rounder->round(
@@ -97,9 +122,7 @@ it('respects interest payment events and resets the base afterwards', function (
         'sequence' => 1,
     ]);
 
-    app(GeneratePuDailyCurve::class)->handle($emission, syncLegacyProjections: false);
-
-    $rows = $emission->fresh()->puDailyCurves()->orderBy('curve_date')->get()->keyBy(fn ($r) => $r->curve_date->toDateString());
+    $rows = prefixedSimulatedRows($emission)->keyBy('curve_date');
 
     expect(bccomp((string) $rows['2026-02-04']->payment_total_value, '0', 8))->toBe(1)
         ->and((string) $rows['2026-02-05']->dup_interest)->toBe('1'); // base resetada após pagamento
@@ -116,9 +139,7 @@ it('respects ordinary amortization reducing the residual', function () {
         'sequence' => 1,
     ]);
 
-    app(GeneratePuDailyCurve::class)->handle($emission, syncLegacyProjections: false);
-
-    $rows = $emission->fresh()->puDailyCurves()->orderBy('curve_date')->get()->keyBy(fn ($r) => $r->curve_date->toDateString());
+    $rows = prefixedSimulatedRows($emission)->keyBy('curve_date');
 
     expect(bccomp((string) $rows['2026-02-04']->amortization_unit_value, '0', 8))->toBe(1)
         ->and(bccomp((string) $rows['2026-02-04']->residual_unit_value, (string) $rows['2026-02-04']->updated_unit_value, 8))->toBe(-1);
@@ -127,9 +148,7 @@ it('respects ordinary amortization reducing the residual', function () {
 it('uses the current vigent quantity for total value', function () {
     $emission = makePrefixedEmission();
 
-    app(GeneratePuDailyCurve::class)->handle($emission, syncLegacyProjections: false);
-
-    $firstRow = $emission->fresh()->puDailyCurves()->orderBy('curve_date')->first();
+    $firstRow = prefixedSimulatedRows($emission)->first();
 
     // total_value = residual * quantidade (10)
     expect((string) $firstRow->quantity)->toBe('10.0000')

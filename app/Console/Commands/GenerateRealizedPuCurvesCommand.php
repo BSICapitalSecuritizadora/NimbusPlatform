@@ -8,6 +8,7 @@ use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Exceptions\PuCurveInputsException;
 use App\Domain\PuCalculator\Services\PuCurveExtensionService;
 use App\Domain\PuCalculator\Services\PuCurveInputSnapshotService;
+use App\Domain\PuCalculator\Services\PuOperationalActivationPolicy;
 use App\Jobs\ExtendPuDailyCurveJob;
 use App\Jobs\GeneratePuDailyCurveJob;
 use App\Models\Emission;
@@ -22,28 +23,53 @@ class GenerateRealizedPuCurvesCommand extends Command
     protected $signature = 'pu:curves:generate-realized
         {--emission= : Processa apenas a emissao informada (ID)}';
 
-    protected $description = 'Estende com o indice realizado mais recente a curva de PU OFICIAL (homologada) e, separadamente, a versao de trabalho de CDI, anexando so os dias novos. Sem nenhuma versao utilizavel, gera a curva inteira (que nasce nao oficial).';
+    protected $description = 'Estende com o indice realizado mais recente a curva de PU OFICIAL (homologada) e, separadamente, a versao de trabalho de CDI, anexando so os dias novos. Sem nenhuma versao utilizavel, gera a curva inteira (que nasce nao oficial). So para emissoes com a operacao do PU ATIVADA e com as operacoes do PU ligadas no ambiente.';
 
     private PuCurveInputSnapshotService $snapshots;
 
-    public function handle(PuCurveExtensionService $extensions, PuCurveInputSnapshotService $snapshots): int
-    {
+    public function handle(
+        PuCurveExtensionService $extensions,
+        PuCurveInputSnapshotService $snapshots,
+        PuOperationalActivationPolicy $activation,
+    ): int {
         $this->snapshots = $snapshots;
+
+        // Fase 7: emissão `active` com parâmetros CDI não é emissão autorizada. Com as
+        // operações do PU desligadas no ambiente, a rotina não enfileira nada -- nem
+        // geração, nem extensão. A sincronização do índice (dado de mercado) e o
+        // monitoramento continuam nas próprias rotinas.
+        if (! $activation->globallyEnabled()) {
+            $this->info('Operacoes do PU desligadas neste ambiente (PU_OPERATIONS_ENABLED): nenhuma curva gerada ou estendida.');
+
+            return self::SUCCESS;
+        }
 
         $extensionsQueued = 0;
         $officialExtensions = 0;
         $generations = 0;
         $skippedComplete = 0;
         $skippedAttempts = 0;
+        $skippedNotActivated = 0;
 
         $this->eligibleEmissions()->each(function (Emission $emission) use (
             $extensions,
+            $activation,
+            &$skippedNotActivated,
             &$extensionsQueued,
             &$officialExtensions,
             &$generations,
             &$skippedComplete,
             &$skippedAttempts,
         ): void {
+            // Só a emissão com a operação do PU ativada entra no pipeline: inativa
+            // (nunca ativada) e suspensa ficam de fora, com ou sem curva. O job e o
+            // serviço reconferem na execução -- a decisão pode mudar na fila.
+            if (! $activation->status($emission)->isOperational()) {
+                $skippedNotActivated++;
+
+                return;
+            }
+
             // A curva oficial é a homologada vigente; a de trabalho é a utilizável mais
             // recente que ainda não é oficial. Uma tentativa nova com erro ou em
             // processamento não esconde nenhuma das duas, e a de trabalho nunca toma o
@@ -95,12 +121,13 @@ class GenerateRealizedPuCurvesCommand extends Command
         });
 
         $this->info(sprintf(
-            'Curvas de PU realizadas: %d extensao(oes) enfileirada(s) (%d com curva oficial), %d geracao(oes) completa(s) enfileirada(s), %d ja completa(s), %d sem versao utilizavel (em processamento ou com erro).',
+            'Curvas de PU realizadas: %d extensao(oes) enfileirada(s) (%d com curva oficial), %d geracao(oes) completa(s) enfileirada(s), %d ja completa(s), %d sem versao utilizavel (em processamento ou com erro), %d sem operacao do PU ativada.',
             $extensionsQueued,
             $officialExtensions,
             $generations,
             $skippedComplete,
             $skippedAttempts,
+            $skippedNotActivated,
         ));
 
         return self::SUCCESS;

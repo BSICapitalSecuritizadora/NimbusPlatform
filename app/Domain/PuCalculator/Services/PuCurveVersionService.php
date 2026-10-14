@@ -45,6 +45,8 @@ class PuCurveVersionService
             $calculationVersion,
         ): EmissionPuCurveVersion {
             $lockedEmission = Emission::query()->whereKey($emission->id)->lockForUpdate()->firstOrFail();
+            // Fase 7: nem a versão em processamento nasce sem a operação do PU ativa.
+            app(PuOperationalActivationPolicy::class)->assert($lockedEmission, PuIndexerCapability::CurveGeneration, lockForShare: true);
 
             return EmissionPuCurveVersion::query()->create([
                 'emission_id' => $lockedEmission->id,

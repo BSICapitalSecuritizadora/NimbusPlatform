@@ -3,6 +3,10 @@
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
+use App\Domain\PuCalculator\Enums\PuObligationCalculationState;
+use App\Domain\PuCalculator\Enums\PuObligationComponent;
+use App\Domain\PuCalculator\Enums\PuObligationComponentOwner;
+use App\Domain\PuCalculator\Enums\PuObligationType;
 use App\Domain\PuCalculator\Services\FirstCouponPreIntegralizationPremiumCalculator;
 use App\Domain\PuCalculator\Services\PuCurveGenerationService;
 use App\Domain\PuCalculator\Services\PuCurvePrerequisiteService;
@@ -12,12 +16,15 @@ use App\Domain\PuCalculator\Services\PuIndexRateRequirementResolver;
 use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
 use App\Models\EmissionPuDailyCurve;
+use App\Models\EmissionPuObligationCalculation;
+use App\Models\EmissionPuObligationComponent;
 use App\Models\EmissionPuParameter;
 use App\Models\IndexRate;
 use App\Models\Payment;
 use App\Models\PuHistory;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\Pu\PuObligationFixture;
 
 uses(RefreshDatabase::class);
 
@@ -229,6 +236,32 @@ it('leaves curve results identical when the feature is absent or explicitly disa
 ]);
 
 /** @param  list<string>  $missingRateDates */
+it('never counts the premium twice: an informed premium on the coupon where the engine applied it leaves that obligation without a value, while a separate informed premium stays its own component', function () {
+    // Fase 7 (prêmio): a engine já aplicou o prêmio pré-integralização no cupom de
+    // 14/01; um prêmio informado na mesma data não é somado -- a obrigação fica sem
+    // valor esperado até alguém decidir qual prêmio vale. O prêmio informado de
+    // 16/01 (sem prêmio da engine) é componente próprio, do cronograma informado.
+    $emission = premiumCreateEmission();
+    Payment::query()->create(['emission_id' => $emission->id, 'payment_date' => '2026-01-14', 'premium_value' => '7.00', 'interest_value' => '0.00', 'amortization_value' => '0.00', 'extra_amortization_value' => '0.00']);
+    Payment::query()->create(['emission_id' => $emission->id, 'payment_date' => '2026-01-16', 'premium_value' => '3.00', 'interest_value' => '0.00', 'amortization_value' => '0.00', 'extra_amortization_value' => '0.00']);
+
+    $official = PuObligationFixture::official($emission);
+    $first = PuObligationFixture::obligation($emission, PuObligationType::ScheduledPayment, '2026-01-14');
+    $second = PuObligationFixture::obligation($emission, PuObligationType::ScheduledPayment, '2026-01-16');
+
+    expect(PuObligationFixture::row($official, '2026-01-14')->calculation_memory['first_coupon_pre_integralization_premium_applied'])->toBeTrue()
+        ->and($first->calculation_state)->toBe(PuObligationCalculationState::Unsupported)
+        ->and($first->current_calculation_id === null || $first->currentCalculation->componentAmount(PuObligationComponent::Premium) === null)->toBeTrue()
+        ->and(EmissionPuObligationComponent::query()
+            ->whereIn('calculation_id', EmissionPuObligationCalculation::query()->select('id')->where('obligation_id', $first->id))
+            ->where('component', PuObligationComponent::Premium->value)
+            ->where('status', '!=', 'unsupported')
+            ->exists())->toBeFalse()
+        ->and($second->calculation_state)->toBe(PuObligationCalculationState::Calculated)
+        ->and($second->currentCalculation->componentAmount(PuObligationComponent::Premium))->toBe('3.00')
+        ->and($second->currentCalculation->components->firstWhere('component', PuObligationComponent::Premium)->owner)->toBe(PuObligationComponentOwner::InformedSchedule);
+});
+
 function premiumCreateEmission(array $missingRateDates = []): Emission
 {
     premiumSeedCalendar('2025-12-20', '2026-01-16', ['2026-01-01']);

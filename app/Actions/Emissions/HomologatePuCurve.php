@@ -13,7 +13,9 @@ use App\Domain\PuCalculator\Services\PuCurveChangeImpactClassifier;
 use App\Domain\PuCalculator\Services\PuCurveInputSnapshotService;
 use App\Domain\PuCalculator\Services\PuCurveVersionService;
 use App\Domain\PuCalculator\Services\PuFinancialObligationService;
+use App\Domain\PuCalculator\Services\PuGovernedHistoryGuard;
 use App\Domain\PuCalculator\Services\PuIndexerCapabilityPolicy;
+use App\Domain\PuCalculator\Services\PuOperationalActivationPolicy;
 use App\Enums\BusinessArea;
 use App\Enums\PuSourceChange;
 use App\Events\PuCalculator\EmissionPuSourceChanged;
@@ -49,6 +51,8 @@ class HomologatePuCurve
         private readonly PuCurveInputSnapshotService $snapshots,
         private readonly PuCurveChangeImpactClassifier $classifier,
         private readonly PuIndexerCapabilityPolicy $indexerPolicy,
+        private readonly PuOperationalActivationPolicy $activation,
+        private readonly PuGovernedHistoryGuard $historyGuard,
     ) {}
 
     /**
@@ -64,6 +68,13 @@ class HomologatePuCurve
 
         return DB::transaction(function () use ($emission, $calculationVersion, $requestedByUserId, $justification): EmissionPuCurveVersion {
             $lockedEmission = Emission::query()->whereKey($emission->id)->lockForUpdate()->firstOrFail();
+
+            // Fase 7: homologar exige a operação do PU ativa -- interruptor global
+            // ligado e emissão ativada --, conferida sob a trava da emissão. Ativar
+            // não homologa e homologar não ativa: o maker/checker abaixo continua
+            // valendo igual.
+            $this->activation->assert($lockedEmission, PuIndexerCapability::Homologation, lockForShare: true);
+
             $version = $this->versionService->lockForGovernance($lockedEmission, $calculationVersion);
             $previousStatus = $version->status;
 
@@ -91,6 +102,12 @@ class HomologatePuCurve
             }
 
             $this->versionService->markHomologated($version, $requestedByUserId, $selfHomologation, $justification);
+
+            // Fase 7: a partir da primeira homologação a emissão tem histórico
+            // financeiro governado -- a âncora (FK RESTRICT) impede que qualquer
+            // exclusão da emissão, inclusive `DELETE` direto no banco, leve a curva
+            // oficial, os retratos, os eventos e as obrigações em cascata.
+            $this->historyGuard->anchor($lockedEmission, $version, $requestedByUserId);
             $this->auditLogService->logHomologation(
                 $lockedEmission,
                 $version->calculation_version,

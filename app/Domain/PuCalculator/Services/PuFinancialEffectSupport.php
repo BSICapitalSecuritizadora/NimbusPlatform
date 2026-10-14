@@ -32,7 +32,10 @@ use Carbon\CarbonImmutable;
  *    mesma data (`paid_by_interest_payment_event`) ou incorporados ao principal
  *    (`capitalized_into_principal`, a semântica da engine para amortização sem
  *    juros). Redução na data da liquidação, juros só sobre a parcela amortizada,
- *    amortização residual (total) ou valor acima do saldo: não suportados;
+ *    amortização residual (total) ou valor acima do saldo: não suportados. Teto
+ *    contratual (Fase 7): só o declarado no evento (`maximum_principal_fraction`,
+ *    fração da mesma base do percentual, em (0, 1]); acima dele a curva é recusada,
+ *    nunca truncada. O sistema não presume teto nenhum;
  *  - vencimento antecipado (só CDI): principal acelerado = saldo devedor
  *    (`accelerated_principal = outstanding_balance`), juros ordinários pro rata até
  *    a data efetiva (`accrued_interest = ordinary_remuneration_pro_rata`) e nenhum
@@ -43,6 +46,11 @@ use Carbon\CarbonImmutable;
  *    de um vencimento antecipado pela assembleia. Qualquer outro efeito (taxa de
  *    waiver, suspensão de juros, diferimento...) ou efeito não declarado: ambíguo,
  *    bloqueia. Waiver não significa "parar os juros".
+ *
+ * Fase 7: a regra declarada é lida por uma lista FECHADA de chaves. Uma chave que
+ * a engine não aplica (um teto com outro nome, uma multa, uma data) não é
+ * ignorada em silêncio: bloqueia, porque o contrato pediu algo que o cálculo não
+ * faria.
  */
 final class PuFinancialEffectSupport
 {
@@ -65,6 +73,11 @@ final class PuFinancialEffectSupport
     public const KEY_ADDITIONAL_CHARGES = 'additional_charges';
 
     public const KEY_PU_EFFECT = 'pu_effect';
+
+    public const KEY_MAXIMUM_PRINCIPAL_FRACTION = 'maximum_principal_fraction';
+
+    /** Chaves só descritivas, aceitas ao lado da regra (não entram em conta). */
+    private const DESCRIPTIVE_KEYS = ['description', 'kind', 'document_reference'];
 
     public const NONE = 'none';
 
@@ -157,7 +170,7 @@ final class PuFinancialEffectSupport
             $row('integralization', 'Integralização', null, PuFinancialEffectSupportLevel::NoFinancialObligation, null, [], 'Linha do tempo de quantidade da curva; não é obrigação da emissora perante o investidor.'),
             $row('ordinary_interest', 'Juros ordinários', PuEventType::InterestPayment, PuFinancialEffectSupportLevel::FullyCalculated, PuObligationType::ScheduledPayment, [PuObligationComponent::OrdinaryInterest], 'Calculados pela curva oficial (fórmula validada nas Fases 1-4).'),
             $row('ordinary_amortization', 'Amortização ordinária', PuEventType::Amortization, PuFinancialEffectSupportLevel::FullyCalculated, PuObligationType::ScheduledPayment, [PuObligationComponent::OrdinaryAmortization], 'Calculada pela curva oficial pelo tipo e valor do evento de amortização.'),
-            $row('extraordinary_amortization', 'Amortização extraordinária', PuEventType::ExtraordinaryAmortization, PuFinancialEffectSupportLevel::FullyCalculated, PuObligationType::ExtraordinaryAmortization, [PuObligationComponent::ExtraordinaryAmortization], 'Só CDI e só com redução na data efetiva e tratamento dos juros declarados; valor informado no cronograma sem evento é recusado.'),
+            $row('extraordinary_amortization', 'Amortização extraordinária', PuEventType::ExtraordinaryAmortization, PuFinancialEffectSupportLevel::FullyCalculated, PuObligationType::ExtraordinaryAmortization, [PuObligationComponent::ExtraordinaryAmortization], 'Só CDI e só com redução na data efetiva e tratamento dos juros declarados; teto contratual só o declarado no evento (acima dele a curva é recusada, nunca truncada); valor informado no cronograma sem evento é recusado.'),
             $row('extraordinary_interest', 'Juros extraordinários', PuEventType::ExtraordinaryInterest, PuFinancialEffectSupportLevel::LifecycleOnly, null, [PuObligationComponent::ExtraordinaryInterest], 'Sem fórmula contratual: evento ativo bloqueia a curva.'),
             $row('waiver', 'Waiver', PuEventType::Waiver, PuFinancialEffectSupportLevel::NoFinancialObligation, null, [], 'Só o declarado sem efeito no PU (pu_effect = none); qualquer outro efeito ou efeito ausente bloqueia.'),
             $row('grace_period', 'Carência', PuEventType::GracePeriod, PuFinancialEffectSupportLevel::LifecycleOnly, null, [], 'Regime não calculado: evento ativo bloqueia. A carência de juros contratual já se expressa no cronograma (sem pagamento de juros).'),
@@ -211,7 +224,43 @@ final class PuFinancialEffectSupport
             $problems[] = 'falta declarar o tratamento dos juros do período (accrued_interest = paid_by_interest_payment_event ou capitalized_into_principal); juros só sobre a parcela amortizada não têm regra de cálculo.';
         }
 
+        if (array_key_exists(self::KEY_MAXIMUM_PRINCIPAL_FRACTION, $effect)) {
+            $cap = self::maximumPrincipalFraction($effect);
+
+            if ($cap === null) {
+                $problems[] = 'o teto contratual declarado (maximum_principal_fraction) precisa ser uma fração da base do percentual maior que 0 e no máximo 1 (ex.: 0.98 para 98%).';
+            } elseif ($type === PuAmortizationType::Percentage && is_numeric($value) && bccomp((string) $value, $cap, 16) === 1) {
+                $problems[] = sprintf('o percentual da amortização extraordinária (%s) excede o teto contratual declarado (%s); a amortização não é truncada.', (string) $value, $cap);
+            }
+        }
+
+        array_push($problems, ...$this->unknownKeyProblems($effect, [
+            self::KEY_PRINCIPAL_REDUCTION,
+            self::KEY_ACCRUED_INTEREST,
+            self::KEY_MAXIMUM_PRINCIPAL_FRACTION,
+        ]));
+
         return $problems;
+    }
+
+    /**
+     * Teto contratual declarado no evento de amortização extraordinária, como
+     * fração normalizada da base do percentual -- ou nulo quando ausente ou
+     * malformado (fora de (0, 1]).
+     *
+     * @param  array<string, mixed>  $effect
+     */
+    public static function maximumPrincipalFraction(array $effect): ?string
+    {
+        $cap = $effect[self::KEY_MAXIMUM_PRINCIPAL_FRACTION] ?? null;
+
+        if (! is_numeric($cap) || is_bool($cap)) {
+            return null;
+        }
+
+        $normalized = bcadd((string) $cap, '0', 16);
+
+        return bccomp($normalized, '0', 16) === 1 && bccomp($normalized, '1', 16) <= 0 ? $normalized : null;
     }
 
     /**
@@ -245,7 +294,30 @@ final class PuFinancialEffectSupport
             $problems[] = 'há mais de um vencimento antecipado ativo; a operação vence antecipadamente uma vez só.';
         }
 
+        array_push($problems, ...$this->unknownKeyProblems($effect, [
+            self::KEY_ACCELERATED_PRINCIPAL,
+            self::KEY_ACCRUED_INTEREST,
+            self::KEY_ADDITIONAL_CHARGES,
+        ]));
+
         return $problems;
+    }
+
+    /**
+     * Chave da regra que a engine não aplica: bloqueia, com o nome dela.
+     *
+     * @param  array<string, mixed>  $effect
+     * @param  list<string>  $supported
+     * @return list<string>
+     */
+    private function unknownKeyProblems(array $effect, array $supported): array
+    {
+        $unknown = array_values(array_diff(array_keys($effect), [...$supported, ...self::DESCRIPTIVE_KEYS]));
+
+        return $unknown === [] ? [] : [sprintf(
+            'a regra declara %s, que a engine não aplica; sem regra de cálculo para isso, o efeito não pode ser ignorado.',
+            implode(', ', array_map(fn ($key): string => (string) $key, $unknown)),
+        )];
     }
 
     /**
@@ -275,7 +347,7 @@ final class PuFinancialEffectSupport
      */
     private function hasFinancialKeys(array $effect): bool
     {
-        return array_diff(array_keys($effect), [self::KEY_PU_EFFECT, 'description', 'kind', 'document_reference']) !== [];
+        return array_diff(array_keys($effect), [self::KEY_PU_EFFECT, ...self::DESCRIPTIVE_KEYS]) !== [];
     }
 
     /**

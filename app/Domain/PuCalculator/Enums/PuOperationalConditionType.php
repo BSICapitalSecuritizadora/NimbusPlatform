@@ -36,6 +36,8 @@ enum PuOperationalConditionType: string
     case UnsupportedIndexerOfficialCurve = 'unsupported_indexer_official_curve';
     case CurveGenerationFailed = 'curve_generation_failed';
     case CurveGenerationStuck = 'curve_generation_stuck';
+    case OperationsNotActivated = 'operations_not_activated';
+    case OperationsSuspended = 'operations_suspended';
 
     // Sincronização do índice, por indexador.
     case IndexAwaitingSynchronization = 'index_awaiting_synchronization';
@@ -130,7 +132,9 @@ enum PuOperationalConditionType: string
             self::IndexAwaitingSynchronization,
             self::ObligationReprocessingRequired,
             self::ObligationAwaitingIndex,
-            self::ObligationRefreshPending => PuOperationalSeverity::Info,
+            self::ObligationRefreshPending,
+            self::OperationsNotActivated,
+            self::OperationsSuspended => PuOperationalSeverity::Info,
             self::ReprocessingRequired,
             self::UnsupportedIndexerOfficialCurve,
             self::SettlementConflictOpen,
@@ -155,6 +159,8 @@ enum PuOperationalConditionType: string
             self::UnsupportedIndexerOfficialCurve => 'Curva oficial com indexador sem homologação operacional',
             self::CurveGenerationFailed => 'Geração de curva falhou',
             self::CurveGenerationStuck => 'Geração de curva travada em processamento',
+            self::OperationsNotActivated => 'Operação do PU não ativada (nada é gerado, estendido ou homologado)',
+            self::OperationsSuspended => 'Operação do PU suspensa (a curva oficial não avança)',
             self::IndexAwaitingSynchronization => 'Divulgação esperada, sincronização ainda não rodou',
             self::IndexSynchronizationOverdue => 'Sincronização do índice atrasada',
             self::IndexSyncFailed => 'Sincronização do índice falhou',
