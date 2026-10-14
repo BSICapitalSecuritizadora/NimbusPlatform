@@ -159,13 +159,19 @@ class MeasurementTimeline
             ]);
 
             if ($pause->resumed_at !== null) {
+                // A suspensão pela revisão em análise que terminou no mesmo
+                // instante em que a medição foi substituída não foi retomada: a
+                // medição foi encerrada pela revisão que passou a valer.
+                $endedBySupersession = $measurement->revision_superseded_at !== null
+                    && $pause->resumed_at->equalTo($measurement->revision_superseded_at);
+
                 $events->push([
                     'at' => $pause->resumed_at,
-                    'title' => 'Análise retomada',
+                    'title' => $endedBySupersession ? 'Suspensão encerrada: a revisão seguinte passou a valer' : 'Análise retomada',
                     'detail' => null,
                     'actor' => $pause->resumedByUser?->name,
-                    'color' => 'info',
-                    'icon' => 'heroicon-o-play-circle',
+                    'color' => $endedBySupersession ? 'gray' : 'info',
+                    'icon' => $endedBySupersession ? 'heroicon-o-stop-circle' : 'heroicon-o-play-circle',
                 ]);
             }
         }

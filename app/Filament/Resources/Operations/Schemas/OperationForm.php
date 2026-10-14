@@ -280,7 +280,7 @@ class OperationForm
                                 ->searchable()
                                 ->preload()
                                 ->placeholder('Selecione os usuários a notificar...')
-                                ->helperText('Recebem o aviso quando a Engenharia recusa uma medição. Estar na lista não dá acesso à operação.'),
+                                ->helperText('Recebem o aviso quando a Engenharia recusa uma medição ou uma revisão de medição. Estar na lista não dá acesso à operação, e o aviso não traz o link da medição para quem não pode abri-la.'),
                         ])
                         ->columnSpanFull(),
                 ]),

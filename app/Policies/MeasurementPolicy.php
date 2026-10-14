@@ -63,8 +63,9 @@ class MeasurementPolicy
 
     /**
      * Criar uma revisão desta medição (a R1 da original, a R2 da R1...). A
-     * situação da medição -- finalizada, ou parada na etapa Pagamento sem
-     * pagamento -- é conferida pelo serviço de revisões, sob o lock.
+     * situação da medição -- finalizada, parada na etapa Pagamento sem
+     * pagamento, ou paga aguardando a Finalização com os comprovantes
+     * aprovados -- é conferida pelo serviço de revisões, sob o lock.
      */
     public function revise(User $user, Measurement $measurement): bool
     {

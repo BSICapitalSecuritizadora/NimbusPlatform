@@ -100,7 +100,7 @@
 
             <section class="mt-6" aria-labelledby="measurement-signals-heading">
                 <h3 id="measurement-signals-heading" class="text-sm font-semibold text-gray-950 dark:text-white">Sinais operacionais</h3>
-                <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     @foreach($signals as $signal)
                         @php
                             $isSignalled = $signal['count'] > 0;

@@ -36,6 +36,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\MeasurementPhysicalProgressScenario;
 use Tests\Support\MeasurementReceiptEvidenceScenario;
+use Tests\Support\MeasurementRevisionScenario;
 
 uses(RefreshDatabase::class);
 
@@ -135,14 +136,18 @@ function measurementDeletionInReview(Operation $operation): Measurement
  * MeasurementWorkflow alcança o estado com pouco preparo, é ele quem leva a
  * medição até lá; a aprovação da Engenharia, que exige o cronograma completo,
  * vem gravada direto.
+ *
+ * A medição paga de volta à Engenharia -- com pagamento e sem a aprovação da
+ * Engenharia -- é legado: desde a Fase 3.1 o fluxo recusa essa devolução, e a
+ * linha é montada com as gravações da antiga devolução
+ * ({@see MeasurementRevisionScenario::legacyPaidAtEngineering()}).
  */
 function measurementDeletionInState(string $state): Measurement
 {
     if ($state === 'returned_with_payment') {
         $scenario = MeasurementReceiptEvidenceScenario::open();
-        app(MeasurementWorkflow::class)->returnToStage($scenario['measurement']->fresh(), $scenario['actor'], 1, 'Correção do arquivo da Engenharia.');
 
-        return $scenario['measurement']->fresh();
+        return MeasurementRevisionScenario::legacyPaidAtEngineering($scenario['measurement']);
     }
 
     $engineering = measurementDeletionUser('editor');
@@ -281,7 +286,7 @@ it('refuses to erase a measurement that entered the workflow, whoever asks', fun
     'em análise na Engenharia' => ['in_review', 'in_review', false, 0],
     'pausada na Engenharia' => ['paused', 'paused', false, 0],
     'recusada pela Engenharia' => ['rejected', 'rejected', false, 0],
-    'devolvida da Finalização à Engenharia, com pagamento' => ['returned_with_payment', 'in_review', false, 1],
+    'devolvida da Finalização à Engenharia, com pagamento (legado)' => ['returned_with_payment', 'in_review', false, 1],
     'aprovada pela Engenharia' => ['engineering_approved', 'in_review', true, 0],
 ]);
 
@@ -359,16 +364,18 @@ function measurementDeletionNotificationBody(string $title): ?string
 /**
  * Um plano com um único tipo de vínculo de medição -- arquivo, pagamento ou
  * linha medida -- ou com todos eles, como a medição paga devolvida à
- * Engenharia. Quem tenta excluir é um editor que coordena a operação: a
- * exclusão do plano é autorizada só pelo `update` da operação.
+ * Engenharia (legado: o fluxo não devolve mais medição paga à Engenharia, e a
+ * linha é montada com as gravações da antiga devolução). Quem tenta excluir é
+ * um editor que coordena a operação: a exclusão do plano é autorizada só pelo
+ * `update` da operação.
  *
  * @return array{actor: User, operation: Operation, planSet: MeasurementPlanSet}
  */
 function measurementDeletionPlanSetInState(string $state): array
 {
-    if ($state === 'medição paga devolvida à Engenharia') {
+    if ($state === 'medição paga devolvida à Engenharia (legado)') {
         $scenario = MeasurementReceiptEvidenceScenario::open();
-        app(MeasurementWorkflow::class)->returnToStage($scenario['measurement']->fresh(), $scenario['actor'], 1, 'Correção do arquivo da Engenharia.');
+        MeasurementRevisionScenario::legacyPaidAtEngineering($scenario['measurement']);
         $operation = $scenario['operation'];
         $planSet = MeasurementPlanSet::query()->findOrFail($scenario['payment']->plan_set_id);
     } else {
@@ -443,8 +450,8 @@ it('refuses to delete an emission whose operation has a measurement, for the sup
 })->with([
     'super-admin, medição em análise' => ['super-admin', 'in_review'],
     'admin, medição em análise' => ['admin', 'in_review'],
-    'super-admin, medição devolvida com pagamento' => ['super-admin', 'returned_with_payment'],
-    'admin, medição devolvida com pagamento' => ['admin', 'returned_with_payment'],
+    'super-admin, medição devolvida com pagamento (legado)' => ['super-admin', 'returned_with_payment'],
+    'admin, medição devolvida com pagamento (legado)' => ['admin', 'returned_with_payment'],
 ]);
 
 it('refuses to delete a plan set that carries measurement history, by the row action and in bulk', function (string $state) {
@@ -472,7 +479,7 @@ it('refuses to delete a plan set that carries measurement history, by the row ac
     'arquivo de medição em análise',
     'pagamento registrado',
     'linha medida',
-    'medição paga devolvida à Engenharia',
+    'medição paga devolvida à Engenharia (legado)',
 ]);
 
 /**

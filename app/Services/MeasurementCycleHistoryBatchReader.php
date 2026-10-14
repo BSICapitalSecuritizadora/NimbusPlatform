@@ -67,6 +67,7 @@ class MeasurementCycleHistoryBatchReader
                 'revision_family_id',
                 'revision_number',
                 'revision_status',
+                'revision_superseded_at',
             ]);
 
         if ($measurements->isEmpty()) {

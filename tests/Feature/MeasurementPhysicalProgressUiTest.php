@@ -15,6 +15,7 @@ use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Forms\Components\Placeholder;
+use Filament\Tables\Columns\TextColumn;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -468,18 +469,28 @@ it('accumulates the schedule by competence when a later month is approved first'
         ->assertTableColumnStateSet('realized_cumulative_percent', '15.00', $lines['2026-07']);
 });
 
-it('stops showing a measurement returned to Engineering in the schedule', function () {
+it('stops counting a measurement returned to Engineering in the schedule and marks its line as under reanalysis', function () {
+    // 12h em Brasília: o tooltip mostra o dia em que o registro foi invalidado.
+    $this->travelTo(now()->setDate(2026, 10, 7)->setTime(15, 0));
     $scenario = Scenario::plan();
     Scenario::measured($scenario, '2026-05', 10);
     $june = Scenario::measured($scenario, '2026-06', 5);
     Scenario::returnToEngineering($scenario, $june);
     $this->actingAs(makeAdminUser());
 
+    // A Gestão devolveu junho à Engenharia: a contribuição aprovada saiu do
+    // avanço reconhecido até a nova decisão, e a linha diz quanto e desde quando
+    // -- não está simplesmente pendente.
     physicalProgressSchedule($scenario['operation'])
         ->assertTableColumnStateSet('realized_monthly_percent', null, $scenario['lines']['2026-06'])
         ->assertTableColumnStateSet('realized_cumulative_percent', '10.00', $scenario['lines']['2026-06'])
         ->assertTableColumnStateSet('evolution_diff_percent', null, $scenario['lines']['2026-06'])
-        ->assertTableColumnStateSet('status', 'Pendente', $scenario['lines']['2026-06'])
+        ->assertTableColumnStateSet('status', 'Em reanálise', $scenario['lines']['2026-06'])
+        ->assertTableColumnExists(
+            'status',
+            fn (TextColumn $column): bool => $column->getTooltip() === '5,00 p.p. aprovados antes ficam fora do avanço reconhecido até a nova aprovação da Engenharia (registro invalidado em 07/10/2026).',
+            $scenario['lines']['2026-06'],
+        )
         ->assertTableColumnStateSet('realized_cumulative_percent', '10.00', $scenario['lines']['2026-05']);
 });
 

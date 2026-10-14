@@ -1,8 +1,31 @@
 @php
     use App\Services\MeasurementFinancialReconciliationService;
     use App\Enums\MeasurementReconciliationStatus;
+    use App\Enums\MeasurementRevisionStatus;
+    use App\Models\Measurement;
 
-    $reconciliation = app(MeasurementFinancialReconciliationService::class)->forMeasurement($getRecord());
+    $record = $getRecord();
+    $reconciliation = app(MeasurementFinancialReconciliationService::class)->forMeasurement($record);
+
+    /*
+     * A revisão substituída (inclusive a original já revisada) guarda a
+     * conciliação dela como histórico: a posição financeira que vale hoje é a
+     * da revisão vigente da família.
+     */
+    $supersededNotice = null;
+
+    if ($record->revisionStatus() === MeasurementRevisionStatus::Superseded) {
+        $supersedingNumber = $record->revisionSuccessors()
+            ->whereIn('revision_status', [MeasurementRevisionStatus::Effective->value, MeasurementRevisionStatus::Superseded->value])
+            ->orderBy('revision_number')
+            ->value('revision_number');
+        $effectiveNumber = Measurement::query()
+            ->where('revision_family_id', $record->familyRootId())
+            ->where('revision_status', MeasurementRevisionStatus::Effective->value)
+            ->value('revision_number');
+        $supersededNotice = 'Esta medição foi substituída pela revisão '.($supersedingNumber === null ? 'seguinte' : 'R'.(int) $supersedingNumber)
+            .': a conciliação abaixo é histórica; a posição financeira vigente está na revisão '.($effectiveNumber === null ? 'vigente' : 'R'.(int) $effectiveNumber).'.';
+    }
 
     $statusStyles = [
         'success' => 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-500/10 dark:border-emerald-500/20',
@@ -17,6 +40,13 @@
 @endphp
 
 <div class="bsi-financial-condition space-y-4">
+    @if ($supersededNotice !== null)
+        <div class="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-300">
+            <x-heroicon-o-arrow-path class="mt-0.5 size-4 shrink-0" />
+            <span>{{ $supersededNotice }}</span>
+        </div>
+    @endif
+
     @if ($reconciliation->isEmpty())
         <div class="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50/50 p-3 text-xs text-gray-500 dark:border-white/10 dark:bg-white/[0.02] dark:text-gray-400">
             <x-heroicon-o-information-circle class="size-4 shrink-0 text-gray-400" />

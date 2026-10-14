@@ -10,14 +10,22 @@ use App\Models\MeasurementPlanLine;
 use App\Services\MeasurementPhysicalProgressService;
 use App\Support\BusinessTime;
 use App\Support\Money\IntegerMoney;
+use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * @phpstan-type ReanalysisEntry array{measurement_id: int, revision_label: string, reference_month: string|null, basis_points: int, plan_line_lineage_key: string|null, invalidated_at: CarbonImmutable|null}
+ */
 class PlanLinesRelationManager extends RelationManager
 {
+    private const REALIZED_STATE = 'Realizado informado';
+
+    private const REANALYSIS_STATE = 'Em reanálise';
+
     protected static string $relationship = 'planLines';
 
     protected static ?string $title = 'Cronograma (Acompanhamento)';
@@ -27,6 +35,15 @@ class PlanLinesRelationManager extends RelationManager
 
     /** @var array<string, int>|null medição que ocupa cada linhagem da operação */
     private ?array $claimHolders = null;
+
+    /**
+     * A contribuição aprovada antes e fora do avanço reconhecido enquanto a
+     * Engenharia reanalisa a medição, por plano: uma leitura por operação e
+     * por requisição, como o progresso.
+     *
+     * @var array<int, list<ReanalysisEntry>>|null
+     */
+    private ?array $reanalysisContributions = null;
 
     public function table(Table $table): Table
     {
@@ -100,13 +117,22 @@ class PlanLinesRelationManager extends RelationManager
                     ->label('Data prevista')
                     ->date('m/Y')
                     ->placeholder('—'),
+                // A linha cuja medição a Engenharia reanalisa não está
+                // pendente: a contribuição aprovada antes saiu do avanço
+                // reconhecido e espera a nova decisão. Só pontos percentuais e
+                // data -- quem vê a operação nem sempre vê a medição. A linha
+                // que já tem contribuição reconhecida (outra medição a mediu
+                // depois que a reanalisada mudou de linha) mostra o realizado.
                 TextColumn::make('status')
                     ->label('Realizado')
                     ->badge()
-                    ->state(fn (MeasurementPlanLine $record): string => $this->realizedMonthlyBasisPoints($record) !== null
-                        ? 'Realizado informado'
-                        : 'Pendente')
-                    ->color(fn (string $state): string => $state === 'Realizado informado' ? 'success' : 'gray'),
+                    ->state(fn (MeasurementPlanLine $record): string => $this->lineStatus($record))
+                    ->color(fn (string $state): string => match ($state) {
+                        self::REALIZED_STATE => 'success',
+                        self::REANALYSIS_STATE => 'warning',
+                        default => 'gray',
+                    })
+                    ->tooltip(fn (MeasurementPlanLine $record): ?string => $this->reanalysisTooltip($record)),
             ])
             ->recordActions([
                 // A medição da linha é a da linhagem: a que a Engenharia aprovou
@@ -194,6 +220,68 @@ class PlanLinesRelationManager extends RelationManager
 
         return $this->physicalProgress[(int) $record->plan_set_id]
             ?? new MeasurementPhysicalProgress((int) $record->plan_set_id, 0, null, []);
+    }
+
+    /**
+     * Contribuições em reanálise medidas nesta linha -- pela linhagem, que
+     * segue a medição prevista nas cópias das versões do plano. A linhagem
+     * que o registro invalidado não guardou não casa com linha nenhuma.
+     *
+     * @return list<ReanalysisEntry>
+     */
+    private function reanalysisFor(MeasurementPlanLine $record): array
+    {
+        $lineage = (string) $record->lineage_key;
+
+        if ($lineage === '') {
+            return [];
+        }
+
+        $this->reanalysisContributions ??= app(MeasurementPhysicalProgressService::class)->reanalysisContributions((int) $this->getOwnerRecord()->getKey());
+
+        return array_values(array_filter(
+            $this->reanalysisContributions[(int) $record->plan_set_id] ?? [],
+            fn (array $entry): bool => $entry['plan_line_lineage_key'] === $lineage,
+        ));
+    }
+
+    private function lineStatus(MeasurementPlanLine $record): string
+    {
+        return match (true) {
+            $this->realizedMonthlyBasisPoints($record) !== null => self::REALIZED_STATE,
+            $this->reanalysisFor($record) !== [] => self::REANALYSIS_STATE,
+            default => 'Pendente',
+        };
+    }
+
+    private function reanalysisTooltip(MeasurementPlanLine $record): ?string
+    {
+        $reanalysis = $this->lineStatus($record) === self::REANALYSIS_STATE ? $this->reanalysisFor($record) : [];
+
+        if ($reanalysis === []) {
+            return null;
+        }
+
+        $invalidatedOn = collect($reanalysis)
+            ->pluck('invalidated_at')
+            ->filter()
+            ->map(fn (CarbonImmutable $invalidatedAt): string => BusinessTime::at($invalidatedAt)->format('d/m/Y'))
+            ->unique()
+            ->implode(', ');
+
+        return sprintf(
+            '%s aprovados antes ficam fora do avanço reconhecido até a nova aprovação da Engenharia%s.',
+            $this->percentagePoints(array_sum(array_column($reanalysis, 'basis_points'))),
+            $invalidatedOn === '' ? '' : " (registro invalidado em {$invalidatedOn})",
+        );
+    }
+
+    /**
+     * Basis points em pontos percentuais: 1200 → '12,00 p.p.'.
+     */
+    private function percentagePoints(int $basisPoints): string
+    {
+        return str_replace('%', '', MeasurementPhysicalProgress::format($basisPoints)).' p.p.';
     }
 
     /**

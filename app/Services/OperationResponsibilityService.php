@@ -15,8 +15,10 @@ class OperationResponsibilityService
     /**
      * Substitui a lista "Notificar em caso de recusa" da operação.
      *
-     * A lista só define quem recebe o aviso de recusa da Engenharia: não
-     * concede leitura nem escrita sobre a operação ({@see Operation::hasParticipant()}).
+     * A lista só define quem recebe o aviso de recusa da Engenharia -- da
+     * medição e, desde a Fase 3.1, da revisão de medição: não concede leitura
+     * nem escrita sobre a operação ({@see Operation::hasParticipant()}), e o
+     * link da medição só vai para quem pode abri-la.
      * Mesmo assim fica sob a governança dos responsáveis -- quem pode mudar, em
      * que situação da operação e quem pode entrar --, porque decide quem recebe
      * por e-mail código e título da operação, competência e nome do arquivo.

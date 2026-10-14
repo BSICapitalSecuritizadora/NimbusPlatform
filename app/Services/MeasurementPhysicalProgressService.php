@@ -12,6 +12,7 @@ use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
+use Spatie\Activitylog\Models\Activity;
 use Throwable;
 
 /**
@@ -142,6 +143,131 @@ class MeasurementPhysicalProgressService
             'legacy_plan_sets' => $this->legacyPlanSets($snapshots),
             'lineages' => $this->lineages($snapshots),
         ];
+    }
+
+    /**
+     * As contribuições físicas que deixaram de contar porque a Engenharia
+     * reabriu uma medição vigente -- a última aprovação dela, invalidada, até a
+     * nova decisão da Engenharia --, por empreendimento, lidas do registro
+     * arquivado na trilha protegida ('measurement_engineering_snapshot_invalidated').
+     *
+     * Só para a tela explicar a queda do avanço reconhecido: nunca entra no
+     * avanço reconhecido, no restante até 100% nem na ocupação das linhas -- o
+     * teto e a contagem continuam os de {@see self::sources()} --, e não roda
+     * dentro das transações com lock. A medição legada aprovada antes do
+     * registro existir não deixou o que mostrar.
+     *
+     * @return array<int, list<array{measurement_id: int, revision_label: string, reference_month: string|null, basis_points: int, plan_line_lineage_key: string|null, invalidated_at: CarbonImmutable|null}>> por plan_set_id
+     */
+    public function reanalysisContributions(int $operationId): array
+    {
+        $measurements = Measurement::query()
+            ->where('operation_id', $operationId)
+            ->where('revision_status', MeasurementRevisionStatus::Effective->value)
+            ->whereHas('reviews', fn ($reviews) => $reviews
+                ->where('stage', MeasurementWorkflow::STAGE_ENGINEERING)
+                ->where('status', 'pending'))
+            ->orderBy('id')
+            ->get(['id', 'revision_number', 'revision_family_id', 'revision_status', 'reference_month']);
+
+        if ($measurements->isEmpty()) {
+            return [];
+        }
+
+        $invalidations = Activity::query()
+            ->where('log_name', 'measurement_workflow')
+            ->where('description', 'measurement_engineering_snapshot_invalidated')
+            ->where('subject_type', (new Measurement)->getMorphClass())
+            ->whereIn('subject_id', $measurements->modelKeys())
+            ->orderBy('id')
+            ->get(['id', 'subject_id', 'properties', 'created_at'])
+            ->keyBy(fn (Activity $activity): int => (int) $activity->subject_id);
+        $snapshots = $measurements->mapWithKeys(fn (Measurement $measurement): array => [
+            (int) $measurement->getKey() => $invalidations->get((int) $measurement->getKey())?->properties['engineering_snapshot'] ?? null,
+        ])->all();
+        // Os registros anteriores à linhagem gravada no snapshot (8/10/2026)
+        // trazem só a linha: a linhagem dela sai da linha, como na contagem.
+        $lineages = $this->lineages($snapshots);
+        $contributions = [];
+
+        foreach ($measurements as $measurement) {
+            $activity = $invalidations->get((int) $measurement->getKey());
+            $snapshot = $snapshots[(int) $measurement->getKey()] ?? null;
+
+            if (! is_array($snapshot) || ! is_array($snapshot['plan_sets'] ?? null)) {
+                continue;
+            }
+
+            foreach ($snapshot['plan_sets'] as $entry) {
+                $basisPoints = is_array($entry) ? MeasurementPhysicalProgress::basisPoints($entry['realized_monthly_percent'] ?? null) : null;
+
+                if ($basisPoints === null || $basisPoints < 0) {
+                    continue;
+                }
+
+                $planLineId = filled($entry['plan_line_id'] ?? null) ? (int) $entry['plan_line_id'] : null;
+
+                $contributions[(int) ($entry['plan_set_id'] ?? 0)][] = [
+                    'measurement_id' => (int) $measurement->getKey(),
+                    'revision_label' => $measurement->revisionLabel(),
+                    'reference_month' => $measurement->reference_month?->format('m/Y'),
+                    'basis_points' => $basisPoints,
+                    'plan_line_lineage_key' => is_string($entry['plan_line_lineage_key'] ?? null)
+                        ? $entry['plan_line_lineage_key']
+                        : ($planLineId === null ? null : ($lineages[$planLineId] ?? null)),
+                    'invalidated_at' => $activity?->created_at === null ? null : CarbonImmutable::instance($activity->created_at),
+                ];
+            }
+        }
+
+        return $contributions;
+    }
+
+    /**
+     * O que a página da medição vigente em reanálise da Engenharia explica,
+     * por empreendimento: a contribuição aprovada antes e agora fora do avanço
+     * reconhecido, o avanço reconhecido hoje e a soma dos dois -- que não é um
+     * avanço "informado" de nenhum momento e pode passar de 100% quando outra
+     * medição usou a folga deixada pela reanálise (a reaprovação no valor
+     * anterior não caberia mais). Vazio fora da reanálise. Só para a tela.
+     *
+     * @return list<array{plan_set_id: int, label: string, excluded_basis_points: int, recognized_basis_points: int, with_reanalysis_basis_points: int, exceeds_limit: bool, invalidated_at: CarbonImmutable|null}>
+     */
+    public function reanalysisNoticeFor(Measurement $measurement): array
+    {
+        $contributions = collect($this->reanalysisContributions((int) $measurement->operation_id))
+            ->map(fn (array $entries): array => array_values(array_filter(
+                $entries,
+                fn (array $entry): bool => $entry['measurement_id'] === (int) $measurement->getKey(),
+            )))
+            ->filter(fn (array $entries): bool => $entries !== []);
+
+        if ($contributions->isEmpty()) {
+            return [];
+        }
+
+        $progress = $this->forOperation((int) $measurement->operation_id);
+        $planSets = MeasurementPlanSet::query()
+            ->whereKey($contributions->keys()->all())
+            ->with('construction')
+            ->get()
+            ->keyBy('id');
+
+        return $contributions->map(function (array $entries, int $planSetId) use ($progress, $planSets): array {
+            $excluded = array_sum(array_column($entries, 'basis_points'));
+            $recognized = isset($progress[$planSetId]) ? $progress[$planSetId]->currentBasisPoints() : 0;
+            $planSet = $planSets->get($planSetId);
+
+            return [
+                'plan_set_id' => $planSetId,
+                'label' => (string) ($planSet?->construction?->development_name ?? $planSet?->name ?? 'o empreendimento'),
+                'excluded_basis_points' => $excluded,
+                'recognized_basis_points' => $recognized,
+                'with_reanalysis_basis_points' => $recognized + $excluded,
+                'exceeds_limit' => $recognized + $excluded > MeasurementPhysicalProgress::LIMIT_BASIS_POINTS,
+                'invalidated_at' => $entries[0]['invalidated_at'],
+            ];
+        })->sortKeys()->values()->all();
     }
 
     /**

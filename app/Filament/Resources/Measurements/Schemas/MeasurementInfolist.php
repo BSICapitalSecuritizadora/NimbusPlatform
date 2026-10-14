@@ -5,7 +5,9 @@ namespace App\Filament\Resources\Measurements\Schemas;
 use App\Concerns\MoneyFormatter;
 use App\Models\Measurement;
 use App\Models\MeasurementAsset;
+use App\Services\MeasurementPhysicalProgressService;
 use App\Services\MeasurementWorkflow;
+use Carbon\CarbonImmutable;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ViewEntry;
@@ -74,12 +76,22 @@ class MeasurementInfolist
                         ->placeholder('—')
                         ->columnSpanFull()
                         ->visible(fn (Measurement $record): bool => filled($record->notes)),
+                    // A medição original em reanálise da Engenharia: a contribuição
+                    // física aprovada antes fica fora do avanço reconhecido até a
+                    // nova aprovação. A revisão mostra o mesmo aviso na seção
+                    // Revisões da medição.
+                    ViewEntry::make('reanalysis_notice')
+                        ->label('')
+                        ->view('filament.infolists.measurement-reanalysis-notice')
+                        ->state(fn (Measurement $record): array => self::reanalysisNotice($record))
+                        ->columnSpanFull()
+                        ->visible(fn (Measurement $record): bool => self::reanalysisNotice($record) !== []),
                 ]),
 
             // Revisões da medição lógica: a família, a comparação com a revisão
             // anterior e a posição financeira -- só quando há revisão.
             Section::make('Revisões da medição')
-                ->description('Cada revisão é uma medição com fluxo próprio. Só a revisão vigente conta no avanço físico; as anteriores ficam como histórico, com os arquivos e os pagamentos delas.')
+                ->description('Cada revisão é uma medição com fluxo próprio. Só a revisão vigente conta no avanço físico — e só com a Engenharia aprovada: em reanálise, a contribuição dela fica fora do avanço reconhecido até a nova aprovação. As anteriores ficam como histórico, com os arquivos e os pagamentos delas.')
                 ->columnSpanFull()
                 ->visible(fn (Measurement $record): bool => $record->isRevision() || $record->hasRevisionSuccessors())
                 ->schema([
@@ -181,5 +193,20 @@ class MeasurementInfolist
                         ->view('filament.infolists.measurement-reviews-table'),
                 ]),
         ]);
+    }
+
+    /**
+     * O aviso de reanálise da medição original (a revisão o mostra na visão
+     * geral das revisões). Só leitura, para a tela.
+     *
+     * @return list<array{plan_set_id: int, label: string, excluded_basis_points: int, recognized_basis_points: int, with_reanalysis_basis_points: int, exceeds_limit: bool, invalidated_at: CarbonImmutable|null}>
+     */
+    private static function reanalysisNotice(Measurement $record): array
+    {
+        if ($record->isRevision()) {
+            return [];
+        }
+
+        return app(MeasurementPhysicalProgressService::class)->reanalysisNoticeFor($record);
     }
 }

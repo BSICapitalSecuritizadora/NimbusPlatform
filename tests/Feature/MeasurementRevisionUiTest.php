@@ -11,11 +11,13 @@ use App\Models\User;
 use App\Services\MeasurementRevisionService;
 use App\Services\MeasurementWorkflow;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Filament\Actions\Action;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementPhysicalProgressScenario;
 use Tests\Support\MeasurementRevisionScenario as Scenario;
 
 uses(RefreshDatabase::class);
@@ -80,7 +82,7 @@ it('hides the revision action from users without the permission and ignores a fo
     expect(Measurement::query()->where('revision_number', '>', 0)->exists())->toBeFalse();
 });
 
-it('disables the revision of a paid measurement that is not finalized and refuses the forged call with the reason', function () {
+it('disables the revision of a paid measurement whose Payment stage is still open and refuses the forged call with the reason', function () {
     $scenario = Scenario::plan();
     $may = Scenario::awaitingPayment($scenario, '2026-05', 10);
     Scenario::pay($scenario, $may, Scenario::expected(10));
@@ -89,15 +91,16 @@ it('disables the revision of a paid measurement that is not finalized and refuse
     Livewire::test(ViewMeasurement::class, ['record' => $may->getRouteKey()])
         ->assertActionVisible('createRevision')
         ->assertActionDisabled('createRevision')
+        ->assertActionExists('createRevision', fn (Action $action): bool => $action->getTooltip() === MeasurementRevisionService::PAID_PAYMENT_STAGE_REFUSAL)
         ->mountAction('createRevision')
         ->setActionData(['reason' => 'Tentativa.', 'expected_revision' => (int) $may->fresh()->workflow_revision])
         ->callMountedAction();
 
     // O Filament não monta a ação desabilitada; o domínio, chamado direto como
     // um envio que pulasse a tela, recusa pelo mesmo motivo do tooltip.
-    expect(app(MeasurementRevisionService::class)->creationBlockReason($may->fresh()))->toBe(MeasurementRevisionService::ELIGIBILITY_REFUSAL)
+    expect(app(MeasurementRevisionService::class)->creationBlockReason($may->fresh()))->toBe(MeasurementRevisionService::PAID_PAYMENT_STAGE_REFUSAL)
         ->and(fn () => app(MeasurementRevisionService::class)->create($may->fresh(), $scenario['actor'], 'Tentativa forjada.'))
-        ->toThrow(MeasurementWorkflowException::class, MeasurementRevisionService::ELIGIBILITY_REFUSAL)
+        ->toThrow(MeasurementWorkflowException::class, MeasurementRevisionService::PAID_PAYMENT_STAGE_REFUSAL)
         ->and(Measurement::query()->where('revision_number', '>', 0)->exists())->toBeFalse();
 });
 
@@ -133,7 +136,7 @@ it('submits and cancels drafts from the measurement page', function () {
         ->and($second->fresh()->revision_closed_reason)->toBe('Correção feita por outro caminho.');
 });
 
-it('shows the revision history and the unresolved financial difference warning', function () {
+it('shows the revision history and the warning that the financial difference stays open', function () {
     $scenario = Scenario::plan();
     $may = Scenario::finalized($scenario, '2026-05', 10);
     $revision = Scenario::effective($scenario, $may, 8, 'Percentual superestimado em maio.');
@@ -141,15 +144,83 @@ it('shows the revision history and the unresolved financial difference warning',
 
     Livewire::test(ViewMeasurement::class, ['record' => $revision->getRouteKey()])
         ->assertSee('Revisões da medição')
-        ->assertSee('Esta revisão possui diferença financeira não resolvida. Os pagamentos históricos não foram modificados.')
+        ->assertSee('Esta revisão deixa diferença financeira em aberto. Os pagamentos registrados não foram modificados; o sistema não registra devolução, estorno nem compensação, e o reconhecimento não regulariza a diferença.')
         ->assertSee('R0 · Original')
         ->assertSee('Percentual superestimado em maio.')
         ->assertSee('Diferença negativa')
-        ->assertSee('Valor pago a maior — decisão pendente');
+        ->assertSee('Pago a maior em aberto')
+        ->assertSee('Diferença identificada — reconhecimento pendente')
+        ->assertSee('reconhecido anteriormente R$ 0,00 · a reconhecer nesta revisão R$ 20.000,00')
+        ->assertSee('Regularização financeira pendente')
+        ->assertSee('Valor pago a maior identificado — reconhecimento pendente');
 
     Livewire::test(ViewMeasurement::class, ['record' => $may->getRouteKey()])
         ->assertSee('Substituída pela revisão')
         ->assertActionHidden('createRevision');
+});
+
+it('keeps the page of a revision finalized and then superseded as history of what its Finalization acknowledged', function () {
+    $scenario = Scenario::plan();
+    $may = Scenario::finalized($scenario, '2026-05', 10);
+    $first = Scenario::closePaymentAndFinalize($scenario, Scenario::effective($scenario, $may, 8), 'Decisão da R1: valor pago a maior tratado fora do sistema.', acceptFinancialExceptions: true);
+    Scenario::effective($scenario, $first, 7);
+    $this->actingAs($scenario['actor']);
+
+    // A R1 reconheceu R$ 20.000,00 na Finalização dela e foi substituída pela
+    // R2 (R$ 70.000,00): a página da R1 conta o que ela era e o que reconheceu;
+    // o que está em aberto hoje (R$ 30.000,00) é a posição vigente, da R2.
+    expect(collect(app(MeasurementRevisionService::class)->overview($first->fresh())['acknowledgments'])
+        ->map(fn (array $acknowledgment): array => [$acknowledgment['label'], $acknowledgment['scope']])
+        ->all())->toBe([['R1', 'nesta revisão']])
+        ->and(app(MeasurementRevisionService::class)->overview($first->fresh())['has_unresolved_difference'])->toBeFalse();
+
+    Livewire::test(ViewMeasurement::class, ['record' => $first->getRouteKey()])
+        ->assertSee('Substituída pela revisão')
+        ->assertSee('Posição financeira vigente da medição (revisão R2)')
+        ->assertSee('R$ 30.000,00')
+        ->assertSee('Posição desta revisão enquanto ela valia, mantida como histórico: o que está em aberto hoje é a posição vigente da medição.')
+        ->assertSee('Pago a maior enquanto vigente')
+        ->assertSee('Diferença reconhecida')
+        ->assertSee('reconhecido anteriormente R$ 0,00 · reconhecido nesta revisão R$ 20.000,00')
+        ->assertSee('Reconhecimento nesta revisão — R1')
+        ->assertSee('Valor pago a maior enquanto esta revisão valia')
+        ->assertSee('Valor pago a maior reconhecido expressamente na finalização desta revisão, sem devolução registrada.')
+        ->assertDontSee('a reconhecer nesta revisão')
+        ->assertDontSee('Esta revisão deixa diferença financeira em aberto.')
+        ->assertDontSee('reconhecido expressamente na finalização — continua em aberto');
+});
+
+it('keeps the missing balance a revision accepted at its Finalization as history once the next revision supersedes it', function () {
+    $scenario = Scenario::plan();
+    $may = Scenario::finalized($scenario, '2026-05', 10);
+    $first = Scenario::closePaymentAndFinalize($scenario, Scenario::effective($scenario, $may, 12), 'Decisão da R1: complemento só na vistoria.', acceptFinancialExceptions: true);
+    Scenario::effective($scenario, $first, 11);
+    $this->actingAs($scenario['actor']);
+
+    // A R1 (R$ 120.000,00 sobre R$ 100.000,00 pagos) aceitou o saldo de
+    // R$ 20.000,00 na Finalização dela; a R2 (R$ 110.000,00) é a vigente.
+    Livewire::test(ViewMeasurement::class, ['record' => $first->getRouteKey()])
+        ->assertSee('Saldo a pagar enquanto vigente')
+        ->assertSee('Esta revisão não registrou pagamento próprio. Histórico: a posição dela enquanto vigente está abaixo e na seção Revisões da medição, onde também está a posição financeira vigente.')
+        ->assertSee('Ausência de pagamento aceita expressamente na finalização.')
+        ->assertSee('Esta revisão não recebe mais pagamento nem decisão; a regularização do que ficou em aberto segue na revisão vigente.')
+        ->assertDontSee('Saldo a pagar em aberto R$ 20.000,00')
+        ->assertDontSee('Há saldo a pagar em aberto, que exige justificativa na etapa Pagamento e aceite na Finalização')
+        ->assertDontSee('Saldo a pagar é regularizado pelo pagamento complementar desta revisão');
+});
+
+it('words the open-difference warning of a revision still under analysis as what it leaves if it becomes effective', function () {
+    $scenario = Scenario::plan();
+    $may = Scenario::finalized($scenario, '2026-05', 10);
+    $revision = Scenario::submit($scenario, Scenario::revise($scenario, $may));
+    MeasurementPhysicalProgressScenario::approveEngineering($scenario, $revision, 8);
+    $this->actingAs($scenario['actor']);
+
+    expect($revision->fresh()->revisionStatus())->toBe(MeasurementRevisionStatus::UnderReview);
+
+    Livewire::test(ViewMeasurement::class, ['record' => $revision->getRouteKey()])
+        ->assertSee('Se passar a valer, esta revisão deixa diferença financeira em aberto. Os pagamentos registrados não foram modificados')
+        ->assertDontSee('Esta revisão deixa diferença financeira em aberto.');
 });
 
 it('lists the current revision of each measurement by default and the history on request', function () {

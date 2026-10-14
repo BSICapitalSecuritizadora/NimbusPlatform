@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Measurement;
+use App\Models\MeasurementReview;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -174,22 +175,28 @@ class MeasurementStageActivityService
             ];
         }
 
-        // O fluxo ainda aberto (etapa Pagamento) desta revisão terminou porque
-        // outra revisão passou a valer: não é decisão da etapa, é encerramento.
+        // O fluxo ainda aberto desta revisão (etapa Pagamento sem pagamento, ou
+        // Finalização da medição paga) terminou porque outra revisão passou a
+        // valer: não é decisão da etapa, é encerramento.
         if ($description === 'measurement_workflow_closed_by_revision') {
             $reviewerName = $activity->causer?->name
                 ?? $this->resolveActorName($props['actual_actor_user_id'] ?? null)
                 ?? 'Sistema';
             $superseding = isset($props['superseding_revision_number']) ? 'R'.(int) $props['superseding_revision_number'] : 'a revisão seguinte';
+            $closedStage = (int) ($props['stage'] ?? MeasurementWorkflow::STAGE_PAYMENT) === MeasurementWorkflow::STAGE_FINALIZATION
+                ? MeasurementWorkflow::STAGE_FINALIZATION
+                : MeasurementWorkflow::STAGE_PAYMENT;
 
             return [
-                'stage' => MeasurementWorkflow::STAGE_PAYMENT,
-                'stage_label' => MeasurementWorkflow::STAGE_LABELS[MeasurementWorkflow::STAGE_PAYMENT],
+                'stage' => $closedStage,
+                'stage_label' => MeasurementWorkflow::STAGE_LABELS[$closedStage],
                 'reviewer_name' => $reviewerName,
                 'status_key' => 'returned',
                 'status_label' => "Encerrada pela revisão {$superseding}",
                 'reviewed_at' => $timestamp,
-                'notes' => 'A revisão '.$superseding.' foi aprovada pela Compliance e passou a valer no lugar desta medição. O pagamento é registrado na revisão vigente.',
+                'notes' => $closedStage === MeasurementWorkflow::STAGE_FINALIZATION
+                    ? 'A revisão '.$superseding.' foi aprovada pela Compliance e passou a valer no lugar desta medição antes da Finalização. Os pagamentos registrados nesta medição continuam como histórico; a etapa Pagamento segue na revisão vigente.'
+                    : 'A revisão '.$superseding.' foi aprovada pela Compliance e passou a valer no lugar desta medição. O pagamento é registrado na revisão vigente.',
                 'note_label' => 'Encerramento',
                 'note_type' => 'returned',
             ];
@@ -264,6 +271,21 @@ class MeasurementStageActivityService
                     'note_label' => $isReturn ? 'Motivo da devolução' : 'Motivo da rejeição',
                     'note_type' => $isReturn ? 'returned' : 'rejected',
                 ]);
+            } elseif ($review->status === MeasurementReview::STATUS_SUPERSEDED
+                || ($review->status === 'pending' && $measurement->status === 'superseded')) {
+                // Encerrada pela revisão que passou a valer, sem decisão da etapa
+                // (inclusive a análise que a Fase 3 deixou pendente).
+                $events->push([
+                    'stage' => $stage,
+                    'stage_label' => $stageLabel,
+                    'reviewer_name' => $this->resolveResponsibleName($measurement, $stage),
+                    'status_key' => 'returned',
+                    'status_label' => 'Encerrada pela revisão',
+                    'reviewed_at' => $review->reviewed_at ?? $measurement->revision_superseded_at,
+                    'notes' => filled($review->notes) ? (string) $review->notes : null,
+                    'note_label' => 'Encerramento',
+                    'note_type' => 'returned',
+                ]);
             } elseif ($review->status === 'pending') {
                 $events->push([
                     'stage' => $stage,
@@ -293,10 +315,12 @@ class MeasurementStageActivityService
 
         // Suspensa por uma revisão em análise: ninguém analisa esta etapa agora.
         if ($measurement->isFrozenByRevision()) {
+            $frozenStage = app(MeasurementWorkflow::class)->unifiedStage($measurement);
+
             $events->push([
-                'stage' => MeasurementWorkflow::STAGE_PAYMENT,
-                'stage_label' => MeasurementWorkflow::STAGE_LABELS[MeasurementWorkflow::STAGE_PAYMENT],
-                'reviewer_name' => $this->resolveResponsibleName($measurement, MeasurementWorkflow::STAGE_PAYMENT),
+                'stage' => $frozenStage,
+                'stage_label' => MeasurementWorkflow::STAGE_LABELS[$frozenStage] ?? "Etapa {$frozenStage}",
+                'reviewer_name' => $this->resolveResponsibleName($measurement, $frozenStage),
                 'status_key' => 'paused',
                 'status_label' => 'Suspensa pela revisão em análise',
                 'reviewed_at' => null,

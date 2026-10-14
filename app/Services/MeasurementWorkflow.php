@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\DTOs\Measurements\MeasurementFinancialReconciliationLine;
+use App\DTOs\Measurements\MeasurementRevisionPlanSetPosition;
 use App\Enums\MeasurementResponsibility;
+use App\Enums\MeasurementRevisionAdjustmentStatus;
 use App\Enums\MeasurementRevisionStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Models\Construction;
@@ -30,6 +32,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Spatie\Activitylog\Models\Activity;
 use Throwable;
 
 class MeasurementWorkflow
@@ -73,6 +76,20 @@ class MeasurementWorkflow
      * medição lógica sem nenhuma revisão vigente.
      */
     public const TERMINAL_REJECTION_OF_EFFECTIVE_REVISION = 'Esta revisão já substituiu a revisão anterior e não pode ser encerrada por recusa: a anterior não volta a valer. Corrija os dados e aprove a Engenharia de novo.';
+
+    /**
+     * Por que a medição paga não volta à Engenharia: o registro aprovado é a
+     * base dos pagamentos, e devolvê-la o apagaria para ser reescrito no
+     * lugar. A correção dos dados aprovados de uma medição paga é uma revisão
+     * formal, que preserva a medição paga, os pagamentos e o histórico.
+     */
+    public const PAID_ENGINEERING_RETURN_REFUSAL = 'Esta medição tem pagamento registrado: o registro aprovado pela Engenharia é a base desse pagamento e não volta à Engenharia para ser reescrito. A correção dos dados aprovados é uma revisão formal (Criar revisão), que preserva a medição paga, os pagamentos e o histórico.';
+
+    /**
+     * A recusa da Gestão de uma medição paga devolveria a Engenharia; a saída
+     * é seguir o fluxo até a Finalização e revisar de lá.
+     */
+    public const PAID_MANAGEMENT_REJECTION_REFUSAL = 'Esta medição tem pagamento registrado: recusar na Gestão a devolveria à Engenharia, e o registro aprovado que é a base do pagamento não é reescrito. Aprove as etapas até a Finalização, com os comprovantes conferidos, e então corrija os dados por uma revisão formal (Criar revisão, de quem pode revisar medições e participa da operação).';
 
     public function __construct(
         private MeasurementAuthorizationService $authorization,
@@ -119,7 +136,9 @@ class MeasurementWorkflow
             return [];
         }
 
-        if (in_array($measurement->status, ['awaiting_receipt', 'approved', 'finalized'], true)) {
+        // A finalizada e a substituída depois de paga (caso C) só pedem a
+        // correção de comprovante depois do encerramento.
+        if (in_array($measurement->status, ['awaiting_receipt', 'approved', 'finalized', 'superseded'], true)) {
             return app(MeasurementReceiptEvidenceService::class)->pendingResponsibilities($measurement);
         }
 
@@ -169,6 +188,46 @@ class MeasurementWorkflow
         return $hasPayment ? self::TERMINAL_REJECTION_WITH_PAYMENTS : null;
     }
 
+    /**
+     * Por que a medição não pode voltar à Engenharia, ou `null` -- para a tela
+     * desabilitar a recusa da Gestão (que devolve a Engenharia) e a opção
+     * "Engenharia" da devolução da Finalização, com o mesmo motivo do domínio.
+     * O domínio confere de novo, sob o lock.
+     */
+    public function engineeringReturnBlockReason(Measurement $measurement): ?string
+    {
+        if (! $this->protectsPaidEngineeringRecord($measurement)) {
+            return null;
+        }
+
+        return $this->unifiedStage($measurement) === 2
+            ? self::PAID_MANAGEMENT_REJECTION_REFUSAL
+            : self::PAID_ENGINEERING_RETURN_REFUSAL;
+    }
+
+    /**
+     * A medição tem pagamento próprio registrado sobre um registro da
+     * Engenharia verificável (aprovado, com o snapshot completo desta
+     * medição)? Esse registro é a base dos pagamentos e não é reescrito no
+     * lugar: a correção é uma revisão formal. A medição legada paga sem
+     * registro verificável não tem o que proteger e continua podendo voltar à
+     * Engenharia -- é o único caminho que grava o registro dela. Pagamento só
+     * da família (revisão vigente sem pagamento próprio) não prende a revisão:
+     * ela pode ser reanalisada.
+     */
+    public function protectsPaidEngineeringRecord(Measurement $measurement): bool
+    {
+        $hasPayment = $measurement->relationLoaded('payments')
+            ? $measurement->payments->isNotEmpty()
+            : $measurement->payments()->exists();
+
+        if (! $hasPayment || ! $measurement->hasApprovedEngineering()) {
+            return false;
+        }
+
+        return Measurement::isVerifiableEngineeringSnapshot($measurement->engineering_snapshot, (int) $measurement->getKey());
+    }
+
     public function canPause(Measurement $measurement, User $actor): bool
     {
         $stage = $this->unifiedStage($measurement);
@@ -190,6 +249,7 @@ class MeasurementWorkflow
         return $measurement->status === 'paused'
             && $stage >= self::STAGE_ENGINEERING
             && $stage <= self::STAGE_PAYMENT
+            && ! $measurement->isFrozenByRevision()
             && $this->authorizes($actor, $measurement, $stage, $capture);
     }
 
@@ -216,6 +276,7 @@ class MeasurementWorkflow
     ): bool {
         return in_array($measurement->status, ['awaiting_receipt', 'approved'], true)
             && (int) $measurement->current_stage === self::STAGE_FINALIZATION
+            && ! $measurement->isFrozenByRevision()
             && $this->authorizes($actor, $measurement, MeasurementResponsibility::ReceiptUploader, $capture);
     }
 
@@ -226,6 +287,7 @@ class MeasurementWorkflow
     ): bool {
         return in_array($measurement->status, ['approved', 'awaiting_receipt'], true)
             && (int) $measurement->current_stage === self::STAGE_FINALIZATION
+            && ! $measurement->isFrozenByRevision()
             && $this->authorizes($actor, $measurement, MeasurementResponsibility::Finalizer, $capture);
     }
 
@@ -233,6 +295,7 @@ class MeasurementWorkflow
     {
         return in_array($measurement->status, ['awaiting_receipt', 'approved'], true)
             && (int) $measurement->current_stage === self::STAGE_FINALIZATION
+            && ! $measurement->isFrozenByRevision()
             && $this->authorization->canFinalize($actor, $measurement);
     }
 
@@ -305,7 +368,14 @@ class MeasurementWorkflow
         $expectedStage ??= $this->unifiedStage($measurement);
         $expectedRevision ??= (int) $measurement->workflow_revision;
 
-        $result = DB::transaction(function () use ($measurement, $actor, $expectedStage, $expectedRevision, $notes, $engineeringProgress): array {
+        // A Compliance que faz a revisão valer substitui a anterior: se ela está
+        // paga aguardando a Finalização, os arquivos que provam os pagamentos
+        // dela são conferidos aqui, fora da transação (leem o armazenamento).
+        $verifiedSourceWorkflowRevision = $measurement->isRevision() && $expectedStage === 3
+            ? $this->revisions()->verifyPaidSourceEvidenceBeforeEffectiveness($measurement)
+            : null;
+
+        $result = DB::transaction(function () use ($measurement, $actor, $expectedStage, $expectedRevision, $notes, $engineeringProgress, $verifiedSourceWorkflowRevision): array {
             // A revisão trava a Operation e a família inteira (a vigente que ela
             // vai substituir inclusive) na Engenharia e na Compliance: a
             // Engenharia confere a ocupação da linha pela vigente e o teto sem
@@ -339,6 +409,7 @@ class MeasurementWorkflow
                     'engineering_snapshot' => $engineeringSnapshot,
                     'workflow_revision' => (int) $locked->workflow_revision + 1,
                 ]);
+                $this->auditReanalysisCompleted($locked, $actor, $engineeringSnapshot);
             }
 
             $unpaidPlanSets = [];
@@ -371,6 +442,7 @@ class MeasurementWorkflow
                     $members,
                     $actor,
                     $this->authorization->resolveAuthorization($actor, $locked, 3),
+                    $verifiedSourceWorkflowRevision,
                 );
             }
 
@@ -452,6 +524,10 @@ class MeasurementWorkflow
                         'difference_type' => $difference->difference_type?->value,
                         'unresolved_overpayment_amount' => (string) $difference->unresolved_overpayment_amount,
                     ])->values()->all(),
+                    'positions' => array_map(
+                        fn (MeasurementRevisionPlanSetPosition $position): array => $position->toArray(),
+                        $this->revisions()->positions($locked),
+                    ),
                 ]);
             }
 
@@ -541,6 +617,14 @@ class MeasurementWorkflow
                 throw $this->invalidState($locked, self::TERMINAL_REJECTION_WITH_PAYMENTS);
             }
 
+            // A recusa da Gestão devolve a Engenharia: com pagamento sobre um
+            // registro verificável, ela apagaria a base do pagamento para ser
+            // reescrita no lugar. Lido sob o lock da medição: pagamento só nasce
+            // sob esse lock, na etapa Pagamento.
+            if ($stage === 2 && $this->protectsPaidEngineeringRecord($locked)) {
+                throw $this->invalidState($locked, self::PAID_MANAGEMENT_REJECTION_REFUSAL);
+            }
+
             $closesPendingRevision = $stage === self::STAGE_ENGINEERING
                 && $locked->isRevision()
                 && $locked->isPendingRevision();
@@ -572,7 +656,7 @@ class MeasurementWorkflow
             } else {
                 $targetStage = $stage - 1;
                 $toStatus = $targetStage === self::STAGE_PAYMENT ? 'awaiting_payment' : 'in_review';
-                $this->reopenStage($locked, $actor, $targetStage, $notes);
+                $this->reopenStage($locked, $actor, $targetStage, $notes, (string) $this->authorization->responsibilityForStage($stage));
             }
 
             $this->advanceRevision($locked);
@@ -587,12 +671,14 @@ class MeasurementWorkflow
                 'expected_responsible_user_id' => $locked->operation->stageResponsibleId($stage),
             ]);
 
+            $resumedSource = null;
+
             if ($closesPendingRevision) {
                 if (! $members instanceof EloquentCollection) {
                     throw $this->invalidState($locked, 'A revisão só é recusada com a família travada.');
                 }
 
-                $this->revisions()->afterPendingRevisionRejected(
+                $resumedSource = $this->revisions()->afterPendingRevisionRejected(
                     $locked,
                     $members,
                     $actor,
@@ -601,17 +687,37 @@ class MeasurementWorkflow
                 );
             }
 
-            return compact('locked', 'stage', 'targetStage', 'closesPendingRevision');
+            return compact('locked', 'stage', 'targetStage', 'closesPendingRevision', 'resumedSource');
         });
 
         /** @var Measurement $locked */
         $locked = $result['locked'];
 
-        // A revisão recusada não encerra a medição: a vigente segue. Quem criou
-        // a revisão é avisado; a lista de recusa da Engenharia não, porque ela
-        // trata do encerramento de medições.
+        // A revisão recusada não encerra a medição: a vigente segue. São avisados
+        // quem criou e quem enviou a revisão e a lista "Notificar em caso de
+        // recusa" da operação -- que só recebe o aviso: estar nela não dá acesso,
+        // e o link da medição vai só para quem pode abri-la. Quem cuida do fluxo
+        // da vigente que voltou a correr recebe o aviso dela, com o link dela.
         if ($result['closesPendingRevision']) {
-            $this->notifyUsers($locked, 'revision_rejected', [$locked->revision_created_by, $locked->uploaded_by]);
+            // Cada pessoa recebe um aviso só. Quem cuida da etapa da vigente que
+            // voltou a correr recebe o dela -- que também conta a recusa --, e
+            // não o da revisão: o aviso acionável, com o link da vigente, nunca
+            // some na deduplicação.
+            $source = $result['resumedSource'] instanceof Measurement
+                ? ($result['resumedSource']->fresh(['operation']) ?? $result['resumedSource'])
+                : null;
+            $resumedResponsibles = $source instanceof Measurement ? $this->resumedSourceResponsibles($source) : [];
+            $notified = array_values(array_diff(array_unique(array_filter([
+                $locked->revision_created_by,
+                $locked->uploaded_by,
+                ...$locked->operation->rejectionNotifyUsers()->pluck('users.id')->all(),
+            ])), $resumedResponsibles));
+
+            $this->notifyUsers($locked, 'revision_rejected', $notified);
+
+            if ($source instanceof Measurement) {
+                $this->notifyUsers($source, 'revision_rejected_source_resumed', $resumedResponsibles);
+            }
 
             return;
         }
@@ -652,6 +758,7 @@ class MeasurementWorkflow
             $locked = $this->lockMeasurement($measurement);
 
             $this->assertExpectedState($locked, $expectedRevision, self::STAGE_FINALIZATION, $expectedStatus);
+            $this->assertNotFrozenByRevision($locked);
 
             if (! $this->canReturnFromFinalization($locked, $actor)) {
                 $this->throwAuthorizationOrState(
@@ -659,6 +766,13 @@ class MeasurementWorkflow
                     $locked,
                     'A medição não está em Finalização ou o usuário não pode devolvê-la.',
                 );
+            }
+
+            // A medição paga não volta à Engenharia: a correção dos dados
+            // aprovados que são a base do pagamento é uma revisão formal. As
+            // demais etapas continuam abertas à devolução.
+            if ($target === self::STAGE_ENGINEERING && $this->protectsPaidEngineeringRecord($locked)) {
+                throw $this->invalidState($locked, self::PAID_ENGINEERING_RETURN_REFUSAL);
             }
 
             $fromStatus = $locked->status;
@@ -679,7 +793,7 @@ class MeasurementWorkflow
                 'reviewed_at' => now(),
             ])->save();
 
-            $this->reopenStage($locked, $actor, $target, $reason);
+            $this->reopenStage($locked, $actor, $target, $reason, 'payment_finalizer_user_id');
             $this->advanceRevision($locked);
 
             $this->audit($locked, $actor, 'measurement_finalization_returned', [
@@ -783,6 +897,7 @@ class MeasurementWorkflow
         $locked = DB::transaction(function () use ($measurement, $actor, $expectedStage, $expectedRevision, $expectedPauseId): Measurement {
             $locked = $this->lockMeasurement($measurement);
             $this->assertExpectedState($locked, $expectedRevision, $expectedStage, 'paused');
+            $this->assertNotFrozenByRevision($locked);
             $openPause = $locked->pauses()->whereNull('resumed_at')->latest('paused_at')->lockForUpdate()->first();
             $stage = (int) ($openPause?->stage ?? $locked->current_stage);
 
@@ -1021,8 +1136,14 @@ class MeasurementWorkflow
     /** @param array<string, mixed> $data */
     public function reassessPayment(MeasurementPayment $payment, User $actor, array $data, int $expectedRevision): void
     {
-        DB::transaction(function () use ($payment, $actor, $data, $expectedRevision): void {
-            $locked = $this->lockMeasurement($payment->measurement);
+        // O id da medição vem do pagamento já carregado, fora da transação: a
+        // primeira instrução dela é o lock da medição, e a fotografia
+        // (REPEATABLE READ) nasce depois dele -- e enxerga a revisão enviada
+        // que suspende esta medição.
+        $measurementId = (int) $payment->measurement_id;
+
+        DB::transaction(function () use ($measurementId, $payment, $actor, $data, $expectedRevision): void {
+            $locked = $this->lockMeasurement($measurementId);
             $this->assertExpectedState($locked, $expectedRevision, self::STAGE_PAYMENT, 'awaiting_payment');
             $this->assertNotFrozenByRevision($locked);
             if (! $this->authorization->canRegisterPayment($actor, $locked)) {
@@ -1080,6 +1201,7 @@ class MeasurementWorkflow
             $locked = $this->lockMeasurementWithOperation($measurement);
 
             $this->assertExpectedState($locked, $expectedRevision, self::STAGE_FINALIZATION, $expectedStatus);
+            $this->assertNotFrozenByRevision($locked);
 
             if (! $this->canFinalize($locked, $actor)) {
                 $this->throwAuthorizationOrState(
@@ -1146,10 +1268,92 @@ class MeasurementWorkflow
                 'expected_responsible_user_id' => $locked->operation->payment_finalizer_user_id,
             ]);
 
+            if ($locked->isRevision()) {
+                $this->auditRevisionFinancialAcknowledgment($locked, $actor);
+            }
+
             return $locked;
         });
 
         $this->notifyUsers($locked, 'finalized', [$locked->uploaded_by, $locked->operation->assigned_user_id]);
+    }
+
+    /**
+     * A Finalização de uma revisão que deixa diferença financeira em aberto
+     * registra, na trilha protegida, o reconhecimento -- o que foi reconhecido
+     * agora, o que já tinha sido reconhecido antes e por quem, a decisão da
+     * etapa Pagamento e o aceite -- e que a exceção financeira continua sem
+     * regularização: o sistema não registra devolução, estorno nem
+     * compensação, e o reconhecimento não regulariza nada. A autoridade é a do
+     * Finalizador, a mesma da Finalização.
+     */
+    private function auditRevisionFinancialAcknowledgment(Measurement $revision, User $actor): void
+    {
+        $positions = array_values(array_filter(
+            $this->revisions()->positions($revision),
+            fn (MeasurementRevisionPlanSetPosition $position): bool => $position->adjustmentStatus->isUnresolved()
+                || $position->isExposureUnmeasurable(),
+        ));
+
+        if ($positions === []) {
+            return;
+        }
+
+        $decision = $revision->reviews()
+            ->where('stage', self::STAGE_PAYMENT)
+            ->where('status', 'approved')
+            ->first();
+        $acknowledgedAt = now()->toIso8601String();
+        $summary = array_map(fn (MeasurementRevisionPlanSetPosition $position): array => [
+            'plan_set_id' => $position->planSetId,
+            'label' => $position->label,
+            'revised_approved_amount' => $position->revisedApprovedAmount,
+            'family_paid_amount' => $position->familyPaidAmount,
+            'outstanding_overpayment_amount' => $position->outstandingOverpaymentAmount,
+            'remaining_payable_amount' => $position->remainingPayableAmount,
+            'acknowledged_now_overpayment_amount' => $position->unacknowledgedOverpaymentAmount,
+            'previously_acknowledged_overpayment_amount' => $position->previouslyAcknowledgedOverpaymentAmount,
+            'previously_acknowledged_by_measurement_ids' => $position->previouslyAcknowledgedByMeasurementIds,
+            'adjustment_status' => $position->adjustmentStatus->value,
+            'exposure_unmeasurable' => $position->isExposureUnmeasurable(),
+        ], $positions);
+
+        // Reconhecida aqui é a diferença medida que ESTA Finalização aceitou: a
+        // reconhecida por uma finalização anterior (OverpaymentPreviouslyAccepted)
+        // não ganha novo autor nem nova decisão -- segue só como exceção em
+        // aberto, com a origem do reconhecimento --, e a exposição sem
+        // referência financeira não tem o que reconhecer.
+        $acknowledged = array_values(array_filter(
+            $summary,
+            fn (array $position): bool => in_array(MeasurementRevisionAdjustmentStatus::from($position['adjustment_status']), [
+                MeasurementRevisionAdjustmentStatus::OverpaymentAcceptedUnrecovered,
+                MeasurementRevisionAdjustmentStatus::OmissionAccepted,
+            ], true),
+        ));
+
+        if ($acknowledged !== []) {
+            $this->audit($revision, $actor, 'measurement_revision_financial_difference_acknowledged', [
+                'stage' => self::STAGE_FINALIZATION,
+                'responsibility' => 'payment_finalizer_user_id',
+                'expected_responsible_user_id' => $revision->operation->payment_finalizer_user_id,
+                'positions' => $acknowledged,
+                'decision' => filled($decision?->notes) ? (string) $decision->notes : null,
+                'decided_by' => $decision?->reviewer_user_id === null ? null : (int) $decision->reviewer_user_id,
+                'decided_at' => $decision?->reviewed_at?->toIso8601String(),
+                'accepted_by' => (int) $actor->getKey(),
+                'accepted_at' => $acknowledgedAt,
+            ]);
+        }
+
+        $this->audit($revision, $actor, 'measurement_revision_financial_exception_unresolved', [
+            'stage' => self::STAGE_FINALIZATION,
+            'responsibility' => 'payment_finalizer_user_id',
+            'expected_responsible_user_id' => $revision->operation->payment_finalizer_user_id,
+            'positions' => $summary,
+            'regularization' => 'pending',
+            'recovery_registered' => false,
+            'note' => 'O sistema não registra devolução, estorno nem compensação: o reconhecimento na Finalização não regulariza a diferença, que continua em aberto.',
+        ]);
     }
 
     /**
@@ -1162,11 +1366,11 @@ class MeasurementWorkflow
      * {@see self::lockMeasurementWithOperation()} -- como a recusa terminal na
      * Engenharia, que solta as medições previstas da medição.
      */
-    private function lockMeasurement(Measurement $measurement): Measurement
+    private function lockMeasurement(Measurement|int $measurement): Measurement
     {
         $locked = Measurement::query()
             ->with('operation')
-            ->whereKey($measurement->getKey())
+            ->whereKey($measurement instanceof Measurement ? $measurement->getKey() : $measurement)
             ->lockForUpdate()
             ->first();
 
@@ -1362,11 +1566,27 @@ class MeasurementWorkflow
         return $hasExpectedStatus && $hasPendingReview;
     }
 
-    private function reopenStage(Measurement $measurement, User $actor, int $target, ?string $note): void
+    /**
+     * Reabre a etapa de destino. Reabrir a Engenharia invalida o registro
+     * aprovado -- que é arquivado na trilha -- e tira a contribuição física da
+     * medição até a nova aprovação; a medição paga com registro verificável não
+     * passa por aqui ({@see self::protectsPaidEngineeringRecord()}): a correção
+     * dela é uma revisão formal. `$responsibility` é a de quem devolveu (a da
+     * etapa que recusou, ou a do Finalizador), para a auditoria atribuir a
+     * autoridade certa.
+     */
+    private function reopenStage(Measurement $measurement, User $actor, int $target, ?string $note, string $responsibility): void
     {
+        if ($target === self::STAGE_ENGINEERING && $this->protectsPaidEngineeringRecord($measurement)) {
+            throw $this->invalidState($measurement, self::PAID_ENGINEERING_RETURN_REFUSAL);
+        }
+
         $previousSnapshot = $target === self::STAGE_ENGINEERING
             ? $measurement->engineering_snapshot
             : null;
+        $contributionWasEffective = $target === self::STAGE_ENGINEERING
+            && $measurement->isEffectiveRevision()
+            && $measurement->hasApprovedEngineering();
 
         $measurement->reviews()->updateOrCreate(
             ['stage' => $target],
@@ -1407,7 +1627,44 @@ class MeasurementWorkflow
                 'engineering_snapshot' => $previousSnapshot,
                 'workflow_revision' => (int) $measurement->workflow_revision + 1,
             ]);
+
+            // A contribuição física da medição vigente sai do avanço reconhecido
+            // até a nova aprovação da Engenharia: o que saiu, montado só do
+            // registro invalidado -- nada da operação é lido aqui, sob o lock
+            // da medição.
+            if ($contributionWasEffective) {
+                $this->audit($measurement, $actor, 'measurement_physical_contribution_invalidated', [
+                    'reopened_stage' => self::STAGE_ENGINEERING,
+                    'responsibility' => $responsibility,
+                    'reason' => $note,
+                    'contributions' => self::snapshotContributions($previousSnapshot),
+                    'workflow_revision' => (int) $measurement->workflow_revision + 1,
+                ]);
+            }
         }
+    }
+
+    /**
+     * A contribuição física de cada empreendimento num registro da Engenharia:
+     * o realizado mensal e o acumulado na medição prevista que ele mediu.
+     *
+     * @param  array<string, mixed>  $snapshot
+     * @return list<array<string, mixed>>
+     */
+    private static function snapshotContributions(array $snapshot): array
+    {
+        return collect(is_array($snapshot['plan_sets'] ?? null) ? $snapshot['plan_sets'] : [])
+            ->filter(fn (mixed $entry): bool => is_array($entry))
+            ->map(fn (array $entry): array => [
+                'plan_set_id' => (int) ($entry['plan_set_id'] ?? 0),
+                'plan_line_id' => isset($entry['plan_line_id']) ? (int) $entry['plan_line_id'] : null,
+                'plan_line_lineage_key' => $entry['plan_line_lineage_key'] ?? null,
+                'measurement_date' => $entry['measurement_date'] ?? null,
+                'realized_monthly_percent' => isset($entry['realized_monthly_percent']) ? (string) $entry['realized_monthly_percent'] : null,
+                'realized_cumulative_percent' => isset($entry['realized_cumulative_percent']) ? (string) $entry['realized_cumulative_percent'] : null,
+            ])
+            ->values()
+            ->all();
     }
 
     /**
@@ -1496,6 +1753,44 @@ class MeasurementWorkflow
     }
 
     /**
+     * A Engenharia aprovou de novo uma medição vigente que tinha voltado a
+     * ela: a reanálise terminou, e a contribuição física volta ao avanço
+     * reconhecido com o registro novo. Só quando há o registro invalidado na
+     * trilha -- a medição legada aprovada antes do snapshot não deixou nada a
+     * comparar. Lê só a trilha desta medição, nunca a operação.
+     *
+     * @param  array<string, mixed>  $snapshot
+     */
+    private function auditReanalysisCompleted(Measurement $measurement, User $actor, array $snapshot): void
+    {
+        if (! $measurement->isEffectiveRevision()) {
+            return;
+        }
+
+        $invalidation = Activity::query()
+            ->where('log_name', 'measurement_workflow')
+            ->where('description', 'measurement_engineering_snapshot_invalidated')
+            ->where('subject_type', $measurement->getMorphClass())
+            ->where('subject_id', $measurement->getKey())
+            ->latest('id')
+            ->first();
+        $previous = $invalidation?->properties['engineering_snapshot'] ?? null;
+
+        if (! is_array($previous)) {
+            return;
+        }
+
+        $this->audit($measurement, $actor, 'measurement_engineering_reanalysis_completed', [
+            'responsibility' => 'responsible_user_id',
+            'invalidation_activity_id' => (int) $invalidation->getKey(),
+            'invalidated_at' => $invalidation->created_at?->toIso8601String(),
+            'previous_contributions' => self::snapshotContributions($previous),
+            'new_contributions' => self::snapshotContributions($snapshot),
+            'workflow_revision' => (int) $measurement->workflow_revision + 1,
+        ]);
+    }
+
+    /**
      * A revisão que aprova menos do que a família já pagou deixa valor pago a
      * maior. O sistema não tem estorno, devolução nem compensação, e os
      * pagamentos registrados nunca são alterados: a etapa Pagamento não
@@ -1510,11 +1805,11 @@ class MeasurementWorkflow
             return [];
         }
 
-        $overpayments = $this->revisions()->unresolvedOverpayments($measurement);
+        $overpayments = $this->revisions()->unacknowledgedOverpayments($measurement);
 
         if ($overpayments !== [] && blank($notes)) {
             throw ValidationException::withMessages([
-                'notes' => 'Esta revisão aprova menos do que já foi pago antes dela -- '.$this->revisions()->describeOverpayments($overpayments).'. Registre a decisão financeira sobre o valor pago a maior; o Finalizador precisará aceitá-la expressamente. Os pagamentos registrados não são alterados nem estornados.',
+                'notes' => 'Esta revisão aprova menos do que já foi pago antes dela -- '.$this->revisions()->describeOverpayments($overpayments).'. Registre a decisão financeira sobre o valor pago a maior ainda não reconhecido; o Finalizador precisará aceitá-la expressamente. A decisão não devolve nem regulariza o valor: os pagamentos registrados não são alterados nem estornados, e o valor continua em aberto.',
             ]);
         }
 
@@ -1881,6 +2176,30 @@ class MeasurementWorkflow
         }
 
         return $this->authorization->resolveAuthorization($actor, $measurement, $resolved);
+    }
+
+    /**
+     * A vigente que a revisão recusada suspendia voltou a correr: quem cuida
+     * da etapa dela recebe o aviso dela, com o link dela. Só os responsáveis
+     * diretos da operação, como nos demais avisos do fluxo.
+     *
+     * @return list<int>
+     */
+    private function resumedSourceResponsibles(Measurement $source): array
+    {
+        $operation = $source->operation;
+
+        if (! $operation instanceof Operation) {
+            return [];
+        }
+
+        return collect($this->pendingResponsibilities($source))
+            ->map(fn (MeasurementResponsibility $responsibility): ?int => $operation->responsibleUserIdFor($responsibility))
+            ->filter()
+            ->map(fn (int $userId): int => $userId)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**

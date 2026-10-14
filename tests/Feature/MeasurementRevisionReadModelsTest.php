@@ -62,6 +62,13 @@ it('closes the payment visit of the replaced measurement in the cycle history wi
     $revision = Scenario::effective($scenario, $may, 8);
     $history = app(MeasurementCycleHistoryReadModel::class)->for($scenario['actor'], $may->fresh());
     $lastVisit = collect($history->stageVisits)->last();
+    $closedReview = $may->reviews()->where('stage', MeasurementWorkflow::STAGE_PAYMENT)->sole();
+
+    // A análise da etapa Pagamento fica encerrada sem decisão: nem aprovada,
+    // nem recusada, sem revisor.
+    expect($closedReview->status)->toBe('superseded')
+        ->and($closedReview->reviewer_user_id)->toBeNull()
+        ->and($closedReview->reviewed_at)->not->toBeNull();
 
     expect($history->completeness)->toBe(MeasurementHistoryCompleteness::Complete)
         ->and($history->terminalReason)->toBe(MeasurementStageExitReason::ClosedByRevision)

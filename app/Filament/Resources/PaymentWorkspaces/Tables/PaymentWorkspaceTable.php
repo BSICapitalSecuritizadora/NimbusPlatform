@@ -122,9 +122,11 @@ class PaymentWorkspaceTable
                     ->label('Pendência atual')
                     ->badge()
                     ->state(fn (Measurement $record): string => self::readModel()->pendingLabel($record))
-                    ->color(fn (Measurement $record): string => match ($record->status) {
-                        'awaiting_receipt', 'paused' => 'warning',
-                        'approved', 'finalized' => 'success',
+                    ->color(fn (Measurement $record): string => match (true) {
+                        $record->status === 'finalized' && $record->hasOpenRevisionFinancialPosition() => 'warning',
+                        in_array($record->status, ['awaiting_receipt', 'paused'], true) => 'warning',
+                        in_array($record->status, ['approved', 'finalized'], true) => 'success',
+                        $record->status === 'superseded' => 'gray',
                         default => 'info',
                     }),
 
@@ -315,6 +317,7 @@ class PaymentWorkspaceTable
                     'awaiting_receipt' => 'Enviar ou substituir comprovante',
                     'awaiting_receipt_review' => 'Conferir comprovante',
                     'ready_to_finalize' => 'Pronta para finalizar',
+                    'revision_financial_pending' => 'Regularização financeira pendente (revisão)',
                 ])
                 ->query(function (Builder $query, array $data): Builder {
                     return match ($data['value'] ?? null) {
@@ -339,7 +342,7 @@ class PaymentWorkspaceTable
                                             ->whereDoesntHave('currentReceiptEvidence')
                                             ->orWhereHas('currentReceiptEvidence', fn (Builder $evidences): Builder => $evidences
                                                 ->whereIn('review_status', [MeasurementReceiptReviewStatus::Rejected->value, MeasurementReceiptReviewStatus::LegacyUnreviewed->value])))))
-                                ->orWhere(fn (Builder $closed): Builder => $closed->where('status', 'finalized')
+                                ->orWhere(fn (Builder $closed): Builder => $closed->whereIn('status', ['finalized', 'superseded'])
                                     ->whereHas('payments.currentReceiptEvidence', fn (Builder $evidences): Builder => $evidences
                                         ->where('is_post_finalization', true)
                                         ->where('review_status', MeasurementReceiptReviewStatus::Rejected->value)))),
@@ -347,8 +350,12 @@ class PaymentWorkspaceTable
                             ->whereHas('payments.currentReceiptEvidence', fn (Builder $evidences): Builder => $evidences
                                 ->where('review_status', MeasurementReceiptReviewStatus::Pending->value)
                                 ->where(fn (Builder $current): Builder => $current->where('is_post_finalization', true)
-                                    ->orWhereHas('payment.measurement', fn (Builder $open): Builder => $open->where('status', '!=', 'finalized')))),
-                        'ready_to_finalize' => $query->where('status', 'approved'),
+                                    ->orWhereHas('payment.measurement', fn (Builder $open): Builder => $open->whereNotIn('status', ['finalized', 'superseded'])))),
+                        // A suspensa por uma revisão em análise não está pronta para nada.
+                        'ready_to_finalize' => $query->where('status', 'approved')->whereDoesntHave('reviewingSuccessor'),
+                        // Revisão vigente que deixa valor pago a maior ou saldo a pagar
+                        // em aberto -- reconhecido ou não: finalizar não regulariza.
+                        'revision_financial_pending' => $query->withOpenRevisionFinancialPosition(),
                         default => $query,
                     };
                 }),

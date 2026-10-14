@@ -97,7 +97,19 @@ class MeasurementCockpit extends Widget
                     'count' => $summary['ready_to_finalize'],
                     'description' => 'Finalização ainda necessária',
                     'tone' => 'success',
-                    'url' => $this->paymentUrl($pageFilters, ['status' => 'approved']),
+                    // O mesmo recorte do número: a suspensa por uma revisão em
+                    // análise não está pronta para finalizar.
+                    'url' => $this->paymentUrl($pageFilters, ['operational_pending' => 'ready_to_finalize']),
+                ],
+                [
+                    'label' => 'Regularização financeira pendente',
+                    'count' => $summary['revision_financial_pending'],
+                    'description' => 'Revisões com diferença em aberto',
+                    'tone' => 'warning',
+                    // A lista de medições, e não o workspace: a revisão vigente
+                    // devolvida à Engenharia continua com a diferença em aberto e
+                    // fica fora da fila de pagamentos.
+                    'url' => $this->measurementUrl($pageFilters, ['revision_financial_pending' => true]),
                 ],
                 [
                     'label' => 'Calendário indisponível',
@@ -108,7 +120,7 @@ class MeasurementCockpit extends Widget
                 ],
             ],
             'paymentWorkspaceUrl' => PaymentWorkspaceResource::getUrl('index', [
-                'tableFilters' => $this->tableFilters($pageFilters),
+                'filters' => $this->tableFilters($pageFilters),
             ]),
         ];
     }
@@ -143,7 +155,7 @@ class MeasurementCockpit extends Widget
         }
 
         return PaymentWorkspaceResource::getUrl('index', [
-            'tableFilters' => $this->tableFilters($filters),
+            'filters' => $this->tableFilters($filters),
         ]);
     }
 
@@ -178,7 +190,7 @@ class MeasurementCockpit extends Widget
             ];
         }
 
-        foreach (['operation_id', 'emission_id', 'responsible_user_id', 'stage', 'status', 'sla_status', 'assignment', 'receipt_state'] as $filter) {
+        foreach (['operation_id', 'emission_id', 'responsible_user_id', 'stage', 'status', 'sla_status', 'assignment', 'receipt_state', 'operational_pending'] as $filter) {
             if (filled($filters[$filter] ?? null)) {
                 $tableFilters[$filter] = ['value' => $filters[$filter]];
             }

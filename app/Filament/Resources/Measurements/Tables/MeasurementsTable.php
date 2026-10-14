@@ -10,6 +10,7 @@ use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Measurement;
 use App\Models\User;
 use App\Services\MeasurementOperationalReadModel;
+use App\Services\MeasurementReceiptEvidenceService;
 use App\Services\MeasurementSlaService;
 use App\Services\MeasurementWorkflow;
 use Filament\Actions\Action;
@@ -45,6 +46,10 @@ class MeasurementsTable
             if (filled($filters[$filter] ?? null)) {
                 $tableFilters[$filter] = ['value' => $filters[$filter]];
             }
+        }
+
+        if (($filters['revision_financial_pending'] ?? false) === true) {
+            $tableFilters['revision_financial_pending'] = ['isActive' => true];
         }
 
         return $tableFilters;
@@ -165,14 +170,16 @@ class MeasurementsTable
                     ->label('Situação')
                     ->badge()
                     ->formatStateUsing(fn (Measurement $record): string => $record->workflowStatusLabel())
-                    ->description(fn (Measurement $record): ?string => in_array($record->status, ['awaiting_receipt', 'approved', 'finalized'], true)
-                        || $record->isFrozenByRevision()
-                        ? static::readModel()->pendingLabel($record)
-                        : null)
-                    ->color(fn (string $state): string => match ($state) {
-                        'finalized', 'approved' => 'success',
-                        'rejected' => 'danger',
-                        'paused' => 'warning',
+                    ->description(fn (Measurement $record): ?string => static::statusDescription($record))
+                    ->color(fn (Measurement $record): string => match (true) {
+                        // Finalizar a revisão não regulariza a diferença financeira
+                        // que ela reconheceu: o valor pago a maior ou o saldo a pagar
+                        // continuam em aberto.
+                        $record->status === 'finalized' && $record->hasOpenRevisionFinancialPosition() => 'warning',
+                        in_array($record->status, ['finalized', 'approved'], true) => 'success',
+                        $record->status === 'rejected' => 'danger',
+                        $record->status === 'paused' => 'warning',
+                        $record->status === 'superseded' => 'gray',
                         default => 'gray',
                     }),
 
@@ -245,6 +252,14 @@ class MeasurementsTable
                                     ->whereHas('revisionDifferences', fn (Builder $differences): Builder => $differences
                                         ->whereNull('superseded_at')
                                         ->where('difference_type', (string) $data['value'])))),
+
+                        // Revisão vigente que deixa valor pago a maior ou saldo a
+                        // pagar em aberto, reconhecido ou não -- também depois de
+                        // finalizada, porque o reconhecimento não regulariza nada.
+                        Filter::make('revision_financial_pending')
+                            ->label('Diferença financeira de revisão em aberto')
+                            ->toggle()
+                            ->query(fn (Builder $query): Builder => $query->withOpenRevisionFinancialPosition()),
 
                         SelectFilter::make('operation_id')
                             ->label('Operação')
@@ -331,8 +346,28 @@ class MeasurementsTable
     }
 
     /**
+     * O que falta fazer na medição, abaixo da situação. A substituída depois de
+     * paga ainda recebe correção de comprovante, como a finalizada; sem
+     * correção pendente, a situação "Encerrada por revisão" já diz tudo.
+     */
+    protected static function statusDescription(Measurement $record): ?string
+    {
+        if (in_array($record->status, ['awaiting_receipt', 'approved', 'finalized'], true) || $record->isFrozenByRevision()) {
+            return static::readModel()->pendingLabel($record);
+        }
+
+        if ($record->status === 'superseded' && app(MeasurementReceiptEvidenceService::class)->pendingResponsibilities($record) !== []) {
+            return static::readModel()->pendingLabel($record);
+        }
+
+        return null;
+    }
+
+    /**
      * Verifica se há busca ou filtros aplicados na tabela, para diferenciar o
      * empty state "nenhuma medição cadastrada" do "nenhuma corresponde aos filtros".
+     * O filtro liga/desliga guarda `isActive => false` quando desligado -- um
+     * valor preenchido, mas que não filtra nada.
      */
     protected static function hasActiveFiltersOrSearch($livewire): bool
     {
@@ -348,7 +383,9 @@ class MeasurementsTable
             return filled($value);
         };
 
-        return collect($livewire->tableFilters ?? [])->contains(fn (mixed $state): bool => $hasValue($state));
+        return collect($livewire->tableFilters ?? [])->contains(fn (mixed $state): bool => is_array($state) && array_key_exists('isActive', $state)
+            ? (bool) $state['isActive']
+            : $hasValue($state));
     }
 
     protected static function visibleMeasurementsExist(): bool

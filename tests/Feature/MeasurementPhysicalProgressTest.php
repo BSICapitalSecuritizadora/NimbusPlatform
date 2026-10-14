@@ -25,6 +25,7 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\MeasurementPhysicalProgressScenario as Scenario;
 use Tests\Support\MeasurementPlanVersionFixture;
 use Tests\Support\MeasurementReceiptEvidenceScenario;
+use Tests\Support\MeasurementRevisionScenario;
 
 uses(RefreshDatabase::class);
 pest()->group('parity');
@@ -468,7 +469,7 @@ it('refuses missing, negative, above-100% and three-decimal monthly progress', f
     ), $scenario['planSet']->id))->toBe($message);
 })->with([
     'missing' => ['missing', 'Informe o percentual realizado de Plano padrão.'],
-    'negative correction' => ['-5', 'O percentual realizado de Plano padrão não pode ser negativo. Para corrigir uma medição já aprovada, devolva-a à Engenharia.'],
+    'negative correction' => ['-5', 'O percentual realizado de Plano padrão não pode ser negativo. Para corrigir uma medição já aprovada, devolva-a à Engenharia; se ela tiver pagamento registrado, a correção dos dados aprovados é uma revisão formal (Criar revisão).'],
     'above 100%' => ['100.01', 'Informe para Plano padrão um percentual realizado de no máximo 100%.'],
     'three decimals' => ['1.005', 'Informe para Plano padrão o percentual realizado com no máximo duas casas decimais.'],
 ]);
@@ -590,16 +591,41 @@ it('stops counting a measurement returned to Engineering while keeping its histo
         ->and($invalidation->properties['engineering_snapshot'])->toBe($approvedSnapshot);
 });
 
-it('stops counting a measurement that Finalization sends back to Engineering', function () {
+it('keeps counting a paid measurement that Finalization cannot send back to Engineering', function () {
     $scenario = MeasurementReceiptEvidenceScenario::open();
     $planSet = $scenario['operation']->planSets()->sole();
     $service = app(MeasurementPhysicalProgressService::class);
 
     expect($service->forPlanSet($planSet)->currentPercent())->toBe('10.00');
 
-    app(MeasurementWorkflow::class)->returnToStage($scenario['measurement']->fresh(), $scenario['actor'], 1, 'Refazer a medição.');
+    // O registro aprovado é a base do pagamento: a medição paga não volta à
+    // Engenharia, e a contribuição dela continua no avanço reconhecido.
+    expect(fn () => app(MeasurementWorkflow::class)->returnToStage($scenario['measurement']->fresh(), $scenario['actor'], 1, 'Refazer a medição.'))
+        ->toThrow(MeasurementWorkflowException::class, MeasurementWorkflow::PAID_ENGINEERING_RETURN_REFUSAL);
 
-    expect($service->forPlanSet($planSet)->currentPercent())->toBe('0.00');
+    expect($service->forPlanSet($planSet)->currentPercent())->toBe('10.00')
+        ->and($scenario['measurement']->fresh()->engineering_snapshot)->toBe($scenario['measurement']->engineering_snapshot);
+});
+
+it('stops counting a measurement that Finalization sends back to Engineering', function () {
+    // Da Finalização, volta à Engenharia a revisão vigente sem pagamento
+    // próprio: a família pagou na R0, e a R1 passou pela etapa Pagamento com o
+    // saldo justificado.
+    $scenario = MeasurementRevisionScenario::plan(initialPercent: '30.00');
+    $may = MeasurementRevisionScenario::finalized($scenario, '2026-05', 10);
+    $revision = MeasurementRevisionScenario::effective($scenario, $may, 12);
+    $workflow = app(MeasurementWorkflow::class);
+    $workflow->approve($revision->fresh(), $scenario['actor'], 'Saldo da revisão pago na próxima competência.');
+
+    expect($revision->fresh()->status)->toBe('approved')
+        ->and($revision->fresh()->current_stage)->toBe(MeasurementWorkflow::STAGE_FINALIZATION)
+        ->and($revision->fresh()->payments()->exists())->toBeFalse()
+        ->and(Scenario::progress($scenario)->currentPercent())->toBe('42.00');
+
+    $workflow->returnToStage($revision->fresh(), $scenario['actor'], 1, 'Refazer a medição.');
+
+    expect(Scenario::progress($scenario)->currentPercent())->toBe('30.00')
+        ->and($revision->fresh()->engineering_snapshot)->toBeNull();
 });
 
 it('keeps counting a measurement while the later stages decide', function () {

@@ -28,8 +28,10 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementPhysicalProgressScenario;
 use Tests\Support\MeasurementPlanVersionFixture;
 use Tests\Support\MeasurementReceiptEvidenceScenario;
+use Tests\Support\MeasurementRevisionScenario;
 
 uses(RefreshDatabase::class);
 
@@ -394,36 +396,64 @@ it('blocks finalization after direct database divergence of any approved materia
 })->with(['construction', 'realized', 'reference month', 'asset metadata', 'captured version fund']);
 
 it('archives the invalidated snapshot and creates a different snapshot after Engineering reapproval', function () {
-    $scenario = createP02EngineeringScenario();
+    $scenario = MeasurementRevisionScenario::plan();
     $workflow = app(MeasurementWorkflow::class);
-    advanceP02ToReadyForFinalization($scenario);
-    $oldSnapshot = $scenario['measurement']->fresh()->engineering_snapshot;
-    $revisionBeforeReturn = (int) $scenario['measurement']->fresh()->workflow_revision;
+    $paid = MeasurementRevisionScenario::paidAwaitingFinalization($scenario, '2026-05', 10);
+
+    // A medição paga não volta da Finalização à Engenharia: o registro aprovado
+    // é a base do pagamento, e nada é invalidado nem arquivado.
+    expect(fn () => $workflow->returnToStage(
+        $paid->fresh(),
+        $scenario['actor'],
+        MeasurementWorkflow::STAGE_ENGINEERING,
+        'Nova vistoria necessária',
+    ))->toThrow(MeasurementWorkflowException::class, MeasurementWorkflow::PAID_ENGINEERING_RETURN_REFUSAL);
+
+    expect($paid->fresh()->engineering_snapshot)->toBe($paid->engineering_snapshot)
+        ->and($paid->fresh()->workflow_revision)->toBe($paid->workflow_revision)
+        ->and($paid->fresh()->reviewForStage(5)?->status)->toBe('pending')
+        ->and(Activity::query()->where('description', 'measurement_engineering_snapshot_invalidated')->exists())->toBeFalse();
+
+    // A correção vem pela revisão. A R1 vigente não tem pagamento próprio -- a
+    // família pagou na R0 --, e da Finalização ela volta à Engenharia.
+    $workflow->finalize($paid->fresh(), $scenario['actor']);
+    $revision = MeasurementRevisionScenario::effective($scenario, $paid, 10);
+    $workflow->approve($revision->fresh(), $scenario['actor']);
+    $oldSnapshot = $revision->fresh()->engineering_snapshot;
+    $revisionBeforeReturn = (int) $revision->fresh()->workflow_revision;
+
+    expect($revision->fresh()->status)->toBe('approved')
+        ->and($revision->fresh()->current_stage)->toBe(MeasurementWorkflow::STAGE_FINALIZATION)
+        ->and($revision->fresh()->payments()->exists())->toBeFalse();
 
     $workflow->returnToStage(
-        $scenario['measurement']->fresh(),
+        $revision->fresh(),
         $scenario['actor'],
         MeasurementWorkflow::STAGE_ENGINEERING,
         'Nova vistoria necessária',
     );
 
-    $reopened = $scenario['measurement']->fresh();
+    $reopened = $revision->fresh();
     $history = Activity::query()
         ->where('description', 'measurement_engineering_snapshot_invalidated')
-        ->latest('id')
-        ->firstOrFail();
+        ->sole();
 
     expect($reopened->reviewForStage(1)?->status)->toBe('pending')
         ->and($reopened->engineering_snapshot)->toBeNull()
         ->and($reopened->workflow_revision)->toBe($revisionBeforeReturn + 1)
+        ->and((int) $history->subject_id)->toBe($revision->id)
         ->and($history->properties->get('engineering_snapshot'))->toBe($oldSnapshot);
 
-    approveP02Engineering($scenario, 20);
-    $newSnapshot = $scenario['measurement']->fresh()->engineering_snapshot;
+    MeasurementPhysicalProgressScenario::approveEngineering($scenario, $revision, 20);
+    $newSnapshot = $revision->fresh()->engineering_snapshot;
 
     expect($newSnapshot)->not->toBe($oldSnapshot)
         ->and($newSnapshot['plan_sets'][0]['realized_monthly_percent'])->toBe('20.00')
-        ->and(Activity::query()->where('description', 'measurement_engineering_snapshot_created')->count())->toBe(2);
+        ->and(Activity::query()
+            ->where('description', 'measurement_engineering_snapshot_created')
+            ->where('subject_type', $revision->getMorphClass())
+            ->where('subject_id', $revision->id)
+            ->count())->toBe(2);
 });
 
 it('keeps old Measurements on A B C while new Measurements can approve D and payments cannot retroact', function () {

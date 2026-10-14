@@ -804,9 +804,9 @@ it('renders neutral signal badges when every indicator is zero', function () {
     $component = Livewire::test(MeasurementCockpit::class)->assertSuccessful();
     $html = $component->html(true);
 
-    expect($component->viewData('signals'))->toHaveCount(8)
-        ->and(substr_count($html, 'fi-badge-label-ctn'))->toBe(8)
-        ->and(substr_count($html, 'bg-gray-300'))->toBe(8)
+    expect($component->viewData('signals'))->toHaveCount(9)
+        ->and(substr_count($html, 'fi-badge-label-ctn'))->toBe(9)
+        ->and(substr_count($html, 'bg-gray-300'))->toBe(9)
         ->and($html)->not->toContain('fi-color-danger', 'fi-color-warning', 'fi-color-success', 'fi-color-info');
 });
 
@@ -821,7 +821,7 @@ it('renders semantic signal badges only for active indicators', function () {
 
     expect(collect($component->viewData('signals'))->firstWhere('label', 'SLA vencido')['count'])->toBe(1)
         ->and(substr_count($html, 'fi-color-danger'))->toBe(1)
-        ->and(substr_count($html, 'fi-badge-label-ctn'))->toBe(8)
+        ->and(substr_count($html, 'fi-badge-label-ctn'))->toBe(9)
         ->and($html)->toContain('bg-danger-500');
 });
 
@@ -894,7 +894,7 @@ it('highlights populated stages and preserves every cockpit label and action', f
         ->assertSee('Valor registrado', false)
         ->assertSee('Soma dos registros operacionais; não representa saldo contábil ou valor liquidado.', false);
 
-    foreach (['SLA vencido', 'SLA em atenção', 'Pausadas', 'Delegadas no meu escopo', 'Comprovantes pendentes', 'Documentação pendente', 'Prontas para finalizar', 'Calendário indisponível', 'Finalizado'] as $label) {
+    foreach (['SLA vencido', 'SLA em atenção', 'Pausadas', 'Delegadas no meu escopo', 'Comprovantes pendentes', 'Documentação pendente', 'Prontas para finalizar', 'Regularização financeira pendente', 'Calendário indisponível', 'Finalizado'] as $label) {
         $component->assertSee($label, false);
     }
 

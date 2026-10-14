@@ -50,6 +50,7 @@ use Tests\Support\DatabaseConcurrencyFailure;
 use Tests\Support\MeasurementPhysicalProgressScenario as PhysicalScenario;
 use Tests\Support\MeasurementPlanVersionFixture;
 use Tests\Support\MeasurementReceiptEvidenceScenario as ReceiptScenario;
+use Tests\Support\MeasurementRevisionScenario as RevisionScenario;
 
 /**
  * Nenhuma recusa da Medição pode sumir.
@@ -820,11 +821,12 @@ it('explains a lost authorization in Portuguese', function () {
 
 // ── Recusar com pagamento (item 3) ───────────────────────────────────────────
 
-it('shows Recusar disabled with the reason on a paid measurement back at Engineering and refuses a forged submission', function () {
+it('shows Recusar disabled with the reason on a legacy paid measurement back at Engineering and refuses a forged submission', function () {
+    // Desde a Fase 3.1 o fluxo não devolve mais a medição paga à Engenharia: a
+    // medição paga de volta a ela é legado, montado com as gravações da antiga
+    // devolução da Finalização.
     $scenario = ReceiptScenario::open();
-    $workflow = app(MeasurementWorkflow::class);
-    $workflow->returnToStage($scenario['measurement']->fresh(), $scenario['actor'], MeasurementWorkflow::STAGE_ENGINEERING, 'Rever o percentual medido.');
-    $measurement = $scenario['measurement']->fresh();
+    $measurement = RevisionScenario::legacyPaidAtEngineering($scenario['measurement']);
     $this->actingAs($scenario['actor']);
 
     $component = Livewire::test(ViewMeasurement::class, ['record' => $measurement->getRouteKey()])

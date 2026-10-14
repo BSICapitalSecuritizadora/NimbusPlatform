@@ -27,6 +27,8 @@ use App\Services\MeasurementPhysicalProgressService;
 use App\Services\MeasurementReceiptEvidenceService;
 use App\Services\MeasurementRevisionService;
 use App\Services\MeasurementWorkflow;
+use App\Support\BusinessTime;
+use Carbon\CarbonImmutable;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
@@ -127,6 +129,32 @@ class ViewMeasurement extends ViewRecord
 
     private const ENGINEERING_STAGE = 1;
 
+    /**
+     * A Gestão: recusar nela devolve a medição à Engenharia.
+     */
+    private const MANAGEMENT_STAGE = 2;
+
+    /**
+     * As situações da revisão vigente em que "Criar revisão" aparece: a
+     * finalizada (caso A), a parada na etapa Pagamento (caso B) e a paga na
+     * Finalização (caso C, que exige a documentação financeira completa). Fora
+     * do estado exato que o domínio aceita, o botão fica desabilitado com o
+     * motivo dele ({@see MeasurementRevisionService::creationBlockReason()}).
+     *
+     * @var list<string>
+     */
+    private const REVISABLE_STATUSES = ['finalized', 'awaiting_payment', 'awaiting_receipt', 'approved'];
+
+    /**
+     * As contribuições físicas em reanálise da Engenharia na operação desta
+     * medição, por empreendimento, lidas uma vez por requisição: os modais da
+     * Engenharia mostram cada uma fora do avanço reconhecido. Propriedade
+     * privada: o Livewire não a guarda entre requisições.
+     *
+     * @var array<int, list<array{measurement_id: int, revision_label: string, reference_month: string|null, basis_points: int, plan_line_lineage_key: string|null, invalidated_at: CarbonImmutable|null}>>|null
+     */
+    private ?array $reanalysisContributionsByPlanSet = null;
+
     protected function getHeaderActions(): array
     {
         return [
@@ -160,10 +188,12 @@ class ViewMeasurement extends ViewRecord
 
     /**
      * Criar a revisão desta medição (a R1 da original, a R2 da R1...): à vista
-     * de quem revisa a vigente finalizada ou parada na etapa Pagamento, e
-     * desabilitada com o motivo quando o serviço recusaria -- pagamento já
-     * registrado, revisão já em andamento, registro da Engenharia anterior ao
-     * snapshot. O serviço confere tudo de novo, sob o lock.
+     * de quem revisa a vigente finalizada, parada na etapa Pagamento ou paga na
+     * Finalização ({@see self::REVISABLE_STATUSES}), e desabilitada com o
+     * motivo quando o serviço recusaria -- pagamento com a etapa Pagamento
+     * aberta, comprovante não aprovado, revisão já em andamento, registro da
+     * Engenharia anterior ao snapshot. O serviço confere tudo de novo, sob o
+     * lock.
      */
     private function createRevisionAction(): Action
     {
@@ -172,9 +202,9 @@ class ViewMeasurement extends ViewRecord
             ->icon('heroicon-o-document-duplicate')
             ->color('gray')
             ->modalHeading('Criar revisão desta medição')
-            ->modalDescription('A revisão nasce como rascunho, com os arquivos, a versão do plano e a medição prevista desta medição. Esta medição continua valendo, sem nenhuma alteração, até a revisão ser aprovada pela Engenharia, pela Gestão e pela Compliance. Os pagamentos já registrados nunca são alterados.')
+            ->modalDescription(fn (): string => $this->createRevisionDescription())
             ->visible(fn (): bool => $this->record->isEffectiveRevision()
-                && in_array($this->record->status, ['finalized', 'awaiting_payment'], true)
+                && in_array($this->record->status, self::REVISABLE_STATUSES, true)
                 && $this->actor()->can('revise', $this->record))
             ->disabled(fn (): bool => $this->revisions()->creationBlockReason($this->record) !== null)
             ->tooltip(fn (): ?string => $this->revisions()->creationBlockReason($this->record))
@@ -205,6 +235,38 @@ class ViewMeasurement extends ViewRecord
                     $this->redirect(MeasurementResource::getUrl('view', ['record' => $revision]));
                 });
             });
+    }
+
+    /**
+     * O que acontece com esta medição ao revisá-la. Com pagamento registrado,
+     * a pessoa lê quantos e quanto, e que eles ficam nesta medição como
+     * histórico, nunca copiados para a revisão. Com o fluxo ainda aberto
+     * (etapa Pagamento, ou a Finalização da medição paga), lê também que o
+     * envio da revisão suspende esse fluxo; a finalizada não tem fluxo a
+     * suspender.
+     */
+    private function createRevisionDescription(): string
+    {
+        $text = 'A revisão nasce como rascunho, com os arquivos, a versão do plano e a medição prevista desta medição. Esta medição continua valendo, sem nenhuma alteração, até a revisão ser aprovada pela Engenharia, pela Gestão e pela Compliance. Os pagamentos já registrados nunca são alterados.';
+        $payments = $this->record->payments()->get(['id', 'amount']);
+
+        if ($payments->isNotEmpty()) {
+            $text .= sprintf(
+                ' Esta medição tem pagamento registrado (%d %s, %s). A revisão preserva esse histórico: os pagamentos continuam vinculados a esta medição e nunca são copiados para a revisão.',
+                $payments->count(),
+                $payments->count() === 1 ? 'pagamento' : 'pagamentos',
+                MeasurementFinancialReconciliationService::formatCurrency($payments->reduce(
+                    fn (string $total, MeasurementPayment $payment): string => bcadd($total, (string) $payment->amount, 2),
+                    '0.00',
+                )),
+            );
+        }
+
+        if ($this->record->isOpen()) {
+            $text .= ' Depois do envio da revisão, o fluxo desta medição fica suspenso (nenhum pagamento, comprovante, Finalização ou devolução) até a revisão ser recusada ou passar a valer.';
+        }
+
+        return $text;
     }
 
     private function editRevisionAction(): Action
@@ -238,14 +300,29 @@ class ViewMeasurement extends ViewRecord
             });
     }
 
+    /**
+     * O que o envio faz com a revisão anterior. Com o fluxo dela ainda aberto
+     * -- parada na etapa Pagamento, ou paga na Finalização --, ele fica
+     * suspenso enquanto a revisão estiver em análise, e os pagamentos dela
+     * ficam nela como histórico. A finalizada não tem fluxo a suspender.
+     */
     private function submitRevisionDescription(): string
     {
-        $previous = $this->record->previousRevision()->first(['id', 'revision_number', 'revision_status', 'status']);
+        $previous = $this->record->previousRevision()->first(['id', 'revision_number', 'revision_status', 'status', 'current_stage']);
         $label = $previous instanceof Measurement ? $previous->revisionLabel() : 'revisão anterior';
         $text = "A revisão segue o fluxo completo: Engenharia, Gestão e Compliance. A {$label} continua valendo até a Compliance aprovar a revisão.";
 
-        if ($previous instanceof Measurement && $previous->status === 'awaiting_payment') {
-            $text .= " Enquanto a revisão estiver em análise, o fluxo da {$label}, parado na etapa Pagamento, fica suspenso.";
+        if (! $previous instanceof Measurement || ! $previous->isOpen()) {
+            return $text;
+        }
+
+        $stageLabel = MeasurementWorkflow::STAGE_LABELS[$this->workflow()->unifiedStage($previous)] ?? null;
+        $text .= " Enquanto a revisão estiver em análise, o fluxo da {$label}"
+            .($stageLabel === null ? '' : ", parada na etapa {$stageLabel},")
+            .' fica suspenso: nenhum pagamento, comprovante, Finalização ou devolução.';
+
+        if ($previous->payments()->exists()) {
+            $text .= " Os pagamentos registrados na {$label} continuam vinculados a ela, como histórico, e nunca são copiados para a revisão.";
         }
 
         return $text;
@@ -450,10 +527,11 @@ class ViewMeasurement extends ViewRecord
         $physicalProgress = app(MeasurementPhysicalProgressService::class)
             ->forOperation((int) $this->record->operation_id, $exclusionId);
         $previousPercents = $this->previousRevisionPercents();
+        $reanalysis = $this->reanalysisContributions();
 
         // Sem preenchimento: a linha guarda o valor de uma aprovação que pode ter
         // deixado de valer, e com 0% aceito um padrão viraria aprovação silenciosa.
-        $fields = $planSets->flatMap(function ($planSet) use ($physicalProgress): array {
+        $fields = $planSets->flatMap(function ($planSet) use ($physicalProgress, $exclusionId, $previousPercents, $reanalysis): array {
             $label = $planSet->construction?->development_name ?? $planSet->name;
             $progress = $physicalProgress[(int) $planSet->id]
                 ?? app(MeasurementPhysicalProgressService::class)->forPlanSet($planSet, $exclusionId);
@@ -461,7 +539,13 @@ class ViewMeasurement extends ViewRecord
             return [
                 Placeholder::make("physical_progress_context.{$planSet->id}")
                     ->hiddenLabel()
-                    ->content($this->physicalProgressContent($label, $progress, $this->capturedVersionLabel((int) $planSet->id), $previousPercents[(int) $planSet->id] ?? null)),
+                    ->content($this->physicalProgressContent(
+                        $label,
+                        $progress,
+                        $this->capturedVersionLabel((int) $planSet->id),
+                        $previousPercents[(int) $planSet->id] ?? null,
+                        $reanalysis[(int) $planSet->id] ?? [],
+                    )),
                 TextInput::make("realized.{$planSet->id}")
                     ->label($label)
                     ->numeric()
@@ -480,7 +564,7 @@ class ViewMeasurement extends ViewRecord
                     })
                     ->validationMessages([
                         'decimal' => 'Informe o percentual realizado com no máximo duas casas decimais.',
-                        'min' => 'O percentual realizado não pode ser negativo. Para corrigir uma medição já aprovada, devolva-a à Engenharia.',
+                        'min' => 'O percentual realizado não pode ser negativo. Para corrigir uma medição já aprovada, devolva-a à Engenharia; se ela tiver pagamento registrado, a correção dos dados aprovados é uma revisão formal (Criar revisão).',
                     ]),
             ];
         })->all();
@@ -510,6 +594,12 @@ class ViewMeasurement extends ViewRecord
      * justificativa. Aí ele só diz o que falta, sem oferecer a justificativa
      * como saída.
      *
+     * Na revisão em que a família pagou mais do que ela aprova, a decisão
+     * financeira é exigida só pela parte que nenhuma Finalização anterior
+     * reconheceu ({@see MeasurementRevisionService::unacknowledgedOverpayments()},
+     * o mesmo filtro das posições); a parte já reconhecida aparece como
+     * informação, sem campo obrigatório -- e continua em aberto.
+     *
      * @return array<int, Component>
      */
     private function paymentStageApprovalFields(): array
@@ -524,11 +614,12 @@ class ViewMeasurement extends ViewRecord
 
         $financial = app(MeasurementPaymentFinancialService::class);
         $unpaid = $financial->unpaidRequiredPlanSets($this->record);
-        $overpayments = $this->record->isRevision() ? $this->revisions()->unresolvedOverpayments($this->record) : [];
-
-        if ($unpaid === [] && $overpayments === []) {
-            return [Textarea::make('notes')->label('Comentário (opcional)')->rows(3)];
-        }
+        $positions = $this->revisions()->positions($this->record);
+        $overpayments = array_values(array_filter(
+            $positions,
+            fn (MeasurementRevisionPlanSetPosition $position): bool => $position->hasUnacknowledgedOverpayment(),
+        ));
+        $outstanding = $this->outstandingHistoricalOverpayments($positions);
 
         if ($overpayments !== []) {
             return [
@@ -536,23 +627,34 @@ class ViewMeasurement extends ViewRecord
                     ->label('Empreendimentos sem pagamento nesta competência')
                     ->content($this->unpaidPlanSetsContent($unpaid))]),
                 Placeholder::make('revision_overpayments')
-                    ->label('Valor pago a maior nesta revisão')
-                    ->content($this->revisionOverpaymentsContent($overpayments)),
+                    ->label('Valor pago a maior em aberto')
+                    ->content($this->revisionOverpaymentsContent($outstanding)),
                 Textarea::make('notes')
                     ->label('Decisão financeira')
-                    ->helperText('Registre a decisão sobre o valor pago a maior'.($unpaid === [] ? '' : ' e a justificativa da ausência de pagamento').'. Os pagamentos registrados não são alterados nem estornados; o Finalizador precisará aceitar a decisão expressamente.')
+                    ->helperText('Registre a decisão sobre o valor pago a maior ainda não reconhecido'.($unpaid === [] ? '' : ' e a justificativa da ausência de pagamento').'. A decisão não devolve nem regulariza o valor: os pagamentos registrados não são alterados nem estornados, e o valor continua em aberto. O Finalizador precisará aceitar a decisão expressamente.')
                     ->required()
                     ->rows(4)
                     ->validationMessages([
-                        'required' => 'Registre a decisão financeira sobre o valor pago a maior: '.$this->revisions()->describeOverpayments($overpayments).'.',
+                        'required' => 'Registre a decisão financeira sobre o valor pago a maior ainda não reconhecido: '.$this->revisions()->describeOverpayments($overpayments).'.',
                     ]),
             ];
+        }
+
+        $acknowledgedBefore = $outstanding === [] ? [] : [
+            Placeholder::make('revision_overpayments_acknowledged')
+                ->label('Valor pago a maior em aberto, reconhecido anteriormente')
+                ->content($this->previouslyAcknowledgedOverpaymentsContent($outstanding)),
+        ];
+
+        if ($unpaid === []) {
+            return [...$acknowledgedBefore, Textarea::make('notes')->label('Comentário (opcional)')->rows(3)];
         }
 
         return [
             Placeholder::make('unpaid_plan_sets')
                 ->label('Empreendimentos sem pagamento nesta competência')
                 ->content($this->unpaidPlanSetsContent($unpaid)),
+            ...$acknowledgedBefore,
             Textarea::make('notes')
                 ->label('Justificativa da ausência de pagamento')
                 ->helperText('Explique por que estes empreendimentos ficam sem pagamento nesta competência. O Finalizador precisará aceitar a ausência expressamente.')
@@ -565,24 +667,99 @@ class ViewMeasurement extends ViewRecord
     }
 
     /**
-     * @param  list<MeasurementRevisionPlanSetPosition>  $overpayments
+     * Os empreendimentos em que a família pagou, antes desta revisão, mais do
+     * que ela aprova: o valor pago a maior em aberto é o reconhecido numa
+     * Finalização anterior mais o que esta revisão ainda precisa reconhecer.
+     * O excesso de um pagamento da própria revisão (só possível sem pagamento
+     * anterior, dentro de uma regra financeira) é divergência do pagamento,
+     * justificada e aceita nele, e não entra aqui.
+     *
+     * @param  list<MeasurementRevisionPlanSetPosition>  $positions
+     * @return list<MeasurementRevisionPlanSetPosition>
      */
-    private function revisionOverpaymentsContent(array $overpayments): HtmlString
+    private function outstandingHistoricalOverpayments(array $positions): array
     {
-        $items = collect($overpayments)
-            ->map(fn (MeasurementRevisionPlanSetPosition $position): string => sprintf(
-                '<li><span class="font-medium text-gray-950 dark:text-white">%s</span> · aprovado revisado %s · pago antes da revisão %s · pago a maior %s</li>',
-                e($position->label),
-                e(MeasurementFinancialReconciliationService::formatCurrency($position->revisedApprovedAmount)),
-                e(MeasurementFinancialReconciliationService::formatCurrency($position->historicalPaidAmount)),
-                e(MeasurementFinancialReconciliationService::formatCurrency($position->unresolvedOverpaymentAmount)),
-            ))
+        return array_values(array_filter(
+            $positions,
+            fn (MeasurementRevisionPlanSetPosition $position): bool => $position->hasOutstandingOverpayment()
+                && ($position->hasUnacknowledgedOverpayment() || $position->hasPreviouslyAcknowledgedOverpayment()),
+        ));
+    }
+
+    /**
+     * @param  list<MeasurementRevisionPlanSetPosition>  $outstanding
+     */
+    private function revisionOverpaymentsContent(array $outstanding): HtmlString
+    {
+        return new HtmlString(
+            '<p class="text-sm text-gray-600 dark:text-gray-300">Esta revisão aprova menos do que a família já pagou. O sistema não registra devolução, estorno nem compensação: os pagamentos ficam como estão, e o valor pago a maior ainda não reconhecido precisa de uma decisão financeira expressa.</p>'
+            .$this->overpaymentItems($outstanding)
+        );
+    }
+
+    /**
+     * A família pagou mais do que esta revisão aprova, e uma Finalização
+     * anterior já reconheceu tudo: não há decisão nova a registrar, e a
+     * diferença continua em aberto.
+     *
+     * @param  list<MeasurementRevisionPlanSetPosition>  $outstanding
+     */
+    private function previouslyAcknowledgedOverpaymentsContent(array $outstanding): HtmlString
+    {
+        return new HtmlString(
+            '<p class="text-sm text-gray-600 dark:text-gray-300">A família pagou mais do que esta revisão aprova, e esse valor já foi reconhecido na Finalização de uma revisão anterior: não há nova decisão financeira a registrar. O sistema não registra devolução, estorno nem compensação: o reconhecimento não regulariza a diferença, que continua em aberto.</p>'
+            .$this->overpaymentItems($outstanding)
+        );
+    }
+
+    /**
+     * Um item por empreendimento, com a conta fechando: o valor pago a maior em
+     * aberto é o reconhecido anteriormente (e em qual revisão) mais o que esta
+     * revisão precisa reconhecer. Só o pagamento da própria revisão faria
+     * sobrar alguma coisa nessa conta -- o domínio recusa pagamento enquanto
+     * houver valor pago a maior em aberto --, e o que sobrar aparece à parte.
+     *
+     * @param  list<MeasurementRevisionPlanSetPosition>  $outstanding
+     */
+    private function overpaymentItems(array $outstanding): string
+    {
+        $originIds = collect($outstanding)
+            ->flatMap(fn (MeasurementRevisionPlanSetPosition $position): array => $position->previouslyAcknowledgedByMeasurementIds)
+            ->unique()
+            ->values()
+            ->all();
+        $originLabels = $originIds === [] ? collect() : Measurement::query()
+            ->whereKey($originIds)
+            ->get(['id', 'revision_number'])
+            ->mapWithKeys(fn (Measurement $origin): array => [(int) $origin->getKey() => $origin->revisionLabel()]);
+
+        $items = collect($outstanding)
+            ->map(function (MeasurementRevisionPlanSetPosition $position) use ($originLabels): string {
+                $acknowledged = $position->previouslyAcknowledgedOverpaymentAmount ?? '0.00';
+                $toAcknowledge = $position->unacknowledgedOverpaymentAmount ?? '0.00';
+                $origins = collect($position->previouslyAcknowledgedByMeasurementIds)
+                    ->map(fn (mixed $id): ?string => $originLabels->get((int) $id))
+                    ->filter()
+                    ->implode(', ');
+                $ownExcess = bcsub(bcsub((string) $position->outstandingOverpaymentAmount, $acknowledged, 2), $toAcknowledge, 2);
+
+                return sprintf(
+                    '<li><span class="font-medium text-gray-950 dark:text-white">%s</span> · aprovado vigente %s · pago pela família %s · pago a maior em aberto %s (reconhecido anteriormente %s%s · a reconhecer nesta revisão %s%s)</li>',
+                    e($position->label),
+                    e(MeasurementFinancialReconciliationService::formatCurrency($position->revisedApprovedAmount)),
+                    e(MeasurementFinancialReconciliationService::formatCurrency($position->familyPaidAmount)),
+                    e(MeasurementFinancialReconciliationService::formatCurrency($position->outstandingOverpaymentAmount)),
+                    e(MeasurementFinancialReconciliationService::formatCurrency($acknowledged)),
+                    $origins === '' ? '' : e(", na {$origins}"),
+                    e(MeasurementFinancialReconciliationService::formatCurrency($toAcknowledge)),
+                    bccomp($ownExcess, '0', 2) > 0
+                        ? e(' · pago a maior por pagamento desta revisão '.MeasurementFinancialReconciliationService::formatCurrency($ownExcess))
+                        : '',
+                );
+            })
             ->implode('');
 
-        return new HtmlString(
-            '<p class="text-sm text-gray-600 dark:text-gray-300">Esta revisão aprova menos do que já foi pago antes dela. O sistema não registra estorno, devolução nem compensação: os pagamentos ficam como estão, e a diferença precisa de uma decisão financeira expressa.</p>'
-            .'<ul class="mt-2 list-disc space-y-1 ps-5 text-sm text-gray-700 dark:text-gray-200">'.$items.'</ul>'
-        );
+        return '<ul class="mt-2 list-disc space-y-1 ps-5 text-sm text-gray-700 dark:text-gray-200">'.$items.'</ul>';
     }
 
     /**
@@ -615,8 +792,17 @@ class ViewMeasurement extends ViewRecord
     /**
      * Onde o empreendimento está antes desta medição: a pessoa vê quanto ainda
      * cabe até 100% antes de digitar, e não depois de recusada.
+     *
+     * Com medição do empreendimento em reanálise da Engenharia -- esta ou
+     * outra da operação --, a contribuição que ela tinha aprovado antes está
+     * fora do avanço reconhecido até a nova decisão da Engenharia: o bloco
+     * mostra quanto e de quem, para a queda do avanço atual não parecer
+     * regressão da obra. Sem reanálise, o bloco fica exatamente como era.
+     *
+     * @param  array{label: string, percent: string}|null  $previousRevision
+     * @param  list<array{measurement_id: int, revision_label: string, reference_month: string|null, basis_points: int, plan_line_lineage_key: string|null, invalidated_at: CarbonImmutable|null}>  $reanalysis
      */
-    private function physicalProgressContent(string $label, MeasurementPhysicalProgress $progress, ?string $versionLabel = null, ?array $previousRevision = null): HtmlString
+    private function physicalProgressContent(string $label, MeasurementPhysicalProgress $progress, ?string $versionLabel = null, ?array $previousRevision = null, array $reanalysis = []): HtmlString
     {
         $initial = MeasurementPhysicalProgress::format($progress->initialBasisPoints);
 
@@ -629,6 +815,7 @@ class ViewMeasurement extends ViewRecord
             ['Medido no sistema', MeasurementPhysicalProgress::format($progress->measuredBasisPoints())],
             ['Avanço físico atual', MeasurementPhysicalProgress::format($progress->currentBasisPoints())],
             ['Máximo restante', MeasurementPhysicalProgress::format($progress->remainingBasisPoints())],
+            ...($reanalysis === [] ? [] : [['Fora do avanço reconhecido (reanálise)', self::percentagePoints(array_sum(array_column($reanalysis, 'basis_points')))]]),
             ...($versionLabel === null ? [] : [['Versão do plano', $versionLabel]]),
             ...($previousRevision === null ? [] : [['Realizado aprovado na '.$previousRevision['label'], $previousRevision['percent']]]),
         ];
@@ -642,11 +829,54 @@ class ViewMeasurement extends ViewRecord
             ->implode('');
 
         return new HtmlString(sprintf(
-            '<p class="text-sm font-medium text-gray-950 dark:text-white">%s</p><dl class="mt-1 grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="%s">%s</dl>',
+            '<p class="text-sm font-medium text-gray-950 dark:text-white">%s</p><dl class="mt-1 grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="%s">%s</dl>%s',
             e($label),
             e("Progresso físico de {$label}"),
             $html,
+            $reanalysis === [] ? '' : sprintf(
+                '<p class="mt-2 text-sm text-gray-600 dark:text-gray-300">%s</p>',
+                e($this->reanalysisSentence($reanalysis)),
+            ),
         ));
+    }
+
+    /**
+     * Uma frase por medição em reanálise, com a competência e o dia em que o
+     * registro aprovado foi invalidado (no fuso de negócio). Não promete que a
+     * contribuição volta: a nova decisão da Engenharia pode ser outra.
+     *
+     * @param  list<array{measurement_id: int, revision_label: string, reference_month: string|null, basis_points: int, plan_line_lineage_key: string|null, invalidated_at: CarbonImmutable|null}>  $reanalysis
+     */
+    private function reanalysisSentence(array $reanalysis): string
+    {
+        return collect($reanalysis)
+            ->map(fn (array $entry): string => sprintf(
+                'Medição %s em reanálise da Engenharia: %s aprovados antes estão fora do avanço reconhecido%s.',
+                $entry['revision_label'].($entry['reference_month'] === null ? '' : ' · '.$entry['reference_month']),
+                self::percentagePoints((int) $entry['basis_points']),
+                $entry['invalidated_at'] instanceof CarbonImmutable
+                    ? ' (registro invalidado em '.BusinessTime::at($entry['invalidated_at'])->format('d/m/Y').')'
+                    : '',
+            ))
+            ->push('Isso não indica, por si só, regressão física da obra.')
+            ->implode(' ');
+    }
+
+    /**
+     * Pontos percentuais no formato do avanço físico: "12,00 p.p.".
+     */
+    private static function percentagePoints(int $basisPoints): string
+    {
+        return str_replace('%', '', MeasurementPhysicalProgress::format($basisPoints)).' p.p.';
+    }
+
+    /**
+     * @return array<int, list<array{measurement_id: int, revision_label: string, reference_month: string|null, basis_points: int, plan_line_lineage_key: string|null, invalidated_at: CarbonImmutable|null}>>
+     */
+    private function reanalysisContributions(): array
+    {
+        return $this->reanalysisContributionsByPlanSet ??= app(MeasurementPhysicalProgressService::class)
+            ->reanalysisContributions((int) $this->record->operation_id);
     }
 
     /**
@@ -747,10 +977,13 @@ class ViewMeasurement extends ViewRecord
 
     /**
      * A recusa na Engenharia encerra a medição, e medição com pagamento
-     * registrado só termina finalizada. O botão continua à vista de quem decide
-     * a etapa, mas desabilitado com o motivo do domínio: a pessoa lê, antes de
-     * tentar, por que precisa corrigir e aprovar em vez de recusar. O servidor
-     * não monta a ação desabilitada e o domínio recusa de novo, sob lock.
+     * registrado só termina finalizada. A recusa na Gestão devolve a medição à
+     * Engenharia, invalidando o registro aprovado -- que, na medição paga, é a
+     * base do pagamento e não é reescrito: a correção dela é uma revisão formal.
+     * Nos dois casos o botão continua à vista de quem decide a etapa, mas
+     * desabilitado com o motivo do domínio: a pessoa lê, antes de tentar, o que
+     * fazer em vez de recusar. O servidor não monta a ação desabilitada e o
+     * domínio recusa de novo, sob lock.
      */
     private function rejectAction(): Action
     {
@@ -761,11 +994,13 @@ class ViewMeasurement extends ViewRecord
             ->modalDescription(fn (): string => match (true) {
                 $this->stage() <= MeasurementWorkflow::STAGE_ENGINEERING && $this->record->isRevision() && $this->record->isPendingRevision() => 'Recusar na Engenharia encerra esta revisão ('.$this->record->revisionLabel().'). A revisão anterior continua valendo, sem nenhuma alteração.',
                 $this->stage() <= MeasurementWorkflow::STAGE_ENGINEERING => 'Recusar na Engenharia encerra a medição e notifica os responsáveis por recusa.',
+                $this->stage() === self::MANAGEMENT_STAGE => 'A medição voltará para a Engenharia, e o registro aprovado por ela será invalidado.'
+                    .($this->record->isEffectiveRevision() ? ' Até a nova aprovação da Engenharia, a contribuição física desta medição fica fora do avanço reconhecido.' : ''),
                 default => 'A medição voltará para a etapa anterior para correção.',
             })
             ->visible(fn (): bool => $this->workflow()->canReject($this->record, $this->actor()))
-            ->disabled(fn (): bool => $this->workflow()->terminalRejectionBlockReason($this->record) !== null)
-            ->tooltip(fn (): ?string => $this->workflow()->terminalRejectionBlockReason($this->record))
+            ->disabled(fn (): bool => $this->rejectionBlockReason() !== null)
+            ->tooltip(fn (): ?string => $this->rejectionBlockReason())
             ->schema([
                 Hidden::make('expected_stage')->default(fn (): int => $this->stage()),
                 Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),
@@ -789,6 +1024,21 @@ class ViewMeasurement extends ViewRecord
                     });
                 });
             });
+    }
+
+    /**
+     * Por que a recusa não pode acontecer agora, ou `null`: a recusa que
+     * encerraria uma medição paga na Engenharia
+     * ({@see MeasurementWorkflow::terminalRejectionBlockReason()}) ou a da
+     * Gestão que devolveria à Engenharia o registro aprovado de uma medição
+     * paga ({@see MeasurementWorkflow::engineeringReturnBlockReason()}). Nas
+     * etapas Compliance e Pagamento a recusa só devolve à etapa anterior, sem
+     * tocar a Engenharia.
+     */
+    private function rejectionBlockReason(): ?string
+    {
+        return $this->workflow()->terminalRejectionBlockReason($this->record)
+            ?? ($this->stage() === self::MANAGEMENT_STAGE ? $this->workflow()->engineeringReturnBlockReason($this->record) : null);
     }
 
     private function pauseAction(): Action
@@ -1150,6 +1400,14 @@ class ViewMeasurement extends ViewRecord
             });
     }
 
+    /**
+     * Comprovante enviado na Finalização aberta, ou corrigido depois do
+     * encerramento -- a medição finalizada, ou a paga que uma revisão
+     * substituiu antes da Finalização (o fluxo dela foi encerrado pela revisão
+     * que passou a valer, e os pagamentos continuam nela como histórico). O
+     * serviço decide onde cada um vale ({@see MeasurementReceiptEvidenceService::canUpload()})
+     * e recusa a ação trocada.
+     */
     private function attachReceiptAction(bool $postFinalization = false): Action
     {
         return Action::make($postFinalization ? 'correctReceipt' : 'attachReceipt')
@@ -1157,10 +1415,12 @@ class ViewMeasurement extends ViewRecord
             ->icon('heroicon-o-paper-clip')
             ->color('info')
             ->modalWidth('2xl')
-            ->modalDescription($postFinalization
-                ? 'A finalização original será preservada. A nova versão ficará pendente de conferência documental.'
-                : 'O arquivo anterior será preservado. Cada envio cria uma nova versão pendente de conferência.')
-            ->visible(fn (): bool => ($this->record->status === 'finalized') === $postFinalization
+            ->modalDescription(fn (): string => match (true) {
+                ! $postFinalization => 'O arquivo anterior será preservado. Cada envio cria uma nova versão pendente de conferência.',
+                $this->record->status === 'superseded' => 'O encerramento desta medição pela revisão que passou a valer será preservado. A nova versão ficará pendente de conferência documental.',
+                default => 'A finalização original será preservada. A nova versão ficará pendente de conferência documental.',
+            })
+            ->visible(fn (): bool => in_array($this->record->status, ['finalized', 'superseded'], true) === $postFinalization
                 && app(MeasurementReceiptEvidenceService::class)->canUpload($this->record, $this->actor())
                 && $this->record->payments()->exists())
             ->schema([
@@ -1275,7 +1535,8 @@ class ViewMeasurement extends ViewRecord
             ->color('success')
             ->requiresConfirmation()
             ->modalHeading('Finalizar medição')
-            ->modalDescription('A finalização do workflow será preservada. Correções posteriores de comprovantes exigirão nova versão e conferência documental.')
+            ->modalDescription(fn (): string => 'A finalização do workflow será preservada. Correções posteriores de comprovantes exigirão nova versão e conferência documental.'
+                .($this->revisionLeavesOpenDifference() ? ' Finalizar não regulariza diferença financeira em aberto.' : ''))
             ->visible(fn (): bool => $this->workflow()->canFinalize($this->record, $this->actor()))
             ->schema([
                 Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),
@@ -1284,6 +1545,9 @@ class ViewMeasurement extends ViewRecord
                     ->content(fn (): View => view('filament.infolists.measurement-financial-assessments', ['measurement' => $this->record])),
                 Checkbox::make('accept_financial_exceptions')
                     ->label('Li as regras, justificativas e documentos e aceito expressamente as divergências financeiras.')
+                    ->helperText(fn (): ?string => $this->revisionLeavesOpenDifference()
+                        ? 'O aceite reconhece a diferença: não registra devolução nem a regulariza, e ela continua em aberto depois da Finalização.'
+                        : null)
                     ->default(false)
                     ->visible(fn (): bool => app(MeasurementPaymentFinancialService::class)->requiresAcceptance($this->record))
                     ->accepted(fn (): bool => app(MeasurementPaymentFinancialService::class)->requiresAcceptance($this->record))
@@ -1325,15 +1589,38 @@ class ViewMeasurement extends ViewRecord
             return 'Confirme expressamente o aceite da ausência de pagamento justificada na etapa Pagamento: '.$financial->describeUnpaidPlanSets($unpaid).'.';
         }
 
-        $overpayments = $this->record->isRevision() ? $this->revisions()->unresolvedOverpayments($this->record) : [];
+        $overpayments = $this->record->isRevision() ? $this->revisions()->unacknowledgedOverpayments($this->record) : [];
 
         if ($overpayments !== []) {
-            return 'Confirme expressamente o aceite do valor pago a maior desta revisão, sem devolução registrada no sistema: '.$this->revisions()->describeOverpayments($overpayments).'.';
+            return 'Confirme expressamente o aceite do valor pago a maior desta revisão ainda não reconhecido, que continua em aberto, sem devolução registrada no sistema: '.$this->revisions()->describeOverpayments($overpayments).'.';
         }
 
         return 'Confirme expressamente o aceite das divergências e justificativas financeiras.';
     }
 
+    /**
+     * A revisão deixa diferença financeira em aberto depois da Finalização?
+     * Valor pago a maior (reconhecido agora ou antes), saldo a pagar sem
+     * pagamento, ou pagamento da família sem Fundo de Obra com que comparar --
+     * as posições que a Finalização registra como exceção sem regularização.
+     * Finalizar e aceitar reconhecem; nada disso regulariza.
+     */
+    private function revisionLeavesOpenDifference(): bool
+    {
+        return collect($this->revisions()->positions($this->record))->contains(
+            fn (MeasurementRevisionPlanSetPosition $position): bool => $position->hasOutstandingOverpayment()
+                || $position->hasRemainingPayable()
+                || $position->isExposureUnmeasurable(),
+        );
+    }
+
+    /**
+     * Devolve a medição da Finalização a uma etapa anterior. A medição paga
+     * não volta à Engenharia ({@see MeasurementWorkflow::engineeringReturnBlockReason()}):
+     * a opção fica desabilitada, com o caminho -- a revisão formal -- abaixo do
+     * campo; o Select recusa a opção desabilitada no servidor, com o motivo do
+     * domínio, e o domínio recusa de novo sob o lock.
+     */
     private function returnToStageAction(): Action
     {
         return Action::make('returnToStage')
@@ -1351,6 +1638,16 @@ class ViewMeasurement extends ViewRecord
                         2 => 'Etapa 2 — Gestão',
                         3 => 'Etapa 3 — Compliance',
                         MeasurementWorkflow::STAGE_PAYMENT => 'Etapa 4 — Pagamento',
+                    ])
+                    ->disableOptionWhen(fn (mixed $value): bool => (int) $value === self::ENGINEERING_STAGE
+                        && $this->workflow()->engineeringReturnBlockReason($this->record) !== null)
+                    ->helperText(fn (): ?string => $this->workflow()->engineeringReturnBlockReason($this->record) === null
+                        ? null
+                        : 'Com pagamento registrado, a devolução não vai até a Engenharia: a correção dos dados aprovados é uma revisão formal (Criar revisão).')
+                    ->validationMessages([
+                        'in' => fn (mixed $state): string => ((int) $state === self::ENGINEERING_STAGE
+                            ? $this->workflow()->engineeringReturnBlockReason($this->record)
+                            : null) ?? 'Selecione uma etapa de destino válida.',
                     ])
                     ->required(),
                 Textarea::make('reason')->label('Motivo')->required()->rows(2),

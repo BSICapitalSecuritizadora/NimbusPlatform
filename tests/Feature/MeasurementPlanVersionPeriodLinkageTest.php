@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\MeasurementPhysicalProgressScenario as Scenario;
+use Tests\Support\MeasurementRevisionScenario;
 
 /**
  * A competência decide a versão do plano, e o envio a congela.
@@ -1043,7 +1044,7 @@ it('leaves out of the offer, of the next measurement and of the pending the comp
 
 // ── O arquivo gravado pela regra anterior ────────────────────────────────────
 
-it('re-approves at Engineering a paid measurement returned from Finalization whose file the previous rule froze on the revision copy, instead of leaving it stuck', function () {
+it('re-approves at Engineering a legacy paid measurement returned from Finalization whose file the previous rule froze on the revision copy, instead of leaving it stuck', function () {
     $scenario = periodLinkageScenario();
     $workflow = app(MeasurementWorkflow::class);
     $planSetId = $scenario['planSet']->id;
@@ -1063,10 +1064,11 @@ it('re-approves at Engineering a paid measurement returned from Finalization who
 
     expect($june->fresh()->current_stage)->toBe(MeasurementWorkflow::STAGE_FINALIZATION);
 
-    // Devolvida da Finalização à Engenharia, com o arquivo como a regra
-    // anterior o gravava: na cópia de junho que a V2 traz (mesma linhagem),
-    // congelado na V2 -- que não rege junho.
-    $workflow->returnToStage($june->fresh(), $scenario['actor'], MeasurementWorkflow::STAGE_ENGINEERING, 'Rever o percentual medido.');
+    // Estado legado: devolvida da Finalização à Engenharia antes de a
+    // devolução da medição paga ser recusada, com o arquivo como a regra
+    // anterior o gravava -- na cópia de junho que a V2 traz (mesma linhagem),
+    // congelado na V2, que não rege junho.
+    $june = MeasurementRevisionScenario::legacyPaidAtEngineering($june);
     DB::table('measurement_assets')->where('measurement_id', $june->id)->update([
         'plan_version_id' => $scenario['v2']->id,
         'plan_line_id' => $scenario['v2Lines']['2027-06']->id,

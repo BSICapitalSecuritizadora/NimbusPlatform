@@ -92,6 +92,7 @@ class MeasurementCycleHistoryReadModel
                 'revision_family_id',
                 'revision_number',
                 'revision_status',
+                'revision_superseded_at',
             ]);
 
         $activities = $this->activitiesFor($authorizedMeasurement);
@@ -111,8 +112,13 @@ class MeasurementCycleHistoryReadModel
     ): MeasurementCycleHistory {
         $events = $this->normalizer->normalizeMany($activities, $authorizedMeasurement);
         [$events, $paymentWarnings] = $this->correlatePayments($events, $authorizedMeasurement->payments);
+        // A substituição da medição encerra a suspensão que a revisão em
+        // análise impôs, no mesmo instante: o fim dessa pausa não é retomada.
+        $supersededAt = array_key_exists('revision_superseded_at', $authorizedMeasurement->getAttributes())
+            ? $this->immutableDate($authorizedMeasurement->revision_superseded_at)
+            : null;
         $pauses = $authorizedMeasurement->pauses
-            ->map(fn (MeasurementPause $pause): MeasurementPauseInterval => $this->pauseInterval($pause))
+            ->map(fn (MeasurementPause $pause): MeasurementPauseInterval => $this->pauseInterval($pause, $supersededAt))
             ->values();
         [$pauseWarnings, $pauseCrossCheckCompleteness] = $this->crossCheckPauseActivities($events, $pauses);
         $payments = $authorizedMeasurement->payments
@@ -241,7 +247,7 @@ class MeasurementCycleHistoryReadModel
         return [$correlated, array_values(array_unique($warnings))];
     }
 
-    private function pauseInterval(MeasurementPause $pause): MeasurementPauseInterval
+    private function pauseInterval(MeasurementPause $pause, ?CarbonImmutable $supersededAt = null): MeasurementPauseInterval
     {
         $missingReasons = [];
         $completeness = MeasurementHistoryCompleteness::Complete;
@@ -272,6 +278,9 @@ class MeasurementCycleHistoryReadModel
             reason: $pause->pause_reason,
             completeness: $completeness,
             missingReasons: $missingReasons,
+            endedBySupersession: $resumedAt instanceof CarbonImmutable
+                && $supersededAt instanceof CarbonImmutable
+                && $resumedAt->equalTo($supersededAt),
         );
     }
 
@@ -314,11 +323,17 @@ class MeasurementCycleHistoryReadModel
             ];
         }
 
-        // A revisão substituída com o fluxo ainda aberto termina na etapa
-        // Pagamento, encerrada pela revisão que passou a valer.
+        // A revisão substituída com o fluxo ainda aberto termina na etapa em
+        // que estava -- a Pagamento sem pagamento, ou a Finalização da medição
+        // paga --, encerrada pela revisão que passou a valer.
         [$expectedStage, $expectedReason] = match ($measurement->status) {
             'finalized' => [5, MeasurementStageExitReason::Finalized],
-            'superseded' => [MeasurementWorkflow::STAGE_PAYMENT, MeasurementStageExitReason::ClosedByRevision],
+            'superseded' => [
+                (int) $measurement->current_stage === MeasurementWorkflow::STAGE_FINALIZATION
+                    ? MeasurementWorkflow::STAGE_FINALIZATION
+                    : MeasurementWorkflow::STAGE_PAYMENT,
+                MeasurementStageExitReason::ClosedByRevision,
+            ],
             default => [1, MeasurementStageExitReason::RejectedTerminal],
         };
 

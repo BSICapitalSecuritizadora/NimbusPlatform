@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Measurement;
 use App\Models\MeasurementPayment;
 use App\Models\User;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 
 class MeasurementCockpitService
 {
@@ -85,7 +86,14 @@ class MeasurementCockpitService
             'paused' => (int) $statusCounts->get('paused', 0),
             'finalized' => (int) $statusCounts->get('finalized', 0),
             'awaiting_receipt' => (int) $statusCounts->get('awaiting_receipt', 0),
-            'ready_to_finalize' => (int) $statusCounts->get('approved', 0),
+            // A suspensa por uma revisão em análise não está pronta para nada.
+            'ready_to_finalize' => (clone $query)
+                ->where('measurements.status', 'approved')
+                ->whereNotExists(fn (QueryBuilder $successors): QueryBuilder => Measurement::whereReviewingSuccessor($successors, 'measurements'))
+                ->count(),
+            // Revisões vigentes que deixam diferença financeira em aberto (valor
+            // pago a maior ou saldo a pagar), reconhecida ou não.
+            'revision_financial_pending' => (clone $query)->withOpenRevisionFinancialPosition()->count(),
             'approaching' => $slaCounts[MeasurementSlaService::STATUS_APPROACHING],
             'overdue' => $slaCounts[MeasurementSlaService::STATUS_OVERDUE],
             'calendar_unavailable' => $slaCounts[MeasurementSlaService::STATUS_CALENDAR_UNAVAILABLE],
@@ -106,6 +114,7 @@ class MeasurementCockpitService
             'finalized' => 0,
             'awaiting_receipt' => 0,
             'ready_to_finalize' => 0,
+            'revision_financial_pending' => 0,
             'approaching' => 0,
             'overdue' => 0,
             'calendar_unavailable' => 0,

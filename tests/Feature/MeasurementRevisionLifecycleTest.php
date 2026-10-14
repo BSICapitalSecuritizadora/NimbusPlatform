@@ -100,20 +100,42 @@ it('creates R1 of a finalized measurement as a draft that inherits the frozen co
         ->and(revisionEvents($revision))->toBe(['measurement_revision_created']);
 });
 
-it('refuses to revise a measurement that is still under analysis or already paid without finalization', function () {
+it('refuses to revise a measurement still under analysis or paid with the Payment stage open, and revises the paid one once its receipts are approved at Finalization', function () {
     $scenario = Scenario::plan();
     $inAnalysis = MeasurementPhysicalProgressScenario::measured($scenario, '2026-05', 10);
 
     expect(fn () => Scenario::revise($scenario, $inAnalysis))
-        ->toThrow(MeasurementWorkflowException::class, MeasurementRevisionService::ELIGIBILITY_REFUSAL);
+        ->toThrow(MeasurementWorkflowException::class, sprintf(MeasurementRevisionService::IN_ANALYSIS_REFUSAL, 'Gestão'));
 
     $june = Scenario::awaitingPayment($scenario, '2026-06', 10);
-    Scenario::pay($scenario, $june, Scenario::expected(10));
+    $payment = Scenario::pay($scenario, $june, Scenario::expected(10));
 
     expect(fn () => Scenario::revise($scenario, $june))
-        ->toThrow(MeasurementWorkflowException::class, MeasurementRevisionService::ELIGIBILITY_REFUSAL);
+        ->toThrow(MeasurementWorkflowException::class, MeasurementRevisionService::PAID_PAYMENT_STAGE_REFUSAL);
 
     expect(Measurement::query()->where('revision_number', '>', 0)->count())->toBe(0);
+
+    // O caminho que a recusa aponta: a etapa Pagamento aprovada e o
+    // comprovante conferido levam a mesma medição paga à Finalização com a
+    // documentação financeira completa (caso C), de que se cria a revisão.
+    app(MeasurementWorkflow::class)->approve($june->fresh(), $scenario['actor']);
+    Scenario::receiptsApproved($scenario, $june);
+
+    expect($june->fresh()->status)->toBe('approved')
+        ->and($june->fresh()->current_stage)->toBe(MeasurementWorkflow::STAGE_FINALIZATION)
+        ->and(app(MeasurementRevisionService::class)->creationBlockReason($june->fresh()))->toBeNull();
+
+    $revision = Scenario::revise($scenario, $june);
+
+    expect($revision->revisionNumber())->toBe(1)
+        ->and($revision->previous_revision_id)->toBe($june->id)
+        ->and($revision->revisionStatus())->toBe(MeasurementRevisionStatus::Draft)
+        ->and($revision->payments()->exists())->toBeFalse()
+        ->and(revisionEvents($revision))->toBe(['measurement_revision_created'])
+        ->and($june->fresh()->status)->toBe('approved')
+        ->and($june->fresh()->revisionStatus())->toBe(MeasurementRevisionStatus::Effective)
+        ->and($june->payments()->pluck('id')->all())->toBe([$payment->id])
+        ->and(Measurement::query()->where('revision_number', '>', 0)->pluck('id')->all())->toBe([$revision->id]);
 });
 
 it('requires a reason to create a revision', function () {

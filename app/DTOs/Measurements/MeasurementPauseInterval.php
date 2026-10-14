@@ -10,7 +10,12 @@ use Illuminate\Contracts\Support\Arrayable;
 /** @implements Arrayable<string, mixed> */
 final readonly class MeasurementPauseInterval implements Arrayable
 {
-    /** @param list<string> $missingReasons */
+    /**
+     * `endedBySupersession`: a suspensão pela revisão em análise terminou no
+     * instante em que a medição foi substituída -- encerramento, não retomada.
+     *
+     * @param  list<string>  $missingReasons
+     */
     public function __construct(
         public ?int $sourcePauseId,
         public MeasurementHistorySourceType $sourceType,
@@ -23,6 +28,7 @@ final readonly class MeasurementPauseInterval implements Arrayable
         public ?string $reason,
         public MeasurementHistoryCompleteness $completeness,
         public array $missingReasons,
+        public bool $endedBySupersession = false,
     ) {}
 
     /** @return array<string, mixed> */
@@ -40,6 +46,7 @@ final readonly class MeasurementPauseInterval implements Arrayable
             'reason' => $this->reason,
             'completeness' => $this->completeness->value,
             'missing_reasons' => $this->missingReasons,
+            'ended_by_supersession' => $this->endedBySupersession,
         ];
     }
 }

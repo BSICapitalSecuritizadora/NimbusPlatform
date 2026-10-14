@@ -99,7 +99,9 @@ class MeasurementPendingService
     /** @return list<array{label: string, responsibility: MeasurementResponsibility, authorization: ResponsibilityAuthorization}> */
     private function actionsFor(Measurement $measurement, User $user): array
     {
-        if (! in_array($measurement->status, ['awaiting_receipt', 'approved', 'finalized'], true)) {
+        // Comprovantes da Finalização aberta e as correções depois do
+        // encerramento -- finalizada, ou substituída por revisão depois de paga.
+        if (! in_array($measurement->status, ['awaiting_receipt', 'approved', 'finalized', 'superseded'], true)) {
             $action = $this->actionFor($measurement, $user);
 
             return $action === null ? [] : [$action];

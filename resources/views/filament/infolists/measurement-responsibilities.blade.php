@@ -6,8 +6,10 @@
     $workflow = app(MeasurementWorkflow::class);
     $currentStage = $workflow->unifiedStage($record);
     $reviews = $record->reviews;
-    // A etapa Pagamento da revisão vigente fica suspensa enquanto a revisão dela está em análise.
+    // O fluxo aberto da revisão vigente fica suspenso enquanto a revisão dela está em análise.
     $isFrozenByRevision = $record->isFrozenByRevision();
+    // O fluxo encerrado pela revisão que passou a valer: a etapa que esperava decisão -- e as seguintes -- não foi decidida e não espera mais nada.
+    $isClosedByRevision = $record->status === 'superseded';
 
     $roles = [
         1 => [
@@ -47,8 +49,14 @@
                 $isCurrent = ($currentStage === $stageNum && !in_array($record->status, ['finalized', 'rejected'], true));
                 $isApproved = ($stageReview && $stageReview->status === 'approved') || ($record->status === 'finalized') || ($stageNum < $currentStage && !in_array($record->status, ['rejected', 'paused'], true));
                 $isRejected = ($stageReview && $stageReview->status === 'rejected') || ($record->status === 'rejected' && $currentStage === $stageNum);
+                // Inclusive a análise que a Fase 3 deixou pendente numa medição já encerrada pela revisão.
+                $isClosedStage = $stageReview?->isSupersededByRevision() || ($isClosedByRevision && ! $isApproved && ! $isRejected);
 
-                if ($isRejected) {
+                if ($isClosedStage) {
+                    $statusText = 'Encerrada pela revisão';
+                    $statusClass = 'text-gray-600 bg-gray-50 border-gray-200 dark:text-gray-400 dark:bg-white/5 dark:border-white/10';
+                    $dotClass = 'bg-gray-500 dark:bg-gray-400';
+                } elseif ($isRejected) {
                     $statusText = 'Recusada';
                     $statusClass = 'text-red-700 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/20';
                     $dotClass = 'bg-red-500';

@@ -74,9 +74,13 @@ class MeasurementFinancialReconciliationService
      * empreendimento -- vazio para a medição que não é revisão.
      *
      * Os pagamentos ficam na revisão em que foram registrados e nunca migram:
-     * a R1 lê os da R0 como histórico, a R2 os da R0 e da R1. Todos pertencem
-     * a revisões já finalizadas -- só se revisa a finalizada ou a ainda não
-     * paga --, então nenhum muda depois.
+     * a R1 lê os da R0 como histórico, a R2 os da R0 e da R1. Pertencem a
+     * revisões finalizadas ou substituídas depois de pagas (com a documentação
+     * completa) -- só se revisa a finalizada, a ainda não paga ou a paga com
+     * os comprovantes aprovados --, e a anterior fica suspensa desde o envio
+     * da revisão e encerrada quando ela passa a valer: nenhum pagamento
+     * histórico muda depois. Nenhum é contado como regularizado: o que passa
+     * do aprovado continua em aberto.
      *
      * @return array<int, string>
      */

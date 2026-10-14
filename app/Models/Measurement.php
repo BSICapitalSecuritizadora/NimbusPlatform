@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\DerivesStoredFileMetadata;
 use App\Enums\MeasurementReceiptReviewStatus;
+use App\Enums\MeasurementRevisionAdjustmentStatus;
 use App\Enums\MeasurementRevisionStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Services\DocumentStorageService;
@@ -118,8 +119,9 @@ class Measurement extends Model
     /**
      * O complemento exato de {@see self::OPEN_STATUSES}: recusada e finalizada
      * são os fins de linha do fluxo de medição; 'superseded' encerra o fluxo
-     * ainda aberto (na etapa Pagamento, sem pagamento) da revisão que outra
-     * substituiu, e 'cancelled' é o rascunho de revisão que nunca foi enviado.
+     * ainda aberto da revisão que outra substituiu (na etapa Pagamento sem
+     * pagamento, ou na Finalização da medição paga com a documentação
+     * completa), e 'cancelled' é o rascunho de revisão que nunca foi enviado.
      *
      * @var list<string>
      */
@@ -136,6 +138,12 @@ class Measurement extends Model
      * voltaria a ficar livre para uma nova medição.
      */
     public const PAID_COMPETENCE_CHANGE_REFUSAL = 'A competência de uma medição com pagamento registrado não pode ser alterada: o pagamento continua vinculado a ela.';
+
+    /**
+     * Os dados aprovados pela Engenharia de uma medição paga são a base do
+     * pagamento: não voltam à Engenharia para ser reescritos no lugar.
+     */
+    public const PAID_APPROVED_DATA_REFUSAL = 'Os dados aprovados pela Engenharia estão bloqueados e são a base do pagamento registrado: a correção é uma revisão formal (Criar revisão), que preserva a medição paga, os pagamentos e o histórico.';
 
     /**
      * A competência decide a versão do plano, e a versão fica congelada no
@@ -203,9 +211,16 @@ class Measurement extends Model
                     'mime_type',
                     'engineering_snapshot',
                 ])) {
-                throw new MeasurementWorkflowException('Os dados aprovados pela Engenharia estão bloqueados. Devolva a medição à Engenharia para corrigi-los.', [
-                    'measurement_id' => $measurement->getKey(),
-                ]);
+                // Com pagamento sobre o registro verificável da Engenharia, ela não
+                // reabre: os dados aprovados são a base do pagamento, e a correção
+                // é uma revisão formal. A paga legada, sem esse registro (o de
+                // antes da tentativa), ainda volta à Engenharia.
+                throw new MeasurementWorkflowException($measurement->payments()->exists()
+                    && self::isVerifiableEngineeringSnapshot($measurement->getOriginal('engineering_snapshot'), (int) $measurement->getKey())
+                    ? self::PAID_APPROVED_DATA_REFUSAL
+                    : 'Os dados aprovados pela Engenharia estão bloqueados. Devolva a medição à Engenharia para corrigi-los.', [
+                        'measurement_id' => $measurement->getKey(),
+                    ]);
             }
 
             if ($measurement->exists
@@ -518,16 +533,18 @@ class Measurement extends Model
     }
 
     /**
-     * O fluxo desta medição está suspenso por uma revisão em análise? Só a
-     * revisão vigente parada na etapa Pagamento sem pagamento pode estar: é o
-     * único estado aberto do qual se cria revisão (a finalizada não tem fluxo).
-     * Usa a relação carregada quando houver; sem ela, consulta só as linhas
-     * que podem estar suspensas, para as leituras em lote não multiplicarem
-     * consultas.
+     * O fluxo desta medição está suspenso por uma revisão em análise? A
+     * revisão vigente com o fluxo aberto -- parada na etapa Pagamento sem
+     * pagamento, ou paga na Finalização com a documentação completa, os
+     * estados abertos de que se cria revisão -- fica suspensa do envio da
+     * revisão até ela ser recusada ou passar a valer (a finalizada não tem
+     * fluxo). Usa a relação carregada quando houver; sem ela, consulta só as
+     * linhas que podem estar suspensas, para as leituras em lote não
+     * multiplicarem consultas.
      */
     public function isFrozenByRevision(): bool
     {
-        if ($this->status !== 'awaiting_payment' || ! $this->isEffectiveRevision()) {
+        if (! $this->isOpen() || ! $this->isEffectiveRevision()) {
             return false;
         }
 
@@ -682,6 +699,21 @@ class Measurement extends Model
             ->where('stage', 1)
             ->where('status', 'approved')
             ->exists();
+    }
+
+    /**
+     * O registro aprovado pela Engenharia que a revisão formal congela: o
+     * retrato da versão atual, desta medição e com os empreendimentos. A
+     * medição paga com esse registro só se corrige por revisão; a paga legada,
+     * aprovada antes dele, ainda se corrige devolvendo-a à Engenharia.
+     */
+    public static function isVerifiableEngineeringSnapshot(mixed $snapshot, int $measurementId): bool
+    {
+        return is_array($snapshot)
+            && (int) ($snapshot['schema_version'] ?? 0) === MeasurementEngineeringService::SNAPSHOT_SCHEMA_VERSION
+            && (int) ($snapshot['measurement_id'] ?? 0) === $measurementId
+            && is_array($snapshot['plan_sets'] ?? null)
+            && $snapshot['plan_sets'] !== [];
     }
 
     /**
@@ -888,8 +920,9 @@ class Measurement extends Model
     /**
      * Medição aberta que pede trabalho -- menos a suspensa por uma revisão em
      * análise, cujo fluxo ninguém pode mover enquanto a revisão corre -- e a
-     * finalizada com correção de comprovante pendente (inclusive a substituída
-     * por revisão: os pagamentos dela continuam sendo dela).
+     * encerrada com correção de comprovante pendente: a finalizada (inclusive
+     * a substituída por revisão depois de finalizada) e a substituída depois de
+     * paga, ainda na Finalização -- os pagamentos dela continuam sendo dela.
      *
      * @param  Builder<self>  $query
      */
@@ -901,7 +934,7 @@ class Measurement extends Model
             ->where(fn (Builder $open): Builder => $open->open()
                 ->whereNotExists(fn (QueryBuilder $successors): QueryBuilder => self::whereReviewingSuccessor($successors, $measurements)))
             ->orWhere(fn (Builder $corrections): Builder => $corrections
-                ->where('status', 'finalized')
+                ->whereIn('status', ['finalized', 'superseded'])
                 ->where('current_stage', 5)
                 ->whereHas('payments.currentReceiptEvidence', fn (Builder $evidences): Builder => $evidences
                     ->where('is_post_finalization', true)
@@ -958,6 +991,107 @@ class Measurement extends Model
                 ->join('measurements as earlier_members', 'earlier_members.id', '=', 'earlier_payments.measurement_id')
                 ->whereColumn('earlier_members.revision_family_id', "{$measurements}.revision_family_id")
                 ->whereColumn('earlier_members.revision_number', '<', "{$measurements}.revision_number"));
+    }
+
+    /**
+     * Revisão vigente cuja posição financeira continua em aberto -- para as
+     * listas, numa subconsulta, sem ler a posição linha a linha.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeWithOpenRevisionFinancialPosition(Builder $query): Builder
+    {
+        $measurements = $query->getModel()->getTable();
+
+        return $query
+            ->where($query->qualifyColumn('revision_status'), MeasurementRevisionStatus::Effective->value)
+            ->where($query->qualifyColumn('revision_number'), '>', 0)
+            ->whereExists(fn (QueryBuilder $positions): QueryBuilder => self::openRevisionFinancialPositions($positions, $measurements));
+    }
+
+    /**
+     * Quantos empreendimentos da revisão têm a posição financeira em aberto,
+     * como coluna da consulta da lista ({@see self::hasOpenRevisionFinancialPosition()}).
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeWithOpenRevisionFinancialPositionCount(Builder $query): Builder
+    {
+        $measurements = $query->getModel()->getTable();
+
+        // Como o withCount: sem colunas escolhidas, a subconsulta não pode
+        // tomar o lugar das colunas da medição.
+        if ($query->getQuery()->columns === null) {
+            $query->select($query->qualifyColumn('*'));
+        }
+
+        return $query->selectSub(
+            fn (QueryBuilder $positions): QueryBuilder => self::openRevisionFinancialPositions($positions->selectRaw('count(*)'), $measurements),
+            'open_revision_financial_positions_count',
+        );
+    }
+
+    /**
+     * Subconsulta das diferenças registradas da revisão `$measurements` cuja
+     * posição continua em aberto -- a mesma regra da situação do ajuste
+     * ({@see MeasurementRevisionAdjustmentStatus::isUnresolved()}), sobre a
+     * última diferença registrada de cada empreendimento (a corrente, ou a
+     * última invalidada enquanto a Engenharia reanalisa a revisão) e os
+     * pagamentos da própria revisão:
+     *
+     * - empreendimento já pago antes da revisão: qualquer valor pago a maior
+     *   ou saldo a pagar, ou a exposição que não se mede (sem referência
+     *   financeira);
+     * - sem pagamento anterior: o saldo a pagar só depois da Finalização (antes
+     *   dela é a etapa Pagamento em andamento) e o pago acima do aprovado pela
+     *   própria revisão.
+     *
+     * O pago antes da revisão não muda depois que ela passa a valer: as
+     * anteriores estão encerradas, e pagamento não se altera. Diferença de meio
+     * centavo absorve a aritmética do SQLite.
+     */
+    public static function openRevisionFinancialPositions(QueryBuilder $query, string $measurements): QueryBuilder
+    {
+        $ownPaid = 'coalesce((select sum(own_payments.amount) from measurement_payments as own_payments where own_payments.measurement_id = open_positions.measurement_id and own_payments.plan_set_id = open_positions.plan_set_id), 0)';
+
+        return $query
+            ->from('measurement_revision_differences as open_positions')
+            ->whereColumn('open_positions.measurement_id', "{$measurements}.id")
+            ->whereRaw('open_positions.computation = (select max(latest_positions.computation) from measurement_revision_differences as latest_positions where latest_positions.measurement_id = open_positions.measurement_id and latest_positions.plan_set_id = open_positions.plan_set_id)')
+            ->where(fn (QueryBuilder $open): QueryBuilder => $open
+                ->where(fn (QueryBuilder $paidBefore): QueryBuilder => $paidBefore
+                    ->where('open_positions.historical_paid_amount', '>', 0)
+                    ->where(fn (QueryBuilder $exposure): QueryBuilder => $exposure
+                        ->whereNull('open_positions.revised_approved_amount')
+                        ->orWhereRaw("abs(open_positions.revised_approved_amount - open_positions.historical_paid_amount - {$ownPaid}) >= 0.005")))
+                ->orWhere(fn (QueryBuilder $firstPayment): QueryBuilder => $firstPayment
+                    ->where('open_positions.historical_paid_amount', '<=', 0)
+                    ->whereNotNull('open_positions.revised_approved_amount')
+                    ->where(fn (QueryBuilder $exposure): QueryBuilder => $exposure
+                        ->where(fn (QueryBuilder $accepted): QueryBuilder => $accepted
+                            ->where("{$measurements}.status", 'finalized')
+                            ->whereRaw("abs(open_positions.revised_approved_amount - {$ownPaid}) >= 0.005"))
+                        ->orWhereRaw("{$ownPaid} - open_positions.revised_approved_amount >= 0.005"))));
+    }
+
+    /**
+     * A revisão vigente deixa diferença financeira em aberto (valor pago a
+     * maior ou saldo a pagar, reconhecidos ou não)? Usa a contagem da consulta
+     * da lista quando houver.
+     */
+    public function hasOpenRevisionFinancialPosition(): bool
+    {
+        if (! $this->isRevision() || ! $this->isEffectiveRevision()) {
+            return false;
+        }
+
+        if (array_key_exists('open_revision_financial_positions_count', $this->getAttributes())) {
+            return (int) $this->getAttribute('open_revision_financial_positions_count') > 0;
+        }
+
+        return self::query()->whereKey($this->getKey())->withOpenRevisionFinancialPosition()->exists();
     }
 
     /**

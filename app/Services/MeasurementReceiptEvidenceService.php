@@ -31,12 +31,14 @@ class MeasurementReceiptEvidenceService
     public function canUpload(Measurement $measurement, User $actor): bool
     {
         return $this->isDocumentaryStage($measurement)
+            && ! $measurement->isFrozenByRevision()
             && $this->authorization->canManageReceipts($actor, $measurement);
     }
 
     public function canReview(Measurement $measurement, User $actor): bool
     {
         return $this->isDocumentaryStage($measurement)
+            && ! $measurement->isFrozenByRevision()
             && $this->authorization->canFinalize($actor, $measurement);
     }
 
@@ -83,8 +85,10 @@ class MeasurementReceiptEvidenceService
                     throw new MeasurementWorkflowException('Materialize o comprovante legado pela migration antes de enviar uma nova versão.');
                 }
 
-                if ($postFinalization !== ($measurement->status === 'finalized')) {
-                    throw new MeasurementWorkflowException('Use a ação Corrigir comprovante para uma medição finalizada.');
+                // Depois do encerramento -- finalizada, ou substituída por revisão
+                // depois de paga --, o comprovante só muda por correção.
+                if ($postFinalization !== $this->isClosedWithPayments($measurement)) {
+                    throw new MeasurementWorkflowException('Use a ação Corrigir comprovante para uma medição finalizada ou encerrada por revisão.');
                 }
 
                 if ($expectedRevision !== null && $expectedRevision !== (int) $measurement->workflow_revision) {
@@ -189,9 +193,15 @@ class MeasurementReceiptEvidenceService
         ?string $notes = null,
         ?string $rejectionReason = null,
     ): MeasurementPaymentReceiptEvidence {
-        return DB::transaction(function () use ($evidence, $actor, $decision, $confirmed, $notes, $rejectionReason): MeasurementPaymentReceiptEvidence {
-            $payment = $evidence->payment()->firstOrFail();
-            $measurement = $this->lockMeasurement((int) $payment->measurement_id);
+        // A medição do comprovante é lida antes da transação: a primeira
+        // instrução dela é o lock da medição, e a fotografia (REPEATABLE READ)
+        // nasce depois dele -- e enxerga a revisão enviada que suspende a
+        // medição. O pagamento nunca muda de medição.
+        $measurementId = (int) $evidence->payment()->value('measurement_id');
+
+        return DB::transaction(function () use ($evidence, $actor, $decision, $confirmed, $notes, $rejectionReason, $measurementId): MeasurementPaymentReceiptEvidence {
+            $measurement = $this->lockMeasurement($measurementId);
+            $payment = $measurement->payments()->whereKey($evidence->measurement_payment_id)->firstOrFail();
             $authorization = $this->authorize($measurement, $actor, MeasurementResponsibility::Finalizer);
             $lockedPayment = $measurement->payments()->whereKey($payment->getKey())->lockForUpdate()->firstOrFail();
             $current = $lockedPayment->receiptEvidences()->lockForUpdate()->first();
@@ -341,7 +351,7 @@ class MeasurementReceiptEvidenceService
         foreach ($measurement->payments as $payment) {
             $evidence = $payment->currentReceiptEvidence;
 
-            if ($measurement->status === 'finalized' && ! $evidence?->is_post_finalization) {
+            if ($this->isClosedWithPayments($measurement) && ! $evidence?->is_post_finalization) {
                 continue;
             }
 
@@ -373,7 +383,7 @@ class MeasurementReceiptEvidenceService
         }
 
         if ($counts['pending'] > 0
-            || ($measurement->status !== 'finalized' && $responsibilities === [])) {
+            || (! $this->isClosedWithPayments($measurement) && $responsibilities === [])) {
             $responsibilities[] = MeasurementResponsibility::Finalizer;
         }
 
@@ -386,7 +396,7 @@ class MeasurementReceiptEvidenceService
 
         if ($responsibility === MeasurementResponsibility::ReceiptUploader) {
             return match (true) {
-                $measurement->status === 'finalized' => 'Substituir correção documental rejeitada',
+                $this->isClosedWithPayments($measurement) => 'Substituir correção documental rejeitada',
                 $counts['rejected'] > 0 && $counts['missing'] > 0 => 'Enviar e substituir comprovantes',
                 $counts['rejected'] > 0 => 'Substituir comprovante rejeitado',
                 default => 'Enviar comprovante',
@@ -394,7 +404,7 @@ class MeasurementReceiptEvidenceService
         }
 
         return match (true) {
-            $measurement->status === 'finalized' => 'Conferir correção documental',
+            $this->isClosedWithPayments($measurement) => 'Conferir correção documental',
             $counts['pending'] > 0 => 'Conferir comprovante',
             default => 'Finalizar medição',
         };
@@ -405,18 +415,48 @@ class MeasurementReceiptEvidenceService
         return Measurement::query()->with('operation')->whereKey($measurementId)->lockForUpdate()->firstOrFail();
     }
 
+    /**
+     * Onde os comprovantes de uma medição são enviados e conferidos: a
+     * Finalização aberta, e depois do encerramento -- finalizada, ou
+     * substituída por revisão depois de paga (a Finalização dela foi
+     * encerrada pela revisão que passou a valer) -- só como correção.
+     */
     private function isDocumentaryStage(Measurement $measurement): bool
     {
         return (int) $measurement->current_stage === MeasurementWorkflow::STAGE_FINALIZATION
-            && in_array($measurement->status, ['awaiting_receipt', 'approved', 'finalized'], true);
+            && in_array($measurement->status, ['awaiting_receipt', 'approved', 'finalized', 'superseded'], true);
     }
 
+    /**
+     * Encerrada com pagamentos: os comprovantes só mudam por correção, e a
+     * situação dela não muda com eles.
+     */
+    private function isClosedWithPayments(Measurement $measurement): bool
+    {
+        return in_array($measurement->status, ['finalized', 'superseded'], true);
+    }
+
+    /**
+     * A autoridade e o momento de quem envia ou confere comprovante, sob o lock
+     * da medição e antes de qualquer arquivo gravado: a medição suspensa por
+     * uma revisão em análise não recebe nem confere comprovante -- isso mudaria
+     * a situação dela (documentação completa ou pendente) no meio da revisão.
+     */
     private function authorize(Measurement $measurement, User $actor, MeasurementResponsibility $responsibility): ResponsibilityAuthorization
     {
         $authorization = $this->authorization->resolveAuthorization($actor, $measurement, $responsibility);
 
         if (! $authorization->authorizes()) {
             throw new AuthorizationException;
+        }
+
+        if ($measurement->isFrozenByRevision()) {
+            $successor = $measurement->reviewingSuccessor()->first(['id', 'revision_number']);
+
+            throw new MeasurementWorkflowException(sprintf(
+                MeasurementRevisionService::FROZEN_WORKFLOW_REFUSAL,
+                $successor instanceof Measurement ? $successor->revisionLabel() : 'seguinte',
+            ));
         }
 
         if (! $this->isDocumentaryStage($measurement)) {
@@ -428,7 +468,7 @@ class MeasurementReceiptEvidenceService
 
     private function updateOpenDocumentaryState(Measurement $measurement): void
     {
-        if ($measurement->status === 'finalized') {
+        if ($this->isClosedWithPayments($measurement)) {
             return;
         }
 

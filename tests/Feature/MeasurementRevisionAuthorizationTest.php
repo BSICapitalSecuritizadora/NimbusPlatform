@@ -102,6 +102,11 @@ it('keeps the invariants for the super-admin too, whose policies are bypassed', 
     $superAdmin = User::factory()->withTwoFactor()->create();
     $superAdmin->assignRole('super-admin');
 
-    expect(fn () => app(MeasurementRevisionService::class)->create($may->fresh(), $superAdmin, 'Correção.'))
-        ->toThrow(MeasurementWorkflowException::class, MeasurementRevisionService::ELIGIBILITY_REFUSAL);
+    // Paga, com a etapa Pagamento ainda aberta: nem o bypass das policies
+    // revisa uma medição cujos pagamentos ainda não foram comprovados.
+    expect(app(MeasurementRevisionService::class)->canCreate($may->fresh(), $superAdmin))->toBeFalse()
+        ->and(fn () => app(MeasurementRevisionService::class)->create($may->fresh(), $superAdmin, 'Correção.'))
+        ->toThrow(MeasurementWorkflowException::class, MeasurementRevisionService::PAID_PAYMENT_STAGE_REFUSAL);
+
+    expect(Measurement::query()->where('revision_number', '>', 0)->exists())->toBeFalse();
 });

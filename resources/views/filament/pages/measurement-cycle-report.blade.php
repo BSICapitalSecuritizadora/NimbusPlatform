@@ -817,7 +817,7 @@
                                 @forelse ($detail->pauses as $pause)
                                     <div class="mcr-list-item">
                                         <div class="mcr-sub mcr-num">Etapa {{ $pause->stage }} · {{ $pause->pausedAt?->format('d/m/Y H:i:s') ?? 'N/D' }} → {{ $pause->resumedAt?->format('d/m/Y H:i:s') ?? 'Em aberto' }}</div>
-                                        <div class="mcr-sub">Pausado por {{ $pause->pausedById ? ($detailUserNames[$pause->pausedById] ?? 'N/D') : 'N/D' }} · retomado por {{ $pause->resumedById ? ($detailUserNames[$pause->resumedById] ?? 'N/D') : 'N/D' }} · motivo {{ $pause->reason ?: 'N/D' }} · cobertura {{ $completeLabel($pause->completeness->value) }}</div>
+                                        <div class="mcr-sub">Pausado por {{ $pause->pausedById ? ($detailUserNames[$pause->pausedById] ?? 'N/D') : 'N/D' }} · {{ $pause->endedBySupersession ? 'suspensão encerrada pela substituição, na decisão de' : 'retomado por' }} {{ $pause->resumedById ? ($detailUserNames[$pause->resumedById] ?? 'N/D') : 'N/D' }} · motivo {{ $pause->reason ?: 'N/D' }} · cobertura {{ $completeLabel($pause->completeness->value) }}</div>
                                         @if ($pause->missingReasons !== [])
                                             <div class="mcr-warn">{{ collect($pause->missingReasons)->map(fn (string $reason): string => $this->missingReason($reason))->implode(' · ') }}</div>
                                         @endif

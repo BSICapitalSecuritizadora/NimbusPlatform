@@ -41,16 +41,20 @@ use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\MeasurementPhysicalProgressScenario as PhysicalScenario;
 use Tests\Support\MeasurementPlanVersionFixture;
+use Tests\Support\MeasurementRevisionScenario;
 
 /**
  * O que a medição já usou não muda por fora do fluxo.
  *
- * Desde que a recusa terminal deixou de existir para a medição com pagamento
- * (P1-01), a saída dela é a Engenharia corrigir e aprovar de novo. Isso só
- * funciona se nada do que o pagamento usou -- os arquivos, a obra e a linha de
- * cada arquivo, a competência -- puder mudar por baixo dele, e se a Engenharia
- * conferir a mesma cobertura que o pagamento já usou, e não a das obras que
- * entraram na operação depois.
+ * Desde a Fase 3.1, a medição paga não volta mais à Engenharia: o registro
+ * aprovado é a base do pagamento, e a correção dos dados aprovados é uma
+ * revisão formal. A medição paga que voltou à Engenharia antes disso é
+ * legado, e a saída dela continua sendo a Engenharia corrigir e aprovar de
+ * novo -- a recusa terminal não vale para medição com pagamento (P1-01). Isso
+ * só funciona se nada do que o pagamento usou -- os arquivos, a obra e a linha
+ * de cada arquivo, a competência -- puder mudar por baixo dele, e se a
+ * Engenharia conferir a mesma cobertura que o pagamento já usou, e não a das
+ * obras que entraram na operação depois.
  *
  * Também aqui: as recusas do domínio nos planos e nas linhas da operação
  * chegam à pessoa como aviso, e as recusas de arquivo dizem de qual
@@ -214,12 +218,13 @@ function integrityGuardsApproveEngineering(array $scenario, int $percent = 10): 
 
 /**
  * A medição de agosto paga nas duas obras -- R$ 1.000,00 e R$ 2.000,00, o
- * esperado pelo avanço de 10% -- e devolvida da Finalização à Engenharia, sem
- * comprovante ainda. É o estado em que a recusa terminal deixou de existir.
+ * esperado pelo avanço de 10% --, com a etapa Pagamento aprovada e os
+ * comprovantes ainda por enviar, na Finalização: o ponto de onde a medição
+ * paga voltava à Engenharia antes da Fase 3.1.
  *
  * @return array{actor: User, operation: Operation, measurement: Measurement, planSets: list<MeasurementPlanSet>, august: list<MeasurementPlanLine>, september: list<MeasurementPlanLine>, assets: list<MeasurementAsset>, payments: list<MeasurementPayment>}
  */
-function integrityGuardsPaidReturned(): array
+function integrityGuardsPaidAtFinalization(): array
 {
     $scenario = integrityGuardsTwoDevelopments();
     $workflow = app(MeasurementWorkflow::class);
@@ -233,8 +238,29 @@ function integrityGuardsPaidReturned(): array
         ['plan_set_id' => $beta->id, 'pay_date' => '2026-08-31', 'amount' => '2000.00'],
     ])->all();
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
-    $workflow->returnToStage($scenario['measurement']->fresh(), $scenario['actor'], MeasurementWorkflow::STAGE_ENGINEERING, 'Rever o percentual medido.');
     $scenario['measurement'] = $scenario['measurement']->fresh();
+
+    return $scenario;
+}
+
+/**
+ * A mesma medição paga de volta à Engenharia, com o registro aprovado
+ * invalidado e ainda sem comprovante: o estado em que a recusa terminal
+ * deixou de existir.
+ *
+ * Estado só LEGADO: desde a Fase 3.1 o fluxo recusa devolver à Engenharia a
+ * medição paga ({@see MeasurementWorkflow::PAID_ENGINEERING_RETURN_REFUSAL}) --
+ * a correção é uma revisão formal. A linha é montada com as gravações da
+ * antiga devolução ({@see MeasurementRevisionScenario::legacyPaidAtEngineering()}),
+ * e as guardas daqui continuam protegendo as medições que tenham ficado
+ * assim, cuja saída segue sendo a Engenharia aprovar de novo.
+ *
+ * @return array{actor: User, operation: Operation, measurement: Measurement, planSets: list<MeasurementPlanSet>, august: list<MeasurementPlanLine>, september: list<MeasurementPlanLine>, assets: list<MeasurementAsset>, payments: list<MeasurementPayment>}
+ */
+function integrityGuardsPaidReturned(): array
+{
+    $scenario = integrityGuardsPaidAtFinalization();
+    $scenario['measurement'] = MeasurementRevisionScenario::legacyPaidAtEngineering($scenario['measurement']);
 
     return $scenario;
 }
@@ -276,7 +302,54 @@ function integrityGuardsReplanningDraft(array $scenario, MeasurementPlanSet $pla
     };
 }
 
-// ── Arquivos, obra, linha e competência da medição paga ──────────────────────
+// ── A medição paga não volta à Engenharia ────────────────────────────────────
+
+it('refuses to return a paid measurement to Engineering and points the changes of its approved record to the formal revision', function () {
+    $scenario = integrityGuardsPaidAtFinalization();
+    $workflow = app(MeasurementWorkflow::class);
+    [$alfa, $beta] = $scenario['assets'];
+    $measurement = $scenario['measurement'];
+    $snapshot = $measurement->engineering_snapshot;
+    $workflowRevision = (int) $measurement->workflow_revision;
+    $assetContext = fn (): array => $measurement->assets()->orderBy('id')->get(['id', 'plan_set_id', 'plan_line_id'])->toArray();
+    $assetsBefore = $assetContext();
+
+    expect($measurement->status)->toBe('awaiting_receipt')
+        ->and($measurement->payments()->count())->toBe(2)
+        ->and($measurement->hasApprovedEngineering())->toBeTrue()
+        ->and($workflow->engineeringReturnBlockReason($measurement))->toBe(MeasurementWorkflow::PAID_ENGINEERING_RETURN_REFUSAL)
+        ->and(fn () => $workflow->returnToStage($measurement->fresh(), $scenario['actor'], MeasurementWorkflow::STAGE_ENGINEERING, 'Rever o percentual medido.'))
+        ->toThrow(MeasurementWorkflowException::class, MeasurementWorkflow::PAID_ENGINEERING_RETURN_REFUSAL);
+
+    // Nada foi gravado: a Finalização continua pendente sobre o mesmo
+    // registro aprovado, sem invalidação na trilha.
+    $refused = $measurement->fresh();
+
+    expect($refused->status)->toBe('awaiting_receipt')
+        ->and($refused->current_stage)->toBe(MeasurementWorkflow::STAGE_FINALIZATION)
+        ->and((int) $refused->workflow_revision)->toBe($workflowRevision)
+        ->and($refused->engineering_snapshot)->toBe($snapshot)
+        ->and($refused->reviewForStage(MeasurementWorkflow::STAGE_ENGINEERING)?->status)->toBe('approved')
+        ->and($refused->reviewForStage(MeasurementWorkflow::STAGE_FINALIZATION)?->status)->toBe('pending')
+        ->and(Activity::query()
+            ->where('log_name', 'measurement_workflow')
+            ->whereIn('description', ['measurement_finalization_returned', 'measurement_engineering_snapshot_invalidated', 'measurement_physical_contribution_invalidated'])
+            ->exists())->toBeFalse();
+
+    // Os arquivos e a competência aprovados seguem travados, e a recusa
+    // aponta a revisão formal -- não mais a devolução à Engenharia.
+    expect(fn () => $beta->fresh()->delete())
+        ->toThrow(MeasurementWorkflowException::class, MeasurementAsset::PAID_APPROVED_FILE_REFUSAL)
+        ->and(fn () => $alfa->fresh()->update(['plan_line_id' => $scenario['september'][0]->id]))
+        ->toThrow(MeasurementWorkflowException::class, MeasurementAsset::PAID_APPROVED_FILE_REFUSAL)
+        ->and(fn () => $refused->fresh()->update(['reference_month' => '2026-09-01']))
+        ->toThrow(MeasurementWorkflowException::class, Measurement::PAID_APPROVED_DATA_REFUSAL);
+
+    expect($assetContext())->toBe($assetsBefore)
+        ->and($refused->fresh()->reference_month->toDateString())->toBe('2026-08-01');
+});
+
+// ── Arquivos, obra, linha e competência da medição paga (legado) ─────────────
 
 it('refuses to remove a file of a paid measurement, by the model and by a forged edit', function () {
     $scenario = integrityGuardsPaidReturned();
@@ -405,7 +478,7 @@ it('keeps the competence, the schedule lines and the removal open while the meas
 
 // ── Cobertura da Engenharia ──────────────────────────────────────────────────
 
-it('reapproves a paid measurement returned to Engineering on the developments of its own files after a new development joins the operation', function () {
+it('reapproves a legacy paid measurement back at Engineering on the developments of its own files after a new development joins the operation', function () {
     $scenario = integrityGuardsPaidReturned();
     $workflow = app(MeasurementWorkflow::class);
     [$alfa, $beta] = $scenario['planSets'];
@@ -449,8 +522,9 @@ it('reapproves a paid measurement returned to Engineering on the developments of
 
     expect(fn () => $gamma->fresh()->delete())->toThrow(MeasurementWorkflowException::class);
 
-    // A medição paga volta a ser aprovada com os empreendimentos dos próprios
-    // arquivos, e a etapa Pagamento aprova com os pagamentos que já existiam.
+    // A medição paga legada, sem registro aprovado a proteger, volta a ser
+    // aprovada com os empreendimentos dos próprios arquivos, e a etapa
+    // Pagamento aprova com os pagamentos que já existiam.
     integrityGuardsApproveEngineering($scenario, 10);
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);

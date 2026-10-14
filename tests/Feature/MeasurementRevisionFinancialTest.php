@@ -173,7 +173,7 @@ it('settles the revision of an unpaid measurement with its own payment', functio
 
     expect($may->fresh()->status)->toBe('superseded')
         ->and($position->historicalPaidAmount)->toBe('0.00')
-        ->and($position->unresolvedOverpaymentAmount)->toBe('0.00')
+        ->and($position->unacknowledgedOverpaymentAmount)->toBe('0.00')
         ->and($position->openBalanceAmount)->toBe('80000.00')
         ->and(app(MeasurementWorkflow::class)->hasValidPayment($revision->fresh()))->toBeFalse()
         ->and(revisionValidationMessage(fn () => app(MeasurementWorkflow::class)->approve($revision->fresh(), $scenario['actor']), 'payments'))
@@ -215,11 +215,17 @@ it('keeps flagging an overpayment accepted before, and leaves the replaced revis
     app(MeasurementWorkflow::class)->approve($first->fresh(), $scenario['actor'], 'Decisão: valor a maior tratado fora do sistema.');
     app(MeasurementWorkflow::class)->finalize($first->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
     $second = Scenario::effective($scenario, $first->fresh(), 9);
+    $position = revisionPosition($second);
     $service = app(MeasurementRevisionService::class);
 
-    expect(revisionPosition($second)->unresolvedOverpaymentAmount)->toBe('0.00')
-        ->and(revisionPosition($second)->openBalanceAmount)->toBe('-10000.00')
-        ->and(revisionPosition($second)->adjustmentStatus)->toBe(MeasurementRevisionAdjustmentStatus::OverpaymentPreviouslyAccepted)
+    // Pago 100.000,00 contra 90.000,00 aprovados: os 10.000,00 em aberto já
+    // foram reconhecidos na Finalização da R1, e nada resta a reconhecer.
+    expect($position->outstandingOverpaymentAmount)->toBe('10000.00')
+        ->and($position->previouslyAcknowledgedOverpaymentAmount)->toBe('10000.00')
+        ->and($position->previouslyAcknowledgedByMeasurementIds)->toBe([$first->id])
+        ->and($position->unacknowledgedOverpaymentAmount)->toBe('0.00')
+        ->and($position->openBalanceAmount)->toBe('-10000.00')
+        ->and($position->adjustmentStatus)->toBe(MeasurementRevisionAdjustmentStatus::OverpaymentPreviouslyAccepted)
         ->and($service->overview($second->fresh())['has_unresolved_difference'])->toBeTrue()
         ->and(revisionPosition($first)->adjustmentStatus)->toBe(MeasurementRevisionAdjustmentStatus::PositionSuperseded)
         ->and($service->overview($first->fresh())['has_unresolved_difference'])->toBeFalse();
@@ -241,7 +247,12 @@ it('counts only the new excess of a second revision after an overpayment was alr
         ->and($position->historicalPaidAmount)->toBe('100000.00')
         ->and($position->settledMeasurementId)->toBe($first->id)
         ->and($position->settledApprovedAmount)->toBe('80000.00')
-        ->and($position->unresolvedOverpaymentAmount)->toBe('10000.00');
+        // Pago 100.000,00 contra 70.000,00 aprovados: dos 30.000,00 em aberto,
+        // a R1 reconheceu 20.000,00, e só os 10.000,00 novos pedem decisão.
+        ->and($position->outstandingOverpaymentAmount)->toBe('30000.00')
+        ->and($position->previouslyAcknowledgedOverpaymentAmount)->toBe('20000.00')
+        ->and($position->previouslyAcknowledgedByMeasurementIds)->toBe([$first->id])
+        ->and($position->unacknowledgedOverpaymentAmount)->toBe('10000.00');
 });
 
 it('never deletes nor rewrites a registered payment', function () {

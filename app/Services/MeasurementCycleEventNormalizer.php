@@ -546,12 +546,18 @@ class MeasurementCycleEventNormalizer
             return [$stage, $stage];
         }
 
+        // O fluxo aberto da revisão substituída termina na etapa em que ela
+        // estava: a Pagamento sem pagamento, ou a Finalização da medição paga
+        // com a documentação completa.
         if ($eventType === MeasurementCycleEventType::ClosedByRevision) {
             $this->validateTransitionShape(
-                $stage === 4
-                    && $target === null
-                    && $statusBefore === 'awaiting_payment'
-                    && $statusAfter === 'superseded',
+                $target === null
+                    && $statusAfter === 'superseded'
+                    && match ($stage) {
+                        4 => $statusBefore === 'awaiting_payment',
+                        5 => in_array($statusBefore, ['approved', 'awaiting_receipt'], true),
+                        default => false,
+                    },
                 $properties,
                 $missingReasons,
                 $completeness,

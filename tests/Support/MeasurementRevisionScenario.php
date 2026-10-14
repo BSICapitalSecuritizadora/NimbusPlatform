@@ -138,6 +138,68 @@ final class MeasurementRevisionScenario
     }
 
     /**
+     * Medição paga e ainda não finalizada, com a documentação financeira
+     * completa -- etapa Pagamento aprovada e comprovantes de todos os
+     * pagamentos aprovados: a situação 'approved' da Finalização, de que se
+     * cria a revisão de medição paga (caso C). Pago pelo valor informado (o
+     * esperado, sem valor); pagamento abaixo ou acima do esperado precisa da
+     * justificativa da divergência.
+     *
+     * @param  array{actor: User, operation: Operation, planSet: MeasurementPlanSet, lines: array<string, MeasurementPlanLine>}  $scenario
+     */
+    public static function paidAwaitingFinalization(array $scenario, string $month, int|float|string $percent, ?string $paidAmount = null, ?string $justification = null, ?string $paymentNotes = null): Measurement
+    {
+        $measurement = self::awaitingPayment($scenario, $month, $percent);
+        self::pay($scenario, $measurement, $paidAmount ?? self::expected($percent), justification: $justification);
+        app(MeasurementWorkflow::class)->approve($measurement->fresh(), $scenario['actor'], $paymentNotes);
+        self::receiptsApproved($scenario, $measurement);
+
+        return $measurement->fresh();
+    }
+
+    /**
+     * Estado LEGADO: medição paga de volta à Engenharia, com o registro
+     * aprovado invalidado -- o que a devolução à Engenharia de uma medição paga
+     * fazia antes da Fase 3.1 e que o fluxo agora recusa
+     * ({@see MeasurementWorkflow::PAID_ENGINEERING_RETURN_REFUSAL}). Montado com
+     * as mesmas gravações, na mesma ordem, de `MeasurementWorkflow::reopenStage(1)`:
+     * a análise da Engenharia volta a pendente, a da Finalização (se houver) fica
+     * recusada, e só então a medição volta à etapa 1 sem o registro -- as
+     * guardas dos models continuam valendo. Serve às guardas que ainda protegem
+     * linhas legadas assim em produção.
+     */
+    public static function legacyPaidAtEngineering(Measurement $measurement): Measurement
+    {
+        $measurement = $measurement->fresh();
+
+        $measurement->reviews()->where('stage', MeasurementWorkflow::STAGE_ENGINEERING)->first()?->forceFill([
+            'reviewer_user_id' => null,
+            'status' => 'pending',
+            'notes' => 'Devolvida à Engenharia antes da Fase 3.1.',
+            'reviewed_at' => null,
+            'paused_at' => null,
+            'paused_by' => null,
+            'pause_reason' => null,
+            'paused_operation_status' => null,
+        ])->save();
+
+        $measurement->reviews()->where('stage', MeasurementWorkflow::STAGE_FINALIZATION)->first()?->forceFill([
+            'status' => 'rejected',
+            'notes' => 'Devolvida à Engenharia antes da Fase 3.1.',
+            'reviewed_at' => now(),
+        ])->save();
+
+        $measurement->forceFill([
+            'status' => 'in_review',
+            'current_stage' => MeasurementWorkflow::STAGE_ENGINEERING,
+            'engineering_snapshot' => null,
+            'workflow_revision' => (int) $measurement->workflow_revision + 1,
+        ])->save();
+
+        return $measurement->fresh();
+    }
+
+    /**
      * @param  array{actor: User, operation: Operation, planSet: MeasurementPlanSet, lines: array<string, MeasurementPlanLine>}  $scenario
      */
     public static function revise(array $scenario, Measurement $base, string $reason = 'Correção do percentual medido.'): Measurement

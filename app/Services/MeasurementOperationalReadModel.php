@@ -50,7 +50,8 @@ class MeasurementOperationalReadModel
                 'payments as payments_with_receipt_count' => fn (Builder $payments): Builder => $payments
                     ->withReceipt(),
             ])
-            ->withSum('payments', 'amount');
+            ->withSum('payments', 'amount')
+            ->withOpenRevisionFinancialPositionCount();
     }
 
     /** @return Builder<Measurement> */
@@ -77,7 +78,11 @@ class MeasurementOperationalReadModel
                         $pausedAtPayment
                             ->where('status', 'paused')
                             ->where('current_stage', MeasurementWorkflow::STAGE_PAYMENT);
-                    });
+                    })
+                    // A revisão vigente que deixa diferença financeira em aberto
+                    // continua na área de pagamentos -- no filtro e na exportação
+                    // -- mesmo devolvida a uma etapa anterior ou em reanálise.
+                    ->orWhere(fn (Builder $openPosition): Builder => $openPosition->withOpenRevisionFinancialPosition());
             });
     }
 
@@ -246,13 +251,21 @@ class MeasurementOperationalReadModel
                 : 'Aguardando aprovação';
         }
 
-        if (in_array($measurement->status, ['awaiting_receipt', 'approved', 'finalized'], true)) {
+        if (in_array($measurement->status, ['awaiting_receipt', 'approved', 'finalized', 'superseded'], true)) {
             $receipts = app(MeasurementReceiptEvidenceService::class);
             $actions = $receipts->pendingResponsibilities($measurement);
+            $label = $actions === []
+                ? ($measurement->status === 'superseded' ? 'Encerrada pela revisão' : 'Concluída')
+                : collect($actions)
+                    ->map(fn (MeasurementResponsibility $responsibility): string => $receipts->pendingActionLabel($measurement, $responsibility))
+                    ->implode(' · ');
 
-            return $actions === [] ? 'Concluída' : collect($actions)
-                ->map(fn (MeasurementResponsibility $responsibility): string => $receipts->pendingActionLabel($measurement, $responsibility))
-                ->implode(' · ');
+            // Finalizar a revisão não regulariza a diferença financeira que ela
+            // reconheceu: o valor pago a maior ou o saldo a pagar continuam em
+            // aberto e seguem à vista da área de pagamentos.
+            return $measurement->status === 'finalized' && $measurement->hasOpenRevisionFinancialPosition()
+                ? $label.' · regularização financeira pendente'
+                : $label;
         }
 
         return 'Acompanhamento';
@@ -260,7 +273,13 @@ class MeasurementOperationalReadModel
 
     public function receiptStatusLabel(Measurement $measurement): string
     {
-        if ($measurement->status === 'finalized') {
+        $measurement->loadMissing('payments.currentReceiptEvidence');
+
+        // Encerrada com pagamento -- finalizada, ou paga e encerrada pela revisão
+        // que passou a valer --, a medição só tem pendência documental de
+        // correção, como a finalizada.
+        if ($measurement->status === 'finalized'
+            || ($measurement->status === 'superseded' && $measurement->payments->isNotEmpty())) {
             return app(MeasurementReceiptEvidenceService::class)->documentaryStatus($measurement);
         }
 

@@ -53,14 +53,15 @@ class MeasurementAuthorizationService
      * Revisar uma medição -- criar a R1, a R2... e enviá-la à análise -- é ato
      * de gestão da operação, não responsabilidade de etapa, e não se delega:
      * pede a permissão própria, a operação em andamento (a mesma regra da
-     * medição nova) e a participação direta, ou o bypass administrativo.
+     * medição nova) e a participação direta na operação
+     * ({@see self::hasRevisionParticipation()}).
      */
     public function canReviseMeasurement(User $user, Measurement $measurement): bool
     {
         return $user->can(AccessPermission::MeasurementsRevise->value)
             && $measurement->operation instanceof Operation
             && $measurement->operation->status->allowsNewMeasurements()
-            && $this->hasDirectOperationalParticipation($user, $measurement->operation);
+            && $this->hasRevisionParticipation($user, $measurement->operation);
     }
 
     /**
@@ -72,7 +73,19 @@ class MeasurementAuthorizationService
     {
         return $user->can(AccessPermission::MeasurementsRevise->value)
             && $revision->operation instanceof Operation
-            && $this->hasDirectOperationalParticipation($user, $revision->operation);
+            && $this->hasRevisionParticipation($user, $revision->operation);
+    }
+
+    /**
+     * A participação que a revisão exige, pela regra de negócio dela: o admin,
+     * como o editor, revisa só a operação de que participa diretamente. Só o
+     * super-admin revisa fora dela, pelo bypass administrativo -- auditado como
+     * tal ({@see MeasurementRevisionService}). Estar só na lista "Notificar em
+     * caso de recusa" não é participar.
+     */
+    public function hasRevisionParticipation(User $user, Operation $operation): bool
+    {
+        return $user->hasRole('super-admin') || $operation->hasParticipant($user);
     }
 
     public function canDecideStage(User $user, Measurement $measurement, int $stage): bool

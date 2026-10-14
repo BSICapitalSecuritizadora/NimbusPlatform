@@ -132,7 +132,7 @@ class MeasurementPaymentFinancialService
         return $payments->contains(
             fn (MeasurementPayment $payment): bool => (bool) ($payment->financial_assessment['requires_acceptance'] ?? false),
         ) || $this->unpaidRequiredPlanSetsAmong($measurement, $payments) !== []
-            || ($measurement->isRevision() && app(MeasurementRevisionService::class)->unresolvedOverpayments($measurement) !== []);
+            || ($measurement->isRevision() && app(MeasurementRevisionService::class)->unacknowledgedOverpayments($measurement) !== []);
     }
 
     /**
@@ -232,10 +232,11 @@ class MeasurementPaymentFinancialService
 
     /**
      * Confere, na Finalização de uma revisão, o valor pago a maior que ela
-     * deixou -- a família pagou, antes dela, mais do que ela aprova -- e devolve
-     * o que foi aceito, para a auditoria congelar. Nada é estornado nem
-     * compensado: os pagamentos registrados ficam como estão, e o aceite é o
-     * reconhecimento expresso de que o valor não foi recuperado no sistema.
+     * identificou e que nenhuma finalização anterior reconheceu -- a família
+     * pagou, antes dela, mais do que ela aprova -- e devolve o que foi aceito,
+     * para a auditoria congelar. Nada é estornado nem compensado: os pagamentos
+     * registrados ficam como estão, e o aceite é o reconhecimento expresso de
+     * que o valor continua em aberto, sem devolução registrada no sistema.
      *
      * A decisão financeira é a nota da aprovação da etapa Pagamento da própria
      * revisão; em branco, a revisão volta àquela etapa.
@@ -249,7 +250,7 @@ class MeasurementPaymentFinancialService
         }
 
         $revisions = app(MeasurementRevisionService::class);
-        $overpayments = $revisions->unresolvedOverpayments($measurement);
+        $overpayments = $revisions->unacknowledgedOverpayments($measurement);
 
         if ($overpayments === []) {
             return [];
@@ -270,7 +271,7 @@ class MeasurementPaymentFinancialService
 
         if (! $accepted) {
             throw ValidationException::withMessages([
-                'accept_financial_exceptions' => 'Confirme expressamente o aceite do valor pago a maior desta revisão, sem devolução registrada no sistema: '.$revisions->describeOverpayments($overpayments).'.',
+                'accept_financial_exceptions' => 'Confirme expressamente o aceite do valor pago a maior desta revisão ainda não reconhecido, que continua em aberto, sem devolução registrada no sistema: '.$revisions->describeOverpayments($overpayments).'.',
             ]);
         }
 
@@ -314,10 +315,7 @@ class MeasurementPaymentFinancialService
             if ($assessment === null) {
                 continue;
             }
-            if (($assessment['engineering_hash'] ?? null) !== $this->engineeringHash($measurement)
-                || (int) ($assessment['plan_set_id'] ?? 0) !== (int) $payment->plan_set_id
-                || ($assessment['pay_date'] ?? null) !== $payment->pay_date->toDateString()
-                || ($assessment['amount'] ?? null) !== $payment->amount) {
+            if (! $this->assessmentMatchesSnapshot($measurement, $payment)) {
                 throw new MeasurementWorkflowException('O contexto financeiro mudou. Devolva à etapa Pagamento para reavaliar o enquadramento.');
             }
             if ($assessment['support'] ?? null) {
@@ -336,6 +334,27 @@ class MeasurementPaymentFinancialService
         }
 
         return $assessments;
+    }
+
+    /**
+     * O enquadramento congelado no pagamento ainda corresponde ao registro da
+     * Engenharia e ao próprio pagamento? A mesma conferência da Finalização,
+     * sem lock: a elegibilidade da revisão da medição paga a lê sob o lock da
+     * linha da medição, que é o que protege os pagamentos. Pagamento sem
+     * enquadramento (anterior às regras financeiras) não tem o que conferir.
+     */
+    public function assessmentMatchesSnapshot(Measurement $measurement, MeasurementPayment $payment): bool
+    {
+        $assessment = $payment->financial_assessment;
+
+        if ($assessment === null) {
+            return true;
+        }
+
+        return ($assessment['engineering_hash'] ?? null) === $this->engineeringHash($measurement)
+            && (int) ($assessment['plan_set_id'] ?? 0) === (int) $payment->plan_set_id
+            && ($assessment['pay_date'] ?? null) === $payment->pay_date->toDateString()
+            && ($assessment['amount'] ?? null) === $payment->amount;
     }
 
     private function engineeringHash(Measurement $measurement): string

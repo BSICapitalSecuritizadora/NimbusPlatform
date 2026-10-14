@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\DTOs\Measurements\MeasurementRevisionPlanSetPosition;
+use App\Enums\MeasurementRevisionAdjustmentStatus;
+use App\Enums\MeasurementRevisionStatus;
 use App\Models\Measurement;
 use App\Models\MeasurementPayment;
 use App\Models\MeasurementReview;
@@ -22,7 +25,10 @@ class MeasurementPaymentExportService
     /** @var array<int, Style>|null */
     private ?array $xlsxColumnStyles = null;
 
-    public function __construct(private MeasurementOperationalReadModel $readModel) {}
+    public function __construct(
+        private MeasurementOperationalReadModel $readModel,
+        private MeasurementRevisionService $revisions,
+    ) {}
 
     /**
      * @param  Builder<Measurement>  $filteredMeasurements
@@ -88,9 +94,11 @@ class MeasurementPaymentExportService
                     $payments = $measurement->payments->isEmpty()
                         ? collect([null])
                         : $measurement->payments->sortBy('id')->values();
+                    // Uma vez por medição: as linhas de pagamento dela repetem o texto.
+                    $revisionPosition = $this->revisionPosition($measurement);
 
                     foreach ($payments as $payment) {
-                        $values = $this->row($measurement, $payment, $actor, $format);
+                        $values = $this->row($measurement, $payment, $actor, $format, $revisionPosition);
                         $writer->addRow($format === 'xlsx'
                             ? Row::fromValuesWithStyles($values, columnStyles: $this->xlsxColumnStyles())
                             : $values);
@@ -158,10 +166,12 @@ class MeasurementPaymentExportService
             'Medição original',
             'Revisão',
             'Situação da revisão',
+            'Posição financeira da revisão',
         ];
     }
 
     /**
+     * @param  array{text: string|null, has_remaining_payable: bool}  $revisionPosition
      * @return list<bool|float|int|string|DateTimeImmutable|null>
      */
     private function row(
@@ -169,6 +179,7 @@ class MeasurementPaymentExportService
         ?MeasurementPayment $payment,
         User $actor,
         string $format,
+        array $revisionPosition,
     ): array {
         $operation = $measurement->operation;
         $emission = $operation?->emission;
@@ -208,7 +219,11 @@ class MeasurementPaymentExportService
             $this->text($paymentApproval?->reviewer?->name),
             $this->text(match (true) {
                 $payment !== null => $payment->hasReceipt() ? 'Anexado' : 'Pendente',
-                $measurement->isRevision() && app(MeasurementRevisionService::class)->familyHasHistoricalPayments($measurement) => 'Sem pagamento nesta revisão — pago em revisão anterior',
+                // "Pago em revisão anterior" só quando nada falta pagar: com saldo
+                // a pagar em aberto, a família não pagou tudo o que a revisão aprova.
+                $measurement->isRevision() && $this->revisions->familyHasHistoricalPayments($measurement) => $revisionPosition['has_remaining_payable']
+                    ? 'Sem pagamento nesta revisão — saldo a pagar em aberto'
+                    : 'Sem pagamento nesta revisão — pago em revisão anterior',
                 default => 'Pagamento não registrado',
             }),
             $this->text($payment?->receiptUploadedByUser?->name),
@@ -219,7 +234,154 @@ class MeasurementPaymentExportService
             $measurement->familyRootId(),
             $this->text($measurement->isRevision() ? $measurement->revisionLabel() : 'R0 · Original'),
             $this->text($measurement->revisionStatus()->label()),
+            $this->text($revisionPosition['text']),
         ];
+    }
+
+    /**
+     * A posição financeira da revisão para a planilha, por empreendimento e
+     * nunca compensada entre eles. Só a revisão vigente tem posição que vale:
+     * a calculada ou, enquanto a Engenharia a reanalisa, a última conhecida.
+     * A substituída remete à seguinte, e a original (R0) não tem posição de
+     * revisão. Valores da conta exata, em texto -- nunca float.
+     *
+     * @return array{text: string|null, has_remaining_payable: bool}
+     */
+    private function revisionPosition(Measurement $measurement): array
+    {
+        $withoutPosition = ['text' => null, 'has_remaining_payable' => false];
+
+        if (! $measurement->isRevision()) {
+            return $withoutPosition;
+        }
+
+        if ($measurement->revisionStatus() === MeasurementRevisionStatus::Superseded) {
+            return ['text' => MeasurementRevisionAdjustmentStatus::PositionSuperseded->label(), 'has_remaining_payable' => false];
+        }
+
+        if (! $measurement->isEffectiveRevision()) {
+            return $withoutPosition;
+        }
+
+        $positions = collect($this->revisions->positions($measurement));
+
+        if ($positions->isNotEmpty()) {
+            $finalized = $measurement->status === 'finalized';
+
+            return [
+                'text' => $positions
+                    ->map(fn (MeasurementRevisionPlanSetPosition $position): string => $this->describePosition($position, $finalized))
+                    ->implode(' | '),
+                'has_remaining_payable' => $positions->contains(
+                    fn (MeasurementRevisionPlanSetPosition $position): bool => $position->hasRemainingPayable(),
+                ),
+            ];
+        }
+
+        $lastKnown = collect($this->revisions->lastKnownPositions($measurement));
+
+        if ($lastKnown->isEmpty()) {
+            return $withoutPosition;
+        }
+
+        $invalidatedAt = $lastKnown->pluck('invalidated_at')->filter()->first();
+
+        return [
+            'text' => sprintf(
+                'Revisão em reanálise da Engenharia — última posição financeira conhecida%s: %s',
+                $invalidatedAt === null ? '' : " (registro invalidado em {$invalidatedAt})",
+                $lastKnown->map(fn (array $position): string => $this->describeLastKnownPosition($position))->implode(' | '),
+            ),
+            'has_remaining_payable' => $lastKnown->contains(
+                fn (array $position): bool => self::isPositive($position['remaining_payable_amount']),
+            ),
+        ];
+    }
+
+    /**
+     * Aprovado vigente, pago pela família e o que fica em aberto. O valor pago
+     * a maior em aberto é o reconhecido anteriormente mais o desta revisão --
+     * a reconhecer até a Finalização, reconhecido nela --, e reconhecer não o
+     * regulariza.
+     */
+    private function describePosition(MeasurementRevisionPlanSetPosition $position, bool $finalized): string
+    {
+        $familyPaid = 'pago pela família '.MeasurementFinancialReconciliationService::formatCurrency($position->familyPaidAmount);
+
+        if (! $position->hasFinancialReference()) {
+            return sprintf(
+                '%s: sem referência financeira (sem Fundo de Obra); %s%s',
+                $position->label,
+                $familyPaid,
+                $position->isExposureUnmeasurable() ? '; exposição não mensurável' : '',
+            );
+        }
+
+        $approved = sprintf(
+            '%s: aprovado vigente %s; %s',
+            $position->label,
+            MeasurementFinancialReconciliationService::formatCurrency($position->revisedApprovedAmount),
+            $familyPaid,
+        );
+
+        if ($position->hasOutstandingOverpayment()) {
+            $outstanding = (string) $position->outstandingOverpaymentAmount;
+            $previouslyAcknowledged = $position->previouslyAcknowledgedOverpaymentAmount ?? '0.00';
+            $thisRevision = bcsub($outstanding, $previouslyAcknowledged, 2);
+
+            return sprintf(
+                '%s; pago a maior em aberto %s (reconhecido anteriormente %s; %s %s)',
+                $approved,
+                MeasurementFinancialReconciliationService::formatCurrency($outstanding),
+                MeasurementFinancialReconciliationService::formatCurrency($previouslyAcknowledged),
+                $finalized ? 'reconhecido nesta revisão' : 'a reconhecer nesta revisão',
+                MeasurementFinancialReconciliationService::formatCurrency(self::isPositive($thisRevision) ? $thisRevision : '0.00'),
+            );
+        }
+
+        if ($position->hasRemainingPayable()) {
+            return $approved.'; saldo a pagar em aberto '.MeasurementFinancialReconciliationService::formatCurrency($position->remainingPayableAmount);
+        }
+
+        return $approved.'; sem diferença em aberto';
+    }
+
+    /**
+     * A última posição conhecida da revisão em reanálise: o aprovado é o do
+     * registro invalidado, e a reanálise pode mudá-lo.
+     *
+     * @param  array<string, mixed>  $position
+     */
+    private function describeLastKnownPosition(array $position): string
+    {
+        $familyPaid = 'pago pela família '.MeasurementFinancialReconciliationService::formatCurrency((string) $position['family_paid_amount']);
+
+        if ($position['revised_approved_amount'] === null) {
+            return sprintf(
+                '%s: sem referência financeira (sem Fundo de Obra); %s%s',
+                $position['label'],
+                $familyPaid,
+                $position['unresolved'] ? '; exposição não mensurável' : '',
+            );
+        }
+
+        $approved = sprintf(
+            '%s: aprovado no registro invalidado %s; %s',
+            $position['label'],
+            MeasurementFinancialReconciliationService::formatCurrency((string) $position['revised_approved_amount']),
+            $familyPaid,
+        );
+
+        return match (true) {
+            self::isPositive($position['outstanding_overpayment_amount']) => $approved.'; pago a maior em aberto '.MeasurementFinancialReconciliationService::formatCurrency((string) $position['outstanding_overpayment_amount']),
+            self::isPositive($position['remaining_payable_amount']) => $approved.'; saldo a pagar em aberto '.MeasurementFinancialReconciliationService::formatCurrency((string) $position['remaining_payable_amount']),
+            default => $approved.'; sem diferença em aberto',
+        };
+    }
+
+    private static function isPositive(mixed $amount): bool
+    {
+        return is_string($amount) && bccomp($amount, '0', 2) > 0;
     }
 
     private function text(?string $value): ?string

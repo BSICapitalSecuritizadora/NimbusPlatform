@@ -41,6 +41,18 @@ class MeasurementAsset extends Model
     public const PAID_CONTEXT_CHANGE_REFUSAL = 'A obra e a linha do cronograma de uma medição com pagamento registrado não podem ser alteradas: o pagamento continua vinculado a elas.';
 
     /**
+     * O pagamento foi registrado sobre os empreendimentos dos arquivos da
+     * medição: um arquivo novo -- um item acrescentado ao formulário, mesmo
+     * forjado -- poria na Engenharia um empreendimento que o pagamento não tem.
+     */
+    public const PAID_NEW_FILE_REFUSAL = 'Uma medição com pagamento registrado não recebe arquivo novo: o pagamento foi registrado sobre os empreendimentos dos arquivos dela. Para medir outro empreendimento, envie uma nova medição.';
+
+    /**
+     * Os arquivos aprovados de uma medição paga são a base do pagamento.
+     */
+    public const PAID_APPROVED_FILE_REFUSAL = 'Os arquivos aprovados pela Engenharia estão bloqueados e são a base do pagamento registrado: a correção é uma revisão formal (Criar revisão), que preserva a medição paga, os pagamentos e o histórico.';
+
+    /**
      * A medição nasce sob a versão do plano que rege a competência dela
      * ({@see MeasurementPlanVersionResolver}): a medição prevista escolhida
      * precisa ser a dessa versão -- não a cópia que uma revisão posterior traz
@@ -168,9 +180,18 @@ class MeasurementAsset extends Model
                 }
 
                 if ($measurement?->hasApprovedEngineering()) {
-                    throw new MeasurementWorkflowException('Os arquivos aprovados pela Engenharia estão bloqueados. Devolva a medição à Engenharia para alterá-los.', [
+                    throw new MeasurementWorkflowException($measurement->payments()->exists()
+                        && Measurement::isVerifiableEngineeringSnapshot($measurement->engineering_snapshot, (int) $measurement->getKey())
+                        ? self::PAID_APPROVED_FILE_REFUSAL
+                        : 'Os arquivos aprovados pela Engenharia estão bloqueados. Devolva a medição à Engenharia para alterá-los.', [
+                            'measurement_id' => $measurement->getKey(),
+                            'asset_id' => $asset->getKey(),
+                        ]);
+                }
+
+                if (! $asset->exists && $measurement?->payments()->exists()) {
+                    throw new MeasurementWorkflowException(self::PAID_NEW_FILE_REFUSAL, [
                         'measurement_id' => $measurement->getKey(),
-                        'asset_id' => $asset->getKey(),
                     ]);
                 }
 
@@ -229,10 +250,13 @@ class MeasurementAsset extends Model
             }
 
             if ($measurement?->hasApprovedEngineering()) {
-                throw new MeasurementWorkflowException('Um arquivo aprovado pela Engenharia não pode ser removido sem devolver a medição à Engenharia.', [
-                    'measurement_id' => $measurement->getKey(),
-                    'asset_id' => $asset->getKey(),
-                ]);
+                throw new MeasurementWorkflowException($measurement->payments()->exists()
+                    && Measurement::isVerifiableEngineeringSnapshot($measurement->engineering_snapshot, (int) $measurement->getKey())
+                    ? self::PAID_APPROVED_FILE_REFUSAL
+                    : 'Um arquivo aprovado pela Engenharia não pode ser removido sem devolver a medição à Engenharia.', [
+                        'measurement_id' => $measurement->getKey(),
+                        'asset_id' => $asset->getKey(),
+                    ]);
             }
 
             if ($measurement?->payments()->exists()) {

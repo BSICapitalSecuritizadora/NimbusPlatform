@@ -508,7 +508,7 @@ class MeasurementEngineeringService
         }
 
         if ($basisPoints < 0) {
-            return "O percentual realizado de {$label} não pode ser negativo. Para corrigir uma medição já aprovada, devolva-a à Engenharia.";
+            return "O percentual realizado de {$label} não pode ser negativo. Para corrigir uma medição já aprovada, devolva-a à Engenharia; se ela tiver pagamento registrado, a correção dos dados aprovados é uma revisão formal (Criar revisão).";
         }
 
         if ($basisPoints > MeasurementPhysicalProgress::LIMIT_BASIS_POINTS) {

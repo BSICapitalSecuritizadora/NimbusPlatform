@@ -15,6 +15,8 @@ use App\Models\User;
 use App\Services\MeasurementPhysicalProgressService;
 use App\Services\MeasurementPlanVersionService;
 use App\Services\OperationContextVisibilityService;
+use App\Support\BusinessTime;
+use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -50,6 +52,9 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
+/**
+ * @phpstan-type ReanalysisEntry array{measurement_id: int, revision_label: string, reference_month: string|null, basis_points: int, plan_line_lineage_key: string|null, invalidated_at: CarbonImmutable|null}
+ */
 class PlanSetsRelationManager extends RelationManager
 {
     use DetectsConcurrentUpdates;
@@ -67,6 +72,15 @@ class PlanSetsRelationManager extends RelationManager
 
     /** @var array<int, MeasurementPhysicalProgress>|null */
     private ?array $physicalProgress = null;
+
+    /**
+     * A contribuição aprovada antes e fora do avanço reconhecido enquanto a
+     * Engenharia reanalisa a medição, por plano: uma leitura por operação e
+     * por requisição, como o progresso.
+     *
+     * @var array<int, list<ReanalysisEntry>>|null
+     */
+    private ?array $reanalysisContributions = null;
 
     public function form(Schema $schema): Schema
     {
@@ -190,6 +204,12 @@ class PlanSetsRelationManager extends RelationManager
                     ->label('Avanço físico')
                     ->state(fn (MeasurementPlanSet $record): string => MeasurementPhysicalProgress::format($this->physicalProgressFor($record)->currentBasisPoints()))
                     ->description(fn (MeasurementPlanSet $record): string => $this->physicalProgressDescription($record))
+                    // Quem vê a operação nem sempre vê a medição: a reanálise
+                    // aparece só em pontos percentuais, competência e data,
+                    // nunca com o motivo.
+                    ->icon(fn (MeasurementPlanSet $record): ?string => $this->reanalysisFor($record) === [] ? null : 'heroicon-o-exclamation-triangle')
+                    ->iconColor('warning')
+                    ->tooltip(fn (MeasurementPlanSet $record): ?string => $this->physicalProgressReanalysisTooltip($record))
                     ->extraCellAttributes(['class' => 'tabular-nums']),
             ])
             ->headerActions([
@@ -414,6 +434,8 @@ class PlanSetsRelationManager extends RelationManager
 
     /**
      * Onde o plano está antes da revisão: a revisão planeja só o que resta.
+     * A contribuição em reanálise da Engenharia está fora do avanço atual --
+     * e, por isso, dentro do restante a planejar --, e o modal diz quanto.
      */
     private function revisionContext(MeasurementPlanSet $record): HtmlString
     {
@@ -422,10 +444,15 @@ class PlanSetsRelationManager extends RelationManager
         $context = $active instanceof MeasurementPlanVersion
             ? app(MeasurementPlanVersionService::class)->planningContext($active)
             : null;
+        $reanalysis = $this->reanalysisFor($record);
         $cells = [
             ['Versão vigente', $active instanceof MeasurementPlanVersion ? $active->label().($active->effective_from === null ? '' : ' · desde '.$active->effective_from->format('d/m/Y')) : '—'],
             ['Fundo de Obra vigente', blank($active?->construction_fund_amount) ? '—' : 'R$ '.MoneyFormatter::formatCurrencyForDisplay($active->construction_fund_amount)],
             ['Avanço físico atual', MeasurementPhysicalProgress::format($progress->currentBasisPoints())],
+            ...($reanalysis === [] ? [] : [[
+                'Em reanálise da Engenharia (fora do avanço atual)',
+                $this->percentagePoints($this->reanalysisBasisPoints($reanalysis)),
+            ]]),
             // O previsto de competências anteriores ao mês corrente que ainda
             // não foram medidas continua a medir e conta antes da revisão.
             ...(($context['pending'] ?? 0) === 0 ? [] : [[
@@ -441,7 +468,27 @@ class PlanSetsRelationManager extends RelationManager
                 e($cell[0]),
                 e($cell[1]),
             ))->implode('')
-            .'</dl>');
+            .'</dl>'
+            .$this->reanalysisPlanningNotice($reanalysis));
+    }
+
+    /**
+     * A frase que acompanha a célula da reanálise no contexto da revisão do
+     * plano; vazia fora da reanálise.
+     *
+     * @param  list<ReanalysisEntry>  $reanalysis
+     */
+    private function reanalysisPlanningNotice(array $reanalysis): string
+    {
+        if ($reanalysis === []) {
+            return '';
+        }
+
+        return '<p class="mt-3 text-sm text-gray-700 dark:text-gray-200">'.e(sprintf(
+            'O avanço físico atual exclui %s aprovados antes e agora em reanálise da Engenharia (%s), e o restante a planejar é calculado sem eles. Isso não indica, por si só, regressão física da obra.',
+            $this->percentagePoints($this->reanalysisBasisPoints($reanalysis)),
+            $this->reanalysisOrigins($reanalysis),
+        )).'</p>';
     }
 
     /**
@@ -523,13 +570,99 @@ class PlanSetsRelationManager extends RelationManager
     {
         $progress = $this->physicalProgressFor($record);
         $reference = $progress->initialReferenceDate?->format('d/m/Y');
+        $reanalysis = $this->reanalysisFor($record);
 
         return sprintf(
-            'Inicial %s%s · Medido %s',
+            'Inicial %s%s · Medido %s%s',
             MeasurementPhysicalProgress::format($progress->initialBasisPoints),
             $reference === null ? '' : " em {$reference}",
             MeasurementPhysicalProgress::format($progress->measuredBasisPoints()),
+            $reanalysis === [] ? '' : ' · Em reanálise: '.$this->percentagePoints($this->reanalysisBasisPoints($reanalysis)).' fora do avanço reconhecido',
         );
+    }
+
+    /**
+     * A frase inteira de cada medição em reanálise: quanto saiu do avanço
+     * reconhecido e desde quando. `null` fora da reanálise.
+     */
+    private function physicalProgressReanalysisTooltip(MeasurementPlanSet $record): ?string
+    {
+        $reanalysis = $this->reanalysisFor($record);
+
+        if ($reanalysis === []) {
+            return null;
+        }
+
+        return collect($reanalysis)
+            ->map(fn (array $entry): string => sprintf(
+                'Reanálise da Engenharia em andamento (%s): %s aprovados antes estão fora do avanço reconhecido.',
+                $this->reanalysisOrigin($entry),
+                $this->percentagePoints($entry['basis_points']),
+            ))
+            ->push('Isso não indica, por si só, regressão física da obra.')
+            ->implode(' ');
+    }
+
+    /**
+     * Contribuições do plano aprovadas antes e fora do avanço reconhecido
+     * enquanto a Engenharia reanalisa a medição. Só explicam a queda: nunca
+     * entram no avanço, no restante nem na ocupação das linhas.
+     *
+     * @return list<ReanalysisEntry>
+     */
+    private function reanalysisFor(MeasurementPlanSet $record): array
+    {
+        $this->reanalysisContributions ??= app(MeasurementPhysicalProgressService::class)->reanalysisContributions((int) $this->getOwnerRecord()->getKey());
+
+        return $this->reanalysisContributions[(int) $record->getKey()] ?? [];
+    }
+
+    /**
+     * @param  list<ReanalysisEntry>  $reanalysis
+     */
+    private function reanalysisBasisPoints(array $reanalysis): int
+    {
+        return array_sum(array_column($reanalysis, 'basis_points'));
+    }
+
+    /**
+     * "R1 · 06/2026, registro invalidado em 12/06/2026": a medição pela
+     * revisão e pela competência, com a data no fuso de negócio.
+     *
+     * @param  ReanalysisEntry  $entry
+     */
+    private function reanalysisOrigin(array $entry): string
+    {
+        $origin = $entry['revision_label'].($entry['reference_month'] === null ? '' : ' · '.$entry['reference_month']);
+
+        return $entry['invalidated_at'] === null
+            ? $origin
+            : $origin.', registro invalidado em '.BusinessTime::at($entry['invalidated_at'])->format('d/m/Y');
+    }
+
+    /**
+     * A origem de cada contribuição; com mais de uma medição em reanálise no
+     * plano, cada uma com os pontos dela.
+     *
+     * @param  list<ReanalysisEntry>  $reanalysis
+     */
+    private function reanalysisOrigins(array $reanalysis): string
+    {
+        if (count($reanalysis) === 1) {
+            return $this->reanalysisOrigin($reanalysis[0]);
+        }
+
+        return collect($reanalysis)
+            ->map(fn (array $entry): string => $this->percentagePoints($entry['basis_points']).' da '.$this->reanalysisOrigin($entry))
+            ->implode('; ');
+    }
+
+    /**
+     * Basis points em pontos percentuais: 1200 → '12,00 p.p.'.
+     */
+    private function percentagePoints(int $basisPoints): string
+    {
+        return str_replace('%', '', MeasurementPhysicalProgress::format($basisPoints)).' p.p.';
     }
 
     /**
