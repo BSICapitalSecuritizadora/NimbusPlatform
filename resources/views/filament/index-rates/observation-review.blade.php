@@ -1,13 +1,38 @@
 @php
     use App\Support\PuCalculator\PuDisplay;
 
-    /** @var array{incidents: \Illuminate\Support\Collection, syncs: \Illuminate\Support\Collection, imports: list<array<string, mixed>>, corrections: \Illuminate\Support\Collection} $review */
+    /** @var array{quarantined: \Illuminate\Support\Collection, quarantined_total: int, incidents: \Illuminate\Support\Collection, syncs: \Illuminate\Support\Collection, imports: list<array<string, mixed>>, corrections: \Illuminate\Support\Collection} $review */
 @endphp
 
 <div class="pu-detail flex flex-col gap-4 text-sm">
     <p class="text-secondary">
-        Nada aqui é aprovado sozinho. Valor <strong>retido</strong> (salto de 10× sobre a observação anterior, suspeita de unidade errada) só entra por nova importação com a confirmação marcada. Valor <strong>divergente</strong> do já registrado só muda pela correção governada (ação "Corrigir" na linha da observação), com motivo. A sincronização nunca sobrescreve.
+        Nada aqui é aprovado sozinho. A observação que a <strong>sincronização</strong> recebeu e não aceitou fica retida e só entra pela decisão governada na tabela "Observações retidas para revisão", nesta página. Valor <strong>retido na importação</strong> (salto de 10× sobre a observação anterior, suspeita de unidade errada) só entra por nova importação com a confirmação marcada. Valor <strong>divergente</strong> do já registrado só muda pela correção governada (ação "Corrigir" na linha da observação), com motivo. A sincronização nunca sobrescreve.
     </p>
+
+    <section class="pu-detail-card" aria-labelledby="pu-review-quarantined">
+        <h3 id="pu-review-quarantined" class="pu-detail-card-title">Observações retidas da sincronização ({{ $review['quarantined_total'] }} aguardando revisão)</h3>
+        @if ($review['quarantined']->isEmpty())
+            <p class="mt-2 text-secondary">Nenhuma observação da sincronização aguarda revisão.</p>
+        @else
+            <div class="pu-detail-scroll mt-2">
+                <table class="pu-detail-table">
+                    <thead><tr><th scope="col">Observação</th><th scope="col" class="pu-num">Valor recebido</th><th scope="col" class="pu-num">Referência</th><th scope="col">Motivo</th><th scope="col">Detecção</th></tr></thead>
+                    <tbody>
+                        @foreach ($review['quarantined'] as $retained)
+                            <tr>
+                                <th scope="row">{{ $retained->indexer }} {{ PuDisplay::date($retained->rate_date) ?? 'sem data' }}<span class="block text-muted">{{ $retained->source }}</span></th>
+                                <td class="pu-num">{{ $retained->received_value !== null ? PuDisplay::decimal((string) $retained->received_value, 8) : ($retained->raw_value ?? '—') }}</td>
+                                <td class="pu-num">{{ $retained->reference_value !== null ? PuDisplay::decimal((string) $retained->reference_value, 8) : '—' }}</td>
+                                <td><x-filament::badge size="sm" color="warning">{{ $retained->anomaly_type->label() }}</x-filament::badge><span class="block text-secondary">{{ $retained->reason }}</span></td>
+                                <td>{{ PuDisplay::dateTime($retained->first_detected_at) }}<span class="block text-muted">{{ $retained->occurrences }} vez(es)</span></td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <p class="mt-2 text-muted">Retida não é índice realizado: não estende curva nem atende a divulgação esperada. Decida (aprovar ou recusar, com motivo) na tabela "Observações retidas para revisão" desta página.</p>
+        @endif
+    </section>
 
     <section class="pu-detail-card" aria-labelledby="pu-review-incidents">
         <h3 id="pu-review-incidents" class="pu-detail-card-title">Incidentes de índice abertos</h3>

@@ -54,6 +54,7 @@ final class IndexRateObservationRecorder
 
     public function __construct(
         private readonly DailyFactorCalculator $factors,
+        private readonly IndexRateQuarantineLedger $quarantines,
     ) {}
 
     /**
@@ -83,7 +84,7 @@ final class IndexRateObservationRecorder
         }
 
         $warnings = [];
-        $outlier = $this->outlierWarning($indexer, $date, $value);
+        $outlier = $this->implausibilityWarning($indexer, $date, $value);
 
         if ($outlier !== null) {
             if (! $confirmOutlier) {
@@ -98,7 +99,7 @@ final class IndexRateObservationRecorder
         }
 
         try {
-            IndexRate::query()->create([
+            $created = IndexRate::query()->create([
                 'indexer' => $indexer->value,
                 'rate_date' => $date,
                 'rate_value' => $value,
@@ -125,6 +126,15 @@ final class IndexRateObservationRecorder
 
             return $this->classifyAgainstExisting($winner, $date, $value, (string) $provenance['source']);
         }
+
+        // A data passou a ter observação aceita: o que estava retido para ela
+        // deixa de aguardar revisão (a evidência fica na quarentena).
+        $this->quarantines->supersedePending(
+            $indexer,
+            $date,
+            sprintf('A data passou a ter observação aceita: %s, origem %s.', $value, (string) $provenance['source']),
+            resultingIndexRateId: (int) $created->getKey(),
+        );
 
         return new IndexRateRecordOutcome(IndexRateRecordOutcome::CREATED, $date, $value, warnings: $warnings);
     }
@@ -246,14 +256,27 @@ final class IndexRateObservationRecorder
         return new IndexRateRecordOutcome(IndexRateRecordOutcome::UNCHANGED, $date, $value, existing: $existing);
     }
 
-    private function outlierWarning(PuIndexer $indexer, CarbonImmutable $date, string $value): ?string
+    /**
+     * Observação realizada imediatamente anterior à data: a referência do salto
+     * suspeito.
+     */
+    public function previousRealized(PuIndexer $indexer, CarbonImmutable $date): ?IndexRate
     {
-        $previous = IndexRate::query()
+        return IndexRate::query()
             ->forIndexer($indexer)
             ->where('is_projected', false)
             ->whereDate('rate_date', '<', $date->toDateString())
             ->orderByDesc('rate_date')
             ->first();
+    }
+
+    /**
+     * O aviso de salto suspeito do valor contra a observação realizada anterior,
+     * ou nulo quando o valor é plausível.
+     */
+    public function implausibilityWarning(PuIndexer $indexer, CarbonImmutable $date, string $value): ?string
+    {
+        $previous = $this->previousRealized($indexer, $date);
 
         if (! $previous instanceof IndexRate) {
             return null;

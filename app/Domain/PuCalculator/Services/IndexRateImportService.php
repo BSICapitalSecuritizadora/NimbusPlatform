@@ -215,6 +215,7 @@ class IndexRateImportService
         $errors = [];
         $seenDates = [];
         $lineNumber = 0;
+        $semicolonSeparated = false;
 
         try {
             while (($columns = fgetcsv($handle, 0, ',')) !== false) {
@@ -222,6 +223,13 @@ class IndexRateImportService
 
                 if ($columns === [null] || $columns === []) {
                     continue;
+                }
+
+                // O BOM do UTF-8 (Excel) colado na primeira célula faria uma data na
+                // linha 1 parecer cabeçalho e sumir sem aviso.
+                if ($lineNumber === 1) {
+                    $columns[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string) $columns[0]);
+                    $semicolonSeparated = str_contains((string) $columns[0], ';');
                 }
 
                 $rawDate = trim((string) ($columns[0] ?? ''));
@@ -267,7 +275,9 @@ class IndexRateImportService
         }
 
         if ($rows === []) {
-            throw new InvalidArgumentException('Nenhuma linha válida encontrada no CSV. Verifique o cabeçalho (rate_date,rate_value) e o conteúdo.');
+            throw new InvalidArgumentException($semicolonSeparated
+                ? 'O CSV usa ponto e vírgula entre as colunas; o formato aceito é rate_date,rate_value com vírgula entre as colunas (vírgula decimal só entre aspas). Nada foi gravado.'
+                : 'Nenhuma linha válida encontrada no CSV. Verifique o cabeçalho (rate_date,rate_value) e o conteúdo.');
         }
 
         return [$rows, $errors];

@@ -118,8 +118,8 @@ return [
             // Insumos contratuais e o que mudou no passado oficial.
             'parameters_updated', 'event_changed', 'contractual_input_changed',
             'contractual_change_detected', 'curve_extension_diverged', 'curve_extended',
-            // Índice: correção governada e carga manual.
-            'index_rate_corrected', 'index_rates_imported',
+            // Índice: correção governada, carga manual e decisão sobre observação retida.
+            'index_rate_corrected', 'index_rates_imported', 'index_observation_reviewed',
             // Candidata, validação externa e promoção (maker/checker).
             'candidate_configuration_created', 'candidate_curve_persisted',
             'pu_candidate_curve_approved', 'pu_candidate_curve_rejected',

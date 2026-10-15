@@ -45,6 +45,7 @@ enum PuOperationalConditionType: string
     case IndexSyncFailed = 'index_sync_failed';
     case IndexObservationMissing = 'index_observation_missing';
     case IndexRateConflict = 'index_rate_conflict';
+    case IndexObservationPendingReview = 'index_observation_pending_review';
 
     // Obrigações, liquidação e conciliação (Fase 5).
     case ObligationsUnsettledPastDue = 'obligations_unsettled_past_due';
@@ -82,7 +83,8 @@ enum PuOperationalConditionType: string
             self::IndexSynchronizationOverdue,
             self::IndexSyncFailed,
             self::IndexObservationMissing,
-            self::IndexRateConflict => self::CHECK_INDEX,
+            self::IndexRateConflict,
+            self::IndexObservationPendingReview => self::CHECK_INDEX,
             self::ObligationsUnsettledPastDue,
             self::SettlementDivergent,
             self::SettlementConflictOpen,
@@ -166,6 +168,7 @@ enum PuOperationalConditionType: string
             self::IndexSyncFailed => 'Sincronização do índice falhou',
             self::IndexObservationMissing => 'Observação do índice ausente depois da divulgação esperada',
             self::IndexRateConflict => 'Fonte informa valor diferente do registrado',
+            self::IndexObservationPendingReview => 'Observação do índice retida para revisão',
             self::ObligationsUnsettledPastDue => 'Obrigações vencidas sem liquidação registrada',
             self::SettlementDivergent => 'Liquidação divergente do esperado',
             self::SettlementConflictOpen => 'Conflito de liquidação aguardando decisão',

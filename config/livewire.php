@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\ApplySpreadsheetImportUploadRules;
+
 return [
     'temporary_file_upload' => [
         /*
@@ -35,8 +37,35 @@ return [
             'max:'.(int) env('LIVEWIRE_TEMPORARY_UPLOAD_MAX_KB', 102400),
             'mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
         ],
+
+        /*
+        |----------------------------------------------------------------------
+        | Perfil de importação de planilha (CSV/XLSX)
+        |----------------------------------------------------------------------
+        |
+        | A regra acima vale para todo envio temporário e não aceita CSV. Os
+        | campos de importação que leem CSV (índices publicados, série projetada
+        | do IPCA, cronograma de pagamentos) pedem uma URL de envio assinada com
+        | `purpose=spreadsheet-import`, e só nela o middleware abaixo troca a
+        | regra por esta. Os demais envios da aplicação não mudam.
+        |
+        | `mimes` lê o conteúdo, não o nome: CSV separado por vírgula sai como
+        | `text/csv`, os demais textos como `text/plain` (`txt`). Executável,
+        | HTML, PHP ou PDF renomeado para `.csv` é recusado aqui. `extensions`
+        | exige o nome `.csv`/`.xlsx`. Um texto qualquer que passe por CSV ainda
+        | encontra os tipos aceitos do campo e a leitura estrita do importador.
+        |
+        */
+        'spreadsheet_import_rules' => [
+            'required',
+            'file',
+            'max:10240',
+            'mimes:csv,txt,xlsx',
+            'extensions:csv,xlsx',
+        ],
         'directory' => null,
-        'middleware' => null,
+        // O `throttle:60,1` é o padrão do Livewire quando a chave é nula.
+        'middleware' => ['throttle:60,1', ApplySpreadsheetImportUploadRules::class],
         'preview_mimes' => [
             'png', 'gif', 'bmp', 'wav', 'mp4',
             'mov', 'avi', 'wmv', 'mp3', 'm4a',

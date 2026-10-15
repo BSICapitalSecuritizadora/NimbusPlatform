@@ -8,6 +8,7 @@ use App\Domain\PuCalculator\Enums\PuIndexSyncOutcome;
 use App\Domain\PuCalculator\Enums\PuOperationalConditionType;
 use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Models\IndexRateCorrection;
+use App\Models\IndexRateQuarantine;
 use App\Models\PuIndexSyncAttempt;
 use App\Models\PuOperationalIncident;
 use Carbon\CarbonImmutable;
@@ -16,25 +17,35 @@ use Spatie\Activitylog\Models\Activity;
 
 /**
  * Fila de revisão das observações de índice (Fase 8, UI-5), lida do que já é
- * durável: incidentes de índice do monitor, sincronizações com valor divergente,
+ * durável: observações retidas pela sincronização (quarentena, Fase 8.1),
+ * incidentes de índice do monitor, sincronizações com valor divergente,
  * importações com valor retido ou em conflito (trilha de auditoria) e as
- * correções governadas. Não aprova nada sozinha: valor retido só entra por nova
- * importação confirmada; valor divergente, só por correção com motivo.
+ * correções governadas. Não aprova nada sozinha: a observação retida só entra
+ * pela decisão governada na tabela de retidas; o valor retido na importação, por
+ * nova importação confirmada; o divergente, por correção com motivo.
  */
 final class PuIndexObservationReview
 {
     private const LIMIT = 15;
 
     /**
-     * @return array{incidents: Collection<int, PuOperationalIncident>, syncs: Collection<int, PuIndexSyncAttempt>, imports: list<array<string, mixed>>, corrections: Collection<int, IndexRateCorrection>}
+     * @return array{quarantined: Collection<int, IndexRateQuarantine>, quarantined_total: int, incidents: Collection<int, PuOperationalIncident>, syncs: Collection<int, PuIndexSyncAttempt>, imports: list<array<string, mixed>>, corrections: Collection<int, IndexRateCorrection>}
      */
     public static function build(): array
     {
         return [
+            'quarantined' => IndexRateQuarantine::query()
+                ->pending()
+                ->orderByDesc('last_detected_at')
+                ->orderByDesc('id')
+                ->limit(self::LIMIT)
+                ->get(),
+            'quarantined_total' => IndexRateQuarantine::query()->pending()->count(),
             'incidents' => PuOperationalIncident::query()
                 ->open()
                 ->whereIn('type', [
                     PuOperationalConditionType::IndexRateConflict->value,
+                    PuOperationalConditionType::IndexObservationPendingReview->value,
                     PuOperationalConditionType::IndexObservationMissing->value,
                     PuOperationalConditionType::IndexSyncFailed->value,
                     PuOperationalConditionType::IndexSynchronizationOverdue->value,
