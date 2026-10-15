@@ -33,6 +33,7 @@ use App\Models\EmissionPuParameter;
 use App\Models\EmissionPuSettlement;
 use App\Models\EmissionPuSettlementConflict;
 use App\Models\IndexRateCorrection;
+use App\Models\IndexRateQuarantine;
 use App\Models\PuOperationalIncident;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -593,6 +594,36 @@ class PuAuditLogService
         }
 
         $logger->event('index_rates_imported')->log('pu_index_rates_imported');
+    }
+
+    /**
+     * Decisão sobre uma observação em quarentena (Fase 8.1): quem decidiu, o quê,
+     * por quê, o valor recebido e o resultado governado (observação registrada ou
+     * correção). O registro durável é a própria quarentena; esta é a trilha.
+     */
+    public function logIndexObservationReviewed(IndexRateQuarantine $quarantine): void
+    {
+        $logger = activity(self::LOG_NAME)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'index_rate_quarantine_id' => $quarantine->id,
+                'indexer' => $quarantine->indexer,
+                'rate_date' => $quarantine->rate_date?->toDateString(),
+                'source' => $quarantine->source,
+                'anomaly_type' => $quarantine->anomaly_type->value,
+                'received_value' => $quarantine->received_value !== null ? (string) $quarantine->received_value : null,
+                'reference_value' => $quarantine->reference_value !== null ? (string) $quarantine->reference_value : null,
+                'decision' => $quarantine->status->value,
+                'reason' => $quarantine->decision_reason,
+                'resulting_index_rate_id' => $quarantine->resulting_index_rate_id,
+                'resulting_correction_id' => $quarantine->resulting_correction_id,
+            ]);
+
+        if (($causer = $this->causer($quarantine->decided_by)) !== null) {
+            $logger->causedBy($causer);
+        }
+
+        $logger->event('index_observation_reviewed')->log('pu_index_observation_reviewed');
     }
 
     /**

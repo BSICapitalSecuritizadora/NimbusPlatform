@@ -35,6 +35,7 @@ final class IndexRateSyncResult
         public array $blockFailures = [],
         public array $notices = [],
         public array $conflicts = [],
+        public int $quarantined = 0,
     ) {}
 
     /**
@@ -113,6 +114,7 @@ final class IndexRateSyncResult
             'block_failures' => $this->blockFailures,
             'notices' => $this->notices,
             'conflicts' => $this->conflicts,
+            'quarantined' => $this->quarantined,
             'errors' => $this->errors,
         ];
     }

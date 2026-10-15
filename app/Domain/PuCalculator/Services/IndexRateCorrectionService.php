@@ -33,7 +33,9 @@ use InvalidArgumentException;
  * homologada; o PU oficial já homologado continua rastreável à taxa que usou.
  *
  * Travas: emissões afetadas (por id) → observação → versões, a mesma ordem
- * emissão → versão da homologação e da extensão.
+ * emissão → versão da homologação e da extensão. As pendências da quarentena
+ * da data só são encerradas depois do commit: a revisão trava pendência antes
+ * de emissão, e a ordem inversa aqui fecharia um ciclo.
  */
 final class IndexRateCorrectionService
 {
@@ -42,6 +44,7 @@ final class IndexRateCorrectionService
         private readonly PuCurveExtensionService $extensions,
         private readonly PuAuditLogService $auditLog,
         private readonly PuFinancialObligationService $obligations,
+        private readonly IndexRateQuarantineLedger $quarantines,
     ) {}
 
     public function correct(
@@ -173,6 +176,17 @@ final class IndexRateCorrectionService
 
             return $correction;
         });
+
+        // Depois do commit (e fora das travas de emissão): o que estava retido para
+        // a data deixa de aguardar revisão. Se a fonte ainda divergir do valor
+        // corrigido, a próxima sincronização registra a divergência de novo.
+        $this->quarantines->supersedePending(
+            $indexer,
+            $date,
+            sprintf('A observação da data foi corrigida (correção #%d): %s.', $correction->id, $value),
+            resultingIndexRateId: $correction->index_rate_id,
+            resultingCorrectionId: (int) $correction->id,
+        );
 
         $this->auditLog->logIndexRateCorrected($correction);
 

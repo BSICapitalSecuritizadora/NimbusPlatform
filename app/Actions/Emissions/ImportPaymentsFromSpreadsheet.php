@@ -2,6 +2,7 @@
 
 namespace App\Actions\Emissions;
 
+use App\Exceptions\PaymentSpreadsheetImportException;
 use App\Models\Emission;
 use App\Models\Payment;
 use Carbon\Carbon;
@@ -15,6 +16,12 @@ use Spatie\SimpleExcel\SimpleExcelReader;
  * desde a Fase 5 o valor calculado pela curva oficial e a liquidação vivem nas
  * obrigações financeiras e nunca são escritos ou lidos daqui. A importação é uma
  * transação só, e as obrigações da emissão são refeitas uma vez depois do commit.
+ *
+ * O arquivo é recusado inteiro, sem gravar nada, quando nenhuma linha é
+ * reconhecida (CSV separado por ponto e vírgula, cabeçalho desconhecido, arquivo
+ * vazio) ou quando uma linha com data traz valor que não é número: antes, o
+ * primeiro caso dizia "0 pagamentos processados" como sucesso e o segundo
+ * gravava zero no lugar do valor ilegível.
  */
 class ImportPaymentsFromSpreadsheet
 {
@@ -23,6 +30,13 @@ class ImportPaymentsFromSpreadsheet
         'interest_value',
         'amortization_value',
         'extra_amortization_value',
+    ];
+
+    protected const FIELD_LABELS = [
+        'premium_value' => 'Prêmio',
+        'interest_value' => 'Juros',
+        'amortization_value' => 'Amortização',
+        'extra_amortization_value' => 'Amortização Extra',
     ];
 
     protected const HEADER_FIELD_MAP = [
@@ -50,12 +64,23 @@ class ImportPaymentsFromSpreadsheet
             array_shift($rows);
         }
 
-        return DB::transaction(fn (): int => $this->importRows($rows, $columnMap, $emission));
+        $importedPayments = DB::transaction(fn (): int => $this->importRows($rows, $columnMap, $emission));
+
+        if ($importedPayments === 0) {
+            throw new PaymentSpreadsheetImportException(
+                'Nenhuma linha de pagamento foi reconhecida. Confira o cabeçalho (Data, Prêmio, Juros, Amortização, Amortização Extra) '
+                .'e, em CSV, a vírgula como separador de colunas -- valores com vírgula decimal vão entre aspas.',
+            );
+        }
+
+        return $importedPayments;
     }
 
     /**
      * @param  list<array<int, mixed>>  $rows
      * @param  array{has_header: bool, columns: array<string, int>}  $columnMap
+     *
+     * @throws PaymentSpreadsheetImportException
      */
     protected function importRows(array $rows, array $columnMap, Emission $emission): int
     {
@@ -63,6 +88,11 @@ class ImportPaymentsFromSpreadsheet
 
         foreach ($rows as $row) {
             $paymentDate = $this->parseDate($row[$columnMap['columns']['payment_date']] ?? null);
+
+            if ($paymentDate) {
+                $this->assertAmountsAreNumeric($row, $columnMap['columns'], $paymentDate);
+            }
+
             $paymentValues = $this->extractPaymentValues($row, $columnMap['columns']);
 
             if (! $paymentDate || ! $paymentValues['should_import']) {
@@ -156,6 +186,37 @@ class ImportPaymentsFromSpreadsheet
             'should_import' => $hasAnyMappedAmount,
             'values' => $values,
         ];
+    }
+
+    /**
+     * Célula vazia é "sem valor" (vale zero, como sempre); célula preenchida com
+     * algo que não é número é erro do arquivo e recusa a importação inteira.
+     *
+     * @param  array<int, mixed>  $row
+     * @param  array<string, int>  $columnMap
+     *
+     * @throws PaymentSpreadsheetImportException
+     */
+    protected function assertAmountsAreNumeric(array $row, array $columnMap, string $paymentDate): void
+    {
+        foreach (self::PAYMENT_FIELDS as $field) {
+            if (! array_key_exists($field, $columnMap)) {
+                continue;
+            }
+
+            $cell = $row[$columnMap[$field]] ?? null;
+
+            if ($cell === null || (is_string($cell) && trim($cell) === '') || $this->parseAmount($cell) !== null) {
+                continue;
+            }
+
+            throw new PaymentSpreadsheetImportException(sprintf(
+                'Pagamento de %s: o valor "%s" em %s não é um número.',
+                Carbon::parse($paymentDate)->format('d/m/Y'),
+                is_scalar($cell) ? mb_strimwidth((string) $cell, 0, 40, '…') : get_debug_type($cell),
+                self::FIELD_LABELS[$field],
+            ));
+        }
     }
 
     /**

@@ -52,6 +52,7 @@ final class PuIncidentGuidance
             Type::IndexSyncFailed => 'A fonte do índice falhou: ver a categoria da falha no histórico de sincronização e tentar de novo quando a fonte responder.',
             Type::IndexObservationMissing => 'A fonte respondeu sem a observação esperada depois da divulgação: conferir no BCB/SGS e registrar a observação pela importação, se oficial.',
             Type::IndexRateConflict => 'A fonte informa valor diferente do registrado: analisar e, se for o caso, registrar a correção governada da observação (motivo obrigatório).',
+            Type::IndexObservationPendingReview => 'A fonte entregou observação que não entrou no índice (salto suspeito, fora do domínio, divergente ou malformada): conferir na fonte e decidir em "Observações retidas para revisão", em Índices. Enquanto pendente, ela não vale como índice realizado.',
             Type::ObligationsUnsettledPastDue => 'Há obrigações vencidas sem liquidação registrada: registrar a liquidação (com comprovante) na aba de obrigações da emissão.',
             Type::SettlementDivergent => 'A liquidação difere do esperado oficial: analisar o comprovante; se o registro estiver errado, corrigir a liquidação com motivo. Divergência real fica registrada.',
             Type::SettlementConflictOpen => 'Um fato de liquidação contradiz o livro: decidir o conflito (aceitar ou rejeitar, com motivo) na aba de obrigações da emissão.',
@@ -84,7 +85,8 @@ final class PuIncidentGuidance
             Type::IndexSynchronizationOverdue,
             Type::IndexSyncFailed,
             Type::IndexObservationMissing,
-            Type::IndexRateConflict => self::TARGET_INDEX,
+            Type::IndexRateConflict,
+            Type::IndexObservationPendingReview => self::TARGET_INDEX,
             Type::QueuedJobsFailed => self::TARGET_NONE,
             default => self::TARGET_OPERATIONS,
         };

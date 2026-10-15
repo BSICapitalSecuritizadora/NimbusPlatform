@@ -10,8 +10,10 @@ use App\Domain\PuCalculator\DTOs\PuOfficialCurveStatus;
 use App\Domain\PuCalculator\DTOs\PuOperationalCondition;
 use App\Domain\PuCalculator\DTOs\PuOperationalSnapshot;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Enums\PuIndexAnomalyType;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexerCapability;
+use App\Domain\PuCalculator\Enums\PuIndexQuarantineStatus;
 use App\Domain\PuCalculator\Enums\PuIndexSyncOutcome;
 use App\Domain\PuCalculator\Enums\PuMonitorRunStatus;
 use App\Domain\PuCalculator\Enums\PuObligationCalculationState;
@@ -31,6 +33,7 @@ use App\Models\EmissionPuParameter;
 use App\Models\EmissionPuReconciliation;
 use App\Models\EmissionPuSettlementConflict;
 use App\Models\IndexRate;
+use App\Models\IndexRateQuarantine;
 use App\Models\PuIndexSyncAttempt;
 use App\Models\PuMonitorRun;
 use App\Models\PuObligationRefreshRequest;
@@ -941,6 +944,24 @@ final class PuOperationalHealthService
                 );
             }
 
+            // Fase 8.1: o que a fonte entregou e ficou retido não deixa o índice parecer saudável.
+            $pendingReview = $this->pendingQuarantine($indexer);
+
+            if ($pendingReview['count'] > 0) {
+                $conditions[] = $this->condition(
+                    PuOperationalConditionType::IndexObservationPendingReview,
+                    sprintf(
+                        '%d observação(ões) de %s recebida(s) da fonte e retida(s) para revisão (a mais antiga%s: %s). Nenhuma vale como índice realizado até a decisão.',
+                        $pendingReview['count'],
+                        $indexer->value,
+                        $pendingReview['oldest_date'] !== null ? ' de '.CarbonImmutable::parse($pendingReview['oldest_date'])->format('d/m/Y') : ', sem data legível',
+                        $pendingReview['oldest_type']?->label() ?? '—',
+                    ),
+                    ['indexer' => $indexer->value],
+                    [...$context, 'pending_review' => $pendingReview['count'], 'by_type' => $pendingReview['by_type'], 'oldest_quarantine_id' => $pendingReview['oldest_id']],
+                );
+            }
+
             $expectation = $indexer === PuIndexer::Cdi && $operational > 0
                 ? $this->cdiExpectation($attempts, $emissions, $officials, $now, $context)
                 : ['summary' => [], 'conditions' => []];
@@ -962,6 +983,7 @@ final class PuOperationalHealthService
                 ] : null,
                 'last_successful_attempt_at' => $finished->first(fn (PuIndexSyncAttempt $attempt): bool => $attempt->outcome?->reachedProvider() === true && $attempt->outcome !== PuIndexSyncOutcome::PartialFailure)?->finished_at?->toIso8601String(),
                 'consecutive_failures' => $consecutive,
+                'pending_review' => $pendingReview['count'],
                 // Tentativa começada e não terminada: em andamento, ou um processo que
                 // morreu no meio (a próxima tentativa agendada a substitui).
                 'in_progress_attempt_started_at' => $attempts->first(fn (PuIndexSyncAttempt $attempt): bool => $attempt->finished_at === null)?->started_at?->toIso8601String(),
@@ -1040,18 +1062,77 @@ final class PuOperationalHealthService
             return ['summary' => $summary, 'conditions' => []];
         }
 
+        // A fonte pode ter entregue a data e o valor ter ficado retido: o CDI continua
+        // ausente (quarentena não é índice realizado), mas o motivo é outro.
+        $retained = IndexRateQuarantine::query()
+            ->where('indexer', PuIndexer::Cdi->value)
+            ->whereDate('rate_date', $missing->toDateString())
+            ->whereIn('status', [PuIndexQuarantineStatus::PendingReview->value, PuIndexQuarantineStatus::Rejected->value])
+            ->orderByDesc('id')
+            ->first();
+
         return ['summary' => $summary, 'conditions' => [$this->condition(
             PuOperationalConditionType::IndexObservationMissing,
-            sprintf(
-                'O CDI de %s era esperado desde %s e a fonte, consultada em %s, não o trouxe (%s). Nenhum CDI é repetido nem projetado no lugar.',
-                $missing->format('d/m/Y'),
-                BusinessTime::at($expectedAt)->format('d/m/Y H:i'),
-                $attempt->finished_at !== null ? BusinessTime::at($attempt->finished_at)->format('d/m/Y H:i') : '—',
-                $attempt->outcome?->label() ?? '—',
-            ),
+            $retained instanceof IndexRateQuarantine
+                ? sprintf(
+                    'O CDI de %s era esperado desde %s; a fonte, consultada em %s, entregou %s, que ficou retido (%s; %s) e não vale como índice realizado. Nenhum CDI é repetido nem projetado no lugar.',
+                    $missing->format('d/m/Y'),
+                    BusinessTime::at($expectedAt)->format('d/m/Y H:i'),
+                    $attempt->finished_at !== null ? BusinessTime::at($attempt->finished_at)->format('d/m/Y H:i') : '—',
+                    $retained->received_value !== null ? (string) $retained->received_value : (string) $retained->raw_value,
+                    $retained->anomaly_type->label(),
+                    mb_strtolower($retained->status->label()),
+                )
+                : sprintf(
+                    'O CDI de %s era esperado desde %s e a fonte, consultada em %s, não o trouxe (%s). Nenhum CDI é repetido nem projetado no lugar.',
+                    $missing->format('d/m/Y'),
+                    BusinessTime::at($expectedAt)->format('d/m/Y H:i'),
+                    $attempt->finished_at !== null ? BusinessTime::at($attempt->finished_at)->format('d/m/Y H:i') : '—',
+                    $attempt->outcome?->label() ?? '—',
+                ),
             $scope,
-            [...$context, 'expected_available_at' => $expectedAt->toIso8601String(), 'sync_attempt_id' => $attempt->id, 'sync_outcome' => $attempt->outcome?->value],
+            [
+                ...$context,
+                'expected_available_at' => $expectedAt->toIso8601String(),
+                'sync_attempt_id' => $attempt->id,
+                'sync_outcome' => $attempt->outcome?->value,
+                'quarantine_id' => $retained?->id,
+                'quarantine_status' => $retained?->status->value,
+            ],
         )]];
+    }
+
+    /**
+     * Pendências de revisão de um indexador: contagem por tipo e a mais antiga.
+     *
+     * @return array{count: int, by_type: array<string, int>, oldest_id: ?int, oldest_date: ?string, oldest_type: ?PuIndexAnomalyType}
+     */
+    private function pendingQuarantine(PuIndexer $indexer): array
+    {
+        $byType = IndexRateQuarantine::query()
+            ->pending()
+            ->where('indexer', $indexer->value)
+            ->toBase()
+            ->selectRaw('anomaly_type, COUNT(*) as total')
+            ->groupBy('anomaly_type')
+            ->pluck('total', 'anomaly_type')
+            ->map(fn ($total): int => (int) $total)
+            ->all();
+
+        $oldest = $byType === [] ? null : IndexRateQuarantine::query()
+            ->pending()
+            ->where('indexer', $indexer->value)
+            ->orderBy('first_detected_at')
+            ->orderBy('id')
+            ->first();
+
+        return [
+            'count' => array_sum($byType),
+            'by_type' => $byType,
+            'oldest_id' => $oldest?->id,
+            'oldest_date' => $oldest?->rate_date?->toDateString(),
+            'oldest_type' => $oldest?->anomaly_type,
+        ];
     }
 
     private function calendarNextBusinessDay(CarbonImmutable $date, string $calendar): CarbonImmutable

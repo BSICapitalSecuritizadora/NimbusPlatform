@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets\IndexRates;
 
 use App\Models\IndexRate;
+use App\Models\IndexRateQuarantine;
 use Carbon\CarbonImmutable;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Facades\Cache;
@@ -67,6 +68,8 @@ class IndexSyncOverview extends Widget
                 $lastSyncedAt = CarbonImmutable::parse($lastFetched);
             }
 
+            $pendingReview = IndexRateQuarantine::query()->pending()->where('indexer', $key)->count();
+
             $state = 'pending';
             $stateLabel = 'Pendente';
             $stateColor = 'warning';
@@ -75,6 +78,11 @@ class IndexSyncOverview extends Widget
                 $state = 'failed';
                 $stateLabel = 'Falha na sincronização';
                 $stateColor = 'danger';
+            } elseif ($pendingReview > 0) {
+                // Sincronizou, mas trouxe o que não entrou: não é estado saudável.
+                $state = 'review';
+                $stateLabel = 'Revisão pendente';
+                $stateColor = 'warning';
             } elseif ($lastSyncedAt !== null) {
                 $state = 'synced';
                 $stateLabel = 'Sincronizado';
@@ -99,6 +107,7 @@ class IndexSyncOverview extends Widget
                 'error' => is_array($syncStatus) ? ($syncStatus['error'] ?? null) : null,
                 'total_count' => $totalCount,
                 'projected_count' => $projectedCount,
+                'pending_review' => $pendingReview,
             ];
         }
 

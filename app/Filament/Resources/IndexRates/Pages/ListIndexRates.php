@@ -9,7 +9,9 @@ use App\Domain\PuCalculator\Services\IndexRateImportService;
 use App\Domain\PuCalculator\Services\IndexRateSyncService;
 use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Filament\Resources\IndexRates\IndexRateResource;
+use App\Filament\Support\AcceptsSpreadsheetImportUploads;
 use App\Filament\Widgets\IndexRates\IndexSyncOverview;
+use App\Filament\Widgets\IndexRates\PuIndexQuarantineWidget;
 use App\Filament\Widgets\IndexRates\PuIndexSyncAttemptsWidget;
 use App\Models\IndexRate;
 use App\Support\PuCalculator\PuIndexObservationReview;
@@ -31,6 +33,8 @@ use Illuminate\Support\Facades\Storage;
 
 class ListIndexRates extends ListRecords
 {
+    use AcceptsSpreadsheetImportUploads;
+
     protected static string $resource = IndexRateResource::class;
 
     protected static ?string $title = 'Índices (CDI/IPCA)';
@@ -63,6 +67,7 @@ class ListIndexRates extends ListRecords
     protected function getFooterWidgets(): array
     {
         return [
+            PuIndexQuarantineWidget::class,
             PuIndexSyncAttemptsWidget::class,
         ];
     }
@@ -236,7 +241,7 @@ class ListIndexRates extends ListRecords
                 ->icon('heroicon-o-magnifying-glass-circle')
                 ->color('gray')
                 ->modalHeading('Revisão das observações de índice')
-                ->modalDescription('Valores retidos, conflitos com o registrado, incidentes de índice e correções governadas recentes.')
+                ->modalDescription('Observações retidas da sincronização, valores retidos na importação, conflitos com o registrado, incidentes de índice e correções governadas recentes.')
                 ->modalWidth(Width::SixExtraLarge)
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar')
@@ -250,6 +255,17 @@ class ListIndexRates extends ListRecords
                 ->icon('heroicon-o-ellipsis-horizontal')
                 ->color('gray')
                 ->button(),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function spreadsheetImportUploadFields(): array
+    {
+        return [
+            'importPublished' => 'csv_file',
+            'importProjectedSeries' => 'csv_file',
         ];
     }
 
@@ -391,12 +407,16 @@ class ListIndexRates extends ListRecords
                     $body .= "\n".implode("\n", $result->notices);
                 }
 
+                if ($result->quarantined > 0) {
+                    $body .= "\n".sprintf('%d observação(ões) recebida(s) e retida(s) para revisão: não entram no índice até a decisão em "Observações retidas para revisão".', $result->quarantined);
+                }
+
                 $notification = Notification::make()->title($title)->body($body);
 
                 $problems = array_merge($result->blockFailures, $result->errors);
 
-                if ($problems !== []) {
-                    $notification->warning()->body($body."\n".implode("\n", $problems))->persistent();
+                if ($problems !== [] || $result->quarantined > 0) {
+                    $notification->warning()->body(rtrim($body."\n".implode("\n", $problems)))->persistent();
                 } else {
                     $notification->success();
                 }

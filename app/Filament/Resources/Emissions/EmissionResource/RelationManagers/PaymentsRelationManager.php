@@ -9,7 +9,9 @@ use App\Domain\PuCalculator\Services\EmissionPuReader;
 use App\Domain\PuCalculator\Services\PuFinancialObligationService;
 use App\Enums\AccessPermission;
 use App\Enums\PaymentRemovalOutcome;
+use App\Exceptions\PaymentSpreadsheetImportException;
 use App\Filament\Pages\SpreadsheetTemplates as SpreadsheetTemplatesPage;
+use App\Filament\Support\AcceptsSpreadsheetImportUploads;
 use App\Models\Payment;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
@@ -34,6 +36,8 @@ use Illuminate\Support\Facades\Storage;
 
 class PaymentsRelationManager extends RelationManager
 {
+    use AcceptsSpreadsheetImportUploads;
+
     protected static string $relationship = 'payments';
 
     protected static ?string $recordTitleAttribute = 'payment_date';
@@ -142,41 +146,8 @@ class PaymentsRelationManager extends RelationManager
                     ->tooltip('Configurar mapeamento de colunas do template')
                     ->url(fn (): string => SpreadsheetTemplatesPage::getUrl(panel: 'admin'))
                     ->visible(fn (): bool => auth()->user()?->can('settings.view') ?? false),
-                Action::make('import')
-                    ->label('Importar Dados')
-                    ->icon('heroicon-o-arrow-up-tray')
-                    ->color('primary')
-                    ->tooltip('Importar pagamentos via planilha (.xlsx / .csv)')
-                    ->modalHeading('Importar Planilha de Pagamentos')
-                    ->modalSubmitActionLabel('Importar Dados')
-                    ->form([
-                        FileUpload::make('file')
-                            ->label('Planilha de Pagamentos (.xlsx / .csv)')
-                            ->disk('local')
-                            ->directory('imports')
-                            ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/csv', 'text/csv'])
-                            ->required(),
-                    ])
-                    ->action(function (array $data, RelationManager $livewire): void {
-                        $path = Storage::disk('local')->path($data['file']);
-
-                        try {
-                            $count = app(ImportPaymentsFromSpreadsheet::class)->handle($path, $livewire->ownerRecord);
-                        } catch (\Throwable) {
-                            Notification::make()
-                                ->title('Erro ao processar o arquivo')
-                                ->danger()
-                                ->send();
-
-                            return;
-                        }
-
-                        Notification::make()
-                            ->title('Importação concluída com sucesso!')
-                            ->body("{$count} pagamentos foram processados.")
-                            ->success()
-                            ->send();
-                    }),
+                $this->makeImportPaymentsAction('import')
+                    ->tooltip('Importar pagamentos via planilha (.xlsx / .csv)'),
                 Action::make('reconcileWithOfficialCurve')
                     ->label('Atualizar obrigações pela curva oficial')
                     ->icon('heroicon-o-arrow-path')
@@ -228,45 +199,95 @@ class PaymentsRelationManager extends RelationManager
             ->emptyStateHeading('Nenhum pagamento cadastrado')
             ->emptyStateDescription('Importe uma planilha (.xlsx / .csv) ou cadastre manualmente para compor o cronograma desta emissão.')
             ->emptyStateActions([
-                Action::make('empty_import')
-                    ->label('Importar Dados')
-                    ->icon('heroicon-o-arrow-up-tray')
-                    ->color('primary')
-                    ->modalHeading('Importar Planilha de Pagamentos')
-                    ->modalSubmitActionLabel('Importar Dados')
-                    ->form([
-                        FileUpload::make('file')
-                            ->label('Planilha de Pagamentos (.xlsx / .csv)')
-                            ->disk('local')
-                            ->directory('imports')
-                            ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/csv', 'text/csv'])
-                            ->required(),
-                    ])
-                    ->action(function (array $data, RelationManager $livewire): void {
-                        $path = Storage::disk('local')->path($data['file']);
-
-                        try {
-                            $count = app(ImportPaymentsFromSpreadsheet::class)->handle($path, $livewire->ownerRecord);
-                        } catch (\Throwable) {
-                            Notification::make()
-                                ->title('Erro ao processar o arquivo')
-                                ->danger()
-                                ->send();
-
-                            return;
-                        }
-
-                        Notification::make()
-                            ->title('Importação concluída com sucesso!')
-                            ->body("{$count} pagamentos foram processados.")
-                            ->success()
-                            ->send();
-                    }),
+                $this->makeImportPaymentsAction('empty_import'),
                 CreateAction::make('empty_create')
                     ->label('Cadastrar Pagamento')
                     ->icon('heroicon-m-plus')
                     ->color('gray'),
             ]);
+    }
+
+    /**
+     * Importa o cronograma informado por planilha (XLSX ou CSV).
+     *
+     * Importar grava e sobrescreve datas do cronograma, então exige
+     * `emissions.update`. A ação continua na página de visualização para quem
+     * edita a emissão (como a remoção de data), mas a ação genérica não tinha
+     * checagem nenhuma: quem só visualizava a emissão importava por ali.
+     *
+     * O CSV chega pelo perfil de importação do envio temporário
+     * ({@see AcceptsSpreadsheetImportUploads}). O `mimeTypeMap` normaliza o tipo
+     * que o navegador informa (`application/vnd.ms-excel` no Windows com Excel);
+     * o servidor lê o conteúdo, e um CSV separado por ponto e vírgula ou com uma
+     * coluna só sai como `text/plain`.
+     */
+    protected function makeImportPaymentsAction(string $name): Action
+    {
+        return Action::make($name)
+            ->label('Importar Dados')
+            ->icon('heroicon-o-arrow-up-tray')
+            ->color('primary')
+            ->visible(fn (): bool => $this->canImportPayments())
+            ->authorize(fn (): bool => $this->canImportPayments())
+            ->modalHeading('Importar Planilha de Pagamentos')
+            ->modalSubmitActionLabel('Importar Dados')
+            ->form([
+                FileUpload::make('file')
+                    ->label('Planilha de Pagamentos (.xlsx / .csv)')
+                    ->disk('local')
+                    ->directory('imports')
+                    ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/csv', 'text/csv', 'text/plain'])
+                    ->mimeTypeMap(['csv' => 'text/csv'])
+                    ->required(),
+            ])
+            ->action(function (array $data, RelationManager $livewire): void {
+                $path = Storage::disk('local')->path($data['file']);
+
+                try {
+                    $count = app(ImportPaymentsFromSpreadsheet::class)->handle($path, $livewire->ownerRecord);
+                } catch (PaymentSpreadsheetImportException $exception) {
+                    Notification::make()
+                        ->title('Planilha não importada')
+                        ->body($exception->getMessage().' Nenhum pagamento foi gravado.')
+                        ->danger()
+                        ->persistent()
+                        ->send();
+
+                    return;
+                } catch (\Throwable $exception) {
+                    report($exception);
+
+                    Notification::make()
+                        ->title('Erro ao processar o arquivo')
+                        ->body('Nenhum pagamento foi gravado.')
+                        ->danger()
+                        ->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title('Importação concluída com sucesso!')
+                    ->body("{$count} pagamentos foram processados.")
+                    ->success()
+                    ->send();
+            });
+    }
+
+    protected function canImportPayments(): bool
+    {
+        return auth()->user()?->can(AccessPermission::EmissionsUpdate->value) ?? false;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function spreadsheetImportUploadFields(): array
+    {
+        return [
+            'import' => 'file',
+            'empty_import' => 'file',
+        ];
     }
 
     /**

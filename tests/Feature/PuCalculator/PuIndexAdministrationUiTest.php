@@ -129,8 +129,9 @@ it('does not offer correction of a projected row', function () {
 
 it('retains an implausible imported value until the operator explicitly confirms it', function () {
     Storage::fake('local');
-    // A regra global de upload do Livewire hoje recusa CSV (dívida registrada fora
-    // do PU): o teste libera CSV só aqui para exercitar a lógica da importação.
+    // O atalho de envio do teste do Livewire valida com a regra global e pula o
+    // endpoint, onde o perfil de importação libera o CSV; o envio pelo endpoint
+    // está em SpreadsheetImportUploadTest. Aqui só a lógica da importação.
     config()->set('livewire.temporary_file_upload.rules', ['required', 'file', 'max:102400', 'mimes:csv,txt']);
     Fx::emission();
     $this->actingAs(p8xUser([]));

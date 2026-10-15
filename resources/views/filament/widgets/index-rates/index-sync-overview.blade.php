@@ -42,6 +42,13 @@
                                 </svg>
                                 Sincronizado
                             </span>
+                        @elseif ($card['state'] === 'review')
+                            <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+                                <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                                </svg>
+                                Revisão pendente
+                            </span>
                         @elseif ($card['state'] === 'failed')
                             <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
                                 <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -85,6 +92,12 @@
                             </div>
                         </div>
                     </div>
+
+                    @if ($card['pending_review'] > 0)
+                        <div class="mt-2.5 rounded-md bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
+                            {{ $card['pending_review'] }} observação(ões) recebida(s) da fonte e retida(s) para revisão. Nenhuma vale como índice realizado até a decisão — veja "Observações retidas para revisão" abaixo.
+                        </div>
+                    @endif
 
                     @if ($card['error'])
                         <div class="mt-2.5 rounded-md bg-rose-50 p-2 text-xs text-rose-800 dark:bg-rose-500/10 dark:text-rose-200">

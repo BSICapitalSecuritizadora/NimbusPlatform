@@ -6,7 +6,10 @@ namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\DTOs\BcbSgsFetchResult;
 use App\Domain\PuCalculator\DTOs\BcbSgsRateData;
+use App\Domain\PuCalculator\DTOs\IndexRateAnomaly;
+use App\Domain\PuCalculator\DTOs\IndexRateRecordOutcome;
 use App\Domain\PuCalculator\DTOs\IndexRateSyncResult;
+use App\Domain\PuCalculator\Enums\PuIndexAnomalyType;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Models\IndexRate;
 use App\Models\IndexRateCorrection;
@@ -34,6 +37,12 @@ use InvalidArgumentException;
  *  - com `update_if_changed`/`overwrite` (escolha explícita do operador) passa pelo
  *    {@see IndexRateCorrectionService} como revisão da fonte: valor anterior no livro de correções,
  *    trilha, e as curvas governadas que o usavam ficam marcadas para reprocessamento -- nunca reescritas.
+ *    Revisão com salto suspeito não é aplicada sozinha: fica em quarentena.
+ *
+ * Fase 8.1 -- o que a fonte entregou e não entrou fica em quarentena ({@see IndexRateQuarantineLedger}),
+ * com a tentativa, o valor recebido e o motivo: salto suspeito, recusa de domínio, divergência do valor
+ * registrado e entrada malformada. Quarentena não é índice realizado: nenhum leitor de índice a consulta,
+ * e só a revisão governada transforma um valor retido em observação aceita.
  */
 class IndexRateSyncService
 {
@@ -52,6 +61,7 @@ class IndexRateSyncService
         private readonly IndexRateObservationRecorder $recorder,
         private readonly IndexRateCorrectionService $corrections,
         private readonly PuIndexSyncAttemptRecorder $attempts,
+        private readonly IndexRateQuarantineLedger $quarantines,
     ) {}
 
     /**
@@ -91,7 +101,7 @@ class IndexRateSyncService
         $invalidEntries = 0;
 
         try {
-            $result = $this->performSync($indexer, $from, $to, $dryRun, $userId, $overwritePolicy, $invalidEntries);
+            $result = $this->performSync($indexer, $from, $to, $dryRun, $userId, $overwritePolicy, $invalidEntries, $attempt?->id);
         } catch (\Throwable $exception) {
             $this->attempts->fail($attempt, $exception);
 
@@ -111,6 +121,7 @@ class IndexRateSyncService
         ?int $userId,
         ?string $overwritePolicy,
         int &$invalidEntries,
+        ?int $attemptId,
     ): IndexRateSyncResult {
         $config = $this->seriesConfig($indexer);
         $policy = $this->resolvePolicy($overwritePolicy);
@@ -134,6 +145,15 @@ class IndexRateSyncService
 
         foreach ($fetch->blockFailures as $blockFailure) {
             $result->addBlockFailure($blockFailure->describe());
+        }
+
+        $quarantine = [
+            'attempt_id' => $attemptId,
+            'pending_dates' => $dryRun ? [] : $this->quarantines->pendingDates($indexer, (string) $config['source']),
+        ];
+
+        if (! $dryRun) {
+            $this->retainMalformedEntries($indexer, $config, $fetch->invalidEntries, $quarantine, $result);
         }
 
         if ($result->hasBlockFailures()) {
@@ -163,8 +183,8 @@ class IndexRateSyncService
         usort($rates, fn (BcbSgsRateData $a, BcbSgsRateData $b): int => $a->referenceDate <=> $b->referenceDate);
 
         match ((string) $config['value_type']) {
-            'annual_rate' => $this->syncAnnualRate($rates, $config, $policy, $dryRun, $fetchedAt, $result, $userId),
-            'monthly_variation' => $this->syncMonthlyVariation($rates, $config, $policy, $dryRun, $fetchedAt, $result, $userId),
+            'annual_rate' => $this->syncAnnualRate($rates, $config, $policy, $dryRun, $fetchedAt, $result, $userId, $quarantine),
+            'monthly_variation' => $this->syncMonthlyVariation($rates, $config, $policy, $dryRun, $fetchedAt, $result, $userId, $quarantine),
             default => throw new InvalidArgumentException(sprintf('value_type desconhecido para %s.', $indexer->value)),
         };
 
@@ -202,11 +222,12 @@ class IndexRateSyncService
      *
      * @param  list<BcbSgsRateData>  $rates
      * @param  array<string, mixed>  $config
+     * @param  array{attempt_id: ?int, pending_dates: array<string, true>}  $quarantine
      */
-    private function syncAnnualRate(array $rates, array $config, string $policy, bool $dryRun, CarbonImmutable $fetchedAt, IndexRateSyncResult $result, ?int $userId): void
+    private function syncAnnualRate(array $rates, array $config, string $policy, bool $dryRun, CarbonImmutable $fetchedAt, IndexRateSyncResult $result, ?int $userId, array $quarantine): void
     {
         foreach ($rates as $rate) {
-            $this->applyRow($result->indexer, $rate->referenceDate->startOfDay(), $rate->value, $config, $policy, $dryRun, $fetchedAt, $result, $userId);
+            $this->applyRow($result->indexer, $rate->referenceDate->startOfDay(), $rate->value, $config, $policy, $dryRun, $fetchedAt, $result, $userId, $rate->rawValue ?? $rate->value, $quarantine);
         }
     }
 
@@ -220,8 +241,9 @@ class IndexRateSyncService
      *
      * @param  list<BcbSgsRateData>  $rates
      * @param  array<string, mixed>  $config
+     * @param  array{attempt_id: ?int, pending_dates: array<string, true>}  $quarantine
      */
-    private function syncMonthlyVariation(array $rates, array $config, string $policy, bool $dryRun, CarbonImmutable $fetchedAt, IndexRateSyncResult $result, ?int $userId): void
+    private function syncMonthlyVariation(array $rates, array $config, string $policy, bool $dryRun, CarbonImmutable $fetchedAt, IndexRateSyncResult $result, ?int $userId, array $quarantine): void
     {
         $firstMonth = $rates[0]->referenceDate->startOfMonth();
         $anchor = $this->latestIpcaIndexBefore($firstMonth);
@@ -246,7 +268,7 @@ class IndexRateSyncService
             $factor = bcadd('1', bcdiv($rate->value, '100', 16), 16);
             $derivedNi = $this->round8(bcmul($runningNi, $factor, 16));
 
-            $runningNi = $this->applyRow($result->indexer, $month, $derivedNi, $config, $policy, $dryRun, $fetchedAt, $result, $userId);
+            $runningNi = $this->applyRow($result->indexer, $month, $derivedNi, $config, $policy, $dryRun, $fetchedAt, $result, $userId, $rate->rawValue ?? $rate->value, $quarantine);
         }
     }
 
@@ -282,7 +304,11 @@ class IndexRateSyncService
      * Cria uma linha nova ou classifica a data já registrada, respeitando idempotência e a proteção a
      * dados de outra origem. Retorna o valor efetivo naquela data (para encadeamento do IPCA).
      *
+     * `$rawValue` é o que a fonte informou (no IPCA, a variação mensal; `$value` é o número-índice
+     * derivado dela), guardado na quarentena quando a observação não entra.
+     *
      * @param  array<string, mixed>  $config
+     * @param  array{attempt_id: ?int, pending_dates: array<string, true>}  $quarantine
      */
     private function applyRow(
         PuIndexer $indexer,
@@ -294,6 +320,8 @@ class IndexRateSyncService
         CarbonImmutable $fetchedAt,
         IndexRateSyncResult $result,
         ?int $userId,
+        string $rawValue,
+        array $quarantine,
     ): string {
         $existing = IndexRate::query()
             ->where('indexer', $indexer->value)
@@ -332,10 +360,26 @@ class IndexRateSyncService
                 $result->addError(sprintf('%s: %s', $date->toDateString(), $outcome->reason));
             }
 
+            if (! $dryRun) {
+                $this->retainRejectedOutcome($indexer, $date, $rawValue, $config, $outcome, $quarantine, $result);
+            }
+
             return $outcome->existing !== null ? (string) $outcome->existing->rate_value : $value;
         }
 
         $changed = bccomp((string) $existing->rate_value, $value, self::VALUE_SCALE) !== 0;
+
+        // A fonte voltou a concordar com o registrado: o que ela informou antes para a data, e ficou
+        // retido, deixa de aguardar revisão.
+        if (! $changed && ! $dryRun && isset($quarantine['pending_dates'][$date->toDateString()])) {
+            $this->quarantines->supersedePending(
+                $indexer,
+                $date,
+                sprintf('A fonte voltou a informar o valor registrado (%s).', (string) $existing->rate_value),
+                resultingIndexRateId: (int) $existing->getKey(),
+                source: (string) $config['source'],
+            );
+        }
 
         // Não sobrescreve dado de outra origem (manual/publicado/projetado). Valor diferente fica explícito.
         if ((string) $existing->source !== (string) $config['source']) {
@@ -350,6 +394,12 @@ class IndexRateSyncService
                     'existing_source' => $existing->source,
                     'reason' => 'Data registrada por outra origem com valor diferente; mantida.',
                 ]);
+                $this->retainDivergence($indexer, $date, $value, $rawValue, $config, $existing, PuIndexAnomalyType::ValueConflict, sprintf(
+                    'A data já está registrada pela origem %s com %s; a fonte informa %s. Nada foi sobrescrito.',
+                    (string) $existing->source,
+                    (string) $existing->rate_value,
+                    $value,
+                ), $dryRun, $quarantine, $result);
             }
 
             return (string) $existing->rate_value;
@@ -378,6 +428,30 @@ class IndexRateSyncService
                 $value,
                 (string) $existing->rate_value,
             ));
+            $this->retainDivergence($indexer, $date, $value, $rawValue, $config, $existing, PuIndexAnomalyType::ValueConflict, sprintf(
+                'A fonte informa %s, mas o registrado é %s; a revisão de histórico não é aplicada na política padrão.',
+                $value,
+                (string) $existing->rate_value,
+            ), $dryRun, $quarantine, $result);
+
+            return (string) $existing->rate_value;
+        }
+
+        // Revisão da fonte com salto suspeito não vira correção sozinha, nem com a política de
+        // atualização: fica retida, e a observação registrada continua valendo.
+        $implausibility = $this->recorder->implausibilityWarning($indexer, $date, $value);
+
+        if ($implausibility !== null) {
+            $result->skipped++;
+            $result->addConflict([
+                'status' => 'value_conflict',
+                'date' => $date->toDateString(),
+                'value' => $value,
+                'existing_value' => (string) $existing->rate_value,
+                'existing_source' => $existing->source,
+                'reason' => 'Revisão da fonte com salto suspeito: retida para revisão, não aplicada.',
+            ]);
+            $this->retainDivergence($indexer, $date, $value, $rawValue, $config, $existing, PuIndexAnomalyType::ImplausibleJump, $implausibility.' A revisão automática da fonte não foi aplicada.', $dryRun, $quarantine, $result);
 
             return (string) $existing->rate_value;
         }
@@ -400,6 +474,16 @@ class IndexRateSyncService
             } catch (InvalidArgumentException $exception) {
                 $result->skipped++;
                 $result->addError(sprintf('%s: %s', $date->toDateString(), $exception->getMessage()));
+                $this->retain(new IndexRateAnomaly(
+                    indexer: $indexer,
+                    rateDate: $date,
+                    source: (string) $config['source'],
+                    type: PuIndexAnomalyType::DomainRejected,
+                    reason: $exception->getMessage(),
+                    rawValue: $rawValue,
+                    externalSeriesCode: (string) $config['code'],
+                    referenceValue: (string) $existing->rate_value,
+                ), $quarantine, $result);
 
                 return (string) $existing->rate_value;
             }
@@ -413,6 +497,139 @@ class IndexRateSyncService
         $result->updated++;
 
         return $value;
+    }
+
+    /**
+     * Observação de data nova que o registro não aceitou: recusa de domínio, salto suspeito à espera de
+     * confirmação, ou a data ocupada por outro processo com outro valor. Origem diferente com o mesmo
+     * valor e data ocupada por projeção não são anomalias da fonte e continuam só no resultado.
+     *
+     * @param  array<string, mixed>  $config
+     * @param  array{attempt_id: ?int, pending_dates: array<string, true>}  $quarantine
+     */
+    private function retainRejectedOutcome(
+        PuIndexer $indexer,
+        CarbonImmutable $date,
+        string $rawValue,
+        array $config,
+        IndexRateRecordOutcome $outcome,
+        array $quarantine,
+        IndexRateSyncResult $result,
+    ): void {
+        $type = match ($outcome->status) {
+            IndexRateRecordOutcome::NEEDS_CONFIRMATION => PuIndexAnomalyType::ImplausibleJump,
+            IndexRateRecordOutcome::REJECTED => PuIndexAnomalyType::DomainRejected,
+            IndexRateRecordOutcome::VALUE_CONFLICT => PuIndexAnomalyType::ValueConflict,
+            default => null,
+        };
+
+        if ($type === null) {
+            return;
+        }
+
+        $previous = $type === PuIndexAnomalyType::ImplausibleJump ? $this->recorder->previousRealized($indexer, $date) : null;
+
+        $this->retain(new IndexRateAnomaly(
+            indexer: $indexer,
+            rateDate: $date,
+            source: (string) $config['source'],
+            type: $type,
+            reason: (string) $outcome->reason,
+            receivedValue: $type === PuIndexAnomalyType::DomainRejected ? null : $outcome->value,
+            rawValue: $rawValue,
+            externalSeriesCode: (string) $config['code'],
+            referenceValue: $outcome->existing !== null ? (string) $outcome->existing->rate_value : ($previous !== null ? (string) $previous->rate_value : null),
+            referenceDate: $previous?->rate_date !== null ? CarbonImmutable::parse($previous->rate_date->toDateString()) : null,
+        ), $quarantine, $result);
+    }
+
+    /**
+     * Data já registrada que a fonte informa com outro valor.
+     *
+     * @param  array<string, mixed>  $config
+     * @param  array{attempt_id: ?int, pending_dates: array<string, true>}  $quarantine
+     */
+    private function retainDivergence(
+        PuIndexer $indexer,
+        CarbonImmutable $date,
+        string $value,
+        string $rawValue,
+        array $config,
+        IndexRate $existing,
+        PuIndexAnomalyType $type,
+        string $reason,
+        bool $dryRun,
+        array $quarantine,
+        IndexRateSyncResult $result,
+    ): void {
+        if ($dryRun) {
+            return;
+        }
+
+        $this->retain(new IndexRateAnomaly(
+            indexer: $indexer,
+            rateDate: $date,
+            source: (string) $config['source'],
+            type: $type,
+            reason: $reason,
+            receivedValue: $value,
+            rawValue: $rawValue,
+            externalSeriesCode: (string) $config['code'],
+            referenceValue: (string) $existing->rate_value,
+            referenceDate: $date,
+        ), $quarantine, $result);
+    }
+
+    /**
+     * Entradas da resposta sem data ou valor legíveis. A posição na resposta muda a cada consulta (a
+     * janela anda), então a identidade é a própria entrada.
+     *
+     * @param  array<string, mixed>  $config
+     * @param  list<array<string, mixed>>  $invalidEntries
+     * @param  array{attempt_id: ?int, pending_dates: array<string, true>}  $quarantine
+     */
+    private function retainMalformedEntries(PuIndexer $indexer, array $config, array $invalidEntries, array $quarantine, IndexRateSyncResult $result): void
+    {
+        foreach ($invalidEntries as $invalid) {
+            $entry = $invalid['entry'] ?? null;
+            $rawDate = is_array($entry) && is_scalar($entry['data'] ?? null) ? trim((string) $entry['data']) : '';
+            $date = preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $rawDate) === 1 ? CarbonImmutable::createFromFormat('!d/m/Y', $rawDate) : null;
+
+            $this->retain(new IndexRateAnomaly(
+                indexer: $indexer,
+                rateDate: $date instanceof CarbonImmutable && $date->format('d/m/Y') === $rawDate ? $date : null,
+                source: (string) $config['source'],
+                type: PuIndexAnomalyType::MalformedEntry,
+                reason: match ($invalid['issue'] ?? null) {
+                    'invalid_reference_date' => 'A fonte entregou uma entrada com data ilegível.',
+                    'invalid_decimal_format' => 'A fonte entregou uma entrada com valor que não é número.',
+                    default => 'A fonte entregou uma entrada sem data ou valor.',
+                },
+                rawValue: (string) json_encode($entry, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                externalSeriesCode: (string) $config['code'],
+            ), $quarantine, $result);
+        }
+    }
+
+    /**
+     * A quarentena é evidência: falhar ao gravá-la não pode virar aceitação, nem derrubar a sincronização
+     * do resto da série. A falha é reportada e a observação continua fora do índice.
+     *
+     * @param  array{attempt_id: ?int, pending_dates: array<string, true>}  $quarantine
+     */
+    private function retain(IndexRateAnomaly $anomaly, array $quarantine, IndexRateSyncResult $result): void
+    {
+        try {
+            $this->quarantines->retain($anomaly, $quarantine['attempt_id']);
+            $result->quarantined++;
+        } catch (\Throwable $exception) {
+            report($exception);
+            $result->addError(sprintf(
+                '%s: a observação recebida não entrou e não pôde ser guardada para revisão (%s).',
+                $anomaly->rateDate?->toDateString() ?? 'entrada sem data',
+                $exception->getMessage(),
+            ));
+        }
     }
 
     /**
