@@ -10,6 +10,7 @@ use App\Domain\PuCalculator\Enums\PuBaselineEvidenceStatus;
 use App\Domain\PuCalculator\Enums\PuBaselineEvidenceType;
 use App\Domain\PuCalculator\Enums\PuBaselineReadinessStatus;
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Domain\PuCalculator\Enums\PuIndexerCapability;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Enums\PuValidationMode;
 use App\Domain\PuCalculator\Exceptions\PuCurveGovernanceException;
@@ -24,6 +25,8 @@ use App\Domain\PuCalculator\Services\PuCurveExportService;
 use App\Domain\PuCalculator\Services\PuCurvePrerequisiteService;
 use App\Domain\PuCalculator\Services\PuCurveVersionService;
 use App\Domain\PuCalculator\Services\PuIndexCoverageService;
+use App\Domain\PuCalculator\Services\PuIndexerCapabilityPolicy;
+use App\Domain\PuCalculator\Services\PuOperationalActivationPolicy;
 use App\Domain\PuCalculator\Services\PuValidationSpreadsheetLocatorService;
 use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Filament\Resources\Emissions\EmissionResource;
@@ -32,6 +35,8 @@ use App\Jobs\GeneratePuDailyCurveJob;
 use App\Jobs\ValidatePuCurveJob;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuDailyCurve;
+use App\Support\PuCalculator\PuDisplay;
+use App\Support\PuCalculator\PuGateMessage;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -43,9 +48,9 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
 // Filament v5: closures de schema recebem Filament\Schemas\Components\Utilities\Get (NAO Filament\Forms\Get).
 // Usar o import errado quebra o mount do formulario configurePuCalculation (campo CDI com Select->live()).
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -84,6 +89,14 @@ class EditEmission extends EditRecord
     private ?PuBaselineReadinessReport $puBaselineReport = null;
 
     private bool $puBaselineReportResolved = false;
+
+    /**
+     * Recusas dos portões do PU (ativação e indexador) por degrau, memorizadas por
+     * requisição: os botões as consultam para rótulo, estado e dica.
+     *
+     * @var array<string, string|null>
+     */
+    private array $puGateBlockers = [];
 
     public function mount(int|string $record): void
     {
@@ -224,14 +237,26 @@ class EditEmission extends EditRecord
                     'latestAttempt' => $this->getRecord()->puCurveVersions()->latestAttempt()->first(),
                     'officialVersion' => $this->getRecord()->officialPuCurveVersion(),
                     'coverage' => app(PuIndexCoverageService::class)->report($this->getRecord()),
+                    'activationStatus' => app(PuOperationalActivationPolicy::class)->status($this->getRecord()),
+                    'globallyEnabled' => app(PuOperationalActivationPolicy::class)->globallyEnabled(),
+                    'operationUrl' => EmissionResource::getUrl('pu-operation', ['record' => $this->getRecord()]),
                 ])),
+
+            Action::make('puOperation')
+                ->label('Operação do PU')
+                ->icon('heroicon-o-shield-check')
+                ->color('gray')
+                ->outlined()
+                ->visible(fn (): bool => auth()->user()?->can('pu.curve.view') ?? false)
+                ->url(fn (): string => EmissionResource::getUrl('pu-operation', ['record' => $this->getRecord()])),
 
             Action::make('generatePuDailyCurve')
                 ->label(fn (): string => $this->generatePuCurveLabel())
                 ->icon('heroicon-o-arrow-path')
                 ->color('warning')
                 ->visible(fn (): bool => auth()->user()?->can('pu.curve.generate') ?? false)
-                ->disabled(fn (): bool => $this->isGeneratingPuCurve)
+                ->disabled(fn (): bool => $this->isGeneratingPuCurve || $this->puGateBlocker(PuIndexerCapability::CurveGeneration) !== null)
+                ->tooltip(fn (): ?string => $this->isGeneratingPuCurve ? null : $this->puGateBlocker(PuIndexerCapability::CurveGeneration))
                 ->requiresConfirmation()
                 ->modalHeading(fn (): string => $this->generatePuCurveLabel())
                 ->modalDescription('O calculo roda em segundo plano (fila) e cria uma NOVA versao da curva. As versoes anteriores nao-homologadas viram "obsoletas" e o historico e sempre preservado. Acompanhe o andamento no Painel da Curva PU.')
@@ -242,6 +267,17 @@ class EditEmission extends EditRecord
                             ->title('Geracao ja em andamento.')
                             ->body('Aguarde a conclusao da geracao atual antes de iniciar uma nova.')
                             ->warning()
+                            ->send();
+
+                        return;
+                    }
+
+                    if (($blocker = $this->puGateBlocker(PuIndexerCapability::CurveGeneration, fresh: true)) !== null) {
+                        Notification::make()
+                            ->title('Geracao nao iniciada.')
+                            ->body($blocker)
+                            ->danger()
+                            ->persistent()
                             ->send();
 
                         return;
@@ -311,6 +347,8 @@ class EditEmission extends EditRecord
                 ->icon('heroicon-o-check-badge')
                 ->color('success')
                 ->visible(fn (): bool => auth()->user()?->can('pu.curve.homologate') ?? false)
+                ->disabled(fn (): bool => $this->puGateBlocker(PuIndexerCapability::Homologation) !== null)
+                ->tooltip(fn (): ?string => $this->puGateBlocker(PuIndexerCapability::Homologation))
                 ->modalHeading('Homologar Curva PU')
                 ->modalDescription(fn (Action $action): string => $this->homologationModalDescription($action->getRawData()['calculation_version'] ?? null))
                 ->modalSubmitActionLabel('Homologar')
@@ -825,6 +863,51 @@ class EditEmission extends EditRecord
         return sprintf('pu_curve_validation_%d_status', $this->getRecord()->id);
     }
 
+    /**
+     * Por que o degrau não pode rodar agora (operação do PU e indexador), em
+     * linguagem de tela, ou nulo. O domínio continua recusando no job e na
+     * homologação: isto só evita oferecer como disponível o que será recusado.
+     */
+    private function puGateBlocker(PuIndexerCapability $capability, bool $fresh = false): ?string
+    {
+        if (! $fresh && array_key_exists($capability->value, $this->puGateBlockers)) {
+            return $this->puGateBlockers[$capability->value];
+        }
+
+        $emission = $this->getRecord();
+        $operation = $capability === PuIndexerCapability::Homologation ? 'Homologação' : 'Geração da curva';
+        $refusal = app(PuOperationalActivationPolicy::class)->refusalFor($emission, $capability);
+        $blocker = $refusal !== null ? PuGateMessage::activationRefusal($refusal, $operation) : null;
+
+        if ($blocker === null) {
+            // O mesmo indexador que o domínio confere: o dos parâmetros para gerar, o
+            // aprovado na versão para homologar (sem versão, não há o que conferir).
+            $indexers = app(PuIndexerCapabilityPolicy::class);
+            $version = $capability === PuIndexerCapability::Homologation ? $emission->currentPuCurveVersion() : null;
+            $checked = $capability !== PuIndexerCapability::Homologation || $version !== null;
+            $indexer = $version !== null ? $indexers->versionIndexer($version) : $indexers->emissionIndexer($emission);
+
+            if ($checked && ! $indexers->allows($indexer, $capability)) {
+                $blocker = PuGateMessage::indexerRefusal($indexers->refusal($indexer, $capability, (int) $emission->getKey()), $operation);
+            }
+        }
+
+        return $this->puGateBlockers[$capability->value] = $blocker;
+    }
+
+    private function indexerCertificationHint(mixed $indexer): ?string
+    {
+        $selected = PuIndexer::tryFrom((string) $indexer);
+
+        if (! $selected instanceof PuIndexer) {
+            return null;
+        }
+
+        return $selected->certification()->allowsOperationalUse()
+            ? sprintf('%s. Condições de implantação na página "Operação do PU".', $selected->certification()->label())
+            : 'Somente simulação: este indexador não é certificado para uso oficial. A emissão pode ser simulada, mas não gera curva oficial, não homologa e não pode ter a operação do PU ativada.';
+    }
+
     private function generatePuCurveLabel(): string
     {
         if ($this->isGeneratingPuCurve) {
@@ -874,11 +957,12 @@ class EditEmission extends EditRecord
             Select::make('indexer')
                 ->label('Indexador')
                 ->options([
-                    PuIndexer::Cdi->value => PuIndexer::Cdi->label(),
-                    PuIndexer::Prefixed->value => PuIndexer::Prefixed->label(),
-                    PuIndexer::Ipca->value => PuIndexer::Ipca->label(),
+                    PuIndexer::Cdi->value => PuDisplay::indexerOption(PuIndexer::Cdi),
+                    PuIndexer::Prefixed->value => PuDisplay::indexerOption(PuIndexer::Prefixed),
+                    PuIndexer::Ipca->value => PuDisplay::indexerOption(PuIndexer::Ipca),
                 ])
                 ->default(PuIndexer::Cdi->value)
+                ->helperText(fn (Get $get): ?string => $this->indexerCertificationHint($get('indexer')))
                 ->live()
                 ->required(),
             Placeholder::make('ipca_notice')
@@ -985,8 +1069,8 @@ class EditEmission extends EditRecord
                 ->label('Calendário de divulgação do CDI')
                 ->options(fn (): array => app(BusinessCalendarCatalogService::class)
                     ->optionsForNewConfiguration($this->getRecord()->puParameter?->index_rate_calendar_code))
-                ->placeholder('Mesmo calendário da curva')
-                ->helperText('Calendário em que os dias úteis da defasagem são contados. Use quando o calendário da curva considera útil um dia sem divulgação do CDI (ex.: Corpus Christi no calendário de feriados nacionais). A remuneração continua no calendário da curva.')
+                ->placeholder(fn (Get $get): string => PuDisplay::cdiPublicationCalendarDefault($get('calendar_code')))
+                ->helperText('Calendário em que os dias úteis da defasagem são contados. Sem escolha, vale o padrão mostrado no campo: o calendário da curva só quando ele já é de divulgação do CDI; senão, o calendário canônico de divulgação. A remuneração continua no calendário da curva.')
                 ->searchable()
                 ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value && $get('index_rate_lookup_mode') === PuIndexRateLookupMode::BusinessDayLagExact->value),
             Toggle::make('first_coupon_pre_integralization_premium_enabled')

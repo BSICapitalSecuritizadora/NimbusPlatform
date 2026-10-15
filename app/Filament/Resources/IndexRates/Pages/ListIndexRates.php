@@ -10,7 +10,9 @@ use App\Domain\PuCalculator\Services\IndexRateSyncService;
 use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Filament\Resources\IndexRates\IndexRateResource;
 use App\Filament\Widgets\IndexRates\IndexSyncOverview;
+use App\Filament\Widgets\IndexRates\PuIndexSyncAttemptsWidget;
 use App\Models\IndexRate;
+use App\Support\PuCalculator\PuIndexObservationReview;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -23,6 +25,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Enums\Width;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
 
@@ -54,6 +57,13 @@ class ListIndexRates extends ListRecords
     {
         return [
             IndexSyncOverview::class,
+        ];
+    }
+
+    protected function getFooterWidgets(): array
+    {
+        return [
+            PuIndexSyncAttemptsWidget::class,
         ];
     }
 
@@ -117,6 +127,10 @@ class ListIndexRates extends ListRecords
                             ->directory('imports/index-rates')
                             ->acceptedFileTypes(['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel'])
                             ->required(),
+                        Toggle::make('confirm_outliers')
+                            ->label('Confirmo os valores fora do padrão deste arquivo')
+                            ->helperText('Sem marcar, um valor dez vezes maior ou menor que a observação anterior (suspeita de unidade errada) fica retido e não é gravado. Marque só depois de conferir esses valores na fonte; a confirmação fica na trilha de auditoria.')
+                            ->default(false),
                     ])
                     ->action(function (array $data): void {
                         $path = Storage::disk('local')->path((string) $data['csv_file']);
@@ -127,6 +141,7 @@ class ListIndexRates extends ListRecords
                                 $path,
                                 filled($data['source'] ?? null) ? (string) $data['source'] : null,
                                 auth()->id(),
+                                confirmOutliers: (bool) ($data['confirm_outliers'] ?? false),
                             );
                         } catch (\Throwable $exception) {
                             Notification::make()->title('Falha na importação.')->body($exception->getMessage())->danger()->persistent()->send();
@@ -134,11 +149,26 @@ class ListIndexRates extends ListRecords
                             return;
                         }
 
-                        Notification::make()
-                            ->title('Índices importados.')
-                            ->body(sprintf('%d linha(s) importada(s).%s', $result['imported'], $result['errors'] === [] ? '' : ' '.count($result['errors']).' linha(s) ignorada(s).'))
-                            ->success()
-                            ->send();
+                        $retained = $result['needs_confirmation'];
+                        $lines = [sprintf('%d linha(s) gravada(s); %d já registrada(s) sem mudança.', $result['imported'], $result['unchanged'])];
+
+                        if ($retained !== []) {
+                            $lines[] = sprintf(
+                                '%d valor(es) RETIDO(S) para confirmação, não gravado(s): %s. Confira na fonte e, se estiverem certos, reimporte marcando a confirmação.',
+                                count($retained),
+                                collect($retained)->take(5)->map(fn (array $row): string => sprintf('%s = %s', CarbonImmutable::parse((string) $row['date'])->format('d/m/Y'), (string) $row['value']))->implode('; ').(count($retained) > 5 ? '…' : ''),
+                            );
+                        }
+
+                        if ($result['errors'] !== []) {
+                            $lines[] = sprintf('%d linha(s) ignorada(s) (conflito com o registrado ou valor inválido): %s', count($result['errors']), implode(' ', array_slice($result['errors'], 0, 3)).(count($result['errors']) > 3 ? '…' : ''));
+                        }
+
+                        $notification = Notification::make()
+                            ->title($retained === [] && $result['errors'] === [] ? 'Índices importados.' : 'Importação concluída com pendências.')
+                            ->body(implode("\n", $lines));
+
+                        ($retained === [] && $result['errors'] === [] ? $notification->success() : $notification->warning()->persistent())->send();
                     }),
                 Action::make('importProjectedSeries')
                     ->label('Importar série projetada IPCA')
@@ -201,6 +231,18 @@ class ListIndexRates extends ListRecords
                 ->icon('heroicon-o-arrow-up-tray')
                 ->color('gray')
                 ->button(),
+            Action::make('observationReview')
+                ->label('Revisão de observações')
+                ->icon('heroicon-o-magnifying-glass-circle')
+                ->color('gray')
+                ->modalHeading('Revisão das observações de índice')
+                ->modalDescription('Valores retidos, conflitos com o registrado, incidentes de índice e correções governadas recentes.')
+                ->modalWidth(Width::SixExtraLarge)
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Fechar')
+                ->modalContent(fn (): Htmlable => view('filament.index-rates.observation-review', [
+                    'review' => PuIndexObservationReview::build(),
+                ])),
             ActionGroup::make([
                 $this->buildSeedCalendarAction(),
             ])

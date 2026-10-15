@@ -18,6 +18,7 @@ use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Enums\AccessPermission;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Models\EmissionPuParameter;
+use App\Support\PuCalculator\PuDisplay;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -244,18 +245,22 @@ class PuCalculatorSimulator extends Page
      * Calendários oferecidos como hipótese de observação do índice.
      *
      * A opção vazia é o padrão e significa "o que a configuração gravada usa":
-     * o calendário de divulgação salvo, quando existe, ou o calendário
-     * da curva -- nenhuma mudança silenciosa de semântica.
+     * o calendário de divulgação salvo, quando existe; senão, o padrão do
+     * domínio, que numa emissão CDI só é o da curva quando ele já é de
+     * divulgação do CDI ({@see PuDisplay::cdiPublicationCalendarDefault()}).
      *
      * @return array<string, string>
      */
     public function indexRateCalendarOptions(): array
     {
         $saved = $this->savedIndexRateCalendarCode();
+        $indexer = $this->parameterResolution()['values']['indexer'] ?? null;
 
-        return ['' => $saved !== null
-            ? sprintf('Configuração salva — %s', $saved)
-            : 'Mesmo calendário da curva'] + BusinessCalendarRegistry::options();
+        return ['' => match (true) {
+            $saved !== null => sprintf('Configuração salva — %s', $saved),
+            $indexer === PuIndexer::Cdi->value => PuDisplay::cdiPublicationCalendarDefault($this->curveCalendarCode()),
+            default => 'Mesmo calendário da curva',
+        }] + BusinessCalendarRegistry::options();
     }
 
     /** Calendário de divulgação do CDI gravado na configuração, se houver. */
@@ -627,8 +632,10 @@ class PuCalculatorSimulator extends Page
     {
         $options = [];
 
+        // O mesmo vocabulário da configuração: simular é livre, mas o rótulo diz o
+        // que a certificação permite fora da simulação.
         foreach (PuIndexer::cases() as $indexer) {
-            $options[$indexer->value] = $indexer->label();
+            $options[$indexer->value] = PuDisplay::indexerOption($indexer);
         }
 
         return $options;

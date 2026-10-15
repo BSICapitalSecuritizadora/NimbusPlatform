@@ -31,7 +31,9 @@ final class PuObligationReader
 {
     /**
      * Componentes nas colunas do cronograma que site e relatório já conhecem. O
-     * principal acelerado do vencimento antecipado não é amortização ordinária.
+     * principal acelerado do vencimento antecipado não é amortização ordinária
+     * nem extraordinária: tem coluna própria (Fase 8), fora das que o cronograma
+     * informado grava.
      *
      * @var array<string, list<PuObligationComponent>>
      */
@@ -39,7 +41,8 @@ final class PuObligationReader
         'premium_value' => [PuObligationComponent::Premium],
         'interest_value' => [PuObligationComponent::OrdinaryInterest],
         'amortization_value' => [PuObligationComponent::OrdinaryAmortization],
-        'extra_amortization_value' => [PuObligationComponent::ExtraordinaryAmortization, PuObligationComponent::AcceleratedPrincipal],
+        'extra_amortization_value' => [PuObligationComponent::ExtraordinaryAmortization],
+        'accelerated_principal_value' => [PuObligationComponent::AcceleratedPrincipal],
     ];
 
     public function isGoverned(Emission $emission): bool
@@ -84,7 +87,9 @@ final class PuObligationReader
                     );
                 }
 
-                return new Payment(['emission_id' => $obligations->first()->emission_id, 'payment_date' => $date, ...$values]);
+                // Em memória, só para leitura: a coluna do principal acelerado não
+                // existe na tabela do cronograma informado.
+                return (new Payment(['emission_id' => $obligations->first()->emission_id, 'payment_date' => $date]))->forceFill($values);
             })
             ->values();
     }

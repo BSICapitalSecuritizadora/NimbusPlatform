@@ -55,10 +55,12 @@ final class PuOperationalAlertDispatcher
         }
 
         $lines = $incidents->take(self::MAX_LINES)->map(fn (PuOperationalIncident $incident): array => [
+            'id' => (int) $incident->id,
             'severity' => $incident->severity->value,
             'label' => $incident->type->label(),
             'reason' => Str::limit($incident->reason, 300),
             'emission' => $incident->emission?->name,
+            'emission_id' => $incident->emission_id !== null ? (int) $incident->emission_id : null,
         ])->values()->all();
 
         try {

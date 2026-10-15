@@ -630,6 +630,14 @@
                                         'value' => $reading->unitValue,
                                     ]);
                                     $todayPu = $lastFiveDays->first()['value'] ?? $puReader->legacyCurrentUnitValue($emission);
+                                    // A data a que o PU pertence vai sempre junto do valor: o PU de
+                                    // uma posição anterior nunca aparece como se fosse o de hoje.
+                                    $puPosition = $lastFiveDays->first()['date'] ?? null;
+                                    $puPositionLabel = match (true) {
+                                        $puPosition !== null => 'Posição em '.$puPosition->format('d/m/Y'),
+                                        (bool) $todayPu => 'Valor cadastrado, sem data de posição',
+                                        default => 'Indisponível',
+                                    };
                                 @endphp
 
                                 <div class="d-flex justify-content-between align-items-center gap-3 mb-4">
@@ -637,7 +645,7 @@
                                         <div class="section-kicker mb-1">PU Atual</div>
                                         <div class="h4 fw-bold text-brand mb-0">{{ $todayPu ? 'R$ ' . number_format((float) $todayPu, 6, ',', '.') : '—' }}</div>
                                     </div>
-                                    <span class="badge badge-premium px-3 py-2">Cotação Diária</span>
+                                    <span class="badge badge-premium px-3 py-2">{{ $puPositionLabel }}</span>
                                 </div>
 
                                 <div class="d-flex flex-column gap-2">
@@ -921,6 +929,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     'label' => 'Amortização Extra',
                     'data' => $emission->payments->pluck('extra_amortization_value')->map(fn ($v) => (float)$v > 0 ? (float)$v : null)->toArray(),
                     'backgroundColor' => '#3a5365',
+                    'borderRadius' => 4,
+                ];
+            }
+
+            // Vencimento antecipado: o principal acelerado não é amortização
+            // extraordinária e tem série própria (só existe com curva oficial).
+            if ($emission->payments->sum('accelerated_principal_value') > 0) {
+                $chartDatasets[] = [
+                    'label' => 'Principal antecipado (vencimento antecipado)',
+                    'data' => $emission->payments->pluck('accelerated_principal_value')->map(fn ($v) => (float)$v > 0 ? (float)$v : null)->toArray(),
+                    'backgroundColor' => '#758d95',
                     'borderRadius' => 4,
                 ];
             }

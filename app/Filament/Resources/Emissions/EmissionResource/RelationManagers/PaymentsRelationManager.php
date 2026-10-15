@@ -119,13 +119,10 @@ class PaymentsRelationManager extends RelationManager
                     ->money('BRL')
                     ->alignEnd()
                     ->sortable(),
-                TextColumn::make('value_source')
-                    ->label('Origem do valor')
-                    ->badge()
-                    ->state('Previsto')
-                    ->color('gray')
-                    ->tooltip('Valor informado pela planilha ou pelo cadastro manual. O valor calculado pela curva oficial e a liquidação ficam nas obrigações financeiras do PU e nunca alteram esta linha.'),
             ])
+            // Toda linha deste cronograma é informada: um selo "Previsto" repetido em
+            // cada uma não dizia nada. A distinção fica no cabeçalho da tabela.
+            ->description('Previsto no contrato e informado pela planilha ou pelo cadastro manual — não é o cálculo oficial. O esperado oficial (curva homologada), a liquidação e a conciliação ficam na aba "Obrigações e Liquidações do PU" e nunca alteram estas linhas.')
             ->defaultSort('payment_date', 'desc')
             ->filters([
                 //

@@ -25,6 +25,7 @@ use App\Models\EmissionPuSettlement;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\Reports\EmissionMonthlyReportService;
+use App\Support\PuCalculator\PuDisplay;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -284,7 +285,7 @@ it('feeds the monthly report with expected, settled, date and divergence as sepa
         ->and($rows['Total previsto (curva oficial)'])->toBe('R$ '.number_format((float) $expected, 2, ',', '.'))
         ->and($rows['Valor liquidado'])->toBe('R$ '.number_format((float) bcsub($expected, '10.00', 2), 2, ',', '.'))
         ->and($rows['Data da liquidação'])->toBe('09/03/2026')
-        ->and($rows['Divergência (liquidado − previsto)'])->toBe('R$ -10,00')
+        ->and($rows['Divergência (liquidado − previsto)'])->toBe(PuDisplay::MINUS.'R$ 10,00')
         ->and($rows['Conciliação'])->toBe(PuReconciliationStatus::Divergent->label());
 
     // Esperado ainda indisponível aparece como indisponível -- nunca como zero.

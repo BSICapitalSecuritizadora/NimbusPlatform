@@ -37,6 +37,7 @@ use App\Services\LegalInstruments\InstrumentPositionResolver;
 use App\Services\SalesBoards\SalesBoardPositionReader;
 use App\Services\SalesBoards\SalesBoardPublicationGapClassifier;
 use App\Support\BusinessTime;
+use App\Support\PuCalculator\PuDisplay;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -506,9 +507,9 @@ class EmissionMonthlyReportService
 
         $several = $obligations->count() > 1;
         $rows = [];
+        $blocks = [];
 
         foreach ($obligations as $obligation) {
-            $prefix = $several ? $obligation->obligation_type->label().' — ' : '';
             $calculation = $obligation->calculation_state === PuObligationCalculationState::Calculated
                 && ($obligation->currentCalculation?->isComplete() ?? false)
                 ? $obligation->currentCalculation
@@ -519,29 +520,57 @@ class EmissionMonthlyReportService
             $settlement = $obligation->activeSettlement;
             $reconciliation = $obligation->latestReconciliation;
 
-            $rows[] = ['label' => $prefix.'Prêmio', 'value' => $component([PuObligationComponent::Premium])];
-            $rows[] = ['label' => $prefix.'Juros', 'value' => $component([PuObligationComponent::OrdinaryInterest])];
-            $rows[] = ['label' => $prefix.'Amortização', 'value' => $component([PuObligationComponent::OrdinaryAmortization])];
-            $rows[] = ['label' => $prefix.'Amortização Extraordinária', 'value' => $component([PuObligationComponent::ExtraordinaryAmortization])];
+            $components = [
+                ['label' => 'Prêmio', 'value' => $component([PuObligationComponent::Premium])],
+                ['label' => 'Juros', 'value' => $component([PuObligationComponent::OrdinaryInterest])],
+                ['label' => 'Amortização', 'value' => $component([PuObligationComponent::OrdinaryAmortization])],
+                ['label' => 'Amortização Extraordinária', 'value' => $component([PuObligationComponent::ExtraordinaryAmortization])],
+            ];
 
             if ($obligation->obligation_type === PuObligationType::EarlyMaturity) {
-                $rows[] = ['label' => $prefix.'Principal acelerado (vencimento antecipado)', 'value' => $component([PuObligationComponent::AcceleratedPrincipal])];
+                $components[] = ['label' => 'Principal acelerado (vencimento antecipado)', 'value' => $component([PuObligationComponent::AcceleratedPrincipal])];
             }
 
-            $rows[] = ['label' => $prefix.'Total previsto (curva oficial)', 'value' => $calculation !== null
-                ? $this->money((float) $calculation->total_amount)
-                : self::NOT_AVAILABLE.' — '.mb_strtolower($obligation->calculation_state->label())];
-            $rows[] = ['label' => $prefix.'Valor liquidado', 'value' => $settlement !== null ? $this->money((float) $settlement->amount) : 'Não liquidado'];
-            $rows[] = ['label' => $prefix.'Data da liquidação', 'value' => $settlement !== null ? $this->date($settlement->settlement_date) : '—'];
-            $rows[] = ['label' => $prefix.'Divergência (liquidado − previsto)', 'value' => $reconciliation?->difference !== null
-                ? $this->money((float) $reconciliation->difference)
-                : '—'];
-            $rows[] = ['label' => $prefix.'Conciliação', 'value' => $obligation->reconciliation_status->label()];
+            $summary = [
+                ['label' => 'Total previsto (curva oficial)', 'value' => $calculation !== null
+                    ? $this->money((float) $calculation->total_amount)
+                    : self::NOT_AVAILABLE.' — '.mb_strtolower($obligation->calculation_state->label())],
+                ['label' => 'Versão da curva oficial', 'value' => $calculation?->calculation_version ?? '—'],
+                ['label' => 'Valor liquidado', 'value' => $settlement !== null ? $this->money((float) $settlement->amount) : 'Não liquidado'],
+                ['label' => 'Data da liquidação', 'value' => $settlement !== null ? $this->date($settlement->settlement_date) : '—'],
+                ['label' => 'Divergência (liquidado − previsto)', 'value' => $reconciliation?->difference !== null
+                    ? (PuDisplay::signedMoney((string) $reconciliation->difference) ?? '—')
+                    : '—'],
+                ['label' => 'Conciliação', 'value' => $obligation->reconciliation_status->label()],
+            ];
+
+            $blocks[] = [
+                'title' => sprintf(
+                    '%s%s — vencimento %s (data contratual %s)',
+                    $obligation->obligation_type->label(),
+                    $several ? ' · seq. '.(int) $obligation->sequence : '',
+                    $this->date($obligation->due_date),
+                    $this->date($obligation->contractual_date),
+                ),
+                'components' => $components,
+                'summary' => $summary,
+            ];
+
+            $prefix = $several ? $obligation->obligation_type->label().' — ' : '';
+
+            foreach ([...$components, ...$summary] as $row) {
+                if ($row['label'] === 'Versão da curva oficial') {
+                    continue;
+                }
+
+                $rows[] = ['label' => $prefix.$row['label'], 'value' => $row['value']];
+            }
         }
 
         return [
             'has_data' => true,
             'payment_date' => $this->date($obligations->first()->due_date),
+            'obligations' => $blocks,
             'rows' => $rows,
         ];
     }

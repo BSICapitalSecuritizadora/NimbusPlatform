@@ -3,10 +3,15 @@
 namespace App\Filament\Widgets\PuCalculator;
 
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Domain\PuCalculator\Enums\PuOperationalActivationStatus;
+use App\Domain\PuCalculator\Services\PuOperationalActivationPolicy;
 use App\Domain\PuCalculator\Services\PuOperationalMonitorService;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
+use App\Models\EmissionPuParameter;
+use App\Support\PuCalculator\PuDisplay;
 use Filament\Actions\Action;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
@@ -50,6 +55,11 @@ class PuCurveOperationalTableWidget extends TableWidget
         $monitor = app(PuOperationalMonitorService::class);
         $missingCdiIds = $monitor->missingCdiEmissionIds();
         $canExport = auth()->user()?->can('pu.curve.export') ?? false;
+        // Uma consulta para todas as emissões configuradas (Fase 7): decisão de
+        // ativação da emissão; o interruptor global aparece no resumo acima.
+        $activation = app(PuOperationalActivationPolicy::class)->statuses(
+            array_map('intval', EmissionPuParameter::query()->pluck('emission_id')->all()),
+        );
 
         return $table
             ->query(
@@ -85,10 +95,21 @@ class PuCurveOperationalTableWidget extends TableWidget
                 TextColumn::make('indexer')
                     ->label('Indexador')
                     ->badge()
-                    ->color('gray')
                     ->state(fn (Emission $record): string => $record->latestPuCurveVersion?->parameters_snapshot['indexer']
                         ?? $record->puParameter?->indexer
-                        ?? '—'),
+                        ?? '—')
+                    ->color(fn (string $state): string => PuDisplay::certificationColor(PuIndexer::tryFrom($state)?->certification()))
+                    ->tooltip(fn (string $state): ?string => PuIndexer::tryFrom($state)?->certification()->label()),
+
+                TextColumn::make('operational_activation')
+                    ->label('Operação do PU')
+                    ->badge()
+                    ->state(fn (Emission $record): string => ($activation[$record->id] ?? PuOperationalActivationStatus::NotConfigured)->value)
+                    ->formatStateUsing(fn (string $state): string => PuDisplay::activationShortLabel(PuOperationalActivationStatus::from($state)))
+                    ->tooltip(fn (string $state): string => PuOperationalActivationStatus::from($state)->label())
+                    ->color(fn (string $state): string => PuDisplay::activationColor(PuOperationalActivationStatus::from($state)))
+                    ->icon(fn (string $state): string => PuDisplay::activationIcon(PuOperationalActivationStatus::from($state)))
+                    ->url(fn (Emission $record): string => EmissionResource::getUrl('pu-operation', ['record' => $record])),
 
                 TextColumn::make('latestPuCurveVersion.generated_at')
                     ->label('Última geração')

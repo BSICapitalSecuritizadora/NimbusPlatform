@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Domain\PuCalculator\Services\PuGovernedHistoryGuard;
 use App\Exceptions\SalesBoardSourceException;
 use App\Models\Emission;
 use App\Models\User;
@@ -21,7 +22,10 @@ use Illuminate\Auth\Access\Response;
  */
 class EmissionPolicy
 {
-    public function __construct(private readonly SalesBoardSourceGuard $sourceGuard) {}
+    public function __construct(
+        private readonly SalesBoardSourceGuard $sourceGuard,
+        private readonly PuGovernedHistoryGuard $puHistory,
+    ) {}
 
     public function viewAny(User $user): bool
     {
@@ -58,9 +62,24 @@ class EmissionPolicy
 
         $blockers = $this->sourceGuard->emissionDeletionBlockers($emission);
 
-        return $blockers === []
-            ? Response::allow()
-            : Response::deny('A emissão não pode ser excluída: '.SalesBoardSourceException::joinReasons($blockers).'.');
+        if ($blockers === []) {
+            return Response::allow();
+        }
+
+        // A decisão é a mesma de antes; o histórico governado do PU só explica
+        // por que ele nunca sai, e qual é a alternativa de arquivamento.
+        $governed = $this->puHistory->deletionBlockers($emission);
+        $message = 'A emissão não pode ser excluída: '.SalesBoardSourceException::joinReasons($blockers).'.';
+
+        if ($governed !== []) {
+            $message .= sprintf(
+                ' O histórico financeiro governado do PU (%s) é evidência protegida e nunca é apagado fisicamente. Para tirar a emissão de operação sem perder a história, altere o status para "%s".',
+                SalesBoardSourceException::joinReasons($governed),
+                Emission::STATUS_OPTIONS['closed'],
+            );
+        }
+
+        return Response::deny($message);
     }
 
     public function deleteAny(User $user): bool
