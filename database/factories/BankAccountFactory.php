@@ -4,7 +4,6 @@ namespace Database\Factories;
 
 use App\Models\Bank;
 use App\Models\BankAccount;
-use App\Support\BankAccountNormalizer;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -30,8 +29,12 @@ class BankAccountFactory extends Factory
             'agency_digit' => $agencyDigit,
             'account_number' => $accountNumber,
             'account_digit' => $accountDigit,
-            'display_agency' => BankAccountNormalizer::formatAgency($agencyNumber, $agencyDigit),
-            'display_account' => BankAccountNormalizer::formatAccount($accountNumber, $accountDigit),
+            // Display columns stay null so the model derives them from the
+            // final canonical parts on saving; computing them here from the
+            // random definition values would desync them whenever a caller
+            // overrides the numbers.
+            'display_agency' => null,
+            'display_account' => null,
             'holder_context' => null,
             'conta_azul_account_id' => null,
             'notes' => null,

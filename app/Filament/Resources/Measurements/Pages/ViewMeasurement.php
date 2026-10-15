@@ -1304,7 +1304,7 @@ class ViewMeasurement extends ViewRecord
             ...($nothingDue ? [
                 Placeholder::make('nothing_due')
                     ->hiddenLabel()
-                    ->content(new HtmlString('<p class="text-sm text-amber-700 dark:text-amber-400">Nenhum pagamento devido: o valor aprovado pela Engenharia é zero em todos os empreendimentos. Para concluir a etapa sem pagamento, use "Concluir etapa sem desembolso". Um pagamento registrado não pode ser alterado nem excluído.</p>')),
+                    ->content(new HtmlString('<p class="text-sm text-amber-700 dark:text-amber-400">Nenhum pagamento devido: o valor aprovado pela Engenharia é zero em todos os empreendimentos. Para concluir a etapa sem pagamento, use "Concluir etapa sem desembolso". Sem valor devido, um pagamento só é registrado com uma regra financeira que o cubra. Um pagamento registrado não pode ser alterado nem excluído.</p>')),
             ] : []),
             Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),
             // Data civil de Brasília, não o dia UTC: entre 21h e 24h o UTC já
@@ -1417,14 +1417,8 @@ class ViewMeasurement extends ViewRecord
     {
         $line = $this->reconciliationLine($planSetId, $amount);
 
-        if (! $line instanceof MeasurementFinancialReconciliationLine || ! $line->hasFinancialReference()) {
+        if (! $line instanceof MeasurementFinancialReconciliationLine) {
             return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">—</span>');
-        }
-
-        // Antes de a pessoa digitar, o valor informado é zero e a comparação
-        // acusaria o saldo inteiro como divergência: alarme sem informação.
-        if (blank($amount)) {
-            return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">Informe o valor para comparar com o saldo esperado.</span>');
         }
 
         $colors = [
@@ -1432,6 +1426,64 @@ class ViewMeasurement extends ViewRecord
             'warning' => 'text-amber-600 dark:text-amber-400',
             'gray' => 'text-gray-500 dark:text-gray-400',
         ];
+
+        // Na original, a mesma posição que o registro confere
+        // ({@see MeasurementPaymentFinancialService::assertOriginalPaymentFits()}):
+        // sem ela, nenhum pagamento -- nem no empreendimento sem Fundo de Obra;
+        // sem nada devido, só com regra financeira.
+        $dueLine = null;
+
+        if (! $this->record->isRevision()) {
+            $dueLine = collect(app(MeasurementPaymentFinancialService::class)->amountDue($this->record)->lines)
+                ->first(fn (MeasurementAmountDueLine $dueLine): bool => $dueLine->planSetId === (int) $planSetId);
+
+            if (! $dueLine instanceof MeasurementAmountDueLine) {
+                return new HtmlString(sprintf(
+                    '<span class="text-sm font-medium %s">%s</span>',
+                    $colors['warning'],
+                    // A medição paga com registro verificável não volta à
+                    // Engenharia: o caminho é a revisão.
+                    e($this->workflow()->protectsPaidEngineeringRecord($this->record)
+                        ? 'O valor devido desta medição não pode ser determinado: nenhum outro pagamento é registrado nela. A correção dos dados aprovados é uma revisão formal, depois da aprovação da etapa Pagamento e da conferência dos comprovantes.'
+                        : 'O valor devido desta medição não pode ser determinado: nenhum pagamento é registrado até o registro da Engenharia ser corrigido.'),
+                ));
+            }
+        }
+
+        if (! $line->hasFinancialReference()) {
+            return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">—</span>');
+        }
+
+        if ($dueLine instanceof MeasurementAmountDueLine && $dueLine->hasFinancialReference() && ! $dueLine->isPayable()) {
+            // Valor zero não é pagamento (o campo o recusa). Com o empreendimento
+            // já pago a maior, a divergência a cobrir soma o valor informado ao
+            // que já passou do aprovado.
+            $typed = ! blank($amount) && bccomp($line->enteredAmount, '0', 2) > 0;
+            $text = match (true) {
+                ! $typed => 'Nada é devido neste empreendimento (valor devido R$ 0,00): deixe o valor em branco. Um pagamento aqui só é registrado com uma regra financeira que o cubra.',
+                bccomp((string) $line->expectedBalance, '0', 2) < 0 => sprintf(
+                    'Nada é devido neste empreendimento (valor devido R$ 0,00): com o valor informado, a divergência a cobrir chega a %s (%s já registrados acima do aprovado), e o pagamento só é registrado com uma regra financeira que a cubra.',
+                    MeasurementFinancialReconciliationService::formatCurrency((string) $line->divergenceAmount),
+                    MeasurementFinancialReconciliationService::formatCurrency(ltrim((string) $line->expectedBalance, '-')),
+                ),
+                default => sprintf(
+                    'Nada é devido neste empreendimento (valor devido R$ 0,00): o valor informado é divergência de %s acima do valor devido e só é registrado com uma regra financeira que a cubra.',
+                    MeasurementFinancialReconciliationService::formatCurrency((string) $line->divergenceAmount),
+                ),
+            };
+
+            return new HtmlString(sprintf(
+                '<span class="text-sm font-medium %s">%s</span>',
+                $typed ? $colors['warning'] : $colors['gray'],
+                e($text),
+            ));
+        }
+
+        // Antes de a pessoa digitar, o valor informado é zero e a comparação
+        // acusaria o saldo inteiro como divergência: alarme sem informação.
+        if (blank($amount)) {
+            return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">Informe o valor para comparar com o saldo esperado.</span>');
+        }
 
         return new HtmlString(sprintf(
             '<span class="text-sm font-medium %s">%s</span>',
@@ -1492,7 +1544,8 @@ class ViewMeasurement extends ViewRecord
     {
         return Action::make('reassessPayment')->label('Reavaliar enquadramento')->icon('heroicon-o-adjustments-horizontal')
             ->visible(fn (): bool => $this->workflow()->canRegisterPayment($this->record, $this->actor()) && $this->record->payments()->exists())
-            ->modalDescription('Atualize a regra e a justificativa de um pagamento existente após uma devolução. O valor do pagamento permanece preservado.')
+            ->modalDescription(fn (): string => 'Atualize a regra e a justificativa de um pagamento existente após uma devolução. O valor do pagamento permanece preservado.'
+                .($this->record->isRevision() ? '' : ' Sem regra escolhida, o pagamento sem valor devido mantém a regra atual dele, enquanto ela cobrir a divergência.'))
             ->schema([
                 Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),
                 Select::make('payment_id')->label('Pagamento')->required()->live()

@@ -20,6 +20,7 @@ use App\Models\MeasurementReview;
 use App\Services\Security\ClamAvFileScanner;
 use App\Support\Uploads\LocalUploadedFile;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -29,6 +30,14 @@ use Illuminate\Validation\ValidationException;
 
 class MeasurementPaymentFinancialService
 {
+    /**
+     * O caminho da medição paga cuja posição financeira não se determina: o
+     * registro da Engenharia dela não volta à Engenharia
+     * ({@see MeasurementWorkflow::PAID_ENGINEERING_RETURN_REFUSAL}), e a
+     * revisão só se abre depois da etapa Pagamento e dos comprovantes.
+     */
+    public const PAID_UNDETERMINED_POSITION_PATH = 'Esta medição tem pagamento registrado: o registro aprovado pela Engenharia é a base desse pagamento e não volta à Engenharia para ser reescrito. Aprove a etapa Pagamento com o que já foi pago, conclua a conferência dos comprovantes e corrija os dados por uma revisão formal (Criar revisão).';
+
     public function __construct(
         private MeasurementFinancialReconciliationService $reconciliation,
         private MeasurementFinancialRuleService $rules,
@@ -61,7 +70,29 @@ class MeasurementPaymentFinancialService
             throw ValidationException::withMessages(['financial_rule_id' => 'Empreendimento fora da aprovação da Engenharia.']);
         }
         $exception = in_array($line->status, [MeasurementReconciliationStatus::Under, MeasurementReconciliationStatus::Over], true);
+        // Na original sem nada devido (fora este pagamento), não há exceção sem
+        // regra a que recorrer ({@see self::assertOriginalPaymentFits()}).
+        $nothingDue = ! $measurement->isRevision()
+            && $line->expectedBalance !== null
+            && bccomp($line->expectedBalance, '0', 2) <= 0;
+        // Na reavaliação do pagamento sem valor devido, a regra atual dele --
+        // a autorização com que entrou --, enquanto ela cobrir a divergência,
+        // mesmo encerrada depois: sem regra escolhida, ela continua, e trocar o
+        // documento de suporte não a tira. Sem regra atual, ou com uma que já
+        // não cobre, a reavaliação segue como sempre.
+        $currentRule = $existing?->financial_assessment['rule'] ?? null;
+        $currentRule = $nothingDue && is_array($currentRule) && self::isReadableRuleSnapshot($currentRule)
+            && $this->covers((new MeasurementFinancialRule)->forceFill(Arr::only($currentRule, ['direction', 'maximum_difference_amount', 'maximum_difference_percent'])), $line->divergenceAmount, $line->expectedBalance)
+            ? $currentRule
+            : null;
+        $keptRule = blank($data['financial_rule_id'] ?? null) ? $currentRule : null;
+
         $justification = trim((string) ($data['financial_justification'] ?? ''));
+
+        // Espaço invisível (sem quebra, de largura zero) não é justificativa.
+        if (preg_replace('/[\s\p{Z}\p{Cf}]+/u', '', $justification) === '') {
+            $justification = '';
+        }
         Validator::make(['financial_justification' => $justification], [
             'financial_justification' => [$exception ? 'required' : 'nullable', 'string', 'max:5000'],
         ], ['financial_justification.required' => 'Explique a divergência financeira para a conferência do Finalizador.'])->validate();
@@ -71,7 +102,18 @@ class MeasurementPaymentFinancialService
             $rule = $this->rules->availableFor($measurement, $planSetId, $data['pay_date'])
                 ->whereKey($data['financial_rule_id'])->lockForUpdate()->first();
             if (! $rule || ! $this->covers($rule, $line->divergenceAmount, $line->expectedBalance)) {
-                throw ValidationException::withMessages(['financial_rule_id' => 'A regra não cobre esta emissão, obra, data, direção ou valor. Escolha uma regra válida ou justifique como exceção sem regra.']);
+                throw ValidationException::withMessages(['financial_rule_id' => match (true) {
+                    $nothingDue && $existing === null => sprintf(
+                        'A regra não cobre esta emissão, obra, data, direção ou valor. Sem valor devido neste empreendimento, o pagamento só é registrado com uma regra que cubra a divergência de %s.',
+                        MeasurementFinancialReconciliationService::formatCurrency((string) $line->divergenceAmount),
+                    ),
+                    $currentRule !== null => sprintf(
+                        'A regra não cobre esta emissão, obra, data, direção ou valor. Escolha uma regra que cubra o pagamento, ou deixe a regra em branco para manter a atual (%s · versão %d).',
+                        $currentRule['name'] ?? 'regra',
+                        (int) ($currentRule['version'] ?? 1),
+                    ),
+                    default => 'A regra não cobre esta emissão, obra, data, direção ou valor. Escolha uma regra válida ou justifique como exceção sem regra.',
+                }]);
             }
         }
 
@@ -83,7 +125,7 @@ class MeasurementPaymentFinancialService
             ])->validate();
             $support = $this->storeSupport($file);
         }
-        if ($rule?->requires_document && $support === null) {
+        if (($rule?->requires_document || ($keptRule['requires_document'] ?? false) === true) && $support === null) {
             throw ValidationException::withMessages(['financial_support' => 'Esta regra exige documento de suporte (PDF, JPG ou PNG).']);
         }
         if ($support !== null) {
@@ -99,9 +141,28 @@ class MeasurementPaymentFinancialService
             'reference' => $line->toArray(),
             'requires_acceptance' => $exception,
             'justification' => $justification ?: null,
-            'rule' => $rule?->snapshot(),
+            'rule' => $rule?->snapshot() ?? $keptRule,
             'support' => $support,
         ];
+    }
+
+    /**
+     * A regra congelada num enquadramento pode ser relida como regra: direção
+     * conhecida, ao menos um limite e limites escritos como a regra os grava.
+     * Um enquadramento adulterado não vira regra sem limite nem quebra a conta.
+     *
+     * @param  array<mixed>  $snapshot
+     */
+    private static function isReadableRuleSnapshot(array $snapshot): bool
+    {
+        $amount = $snapshot['maximum_difference_amount'] ?? null;
+        $percent = $snapshot['maximum_difference_percent'] ?? null;
+
+        return is_string($snapshot['direction'] ?? null)
+            && array_key_exists($snapshot['direction'], MeasurementFinancialRule::DIRECTIONS)
+            && ($amount !== null || $percent !== null)
+            && ($amount === null || (is_string($amount) && preg_match('/^\d{1,16}(\.\d{1,2})?$/', $amount) === 1))
+            && ($percent === null || (is_string($percent) && preg_match('/^\d{1,6}(\.\d{1,4})?$/', $percent) === 1));
     }
 
     private function covers(MeasurementFinancialRule $rule, ?string $difference, ?string $balance): bool
@@ -116,7 +177,9 @@ class MeasurementPaymentFinancialService
             return false;
         }
         if ($rule->maximum_difference_percent !== null) {
-            if (bccomp($balance, '0', 2) === 0) {
+            // O limite percentual é sobre o saldo a pagar: sem saldo -- nada
+            // devido, ou já pago a maior --, ele não tem base.
+            if (bccomp($balance, '0', 2) <= 0) {
                 return false;
             }
 
@@ -213,6 +276,73 @@ class MeasurementPaymentFinancialService
             undetermined: $undetermined,
             engineeringSnapshotSha256: is_array($snapshot) ? MeasurementRevisionService::canonicalSnapshotHash($snapshot) : null,
         );
+    }
+
+    /**
+     * Na medição original, o pagamento precisa de um valor devido a que
+     * corresponder -- ou de uma regra financeira que o autorize.
+     *
+     * Chamado pelo registro de pagamentos ({@see MeasurementWorkflow::registerPayments()})
+     * linha a linha, sob o lock da Operation e da medição e antes do
+     * enquadramento. A posição é a autoritativa ({@see self::amountDue()}),
+     * relida a cada linha: o que as linhas anteriores do mesmo registro pagaram
+     * já conta, e um empreendimento não compensa outro.
+     *
+     * - Sem posição financeira -- o registro da Engenharia não sustenta a
+     *   conta --, nenhum pagamento é registrado: valor devido indeterminado
+     *   nunca é zero, nem licença para pagar.
+     * - Sem Fundo de Obra no empreendimento, o pagamento segue sem referência
+     *   financeira, como sempre.
+     * - Com valor devido, o pagamento segue o caminho de sempre: o que passar
+     *   do devido é divergência, com justificativa e aceite do Finalizador.
+     * - Sem nada devido no empreendimento -- aprovado zero, arredondado a zero
+     *   ou já pago por esta medição --, o pagamento inteiro é divergência, sem
+     *   valor devido algum por trás: só passa com uma regra financeira, que o
+     *   enquadramento confere (emissão, obra, vigência, direção e limites). A
+     *   justificativa sozinha não basta.
+     *
+     * A revisão tem a regra própria ({@see MeasurementRevisionService::assertRevisionPaymentFits()}).
+     *
+     * @param  array<string, mixed>  $row
+     *
+     * @throws ValidationException
+     */
+    public function assertOriginalPaymentFits(Measurement $measurement, array $row, int $index): void
+    {
+        if ($measurement->isRevision()) {
+            return;
+        }
+
+        $field = "payments.{$index}.amount";
+        $planSetId = (int) ($row['plan_set_id'] ?? 0);
+        $amountDue = $this->amountDue($measurement);
+        $line = collect($amountDue->lines)->first(fn (MeasurementAmountDueLine $line): bool => $line->planSetId === $planSetId);
+
+        if (! $line instanceof MeasurementAmountDueLine) {
+            throw ValidationException::withMessages([$field => sprintf(
+                'Nenhum pagamento é registrado sem a posição financeira desta medição. %s %s',
+                implode(' ', $amountDue->undetermined ?: ['O empreendimento não está no registro aprovado pela Engenharia: o valor devido não pode ser determinado.']),
+                // A medição paga não volta à Engenharia: o caminho é a revisão.
+                $measurement->payments()->exists()
+                    ? self::PAID_UNDETERMINED_POSITION_PATH
+                    : 'Corrija o registro da Engenharia, devolvendo a medição àquela etapa.',
+            )]);
+        }
+
+        if (! $line->hasFinancialReference() || $line->isPayable() || filled($row['financial_rule_id'] ?? null)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([$field => sprintf(
+            'Nada é devido para %s nesta medição: valor aprovado %s, já registrado %s, valor devido %s. Sem valor devido, o pagamento só é registrado com uma regra financeira que o cubra; a justificativa sozinha não basta.%s',
+            $line->label,
+            MeasurementFinancialReconciliationService::formatCurrency($line->approvedAmount),
+            MeasurementFinancialReconciliationService::formatCurrency($line->registeredAmount),
+            MeasurementFinancialReconciliationService::formatCurrency($line->remainingAmount),
+            $amountDue->isNothingDue() && $measurement->payments()->doesntExist()
+                ? ' Sem valor devido em nenhum empreendimento, conclua a etapa Pagamento sem desembolso, com a justificativa obrigatória.'
+                : '',
+        )]);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Funds\FundAllocationLinkageGuard;
 use Carbon\CarbonInterface;
 use Database\Factories\FundFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -40,6 +41,16 @@ class Fund extends Model
 
     protected static function booted(): void
     {
+        // Phase 2B linkage guard: a Fund referenced by an open allocation
+        // revision cannot change its emission, account or application until
+        // the open revision is concluded or discarded. Runs before the
+        // cross-reference check so the allocation message wins when both
+        // apply; it returns before any query unless linkage is dirty, so
+        // unrelated writes (including every legacy write) are untouched.
+        static::saving(function (Fund $fund): void {
+            app(FundAllocationLinkageGuard::class)->assertLinkageChangeAllowed($fund);
+        });
+
         // Phase 1A cross-reference guard: a fund may only pair an account
         // with an application that belongs to that same account. Rows with a
         // NULL application (every legacy row, plus direct account links)

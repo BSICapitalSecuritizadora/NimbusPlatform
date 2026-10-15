@@ -40,6 +40,12 @@ class RolesAndPermissionsSeeder extends Seeder
             'emissions.view', 'emissions.create', 'emissions.update',
             'expenses.view', 'expenses.create', 'expenses.update',
             'funds.view', 'funds.create', 'funds.update',
+            'conta-azul-imports.view',
+            // `fund-allocations.approve` stays out on purpose: approval is the
+            // checker's authority, and the editor is the maker — the same
+            // segregation as `sales-boards.approve`.
+            'fund-allocations.view', 'fund-allocations.create', 'fund-allocations.submit',
+            'fund-allocations.correct', 'fund-allocations.manage_references',
             'obligations.view', 'obligations.create', 'obligations.update',
             'obligations.generate', 'obligations.review_suggestions',
             'obligations.approve_suggestion', 'obligations.reject_suggestion',

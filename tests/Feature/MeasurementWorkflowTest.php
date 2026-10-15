@@ -351,9 +351,12 @@ it('registers one payment per development', function () {
             'measurement_id' => 0,
             'operation_id' => $operation->id,
             'emission_id' => $operation->emission_id,
+            // Percentual e versão do plano, como a Engenharia grava: sem eles
+            // o valor devido não se determina e nenhum pagamento é registrado.
+            // Sem Fundo de Obra, os pagamentos seguem sem referência financeira.
             'plan_sets' => [
-                ['plan_set_id' => $planA->id, 'is_default' => true],
-                ['plan_set_id' => $planB->id, 'is_default' => false],
+                ['plan_set_id' => $planA->id, 'is_default' => true, 'plan_version_id' => $planA->versions()->value('id'), 'realized_monthly_percent' => '0.00'],
+                ['plan_set_id' => $planB->id, 'is_default' => false, 'plan_version_id' => $planB->versions()->value('id'), 'realized_monthly_percent' => '0.00'],
             ],
         ],
     ]);
@@ -392,9 +395,11 @@ it('ignores payment rows without an amount', function () {
             'measurement_id' => 0,
             'operation_id' => $operation->id,
             'emission_id' => $operation->emission_id,
+            // Percentual e versão do plano, como a Engenharia grava; sem Fundo
+            // de Obra, os pagamentos seguem sem referência financeira.
             'plan_sets' => [
-                ['plan_set_id' => $planA->id, 'is_default' => true],
-                ['plan_set_id' => $planB->id, 'is_default' => false],
+                ['plan_set_id' => $planA->id, 'is_default' => true, 'plan_version_id' => $planA->versions()->value('id'), 'realized_monthly_percent' => '0.00'],
+                ['plan_set_id' => $planB->id, 'is_default' => false, 'plan_version_id' => $planB->versions()->value('id'), 'realized_monthly_percent' => '0.00'],
             ],
         ],
     ]);

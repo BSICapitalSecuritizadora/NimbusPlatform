@@ -1,7 +1,7 @@
 <?php
 
 use App\Support\ActivityLog\LogActivityWithinBatch;
-use Spatie\Activitylog\Actions\CleanActivityLogAction;
+use App\Support\ActivityLog\RefuseGenericActivityLogCleanup;
 use Spatie\Activitylog\Models\Activity;
 
 return [
@@ -15,11 +15,10 @@ return [
     'enabled' => env('ACTIVITYLOG_ENABLED', env('ACTIVITY_LOGGER_ENABLED', true)),
 
     /*
-     * When the clean command is executed, all recording activities older than
-     * the number of days specified here will be deleted.
-     *
-     * Only `activitylog:clean` reads this, and nothing schedules it: retention
-     * is decided by `audit:clean-filtered` from `config/audit.php`.
+     * The default age of the package's `activitylog:clean`. Only that command
+     * reads it, and it refuses before deleting anything (see
+     * `actions.clean_log` below): retention is decided by
+     * `audit:clean-filtered` from `config/audit.php`.
      */
     'clean_after_days' => 365,
 
@@ -72,10 +71,16 @@ return [
      *
      * `log_activity` is ours: v5 dropped the batch system, and the import runs
      * are correlated to what they changed through `activity_log.batch_uuid`.
+     *
+     * `clean_log` is ours too, and it refuses: the package's cleanup deletes by
+     * age alone and would expire the protected trail (Measurement, PU and the
+     * rest of the logs, events and subject types protected in
+     * `config/audit.php`) before its retention. The only cleanup is
+     * `audit:clean-filtered`, which does not go through this action.
      */
     'actions' => [
         'log_activity' => LogActivityWithinBatch::class,
-        'clean_log' => CleanActivityLogAction::class,
+        'clean_log' => RefuseGenericActivityLogCleanup::class,
     ],
 
     /*

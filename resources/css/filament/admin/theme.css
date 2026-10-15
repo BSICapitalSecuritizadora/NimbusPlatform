@@ -10310,17 +10310,23 @@ html:not(.dark) .fi-modal-footer .fi-btn-color-gray:hover {
    `.fi-input-wrp-actions`, fora do contêiner do popup, então a largura inline continua sendo a
    do trigger. A edição de Nome de fundo reutiliza o marcador apenas em Tipo de fundo;
    nela o `.fi-select-input` também recebe overflow oculto e precisa liberar o popup.
+   Conta bancária global e Aplicação bancária de "Criar fundo"
+   (`FundForm::BANK_LINK_SELECT_CLASS`) também: mesma página base, relationship +
+   `preload()`, sem contexto fixo. A Aplicação bancária fica `disabled` sem Conta
+   bancária e então nunca abre.
    Emissão de "Cadastrar resumo de recebíveis" (`ReceivableForm::EMISSION_SELECT_CLASS`) também:
    relationship + `preload()`, sem contexto fixo. Aqui os wrappers do input já são visíveis; quem
    recorta é a seção "Identificação do resumo" (ver a ficha financeira). */
 .fi-resource-create-record-page.fi-resource-operations form.fi-sc-form .bsi-measurement-workflow-responsible-select,
 .fi-resource-create-record-page.fi-resource-measurements form.fi-sc-form .bsi-measurement-operation-select,
 .fi-resource-create-record-page.fi-resource-funds form.fi-sc-form .bsi-fund-classification-select,
+.fi-resource-create-record-page.fi-resource-funds form.fi-sc-form .bsi-fund-bank-link-select,
 .fi-resource-create-record-page.fi-resource-receivables form.fi-sc-form .bsi-receivable-emission-select,
 .fi-resource-edit-record-page.fi-resource-fund-names form.fi-sc-form .bsi-fund-classification-select,
 .fi-resource-create-record-page.fi-resource-operations form.fi-sc-form .bsi-measurement-workflow-responsible-select > .fi-input-wrp-content-ctn,
 .fi-resource-create-record-page.fi-resource-measurements form.fi-sc-form .bsi-measurement-operation-select > .fi-input-wrp-content-ctn,
 .fi-resource-create-record-page.fi-resource-funds form.fi-sc-form .bsi-fund-classification-select > .fi-input-wrp-content-ctn,
+.fi-resource-create-record-page.fi-resource-funds form.fi-sc-form .bsi-fund-bank-link-select > .fi-input-wrp-content-ctn,
 .fi-resource-create-record-page.fi-resource-receivables form.fi-sc-form .bsi-receivable-emission-select > .fi-input-wrp-content-ctn,
 .fi-resource-edit-record-page.fi-resource-fund-names form.fi-sc-form .bsi-fund-classification-select > .fi-input-wrp-content-ctn,
 .fi-resource-edit-record-page.fi-resource-fund-names form.fi-sc-form .bsi-fund-classification-select > .fi-input-wrp-content-ctn > .fi-select-input {
@@ -10330,6 +10336,7 @@ html:not(.dark) .fi-modal-footer .fi-btn-color-gray:hover {
 .fi-resource-create-record-page.fi-resource-operations .bsi-measurement-workflow-responsible-select .fi-select-input-value-label,
 .fi-resource-create-record-page.fi-resource-measurements .bsi-measurement-operation-select .fi-select-input-value-label,
 .fi-resource-create-record-page.fi-resource-funds .bsi-fund-classification-select .fi-select-input-value-label,
+.fi-resource-create-record-page.fi-resource-funds .bsi-fund-bank-link-select .fi-select-input-value-label,
 .fi-resource-create-record-page.fi-resource-receivables .bsi-receivable-emission-select .fi-select-input-value-label,
 .fi-resource-edit-record-page.fi-resource-fund-names .bsi-fund-classification-select .fi-select-input-value-label {
     overflow: hidden;
@@ -10341,6 +10348,7 @@ html:not(.dark) .fi-modal-footer .fi-btn-color-gray:hover {
 .fi-resource-create-record-page.fi-resource-operations .bsi-measurement-workflow-responsible-select .fi-dropdown-panel,
 .fi-resource-create-record-page.fi-resource-measurements .bsi-measurement-operation-select .fi-dropdown-panel,
 .fi-resource-create-record-page.fi-resource-funds .bsi-fund-classification-select .fi-dropdown-panel,
+.fi-resource-create-record-page.fi-resource-funds .bsi-fund-bank-link-select .fi-dropdown-panel,
 .fi-resource-create-record-page.fi-resource-receivables .bsi-receivable-emission-select .fi-dropdown-panel,
 .fi-resource-edit-record-page.fi-resource-fund-names .bsi-fund-classification-select .fi-dropdown-panel {
     min-width: 0 !important;
@@ -10356,6 +10364,7 @@ html:not(.dark) .fi-modal-footer .fi-btn-color-gray:hover {
 .fi-resource-create-record-page.fi-resource-operations .bsi-measurement-workflow-responsible-select .fi-select-input-btn[aria-expanded="true"] + .fi-dropdown-panel,
 .fi-resource-create-record-page.fi-resource-measurements .bsi-measurement-operation-select .fi-select-input-btn[aria-expanded="true"] + .fi-dropdown-panel,
 .fi-resource-create-record-page.fi-resource-funds .bsi-fund-classification-select .fi-select-input-btn[aria-expanded="true"] + .fi-dropdown-panel,
+.fi-resource-create-record-page.fi-resource-funds .bsi-fund-bank-link-select .fi-select-input-btn[aria-expanded="true"] + .fi-dropdown-panel,
 .fi-resource-create-record-page.fi-resource-receivables .bsi-receivable-emission-select .fi-select-input-btn[aria-expanded="true"] + .fi-dropdown-panel,
 .fi-resource-edit-record-page.fi-resource-fund-names .bsi-fund-classification-select .fi-select-input-btn[aria-expanded="true"] + .fi-dropdown-panel {
     display: flex !important;
@@ -10364,6 +10373,7 @@ html:not(.dark) .fi-modal-footer .fi-btn-color-gray:hover {
 .fi-resource-create-record-page.fi-resource-operations .bsi-measurement-workflow-responsible-select .fi-select-input-search-ctn,
 .fi-resource-create-record-page.fi-resource-measurements .bsi-measurement-operation-select .fi-select-input-search-ctn,
 .fi-resource-create-record-page.fi-resource-funds .bsi-fund-classification-select .fi-select-input-search-ctn,
+.fi-resource-create-record-page.fi-resource-funds .bsi-fund-bank-link-select .fi-select-input-search-ctn,
 .fi-resource-create-record-page.fi-resource-receivables .bsi-receivable-emission-select .fi-select-input-search-ctn,
 .fi-resource-edit-record-page.fi-resource-fund-names .bsi-fund-classification-select .fi-select-input-search-ctn {
     flex: 0 0 auto !important;
@@ -10375,6 +10385,7 @@ html:not(.dark) .fi-modal-footer .fi-btn-color-gray:hover {
 .fi-resource-create-record-page.fi-resource-operations .bsi-measurement-workflow-responsible-select .fi-select-input-search-ctn .fi-input,
 .fi-resource-create-record-page.fi-resource-measurements .bsi-measurement-operation-select .fi-select-input-search-ctn .fi-input,
 .fi-resource-create-record-page.fi-resource-funds .bsi-fund-classification-select .fi-select-input-search-ctn .fi-input,
+.fi-resource-create-record-page.fi-resource-funds .bsi-fund-bank-link-select .fi-select-input-search-ctn .fi-input,
 .fi-resource-create-record-page.fi-resource-receivables .bsi-receivable-emission-select .fi-select-input-search-ctn .fi-input,
 .fi-resource-edit-record-page.fi-resource-fund-names .bsi-fund-classification-select .fi-select-input-search-ctn .fi-input {
     width: 100% !important;
@@ -10388,6 +10399,7 @@ html:not(.dark) .fi-modal-footer .fi-btn-color-gray:hover {
 .fi-resource-create-record-page.fi-resource-operations .bsi-measurement-workflow-responsible-select .fi-dropdown-list,
 .fi-resource-create-record-page.fi-resource-measurements .bsi-measurement-operation-select .fi-dropdown-list,
 .fi-resource-create-record-page.fi-resource-funds .bsi-fund-classification-select .fi-dropdown-list,
+.fi-resource-create-record-page.fi-resource-funds .bsi-fund-bank-link-select .fi-dropdown-list,
 .fi-resource-create-record-page.fi-resource-receivables .bsi-receivable-emission-select .fi-dropdown-list,
 .fi-resource-edit-record-page.fi-resource-fund-names .bsi-fund-classification-select .fi-dropdown-list {
     flex: 1 1 auto !important;
@@ -10407,6 +10419,7 @@ html:not(.dark) .fi-modal-footer .fi-btn-color-gray:hover {
 .fi-resource-create-record-page.fi-resource-operations .bsi-measurement-workflow-responsible-select .fi-select-input-option,
 .fi-resource-create-record-page.fi-resource-measurements .bsi-measurement-operation-select .fi-select-input-option,
 .fi-resource-create-record-page.fi-resource-funds .bsi-fund-classification-select .fi-select-input-option,
+.fi-resource-create-record-page.fi-resource-funds .bsi-fund-bank-link-select .fi-select-input-option,
 .fi-resource-create-record-page.fi-resource-receivables .bsi-receivable-emission-select .fi-select-input-option,
 .fi-resource-edit-record-page.fi-resource-fund-names .bsi-fund-classification-select .fi-select-input-option {
     display: flex !important;
@@ -10428,6 +10441,7 @@ html:not(.dark) .fi-modal-footer .fi-btn-color-gray:hover {
 .fi-resource-create-record-page.fi-resource-operations .bsi-measurement-workflow-responsible-select .fi-select-input-option.fi-selected,
 .fi-resource-create-record-page.fi-resource-measurements .bsi-measurement-operation-select .fi-select-input-option.fi-selected,
 .fi-resource-create-record-page.fi-resource-funds .bsi-fund-classification-select .fi-select-input-option.fi-selected,
+.fi-resource-create-record-page.fi-resource-funds .bsi-fund-bank-link-select .fi-select-input-option.fi-selected,
 .fi-resource-create-record-page.fi-resource-receivables .bsi-receivable-emission-select .fi-select-input-option.fi-selected,
 .fi-resource-edit-record-page.fi-resource-fund-names .bsi-fund-classification-select .fi-select-input-option.fi-selected {
     font-weight: 600 !important;
@@ -10436,6 +10450,7 @@ html:not(.dark) .fi-modal-footer .fi-btn-color-gray:hover {
 .fi-resource-create-record-page.fi-resource-operations .bsi-measurement-workflow-responsible-select .fi-select-input-option > span,
 .fi-resource-create-record-page.fi-resource-measurements .bsi-measurement-operation-select .fi-select-input-option > span,
 .fi-resource-create-record-page.fi-resource-funds .bsi-fund-classification-select .fi-select-input-option > span,
+.fi-resource-create-record-page.fi-resource-funds .bsi-fund-bank-link-select .fi-select-input-option > span,
 .fi-resource-create-record-page.fi-resource-receivables .bsi-receivable-emission-select .fi-select-input-option > span,
 .fi-resource-edit-record-page.fi-resource-fund-names .bsi-fund-classification-select .fi-select-input-option > span {
     display: block !important;
@@ -10451,6 +10466,7 @@ html:not(.dark) .fi-modal-footer .fi-btn-color-gray:hover {
     .fi-resource-create-record-page.fi-resource-operations .bsi-measurement-workflow-responsible-select .fi-select-input-option,
     .fi-resource-create-record-page.fi-resource-measurements .bsi-measurement-operation-select .fi-select-input-option,
     .fi-resource-create-record-page.fi-resource-funds .bsi-fund-classification-select .fi-select-input-option,
+    .fi-resource-create-record-page.fi-resource-funds .bsi-fund-bank-link-select .fi-select-input-option,
     .fi-resource-create-record-page.fi-resource-receivables .bsi-receivable-emission-select .fi-select-input-option,
     .fi-resource-edit-record-page.fi-resource-fund-names .bsi-fund-classification-select .fi-select-input-option {
         min-height: 2.75rem !important;

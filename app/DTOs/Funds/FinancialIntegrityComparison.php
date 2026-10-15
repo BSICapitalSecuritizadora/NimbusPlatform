@@ -11,13 +11,16 @@ use App\DTOs\BaseDTO;
  *
  * A matching digest means the table is byte-identical under the canonical
  * serialization; otherwise the added/removed/changed id lists pinpoint the
- * divergence. Comparing snapshots from different databases (or different
+ * divergence. Rows differing solely in explicitly allowed backfill columns
+ * are reported separately in allowed_only_ids, with the applied exclusions
+ * echoed in allowed_columns — an authorized difference is always explicit,
+ * never silent. Comparing snapshots from different databases (or different
  * drivers) is not meaningful and is left to the caller to avoid.
  */
 readonly class FinancialIntegrityComparison extends BaseDTO
 {
     /**
-     * @param  array<string, array{matches: bool, digest_before: ?string, digest_after: ?string, row_count_before: int, row_count_after: int, added_ids: list<int>, removed_ids: list<int>, changed_ids: list<int>}>  $tables
+     * @param  array<string, array{matches: bool, digest_before: ?string, digest_after: ?string, row_count_before: int, row_count_after: int, added_ids: list<int>, removed_ids: list<int>, changed_ids: list<int>, allowed_columns: list<string>, allowed_only_ids: list<int>}>  $tables
      */
     public function __construct(
         public bool $matches,

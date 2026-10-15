@@ -11,7 +11,7 @@ it('keeps the admin views free from placeholder links', function () {
 
         expect($contents)
             ->not->toMatch('/href\s*=\s*["\']#["\']/', $file->getRelativePathname())
-            ->not->toMatch('/\?\?\s*(["\'])#\1(?!\s*\.)/', $file->getRelativePathname());
+            ->not->toMatch('/\?\?\s*(["\'])#\1/', $file->getRelativePathname());
     }
 });
 

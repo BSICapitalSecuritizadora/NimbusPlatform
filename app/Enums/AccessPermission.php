@@ -34,6 +34,14 @@ enum AccessPermission: string
     case FundsCreate = 'funds.create';
     case FundsUpdate = 'funds.update';
     case FundsDelete = 'funds.delete';
+    case ContaAzulImportsView = 'conta-azul-imports.view';
+    case ContaAzulImportsManage = 'conta-azul-imports.manage';
+    case FundAllocationsView = 'fund-allocations.view';
+    case FundAllocationsCreate = 'fund-allocations.create';
+    case FundAllocationsSubmit = 'fund-allocations.submit';
+    case FundAllocationsApprove = 'fund-allocations.approve';
+    case FundAllocationsCorrect = 'fund-allocations.correct';
+    case FundAllocationsManageReferences = 'fund-allocations.manage_references';
     case ObligationsView = 'obligations.view';
     case ObligationsCreate = 'obligations.create';
     case ObligationsUpdate = 'obligations.update';
@@ -298,6 +306,14 @@ enum AccessPermission: string
             self::FundsCreate => 'Fundos: criar',
             self::FundsUpdate => 'Fundos: editar',
             self::FundsDelete => 'Fundos: excluir',
+            self::ContaAzulImportsView => 'Importações Conta Azul: visualizar títulos importados',
+            self::ContaAzulImportsManage => 'Importações Conta Azul: executar importações',
+            self::FundAllocationsView => 'Alocações: visualizar',
+            self::FundAllocationsCreate => 'Alocações: criar rascunhos',
+            self::FundAllocationsSubmit => 'Alocações: enviar para análise',
+            self::FundAllocationsApprove => 'Alocações: aprovar',
+            self::FundAllocationsCorrect => 'Alocações: propor correções',
+            self::FundAllocationsManageReferences => 'Alocações: registrar saldos de referência',
             self::ObligationsView => 'Obrigações: visualizar',
             self::ObligationsCreate => 'Obrigações: criar',
             self::ObligationsUpdate => 'Obrigações: editar',
@@ -676,6 +692,7 @@ enum AccessPermission: string
             str_starts_with($this->value, 'documents.'),
             str_starts_with($this->value, 'investors.'),
             str_starts_with($this->value, 'funds.'),
+            str_starts_with($this->value, 'fund-allocations.'),
             str_starts_with($this->value, 'constructions.'),
             str_starts_with($this->value, 'expenses.') => 'Documentos & Cadastros',
 

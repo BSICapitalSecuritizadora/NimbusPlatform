@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Funds\Pages;
 
 use App\Actions\FundAlerts\SendFundMinimumBalanceAlertAction;
+use App\Actions\Funds\DeriveLegacyBankFieldsFromAccount;
 use App\Filament\Resources\Funds\FundResource;
 use App\Models\Fund;
 use Filament\Actions\Action;
@@ -32,6 +33,7 @@ class CreateFund extends CreateRecord
      */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $data = app(DeriveLegacyBankFieldsFromAccount::class)->handle($data);
         $data['balance_updated_at'] = now();
 
         return $data;

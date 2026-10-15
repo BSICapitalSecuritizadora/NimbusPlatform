@@ -289,8 +289,10 @@
             <ul class="space-y-3">
                 @foreach ($revisionOverpayments as $position)
                     @php
+                        // Texto, não link: a medição que reconheceu e não foi
+                        // encontrada é nomeada pelo id, como nas demais telas.
                         $origins = collect($position->previouslyAcknowledgedByMeasurementIds)
-                            ->map(fn (int $id): string => $acknowledgingLabels[$id] ?? '#'.$id)
+                            ->map(fn (int $id): string => $acknowledgingLabels[$id] ?? 'medição #'.$id)
                             ->implode(', ');
                         $ownExcess = bcsub(bcsub((string) $position->outstandingOverpaymentAmount, $position->previouslyAcknowledgedOverpaymentAmount ?? '0.00', 2), $position->unacknowledgedOverpaymentAmount ?? '0.00', 2);
                         $hasOwnExcess = bccomp($ownExcess, '0', 2) > 0;

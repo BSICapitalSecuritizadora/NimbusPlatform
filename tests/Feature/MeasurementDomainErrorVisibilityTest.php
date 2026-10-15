@@ -8,6 +8,7 @@ use App\Filament\Resources\Measurements\Pages\ViewMeasurement;
 use App\Models\Construction;
 use App\Models\Measurement;
 use App\Models\MeasurementAsset;
+use App\Models\MeasurementFinancialRule;
 use App\Models\MeasurementPayment;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
@@ -263,6 +264,26 @@ function domainErrorPaymentStage(): array
 }
 
 /**
+ * Regra financeira da emissão que cobre o complemento de R$ 100,00 da medição
+ * de {@see domainErrorPaymentStage()}: paga por inteiro, ela não tem valor
+ * devido, e o complemento só é registrado coberto por regra.
+ *
+ * @param  array{actor: User, operation: Operation, measurement: Measurement, payment: MeasurementPayment}  $scenario
+ */
+function domainErrorComplementRule(array $scenario): MeasurementFinancialRule
+{
+    // Sem fim de vigência: os testes pagam na data de hoje em Brasília.
+    return MeasurementFinancialRule::factory()->create([
+        'emission_id' => $scenario['operation']->emission_id,
+        'name' => 'Complemento contratual',
+        'direction' => 'over',
+        'maximum_difference_amount' => '1000.00',
+        'maximum_difference_percent' => null,
+        'effective_until' => null,
+    ]);
+}
+
+/**
  * Chave real do único item do Repeater de pagamentos do modal montado.
  */
 function domainErrorPaymentItemKey(Testable $component): string
@@ -469,12 +490,14 @@ it('tells to register a payment, without offering the justification, when the Pa
 
 it('shows the financial validation of a payment on the real row of the repeater', function () {
     $scenario = domainErrorPaymentStage();
+    $rule = domainErrorComplementRule($scenario);
 
     $component = Livewire::test(ViewMeasurement::class, ['record' => $scenario['measurement']->getRouteKey()])
         ->mountAction('registerPayment');
     $key = domainErrorPaymentItemKey($component);
 
-    $component->set("mountedActions.0.data.payments.{$key}.amount", '100,00')
+    $component->set("mountedActions.0.data.payments.{$key}.financial_rule_id", $rule->id)
+        ->set("mountedActions.0.data.payments.{$key}.amount", '100,00')
         ->callMountedAction();
 
     expect($key)->not->toBe('')->not->toBe('0')
@@ -569,6 +592,7 @@ it('puts the divergence justification error on the row of the development that d
 
 it('shows an unavailable antivirus under the support document of the payment row and logs it', function () {
     $scenario = domainErrorPaymentStage();
+    $rule = domainErrorComplementRule($scenario);
     domainErrorScanner(ClamAvFileScanner::RESULT_UNAVAILABLE);
     $logs = domainErrorCriticalLogs();
 
@@ -578,6 +602,7 @@ it('shows an unavailable antivirus under the support document of the payment row
 
     $component->fillForm(['payments' => [$key => [
         'amount' => '100,00',
+        'financial_rule_id' => $rule->id,
         'financial_justification' => 'Complemento contratual a conferir.',
         'financial_support' => [ReceiptScenario::file('suporte.pdf')],
     ]]])->callMountedAction();
@@ -1082,6 +1107,7 @@ it('refuses a forged receipt path on the field and still accepts a real upload',
 
 it('refuses a forged support document path on the payment row and still accepts a real upload', function () {
     $scenario = domainErrorPaymentStage();
+    $rule = domainErrorComplementRule($scenario);
     $forged = 'nimbus_docs/measurements/financial-support/'.Str::uuid().'/alheio.pdf';
     Storage::disk('local')->put($forged, '%PDF-1.7 suporte de outra medição');
 
@@ -1089,7 +1115,7 @@ it('refuses a forged support document path on the payment row and still accepts 
         ->mountAction('registerPayment');
     $key = domainErrorPaymentItemKey($component);
 
-    $component->fillForm(['payments' => [$key => ['amount' => '100,00', 'financial_justification' => 'Complemento contratual a conferir.']]])
+    $component->fillForm(['payments' => [$key => ['amount' => '100,00', 'financial_rule_id' => $rule->id, 'financial_justification' => 'Complemento contratual a conferir.']]])
         ->set("mountedActions.0.data.payments.{$key}.financial_support", [(string) Str::uuid() => $forged])
         ->callMountedAction();
 

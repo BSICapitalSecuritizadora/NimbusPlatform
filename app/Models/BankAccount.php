@@ -4,10 +4,12 @@ namespace App\Models;
 
 use App\Support\BankAccountNormalizer;
 use Database\Factories\BankAccountFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -93,6 +95,28 @@ class BankAccount extends Model
     }
 
     /**
+     * Phase 3A staging batches fetched through this account.
+     *
+     * Read-only navigation for the future reconciliation workflow; the
+     * ingestion pipeline writes these rows directly.
+     */
+    public function contaAzulImportBatches(): HasMany
+    {
+        return $this->hasMany(ContaAzulImportBatch::class);
+    }
+
+    /**
+     * Bills first seen through this account.
+     *
+     * Staging parentage, not ownership: a bill fetched through a shared
+     * account is NOT attributed to any Emission by this relation.
+     */
+    public function contaAzulImportedBills(): HasMany
+    {
+        return $this->hasMany(ContaAzulImportedBill::class);
+    }
+
+    /**
      * Display form of the agency ("1234-5"), derived when not stored.
      */
     public function formattedAgency(): string
@@ -128,5 +152,64 @@ class BankAccount extends Model
             (string) $this->account_number,
             (string) $this->account_digit
         );
+    }
+
+    /**
+     * Human-readable option label: bank plus canonical agency/account.
+     */
+    public function optionLabel(): string
+    {
+        $bank = $this->relationLoaded('bank') && $this->bank instanceof Bank
+            ? $this->bank->name
+            : Bank::query()->whereKey($this->bank_id)->value('name');
+
+        return sprintf('%s · Ag %s · Ct %s', $bank ?? 'Banco', $this->formattedAgency(), $this->formattedAccount());
+    }
+
+    /**
+     * Every fund touching this account, directly or via its applications.
+     *
+     * A fund linked through an application normally repeats the account id,
+     * but the composite foreign key allows a NULL account side, so both
+     * paths are queried and duplicates collapse with distinct().
+     */
+    public function linkedFundQuery(): Builder
+    {
+        $applicationIds = $this->bankApplications()->pluck('bank_applications.id');
+
+        return Fund::query()
+            ->where(function ($query) use ($applicationIds): void {
+                $query->where('bank_account_id', $this->getKey());
+
+                if ($applicationIds->isNotEmpty()) {
+                    $query->orWhereIn('bank_application_id', $applicationIds);
+                }
+            });
+    }
+
+    /**
+     * Distinct emissions across every fund linked to this account.
+     *
+     * Sharing an account across emissions is expected and must NOT be
+     * presented as a shared application; only BankApplication::isShared()
+     * carries the "Compartilhado" meaning.
+     *
+     * @return Collection<int, Emission>
+     */
+    public function linkedEmissions(): Collection
+    {
+        $emissionIds = (clone $this->linkedFundQuery())
+            ->distinct()
+            ->orderBy('emission_id')
+            ->pluck('emission_id');
+
+        if ($emissionIds->isEmpty()) {
+            return collect();
+        }
+
+        return Emission::query()
+            ->whereIn('id', $emissionIds)
+            ->orderBy('name')
+            ->get(['id', 'name']);
     }
 }

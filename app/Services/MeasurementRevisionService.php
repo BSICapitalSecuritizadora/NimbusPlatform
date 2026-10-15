@@ -1078,7 +1078,8 @@ class MeasurementRevisionService
      * empreendimento antes) nunca passa do saldo a pagar, nem com regra
      * financeira. Sem pagamento anterior, o pagamento é o da competência:
      * acima do saldo, só dentro de uma regra financeira que cubra a
-     * divergência, como na medição original.
+     * divergência. (Na medição original, a regra é exigida só quando nada é
+     * devido: {@see MeasurementPaymentFinancialService::assertOriginalPaymentFits()}.)
      *
      * @param  array<string, mixed>  $row
      *

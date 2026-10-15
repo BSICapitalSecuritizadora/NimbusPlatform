@@ -20,7 +20,7 @@ use App\Services\Funds\FinancialIntegrityBaseline;
 readonly class FinancialIntegritySnapshot extends BaseDTO
 {
     /**
-     * @param  array<string, array{columns: list<string>, row_count: int, digest: string, rows: array<int, string>}>  $tables
+     * @param  array<string, array{columns: list<string>, row_count: int, digest: string, rows: array<int, string>, cells: array<int, array<string, string>>}>  $tables
      */
     public function __construct(
         public string $connection,

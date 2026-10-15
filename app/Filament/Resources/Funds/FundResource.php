@@ -61,6 +61,8 @@ class FundResource extends Resource
             'fundName',
             'fundApplication',
             'bank',
+            'bankAccount.bank',
+            'bankApplication',
         ]);
     }
 

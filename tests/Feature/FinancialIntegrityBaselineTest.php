@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\BankApplication;
 use App\Models\Expense;
 use App\Models\ExpenseHistory;
 use App\Models\Fund;
@@ -192,4 +193,157 @@ it('issues only read queries while snapshotting', function () {
 
     expect($verbs)->not->toBe([])
         ->and($verbs)->each->toBeIn(['select', 'show', 'describe', 'desc', 'explain', 'pragma']);
+});
+
+function linkFundToApplication(int $fundId, int $accountId, int $applicationId): void
+{
+    DB::table('funds')->where('id', $fundId)->update([
+        'bank_account_id' => $accountId,
+        'bank_application_id' => $applicationId,
+    ]);
+}
+
+function backfillTargetsFor(Fund $fund): array
+{
+    $account = BankDiagnosticFixture::matchingAccount($fund);
+
+    $application = BankApplication::factory()->create([
+        'bank_account_id' => $account->id,
+    ]);
+
+    return [$account->id, $application->id];
+}
+
+it('classifies an FK-only backfill as allowed when declared', function () {
+    $fund = seedFinancialScenario();
+
+    [$accountId, $applicationId] = backfillTargetsFor($fund);
+
+    $baseline = app(FinancialIntegrityBaseline::class);
+    $before = $baseline->snapshot(baselineConnection());
+
+    linkFundToApplication($fund->id, $accountId, $applicationId);
+
+    $comparison = $baseline->compare(
+        $before,
+        $baseline->snapshot(baselineConnection()),
+        FinancialIntegrityBaseline::ALLOWABLE_BACKFILL_CHANGES
+    );
+
+    expect($comparison->tables['funds']['matches'])->toBeFalse()
+        ->and($comparison->tables['funds']['changed_ids'])->toBe([])
+        ->and($comparison->tables['funds']['allowed_only_ids'])->toBe([$fund->id])
+        ->and($comparison->tables['funds']['allowed_columns'])->toBe(['bank_account_id', 'bank_application_id', 'bank_application_identity']);
+
+    foreach ($comparison->tables as $table) {
+        expect($table['added_ids'])->toBe([])
+            ->and($table['removed_ids'])->toBe([])
+            ->and($table['changed_ids'])->toBe([]);
+    }
+});
+
+it('keeps FK changes strict when no allowance is declared', function () {
+    $fund = seedFinancialScenario();
+
+    [$accountId, $applicationId] = backfillTargetsFor($fund);
+
+    $baseline = app(FinancialIntegrityBaseline::class);
+    $before = $baseline->snapshot(baselineConnection());
+
+    linkFundToApplication($fund->id, $accountId, $applicationId);
+
+    $comparison = $baseline->compare($before, $baseline->snapshot(baselineConnection()));
+
+    expect($comparison->matches)->toBeFalse()
+        ->and($comparison->tables['funds']['changed_ids'])->toBe([$fund->id])
+        ->and($comparison->tables['funds']['allowed_only_ids'])->toBe([])
+        ->and($comparison->tables['funds']['allowed_columns'])->toBe([]);
+});
+
+it('flags a mixed FK and balance change as a real change', function () {
+    $fund = seedFinancialScenario();
+
+    [$accountId, $applicationId] = backfillTargetsFor($fund);
+
+    $baseline = app(FinancialIntegrityBaseline::class);
+    $before = $baseline->snapshot(baselineConnection());
+
+    linkFundToApplication($fund->id, $accountId, $applicationId);
+    DB::table('funds')->where('id', $fund->id)->update(['balance' => '130000.00']);
+
+    $comparison = $baseline->compare(
+        $before,
+        $baseline->snapshot(baselineConnection()),
+        FinancialIntegrityBaseline::ALLOWABLE_BACKFILL_CHANGES
+    );
+
+    expect($comparison->tables['funds']['changed_ids'])->toBe([$fund->id])
+        ->and($comparison->tables['funds']['allowed_only_ids'])->toBe([]);
+});
+
+it('flags an emission change riding along a backfill as a real change', function () {
+    $fund = seedFinancialScenario();
+
+    [$accountId, $applicationId] = backfillTargetsFor($fund);
+
+    $otherEmissionId = BankDiagnosticFixture::fund()->emission_id;
+
+    $baseline = app(FinancialIntegrityBaseline::class);
+    $before = $baseline->snapshot(baselineConnection());
+
+    linkFundToApplication($fund->id, $accountId, $applicationId);
+    DB::table('funds')->where('id', $fund->id)->update(['emission_id' => $otherEmissionId]);
+
+    $comparison = $baseline->compare(
+        $before,
+        $baseline->snapshot(baselineConnection()),
+        FinancialIntegrityBaseline::ALLOWABLE_BACKFILL_CHANGES
+    );
+
+    expect($comparison->tables['funds']['changed_ids'])->toBe([$fund->id])
+        ->and($comparison->tables['funds']['allowed_only_ids'])->toBe([]);
+});
+
+it('flags a conta azul change riding along a backfill as a real change', function () {
+    $fund = seedFinancialScenario();
+
+    [$accountId, $applicationId] = backfillTargetsFor($fund);
+
+    $baseline = app(FinancialIntegrityBaseline::class);
+    $before = $baseline->snapshot(baselineConnection());
+
+    linkFundToApplication($fund->id, $accountId, $applicationId);
+    DB::table('funds')->where('id', $fund->id)->update(['conta_azul_account_id' => 'ca-acct-002']);
+
+    $comparison = $baseline->compare(
+        $before,
+        $baseline->snapshot(baselineConnection()),
+        FinancialIntegrityBaseline::ALLOWABLE_BACKFILL_CHANGES
+    );
+
+    expect($comparison->tables['funds']['changed_ids'])->toBe([$fund->id])
+        ->and($comparison->tables['funds']['allowed_only_ids'])->toBe([]);
+});
+
+it('refuses to allow financial columns outside the backfill targets', function () {
+    seedFinancialScenario();
+
+    $baseline = app(FinancialIntegrityBaseline::class);
+    $before = $baseline->snapshot(baselineConnection());
+    $after = $baseline->snapshot(baselineConnection());
+
+    $attempts = [
+        ['funds' => ['balance']],
+        ['funds' => ['emission_id']],
+        ['funds' => ['conta_azul_account_id']],
+        ['funds' => ['agency']],
+        ['funds' => ['bank_id']],
+        ['expenses' => ['bank_account_id']],
+        ['nope' => ['bank_account_id']],
+    ];
+
+    foreach ($attempts as $allowed) {
+        expect(fn () => $baseline->compare($before, $after, $allowed))
+            ->toThrow(InvalidArgumentException::class);
+    }
 });

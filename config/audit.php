@@ -86,6 +86,11 @@ return [
         // calendário (feriado muda a contagem de dias úteis da curva).
         'pu-baseline-evidence',      // PuBaselineEvidenceReviewService — revisão e decisão sobre evidência contratual
         'business_calendars',        // B3ListedCalendarSanitationService — saneamento do calendário de sessões
+        // Alocação mensal de fundos (Fase 2A). Evidência financeira governada:
+        // saldos de referência manuais, rascunhos, submissões, aprovações,
+        // correções e aprovações recusadas — quem decidiu, sobre qual versão
+        // do saldo, com quais totais.
+        'fund_allocations',          // FundAllocationService::auditRevision/auditApprovalRejection + recordReferenceBalance
     ],
 
     /*

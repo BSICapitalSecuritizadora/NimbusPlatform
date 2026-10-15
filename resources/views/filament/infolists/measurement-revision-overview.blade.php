@@ -105,8 +105,10 @@
      * revisão -- divergência do pagamento, tratada no enquadramento dele.
      */
     $overpaymentBreakdown = function (MeasurementRevisionPlanSetPosition $position) use ($currency, $familyLabels, $positive): string {
+        // Texto, não link: fora da família listada, a medição que reconheceu
+        // é nomeada como nas demais telas.
         $origins = collect($position->previouslyAcknowledgedByMeasurementIds)
-            ->map(fn (int $id): string => $familyLabels[$id] ?? '#'.$id)
+            ->map(fn (int $id): string => $familyLabels[$id] ?? 'medição #'.$id)
             ->implode(', ');
         $ownExcess = bcsub(bcsub((string) $position->outstandingOverpaymentAmount, $position->previouslyAcknowledgedOverpaymentAmount ?? '0.00', 2), $position->unacknowledgedOverpaymentAmount ?? '0.00', 2);
         $acknowledgedHere = ($position->statusWhenEffective ?? $position->adjustmentStatus) === MeasurementRevisionAdjustmentStatus::OverpaymentAcceptedUnrecovered;

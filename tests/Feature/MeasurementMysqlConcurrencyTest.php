@@ -272,7 +272,10 @@ it('serializes payment registration against payment approval on MySQL', function
             'measurement_id' => 0,
             'operation_id' => $operation->id,
             'emission_id' => $operation->emission_id,
-            'plan_sets' => [['plan_set_id' => $planSet->id]],
+            // Percentual e versão do plano, como a Engenharia grava: sem eles o
+            // valor devido não se determina, o pagamento seria sempre recusado
+            // e a corrida, decidida antes de começar.
+            'plan_sets' => [['plan_set_id' => $planSet->id, 'plan_version_id' => $planSet->versions()->value('id'), 'realized_monthly_percent' => '0.00']],
         ],
     ]);
     $snapshot = $measurement->engineering_snapshot;
@@ -304,7 +307,10 @@ it('serializes payment registration against payment approval on MySQL', function
         mysqlWorkflowTask(['action' => 'approve'] + $base),
     ]);
 
+    // Quem perde, perde pelo estado que o outro mudou -- nunca por uma recusa
+    // de validação que decidiria a corrida de antemão.
     expect(collect($results)->where('success', true))->toHaveCount(1)
+        ->and(collect($results)->where('success', false)->pluck('exception')->all())->toBe([MeasurementWorkflowException::class])
         ->and($measurement->fresh()->workflow_revision)->toBe(21);
 })->group('mysql');
 

@@ -1287,6 +1287,9 @@ class MeasurementWorkflow
                 // descontado do que a família pagou antes e das linhas anteriores
                 // deste mesmo registro: o que já foi pago não se paga de novo.
                 $this->revisions()->assertRevisionPaymentFits($locked, $row, $index);
+                // Na original, o empreendimento sem nada devido só recebe
+                // pagamento coberto por regra financeira.
+                app(MeasurementPaymentFinancialService::class)->assertOriginalPaymentFits($locked, $row, $index);
                 try {
                     $assessment = app(MeasurementPaymentFinancialService::class)->assess($locked, $row);
                 } catch (ValidationException $exception) {
@@ -1946,8 +1949,9 @@ class MeasurementWorkflow
      * A medição original sem nenhum pagamento registrado só termina a etapa
      * Pagamento pela decisão expressa de concluí-la sem desembolso -- nunca
      * por uma aprovação comum, e a decisão não cria pagamento algum, nem de
-     * valor zero. (Um pagamento de verdade registrado por quem decide segue o
-     * caminho de sempre: enquadramento, justificativa da divergência,
+     * valor zero. (Sem nada devido, um pagamento de verdade só é registrado
+     * coberto por regra financeira ({@see MeasurementPaymentFinancialService::assertOriginalPaymentFits()})
+     * e segue o caminho de sempre: enquadramento, justificativa da divergência,
      * comprovante e aceite do Finalizador.) A decisão exige
      * que nada seja devido, demonstrado ({@see MeasurementPaymentFinancialService::amountDue()}):
      * valor devido indeterminado (sem Fundo de Obra, sem registro verificável

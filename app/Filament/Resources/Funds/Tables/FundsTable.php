@@ -128,6 +128,29 @@ class FundsTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
+                TextColumn::make('bankAccount.display_account')
+                    ->label('Conta Global')
+                    ->fontFamily('mono')
+                    ->placeholder('—')
+                    ->tooltip(fn (Fund $record): ?string => $record->bankAccount?->optionLabel())
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('bankApplication.codigo_produto')
+                    ->label('Aplicação Bancária')
+                    ->fontFamily('mono')
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('shared_application')
+                    ->label('Uso')
+                    ->state(fn (Fund $record): string => ($record->bankApplication !== null && $record->bankApplication->isShared()) ? 'Compartilhado' : '—')
+                    ->badge(fn (Fund $record): bool => $record->bankApplication !== null && $record->bankApplication->isShared())
+                    ->color('warning')
+                    ->tooltip(fn (Fund $record): ?string => ($record->bankApplication !== null && $record->bankApplication->isShared())
+                        ? 'A aplicação física deste fundo atende a mais de uma operação.'
+                        : null)
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('balance')
                     ->label('Saldo')
                     ->money('BRL')

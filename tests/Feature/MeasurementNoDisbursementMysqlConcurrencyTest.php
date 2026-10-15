@@ -2,6 +2,7 @@
 
 use App\Exceptions\MeasurementWorkflowException;
 use App\Models\Measurement;
+use App\Models\MeasurementFinancialRule;
 use App\Models\MeasurementPause;
 use App\Models\MeasurementPayment;
 use App\Services\MeasurementWorkflow;
@@ -134,12 +135,19 @@ function p4aMysqlDecision(Measurement $measurement, string $justification): arra
 
 /**
  * Um pagamento bancário de verdade sobre a mesma leitura da tela: como nada é
- * devido, é divergência para mais e vem justificado.
+ * devido, só passa coberto por regra financeira, e vem justificado.
  *
  * @return array<string, mixed>
  */
 function p4aMysqlPayment(array $scenario, Measurement $measurement): array
 {
+    $rule = MeasurementFinancialRule::factory()->create([
+        'emission_id' => $measurement->operation->emission_id,
+        'direction' => 'over',
+        'maximum_difference_amount' => '1000.00',
+        'maximum_difference_percent' => null,
+    ]);
+
     return [
         'action' => 'register_payment',
         'measurement_id' => $measurement->id,
@@ -149,6 +157,7 @@ function p4aMysqlPayment(array $scenario, Measurement $measurement): array
             'pay_date' => '2026-06-10',
             'amount' => '1000.00',
             'method' => 'TED',
+            'financial_rule_id' => $rule->id,
             'financial_justification' => 'Pagamento concorrente registrado sobre a competência sem valor devido.',
         ],
     ];

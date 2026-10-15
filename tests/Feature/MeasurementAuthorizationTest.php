@@ -182,7 +182,9 @@ it('allows only the payment manager to register payments in the pending payment 
             'measurement_id' => 0,
             'operation_id' => $operation->id,
             'emission_id' => $operation->emission_id,
-            'plan_sets' => [['plan_set_id' => $planSet->id, 'is_default' => true]],
+            // Percentual e versão do plano, como a Engenharia grava; sem Fundo
+            // de Obra, o pagamento segue sem referência financeira.
+            'plan_sets' => [['plan_set_id' => $planSet->id, 'is_default' => true, 'plan_version_id' => $planSet->versions()->value('id'), 'realized_monthly_percent' => '0.00']],
         ],
     ]);
     $snapshot = $measurement->engineering_snapshot;

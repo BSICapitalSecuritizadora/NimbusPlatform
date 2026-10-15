@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use Tests\Support\MeasurementReceiptEvidenceScenario as Scenario;
+use Tests\Support\MeasurementRevisionScenario;
 
 uses(RefreshDatabase::class);
 
@@ -73,28 +74,42 @@ function financialRulesPaymentUiScenario(): array
 }
 
 it('shows financial validation on the correct payment row and preserves the submitted explanation', function () {
-    $s = financialRulesPaymentUiScenario();
+    // A divergência de um valor devido, como exceção sem regra cadastrada: o
+    // pagamento passa R$ 100,00 do esperado (R$ 100.000,00). Sem nada devido,
+    // o complemento só passaria coberto por regra.
+    $revisionScenario = MeasurementRevisionScenario::plan();
+    $measurement = MeasurementRevisionScenario::awaitingPayment($revisionScenario, '2026-05', 10);
+    test()->actingAs($revisionScenario['actor']);
     $data = ['pay_date' => '2026-05-20', 'payments' => [[
-        'plan_set_id' => $s['payment']->plan_set_id, 'amount' => '100,00',
+        'plan_set_id' => $revisionScenario['planSet']->id, 'amount' => '100.100,00',
     ]]];
-    Livewire::test(ViewMeasurement::class, ['record' => $s['measurement']->id])
+    Livewire::test(ViewMeasurement::class, ['record' => $measurement->id])
         ->callAction('registerPayment', data: $data)
         ->assertHasActionErrors(['payments.0.financial_justification']);
-    expect($s['measurement']->payments()->count())->toBe(1);
+    expect($measurement->payments()->count())->toBe(0);
 
     $data['payments'][0]['financial_justification'] = 'Complemento contratual a conferir.';
-    Livewire::test(ViewMeasurement::class, ['record' => $s['measurement']->id])
+    Livewire::test(ViewMeasurement::class, ['record' => $measurement->id])
         ->callAction('registerPayment', data: $data)->assertHasNoActionErrors();
-    $payment = $s['measurement']->payments()->latest('id')->first();
+    $payment = $measurement->payments()->latest('id')->first();
     expect($payment->financial_assessment['requires_acceptance'])->toBeTrue()
+        ->and($payment->financial_assessment['rule'])->toBeNull()
         ->and($payment->financial_assessment['justification'])->toBe('Complemento contratual a conferir.');
 });
 
 it('requires unchecked financial acceptance in the finalization action', function () {
-    $s = financialRulesPaymentUiScenario();
+    // A exceção sem regra cadastrada é a divergência de um valor devido: o
+    // pagamento passa R$ 100,00 do esperado (R$ 100.000,00). Sem nada devido,
+    // o complemento só passaria coberto por regra.
+    $revisionScenario = MeasurementRevisionScenario::plan();
+    $s = [
+        'actor' => $revisionScenario['actor'],
+        'measurement' => MeasurementRevisionScenario::awaitingPayment($revisionScenario, '2026-05', 10),
+    ];
+    test()->actingAs($s['actor']);
     $workflow = app(MeasurementWorkflow::class);
     $workflow->registerPayment($s['measurement'], $s['actor'], [
-        'plan_set_id' => $s['payment']->plan_set_id, 'pay_date' => '2026-05-20', 'amount' => '100.00',
+        'plan_set_id' => $revisionScenario['planSet']->id, 'pay_date' => '2026-05-20', 'amount' => '100100.00',
         'financial_justification' => 'Complemento contratual <script>alert(1)</script>',
     ]);
     $workflow->approve($s['measurement']->fresh(), $s['actor']);
