@@ -242,13 +242,13 @@ class MeasurementReceiptEvidenceService
 
     public function allPaymentsApproved(Measurement $measurement): bool
     {
-        // A revisão que não precisou de pagamento novo -- a família já pagou o
-        // que ela aprova, o que falta foi justificado, ou não há nada a pagar --
-        // não tem comprovante a esperar; a medição sem revisão continua
-        // precisando de pagamento.
+        // Sem pagamento próprio não há comprovante a esperar quando a etapa
+        // Pagamento pôde terminar sem ele -- a família da revisão já pagou, ou
+        // nada é devido (a original, pela decisão sem desembolso) -- pela mesma
+        // regra que a etapa usou ({@see MeasurementPaymentFinancialService::allowsCompletionWithoutOwnPayment()}).
+        // Fora disso, a medição sem pagamento continua precisando dele.
         if (! $measurement->payments()->exists()) {
-            return $measurement->isRevision()
-                && app(MeasurementRevisionService::class)->allowsApprovalWithoutOwnPayment($measurement);
+            return app(MeasurementPaymentFinancialService::class)->allowsCompletionWithoutOwnPayment($measurement);
         }
 
         return $measurement->payments()->whereDoesntHave('currentReceiptEvidence', fn ($query) => $query
@@ -406,6 +406,12 @@ class MeasurementReceiptEvidenceService
         return match (true) {
             $this->isClosedWithPayments($measurement) => 'Conferir correção documental',
             $counts['pending'] > 0 => 'Conferir comprovante',
+            // A original sem pagamento que chegou aqui pela decisão sem
+            // desembolso -- registrada na trilha protegida -- pede a ciência
+            // dela na Finalização. Sem a decisão (dado anterior a esta regra),
+            // o rótulo é o de sempre, e a Finalização a recusa.
+            ! $measurement->isRevision() && $measurement->payments->isEmpty()
+                && app(MeasurementWorkflow::class)->noDisbursementDecision($measurement) !== null => 'Finalizar com ciência da ausência de pagamento',
             default => 'Finalizar medição',
         };
     }

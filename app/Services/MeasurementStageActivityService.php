@@ -100,16 +100,19 @@ class MeasurementStageActivityService
             $reviewerName = $activity->causer?->name
                 ?? $this->resolveActorName($props['actual_actor_user_id'] ?? null)
                 ?? $this->resolveResponsibleName($measurement, $stage);
+            // A etapa Pagamento concluída sem desembolso: a nota é a
+            // justificativa da decisão, não uma observação.
+            $withoutDisbursement = $stage === MeasurementWorkflow::STAGE_PAYMENT && is_array($props['no_disbursement'] ?? null);
 
             return [
                 'stage' => $stage,
                 'stage_label' => $stageLabel,
                 'reviewer_name' => $reviewerName,
                 'status_key' => 'approved',
-                'status_label' => 'Aprovada',
+                'status_label' => $withoutDisbursement ? 'Concluída sem desembolso' : 'Aprovada',
                 'reviewed_at' => $timestamp,
                 'notes' => filled($props['notes'] ?? null) ? (string) $props['notes'] : null,
-                'note_label' => 'Observação',
+                'note_label' => $withoutDisbursement ? 'Justificativa' : 'Observação',
                 'note_type' => 'approved',
             ];
         }
@@ -209,6 +212,8 @@ class MeasurementStageActivityService
                 ?? $this->resolveActorName($props['actual_actor_user_id'] ?? null)
                 ?? $this->resolveResponsibleName($measurement, 5);
 
+            $acknowledgedNoDisbursement = is_array($props['no_disbursement_acknowledged'] ?? null);
+
             return [
                 'stage' => 5,
                 'stage_label' => $stageLabel,
@@ -216,8 +221,10 @@ class MeasurementStageActivityService
                 'status_key' => 'approved',
                 'status_label' => 'Finalizada',
                 'reviewed_at' => $timestamp,
-                'notes' => filled($props['notes'] ?? null) ? (string) $props['notes'] : null,
-                'note_label' => 'Observação',
+                'notes' => $acknowledgedNoDisbursement
+                    ? 'Ciência da ausência de pagamento confirmada: nenhum pagamento era devido, nenhum pagamento bancário foi registrado e a justificativa da etapa Pagamento foi conferida.'
+                    : (filled($props['notes'] ?? null) ? (string) $props['notes'] : null),
+                'note_label' => $acknowledgedNoDisbursement ? 'Ciência' : 'Observação',
                 'note_type' => 'approved',
             ];
         }

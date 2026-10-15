@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Notifications\MeasurementWorkflowNotification;
 use App\Services\MeasurementEngineeringService;
 use App\Services\MeasurementWorkflow;
+use App\Support\BusinessTime;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -133,7 +134,7 @@ it('notifies the payment manager to attach receipts when a payment is registered
     ]);
 
     app(MeasurementWorkflow::class)->registerPayments($measurement, $manager, [
-        ['amount' => 5000, 'pay_date' => now()],
+        ['amount' => 5000, 'pay_date' => BusinessTime::dateString()],
     ]);
 
     Notification::assertSentTo(

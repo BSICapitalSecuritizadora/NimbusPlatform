@@ -6,7 +6,7 @@ name: sales-board-benchmarks
 # (main_bsicapital.yml). Orçamentos de tempo oscilam em runner compartilhado, e
 # um portão vermelho por oscilação custaria cerca de 55 min de CI e travaria
 # correções. A regressão que importa -- hidratar parcelas como model -- já é
-# barrada na suíte comum por guardas determinísticos; aqui fica o sinal
+# detectada na suíte comum por guardas determinísticos; aqui fica o sinal
 # automático de escala, que alguém precisa olhar quando ficar vermelho.
 #
 # Os testes são opt-in (NIMBUS_BENCH=1) e rodam igual à mão: `composer test:bench`.

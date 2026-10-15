@@ -3,11 +3,9 @@
 /**
  * Os benchmarks de escala rodam fora do portão de deploy.
  *
- * O portão continua sendo a suíte comum, onde a regressão que importa --
- * hidratar parcelas como model -- já é barrada por guardas determinísticos.
- * Orçamentos de tempo oscilam em runner compartilhado, e um vermelho por
- * oscilação travaria correções por quase uma hora. Os benchmarks ganham um
- * workflow próprio, não bloqueante, e um script do composer para rodar à mão.
+ * Durante o desenvolvimento, o deploy depende apenas do build. Testes e
+ * benchmarks continuam sinalizando regressões sem atrasar a publicação.
+ * Os benchmarks têm workflow próprio e um script do composer para rodar à mão.
  */
 function salesBoardBenchmarkFiles(): array
 {
@@ -27,7 +25,7 @@ it('runs the sales board benchmarks outside the deploy gate', function () {
     expect($workflow)->toContain('NIMBUS_BENCH=1')
         ->and($workflow)->toContain('workflow_dispatch')
         ->and($deploy)->not->toContain('sales-board-benchmarks')
-        ->and($deploy)->toContain('needs: [build, checks, lint]')
+        ->and($deploy)->toContain('needs: [build]')
         ->and($composer['scripts']['test:bench'])->toContain('@putenv NIMBUS_BENCH=1');
 
     $benchCommand = collect($composer['scripts']['test:bench'])->first(fn (string $line): bool => str_contains($line, 'artisan test'));

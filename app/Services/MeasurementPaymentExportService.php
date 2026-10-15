@@ -224,6 +224,11 @@ class MeasurementPaymentExportService
                 $measurement->isRevision() && $this->revisions->familyHasHistoricalPayments($measurement) => $revisionPosition['has_remaining_payable']
                     ? 'Sem pagamento nesta revisão — saldo a pagar em aberto'
                     : 'Sem pagamento nesta revisão — pago em revisão anterior',
+                // A original sem pagamento que passou da etapa Pagamento pela
+                // decisão sem desembolso registrada na trilha protegida: não há
+                // comprovante, porque não houve pagamento.
+                ! $measurement->isRevision() && $paymentApproval !== null
+                    && app(MeasurementWorkflow::class)->noDisbursementDecision($measurement) !== null => 'Sem desembolso — nenhum pagamento devido',
                 default => 'Pagamento não registrado',
             }),
             $this->text($payment?->receiptUploadedByUser?->name),

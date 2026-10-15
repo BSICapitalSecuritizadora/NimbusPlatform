@@ -161,13 +161,17 @@ it('checks rule scope direction limits validity and evidence on the server', fun
         'scope' => $data['financial_rule_id'] = MeasurementFinancialRule::factory()->create()->id,
         'amount' => $data['amount'] = '899.99',
         'direction' => $data['amount'] = '1100.00',
-        'date' => $data['pay_date'] = '2027-01-01',
+        // Antes da vigência da regra (01/01/2026), e no passado: a data futura é
+        // recusada antes, por ser futura, e o caso deixaria de testar a vigência.
+        'date' => $data['pay_date'] = '2025-12-31',
+        // O fim da vigência: a regra terminou na véspera do pagamento.
+        'expired' => DB::table('measurement_financial_rules')->where('id', $s['rule']->id)->update(['effective_until' => '2026-05-19']),
         'document' => DB::table('measurement_financial_rules')->where('id', $s['rule']->id)->update(['requires_document' => true]),
         'percent' => DB::table('measurement_financial_rules')->where('id', $s['rule']->id)->update(['maximum_difference_percent' => '9.9999']),
     };
     expect(fn () => $s['workflow']->registerPayment($s['measurement'], $s['actor'], $data))->toThrow(ValidationException::class);
     expect($s['measurement']->payments()->count())->toBe(0);
-})->with(['scope', 'amount', 'direction', 'date', 'document', 'percent']);
+})->with(['scope', 'amount', 'direction', 'date', 'expired', 'document', 'percent']);
 
 it('requires explicit acceptance at finalization and freezes the applied version in the audit', function () {
     $s = financialRuleScenario();

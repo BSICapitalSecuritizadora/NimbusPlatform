@@ -3,12 +3,19 @@
 namespace App\Services;
 
 use App\Concerns\ScansUploadedFile;
+use App\DTOs\Measurements\MeasurementAmountDue;
+use App\DTOs\Measurements\MeasurementAmountDueLine;
 use App\DTOs\Measurements\MeasurementFinancialReconciliationLine;
+use App\DTOs\Measurements\MeasurementPhysicalProgress;
+use App\DTOs\Measurements\MeasurementRevisionPlanSetPosition;
 use App\Enums\MeasurementReconciliationStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Models\Measurement;
+use App\Models\MeasurementAsset;
 use App\Models\MeasurementFinancialRule;
 use App\Models\MeasurementPayment;
+use App\Models\MeasurementPlanSet;
+use App\Models\MeasurementPlanVersion;
 use App\Models\MeasurementReview;
 use App\Services\Security\ClamAvFileScanner;
 use App\Support\Uploads\LocalUploadedFile;
@@ -133,6 +140,304 @@ class MeasurementPaymentFinancialService
             fn (MeasurementPayment $payment): bool => (bool) ($payment->financial_assessment['requires_acceptance'] ?? false),
         ) || $this->unpaidRequiredPlanSetsAmong($measurement, $payments) !== []
             || ($measurement->isRevision() && app(MeasurementRevisionService::class)->unacknowledgedOverpayments($measurement) !== []);
+    }
+
+    /**
+     * A posição financeira autoritativa da etapa Pagamento: quanto ainda é
+     * devido em cada empreendimento e se a conta pode ser feita
+     * ({@see MeasurementAmountDue}). É a regra única de "nada a pagar" -- da
+     * medição original e da revisão -- que a aprovação da etapa Pagamento,
+     * {@see MeasurementWorkflow::hasValidPayment()},
+     * {@see MeasurementReceiptEvidenceService::allPaymentsApproved()} e a
+     * Finalização consultam, e que as telas da medição original (pendências,
+     * área de pagamentos, modais) usam para nenhuma delas discordar. As
+     * etiquetas da revisão na área de pagamentos ainda olham só o "família já
+     * pagou" (dívida registrada).
+     *
+     * O universo é o registro aprovado pela Engenharia, conferido entrada por
+     * entrada antes de qualquer conta: registro verificável desta medição e
+     * desta operação, empreendimento identificado uma vez só, versão do plano
+     * congelada, percentual realizado legível e Fundo de Obra legível -- o
+     * Fundo ausente deixa o empreendimento sem referência financeira, e o
+     * valor devido indeterminado. A conciliação lê o percentual ausente como
+     * 0%; aqui ele nunca vira "nada a pagar". Os empreendimentos aprovados
+     * precisam continuar na operação, como o registro de pagamento exige.
+     *
+     * A conta é a de sempre, sem fórmula própria: a da conciliação na medição
+     * original (Fundo × realizado do mês, menos o que esta medição registrou)
+     * e a das posições da família na revisão (aprovado revisado, menos o que a
+     * família e a revisão já pagaram, com o valor pago a maior a reconhecer).
+     *
+     * Só lê: quem decide trava antes. A aprovação da etapa Pagamento consulta
+     * sob o lock da medição -- pagamento só nasce sob esse mesmo lock --, e a
+     * Finalização sob o da Operation e o da medição.
+     */
+    public function amountDue(Measurement $measurement): MeasurementAmountDue
+    {
+        // Leituras que escolhem as colunas (as listas, as pendências) não trazem
+        // o registro da Engenharia: a conta relê a medição inteira, em vez de
+        // tomar a coluna não lida por registro indisponível.
+        if ($measurement->exists && ! array_key_exists('engineering_snapshot', $measurement->getAttributes())) {
+            $measurement = Measurement::query()->find($measurement->getKey()) ?? $measurement;
+        }
+
+        $snapshot = $measurement->engineering_snapshot;
+        $undetermined = $this->undeterminedAmountDue($measurement, $snapshot);
+        $lines = [];
+
+        if ($undetermined === []) {
+            $lines = $measurement->isRevision()
+                ? $this->revisionAmountDueLines($measurement)
+                : $this->originalAmountDueLines($measurement);
+
+            if ($lines === []) {
+                $undetermined[] = $measurement->isRevision()
+                    ? 'A posição financeira da revisão não pode ser calculada: o registro da Engenharia da revisão anterior não está disponível.'
+                    : 'O registro da Engenharia não tem empreendimento algum: o valor devido não pode ser determinado.';
+            }
+
+            foreach ($lines as $line) {
+                if (! $line->hasFinancialReference()) {
+                    $undetermined[] = sprintf(
+                        '%s: sem Fundo de Obra na versão do plano congelada pela Engenharia — o valor devido não pode ser determinado.',
+                        $line->label,
+                    );
+                }
+            }
+        }
+
+        return new MeasurementAmountDue(
+            measurementId: (int) $measurement->getKey(),
+            isRevision: $measurement->isRevision(),
+            lines: $lines,
+            undetermined: $undetermined,
+            engineeringSnapshotSha256: is_array($snapshot) ? MeasurementRevisionService::canonicalSnapshotHash($snapshot) : null,
+        );
+    }
+
+    /**
+     * A etapa Pagamento pode terminar sem pagamento desta medição? Quando nada
+     * é devido, demonstrado ({@see self::amountDue()}) -- e, na revisão, também
+     * quando a família já pagou antes dela: o que falta ou sobra é a posição
+     * financeira da família, conferida à parte (saldo justificado, valor pago a
+     * maior decidido).
+     *
+     * Na medição original isso só diz que o pagamento não é exigido: a etapa
+     * termina pela decisão expressa e justificada de concluí-la sem desembolso
+     * ({@see MeasurementWorkflow::approve()}), e a Finalização exige a ciência
+     * dessa decisão.
+     */
+    public function allowsCompletionWithoutOwnPayment(Measurement $measurement): bool
+    {
+        if ($measurement->isRevision() && app(MeasurementRevisionService::class)->familyHasHistoricalPayments($measurement)) {
+            return true;
+        }
+
+        return $this->amountDue($measurement)->isNothingDue();
+    }
+
+    /**
+     * Por que o registro da Engenharia não sustenta a conta do valor devido --
+     * vazio quando sustenta.
+     *
+     * Percentual e Fundo de Obra só valem escritos como o registro os grava
+     * (decimal com ponto, sem separador de milhar): a conta lê o valor de um
+     * jeito só, e um texto que outro leitor entenderia de outro modo ("1.000",
+     * "R$ 1.000,00") não é conta determinada.
+     *
+     * O registro aprovado antes do versionamento dos planos (Fase 2) não tem a
+     * versão do plano dentro dele: como na Finalização, o Fundo de Obra dele é
+     * conferido contra a versão gravada no arquivo da medição para aquele
+     * empreendimento. A versão presente e ilegível nunca passa.
+     *
+     * @return list<string>
+     */
+    private function undeterminedAmountDue(Measurement $measurement, mixed $snapshot): array
+    {
+        if (! Measurement::isVerifiableEngineeringSnapshot($snapshot, (int) $measurement->getKey())
+            || (int) ($snapshot['operation_id'] ?? 0) !== (int) $measurement->operation_id) {
+            return ['O registro aprovado pela Engenharia desta medição não está disponível ou não é verificável: o valor devido não pode ser determinado.'];
+        }
+
+        $problems = [];
+        $planSetIds = [];
+        $legacyEntries = [];
+
+        foreach ($snapshot['plan_sets'] as $entry) {
+            $planSetId = is_array($entry) ? filter_var($entry['plan_set_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) : false;
+
+            if ($planSetId === false) {
+                $problems[] = 'O registro da Engenharia tem empreendimento sem identificação: o valor devido não pode ser determinado.';
+
+                continue;
+            }
+
+            $label = (string) (($entry['construction_name'] ?? null) ?: ($entry['plan_set_name'] ?? null) ?: "Empreendimento #{$planSetId}");
+
+            if (in_array($planSetId, $planSetIds, true)) {
+                $problems[] = sprintf('%s aparece mais de uma vez no registro da Engenharia: o valor devido não pode ser determinado.', $label);
+
+                continue;
+            }
+
+            $planSetIds[] = $planSetId;
+
+            if (! array_key_exists('plan_version_id', $entry)) {
+                $legacyEntries[$planSetId] = ['label' => $label, 'fund' => $entry['construction_fund_amount'] ?? null];
+            } elseif (filter_var($entry['plan_version_id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) === false) {
+                $problems[] = sprintf('%s: sem versão do plano congelada no registro da Engenharia — o valor devido não pode ser determinado.', $label);
+            }
+
+            $percent = $entry['realized_monthly_percent'] ?? null;
+
+            if (! self::isCanonicalDecimal($percent)
+                || ($basisPoints = MeasurementPhysicalProgress::basisPoints((string) $percent)) === null
+                || $basisPoints > MeasurementPhysicalProgress::LIMIT_BASIS_POINTS) {
+                $problems[] = sprintf('%s: percentual realizado do mês ausente ou ilegível no registro da Engenharia — o valor devido não pode ser determinado.', $label);
+            }
+
+            // Ausente ou nulo é "sem referência financeira", tratado na linha;
+            // presente, o Fundo precisa ser um valor em reais, zero ou positivo.
+            $fund = $entry['construction_fund_amount'] ?? null;
+
+            if ($fund !== null && ! self::isCanonicalDecimal($fund)) {
+                $problems[] = sprintf('%s: Fundo de Obra ilegível no registro da Engenharia — o valor devido não pode ser determinado.', $label);
+            }
+        }
+
+        if ($legacyEntries !== []) {
+            $problems = [...$problems, ...$this->legacyFundProblems($measurement, $legacyEntries)];
+        }
+
+        if ($planSetIds !== []
+            && MeasurementPlanSet::query()->where('operation_id', $measurement->operation_id)->whereKey($planSetIds)->count() !== count($planSetIds)) {
+            $problems[] = 'O contexto aprovado pela Engenharia não está mais disponível: há empreendimento fora da operação. O valor devido não pode ser determinado.';
+        }
+
+        return $problems;
+    }
+
+    /**
+     * O Fundo de Obra do registro anterior ao versionamento confere com a
+     * versão do plano gravada no arquivo da medição? A mesma conferência da
+     * Finalização ({@see MeasurementWorkflow::finalize()}), feita antes, para a
+     * decisão sem desembolso não se apoiar num Fundo que a Finalização recusaria.
+     *
+     * @param  array<int, array{label: string, fund: mixed}>  $legacyEntries
+     * @return list<string>
+     */
+    private function legacyFundProblems(Measurement $measurement, array $legacyEntries): array
+    {
+        $versionIds = MeasurementAsset::query()
+            ->where('measurement_id', $measurement->getKey())
+            ->whereIn('plan_set_id', array_keys($legacyEntries))
+            ->pluck('plan_version_id', 'plan_set_id');
+        $funds = MeasurementPlanVersion::query()
+            ->whereKey($versionIds->filter()->values()->all())
+            ->pluck('construction_fund_amount', 'id');
+        $problems = [];
+
+        foreach ($legacyEntries as $planSetId => $entry) {
+            $versionId = $versionIds->get($planSetId);
+            $versionFund = $versionId === null ? null : $funds->get($versionId);
+
+            if ($versionId === null || ! $funds->has($versionId) || ! self::sameMoney($versionFund, $entry['fund'])) {
+                $problems[] = sprintf('%s: o registro da Engenharia, anterior ao versionamento do plano, não confere com a versão do plano do arquivo da medição — o valor devido não pode ser determinado.', $entry['label']);
+            }
+        }
+
+        return $problems;
+    }
+
+    /**
+     * Decimal como o registro da Engenharia o grava: algarismos, ponto e até
+     * duas casas -- ou inteiro.
+     */
+    private static function isCanonicalDecimal(mixed $value): bool
+    {
+        return is_int($value) ? $value >= 0 : is_string($value) && preg_match('/^\d{1,16}(\.\d{1,2})?$/', $value) === 1;
+    }
+
+    /**
+     * Mesmo valor em reais: nulo só confere com nulo.
+     */
+    private static function sameMoney(mixed $left, mixed $right): bool
+    {
+        if ($left === null || $right === null) {
+            return $left === null && $right === null;
+        }
+
+        return self::isCanonicalDecimal($left = is_string($left) ? $left : (string) $left)
+            && self::isCanonicalDecimal($right = is_string($right) ? $right : (string) $right)
+            && bccomp($left, $right, 2) === 0;
+    }
+
+    /**
+     * A conta da conciliação, com os pagamentos relidos agora -- a página passa
+     * o próprio registro, com relações carregadas que podem ser anteriores ao
+     * último pagamento.
+     *
+     * @return list<MeasurementAmountDueLine>
+     */
+    private function originalAmountDueLines(Measurement $measurement): array
+    {
+        $current = $measurement->withoutRelations()->setRelation('payments', $measurement->payments()->get());
+        $entries = $this->snapshotEntriesByPlanSet($measurement);
+
+        return array_map(fn (MeasurementFinancialReconciliationLine $line): MeasurementAmountDueLine => new MeasurementAmountDueLine(
+            planSetId: $line->planSetId,
+            label: $line->label,
+            constructionId: $line->constructionId,
+            planVersionId: isset($entries[$line->planSetId]['plan_version_id']) ? (int) $entries[$line->planSetId]['plan_version_id'] : null,
+            planVersionNumber: isset($entries[$line->planSetId]['plan_version_number']) ? (int) $entries[$line->planSetId]['plan_version_number'] : null,
+            fundAmount: $line->fundAmount,
+            realizedMonthlyPercent: $line->realizedMonthlyPercent,
+            approvedAmount: $line->expectedAmount,
+            paidBeforeAmount: $line->historicalPaidAmount,
+            registeredAmount: $line->registeredAmount,
+            remainingAmount: $line->expectedBalance === null ? null : self::nonNegative($line->expectedBalance),
+        ), array_values($this->reconciliation->forMeasurement($current)->lines));
+    }
+
+    /**
+     * As posições da família, sem conta nova.
+     *
+     * @return list<MeasurementAmountDueLine>
+     */
+    private function revisionAmountDueLines(Measurement $revision): array
+    {
+        $entries = $this->snapshotEntriesByPlanSet($revision);
+
+        return array_map(fn (MeasurementRevisionPlanSetPosition $position): MeasurementAmountDueLine => new MeasurementAmountDueLine(
+            planSetId: $position->planSetId,
+            label: $position->label,
+            constructionId: isset($entries[$position->planSetId]['construction_id']) ? (int) $entries[$position->planSetId]['construction_id'] : null,
+            planVersionId: $position->planVersionId,
+            planVersionNumber: $position->planVersionNumber,
+            fundAmount: $position->revisedFundAmount,
+            realizedMonthlyPercent: $position->revisedRealizedMonthlyPercent,
+            approvedAmount: $position->revisedApprovedAmount,
+            paidBeforeAmount: $position->historicalPaidAmount,
+            registeredAmount: $position->ownPaidAmount,
+            remainingAmount: $position->remainingPayableAmount,
+            unacknowledgedOverpaymentAmount: $position->unacknowledgedOverpaymentAmount,
+        ), app(MeasurementRevisionService::class)->positions($revision));
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function snapshotEntriesByPlanSet(Measurement $measurement): array
+    {
+        return collect($measurement->engineering_snapshot['plan_sets'] ?? [])
+            ->filter(fn (mixed $entry): bool => is_array($entry))
+            ->keyBy(fn (array $entry): int => (int) ($entry['plan_set_id'] ?? 0))
+            ->all();
+    }
+
+    private static function nonNegative(string $amount): string
+    {
+        return bccomp($amount, '0', 2) < 0 ? '0.00' : $amount;
     }
 
     /**

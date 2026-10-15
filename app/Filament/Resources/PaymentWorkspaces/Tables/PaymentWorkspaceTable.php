@@ -8,6 +8,7 @@ use App\Filament\Support\AnchoredFilterDropdown;
 use App\Models\Measurement;
 use App\Models\User;
 use App\Services\MeasurementOperationalReadModel;
+use App\Services\MeasurementPaymentFinancialService;
 use App\Services\MeasurementSlaService;
 use App\Services\MeasurementWorkflow;
 use Filament\Actions\Action;
@@ -161,7 +162,10 @@ class PaymentWorkspaceTable
                         ->url(fn (Measurement $record): string => MeasurementResource::getUrl('view', ['record' => $record])),
 
                     Action::make('approve_payment_stage')
-                        ->label('Aprovar etapa Pagamento')
+                        ->label(fn (Measurement $record): string => $record->isRevision() || (int) $record->payments_count > 0
+                            || ! app(MeasurementPaymentFinancialService::class)->amountDue($record)->isNothingDue()
+                            ? 'Aprovar etapa Pagamento'
+                            : 'Concluir etapa sem desembolso')
                         ->icon('heroicon-m-check-circle')
                         ->visible(fn (Measurement $record): bool => app(MeasurementWorkflow::class)->unifiedStage($record) === MeasurementWorkflow::STAGE_PAYMENT
                             && self::workflowCan('canApprove', $record))
@@ -320,17 +324,30 @@ class PaymentWorkspaceTable
                     'revision_financial_pending' => 'Regularização financeira pendente (revisão)',
                 ])
                 ->query(function (Builder $query, array $data): Builder {
+                    // A original sem pagamento em que nada é devido espera a decisão
+                    // sem desembolso, não um registro: vai para "Aguardando
+                    // aprovação", como a etiqueta da pendência. As candidatas saem
+                    // da área de pagamentos de quem vê -- o `$query` deste filtro é
+                    // o grupo aninhado do Filament, sem o escopo da tabela.
+                    $viewer = auth()->user();
+                    $withoutDisbursement = $viewer instanceof User
+                        && in_array($data['value'] ?? null, ['awaiting_registration', 'awaiting_approval'], true)
+                        ? self::readModel()->awaitingNoDisbursementDecisionIds(self::readModel()->paymentQueryFor($viewer))
+                        : [];
+
                     return match ($data['value'] ?? null) {
                         // A suspensa por uma revisão em análise não espera ninguém, e a
                         // revisão cuja família já pagou espera só a aprovação.
                         'awaiting_registration' => $query->where('status', 'awaiting_payment')->whereDoesntHave('payments')->whereDoesntHave('reviewingSuccessor')
-                            ->whereNot(fn (Builder $revisions): Builder => $revisions->withEarlierFamilyPayments()),
+                            ->whereNot(fn (Builder $revisions): Builder => $revisions->withEarlierFamilyPayments())
+                            ->when($withoutDisbursement !== [], fn (Builder $registration): Builder => $registration->whereKeyNot($withoutDisbursement)),
                         'awaiting_approval' => $query
                             ->where('status', 'awaiting_payment')
                             ->whereDoesntHave('reviewingSuccessor')
                             ->where(fn (Builder $ready): Builder => $ready
                                 ->whereHas('payments')
-                                ->orWhere(fn (Builder $revisions): Builder => $revisions->withEarlierFamilyPayments()))
+                                ->orWhere(fn (Builder $revisions): Builder => $revisions->withEarlierFamilyPayments())
+                                ->when($withoutDisbursement !== [], fn (Builder $decision): Builder => $decision->orWhereIn('measurements.id', $withoutDisbursement)))
                             ->whereHas('reviews', fn (Builder $reviews): Builder => $reviews
                                 ->where('stage', MeasurementWorkflow::STAGE_PAYMENT)
                                 ->where('status', 'pending')),

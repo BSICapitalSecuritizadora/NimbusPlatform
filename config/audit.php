@@ -5,14 +5,22 @@ use App\Models\Payment;
 use App\Models\PuHistory;
 
 return [
+    // Os dois prazos ficam aqui como vieram do ambiente, sem `(int)`: `(int)`
+    // transformava '', 'null' e 'abc' em 0 dia, e a limpeza das 04:00 apagava a
+    // trilha protegida inteira. Quem decide se o valor é legível é
+    // App\Support\ActivityLog\AuditRetentionPolicy, antes de qualquer exclusão;
+    // com um valor ilegível a aplicação continua subindo (e o config:cache
+    // continua guardando o valor recusado), mas `audit:clean-filtered` aborta
+    // sem apagar nada. Ausente, vale o padrão; vazio não é ausente.
+
     // Dias de retenção para logs descartáveis (default/activity genérica)
     // Protected retention requires business/legal sign-off — see §13.
-    'retention_disposable_days' => (int) env('AUDIT_RETENTION_DISPOSABLE_DAYS', 365),
+    'retention_disposable_days' => env('AUDIT_RETENTION_DISPOSABLE_DAYS', 365),
 
     // Dias de retenção para evidências reguladas de workflow (medições/operações/delegações/Quadro de Vendas)
     // 2555 days (~7 years) is a chosen governance policy, not inherited from NimbusOps or confirmed legal requirement.
     // Protected retention requires business/legal sign-off.
-    'retention_workflow_days' => (int) env('AUDIT_RETENTION_WORKFLOW_DAYS', 2555),
+    'retention_workflow_days' => env('AUDIT_RETENTION_WORKFLOW_DAYS', 2555),
 
     // Log names considerados protegidos (não deletados antes de retention_workflow_days).
     //

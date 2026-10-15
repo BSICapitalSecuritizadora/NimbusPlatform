@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\DTOs\Measurements\MeasurementAmountDue;
 use App\DTOs\Measurements\MeasurementFinancialReconciliationLine;
 use App\DTOs\Measurements\MeasurementRevisionPlanSetPosition;
 use App\Enums\MeasurementResponsibility;
@@ -20,12 +21,14 @@ use App\Models\MeasurementReview;
 use App\Models\Operation;
 use App\Models\User;
 use App\Notifications\MeasurementWorkflowNotification;
+use App\Support\BusinessTime;
 use App\Support\Delegations\ResponsibilityAuthorization;
 use App\Support\Delegations\ResponsibilityAuthorizationCapture;
+use Carbon\CarbonImmutable;
+use DateTimeInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -90,6 +93,35 @@ class MeasurementWorkflow
      * é seguir o fluxo até a Finalização e revisar de lá.
      */
     public const PAID_MANAGEMENT_REJECTION_REFUSAL = 'Esta medição tem pagamento registrado: recusar na Gestão a devolveria à Engenharia, e o registro aprovado que é a base do pagamento não é reescrito. Aprove as etapas até a Finalização, com os comprovantes conferidos, e então corrija os dados por uma revisão formal (Criar revisão, de quem pode revisar medições e participa da operação).';
+
+    /**
+     * A medição original sem pagamento e sem nada a pagar não é aprovada como
+     * se tivesse pagamento: a etapa termina pela decisão expressa de concluí-la
+     * sem desembolso, com justificativa.
+     */
+    public const NO_DISBURSEMENT_DECISION_REQUIRED = 'Nenhum pagamento foi registrado e nada é devido nesta medição: conclua a etapa Pagamento sem desembolso, com a justificativa obrigatória. A Finalização deverá confirmar ciência desta decisão.';
+
+    public const NO_DISBURSEMENT_JUSTIFICATION_REQUIRED = 'Justificativa obrigatória: informe por que esta medição é concluída sem desembolso financeiro. A Finalização deverá confirmar ciência desta decisão.';
+
+    /**
+     * A Finalização não aceita a medição original sem pagamento que não tenha,
+     * na trilha protegida, a decisão sem desembolso da etapa Pagamento que vale
+     * agora.
+     */
+    public const NO_DISBURSEMENT_DECISION_MISSING = 'Esta medição não tem pagamento registrado e a etapa Pagamento não registrou a decisão de concluí-la sem desembolso, com justificativa. Devolva-a à etapa Pagamento para registrar o pagamento ou a decisão.';
+
+    public const NO_DISBURSEMENT_POSITION_CHANGED = 'A posição financeira desta medição não é mais a da decisão sem desembolso da etapa Pagamento. Devolva-a à etapa Pagamento para decidir de novo.';
+
+    public const NO_DISBURSEMENT_ACKNOWLEDGMENT_REQUIRED = 'Confirme a ciência da ausência de pagamento: esta medição não tem pagamento devido, nenhum pagamento bancário foi registrado, e a justificativa da etapa Pagamento precisa ser conferida antes de finalizar.';
+
+    /**
+     * A data do pagamento é um dia civil de Brasília, e nunca futuro: um
+     * pagamento só é registrado depois de acontecer, e a data registrada não
+     * muda mais.
+     */
+    public const FUTURE_PAY_DATE_REFUSAL = 'A data do pagamento não pode ser posterior à data de hoje em Brasília: um pagamento só é registrado depois de acontecer.';
+
+    public const INVALID_PAY_DATE_REFUSAL = 'Informe a data do pagamento como uma data do calendário (dia, mês e ano).';
 
     public function __construct(
         private MeasurementAuthorizationService $authorization,
@@ -299,6 +331,122 @@ class MeasurementWorkflow
             && $this->authorization->canFinalize($actor, $measurement);
     }
 
+    /**
+     * Quem decide a etapa Pagamento pode concluí-la sem desembolso agora? A
+     * medição original, sem pagamento registrado, em que nada é devido,
+     * demonstrado ({@see MeasurementPaymentFinancialService::amountDue()}). É o
+     * que a tela oferece; a aprovação confere tudo de novo, sob o lock.
+     */
+    public function canConcludeWithoutDisbursement(Measurement $measurement, User $actor): bool
+    {
+        return $this->unifiedStage($measurement) === self::STAGE_PAYMENT
+            && ! $measurement->isRevision()
+            && ! $measurement->hasRegisteredPayment()
+            && $this->canApprove($measurement, $actor)
+            && app(MeasurementPaymentFinancialService::class)->amountDue($measurement)->isNothingDue();
+    }
+
+    /**
+     * A Finalização desta medição exige a ciência da ausência de pagamento? A
+     * original sem pagamento registrado só chega à Finalização pela decisão
+     * sem desembolso da etapa Pagamento.
+     */
+    public function requiresNoDisbursementAcknowledgment(Measurement $measurement): bool
+    {
+        return in_array($measurement->status, ['approved', 'awaiting_receipt'], true)
+            && (int) $measurement->current_stage === self::STAGE_FINALIZATION
+            && ! $measurement->isRevision()
+            && ! $measurement->hasRegisteredPayment();
+    }
+
+    /**
+     * A decisão de concluir a etapa Pagamento sem desembolso que vale agora:
+     * a aprovação vigente da etapa, com a justificativa, e o registro protegido
+     * dela na trilha -- com a posição financeira em que foi tomada. `null` sem
+     * decisão: a etapa ainda não terminou, terminou com pagamento, ou a
+     * aprovação não tem o registro da decisão na trilha.
+     *
+     * A justificativa na nota da etapa não basta: a nota volta a ser reescrita
+     * quando a etapa é reaberta, e a trilha de `measurement_reviews` é
+     * descartável. A trilha `measurement_workflow` é a protegida.
+     *
+     * @return array{activity_id: int, justification: string, decided_by: int|null, decided_at: string|null, delegated: bool, admin_override: bool, amount_due: array<string, mixed>}|null
+     */
+    public function noDisbursementDecision(Measurement $measurement): ?array
+    {
+        if ($measurement->isRevision()) {
+            return null;
+        }
+
+        $review = $measurement->reviews()
+            ->where('stage', self::STAGE_PAYMENT)
+            ->where('status', 'approved')
+            ->first();
+        $justification = trim((string) $review?->notes);
+
+        if (! $review instanceof MeasurementReview || $justification === '') {
+            return null;
+        }
+
+        $approval = Activity::query()
+            ->where('log_name', 'measurement_workflow')
+            ->where('description', 'measurement_stage_approved')
+            ->where('subject_type', $measurement->getMorphClass())
+            ->where('subject_id', $measurement->getKey())
+            ->latest('id')
+            ->get()
+            ->first(fn (Activity $activity): bool => (int) ($activity->properties['stage'] ?? 0) === self::STAGE_PAYMENT);
+        $decision = $approval?->properties['no_disbursement'] ?? null;
+
+        if (! is_array($decision)
+            || ($decision['decision'] ?? null) !== 'no_disbursement'
+            || trim((string) ($decision['justification'] ?? '')) !== $justification) {
+            return null;
+        }
+
+        return [
+            'activity_id' => (int) $approval->getKey(),
+            'justification' => $justification,
+            'decided_by' => $review->reviewer_user_id === null ? null : (int) $review->reviewer_user_id,
+            'decided_at' => $review->reviewed_at?->toIso8601String(),
+            'delegated' => (bool) ($approval->properties['delegated'] ?? false),
+            'admin_override' => (bool) ($approval->properties['admin_override'] ?? false),
+            'amount_due' => is_array($decision['amount_due'] ?? null) ? $decision['amount_due'] : [],
+        ];
+    }
+
+    /**
+     * A ciência da ausência de pagamento que a Finalização registrou, lida da
+     * trilha protegida, ou `null`.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function noDisbursementAcknowledgment(Measurement $measurement): ?array
+    {
+        if ($measurement->isRevision() || $measurement->status !== 'finalized') {
+            return null;
+        }
+
+        $finalization = Activity::query()
+            ->where('log_name', 'measurement_workflow')
+            ->where('description', 'measurement_finalized')
+            ->where('subject_type', $measurement->getMorphClass())
+            ->where('subject_id', $measurement->getKey())
+            ->latest('id')
+            ->first();
+        $acknowledgment = $finalization?->properties['no_disbursement_acknowledged'] ?? null;
+
+        if (! is_array($acknowledgment)) {
+            return null;
+        }
+
+        return [
+            ...$acknowledgment,
+            'acknowledged_by' => $finalization->causer_id === null ? null : (int) $finalization->causer_id,
+            'acknowledged_at' => $finalization->created_at?->toIso8601String(),
+        ];
+    }
+
     public function startReview(Measurement $measurement, User $actor): void
     {
         $locked = DB::transaction(function () use ($measurement, $actor): Measurement {
@@ -355,6 +503,10 @@ class MeasurementWorkflow
     }
 
     /**
+     * `$withoutDisbursement` é a decisão expressa de concluir a etapa Pagamento
+     * da medição original sem desembolso -- sem pagamento registrado, com nada
+     * devido e com a justificativa em `$notes` ({@see self::ensureDisbursementDecision()}).
+     *
      * @param  array<int|string, mixed>  $engineeringProgress
      */
     public function approve(
@@ -364,6 +516,7 @@ class MeasurementWorkflow
         array $engineeringProgress = [],
         ?int $expectedStage = null,
         ?int $expectedRevision = null,
+        bool $withoutDisbursement = false,
     ): void {
         $expectedStage ??= $this->unifiedStage($measurement);
         $expectedRevision ??= (int) $measurement->workflow_revision;
@@ -375,7 +528,7 @@ class MeasurementWorkflow
             ? $this->revisions()->verifyPaidSourceEvidenceBeforeEffectiveness($measurement)
             : null;
 
-        $result = DB::transaction(function () use ($measurement, $actor, $expectedStage, $expectedRevision, $notes, $engineeringProgress, $verifiedSourceWorkflowRevision): array {
+        $result = DB::transaction(function () use ($measurement, $actor, $expectedStage, $expectedRevision, $notes, $engineeringProgress, $verifiedSourceWorkflowRevision, $withoutDisbursement): array {
             // A revisão trava a Operation e a família inteira (a vigente que ela
             // vai substituir inclusive) na Engenharia e na Compliance: a
             // Engenharia confere a ocupação da linha pela vigente e o teto sem
@@ -400,6 +553,10 @@ class MeasurementWorkflow
             $this->authorizeStageDecision($locked, $actor, $stage);
             $review = $this->lockPendingReview($locked, $stage);
 
+            if ($withoutDisbursement && $stage !== self::STAGE_PAYMENT) {
+                throw $this->invalidState($locked, 'A conclusão sem desembolso é uma decisão da etapa Pagamento.');
+            }
+
             if ($stage === self::STAGE_ENGINEERING) {
                 $engineeringSnapshot = $this->engineering->validateAndRecord($locked, $engineeringProgress);
                 $locked->forceFill(['engineering_snapshot' => $engineeringSnapshot])->save();
@@ -414,8 +571,10 @@ class MeasurementWorkflow
 
             $unpaidPlanSets = [];
             $revisionOverpayments = [];
+            $noDisbursement = null;
 
             if ($stage === self::STAGE_PAYMENT) {
+                $noDisbursement = $this->ensureDisbursementDecision($locked, $notes, $withoutDisbursement);
                 $this->ensureValidPaymentExists($locked);
                 $unpaidPlanSets = $this->ensureUnpaidPlanSetsAreJustified($locked, $notes);
                 $revisionOverpayments = $this->ensureRevisionOverpaymentsAreJustified($locked, $notes);
@@ -504,6 +663,19 @@ class MeasurementWorkflow
                 if ($locked->isRevision()) {
                     $approval['revision_overpayments'] = $revisionOverpayments;
                 }
+
+                // A decisão sem desembolso fica na trilha protegida inteira -- a
+                // justificativa e a posição financeira em que foi tomada --, porque
+                // a nota da etapa é reescrita quando a etapa é reaberta. Não é
+                // pagamento, estorno, devolução nem regularização financeira.
+                if ($noDisbursement instanceof MeasurementAmountDue) {
+                    $approval['no_disbursement'] = [
+                        'decision' => 'no_disbursement',
+                        'justification' => trim((string) $notes),
+                        'payments_registered' => 0,
+                        'amount_due' => $noDisbursement->toArray(),
+                    ];
+                }
             }
 
             $this->audit($locked, $actor, 'measurement_stage_approved', $approval);
@@ -536,6 +708,7 @@ class MeasurementWorkflow
                 'approved_stage' => $stage,
                 'next_stage' => $nextStage,
                 'status' => $toStatus,
+                'without_disbursement' => $noDisbursement instanceof MeasurementAmountDue,
             ];
         });
 
@@ -543,7 +716,9 @@ class MeasurementWorkflow
         $locked = $result['measurement'];
 
         if ($result['approved_stage'] === self::STAGE_PAYMENT) {
-            if ($result['status'] === 'approved') {
+            if ($result['without_disbursement']) {
+                $this->notifyUsers($locked, 'ready_to_finalize_without_disbursement', [$locked->operation->payment_finalizer_user_id]);
+            } elseif ($result['status'] === 'approved') {
                 $this->notifyUsers($locked, 'ready_to_finalize', [$locked->operation->payment_finalizer_user_id]);
             } else {
                 $this->notifyUsers($locked, 'payment_approved', [$locked->operation->payment_receipt_uploader_user_id]);
@@ -553,6 +728,16 @@ class MeasurementWorkflow
         }
 
         $event = $result['next_stage'] === self::STAGE_PAYMENT ? 'awaiting_payment' : 'advanced';
+
+        // A original sem pagamento em que nada é devido não pede registro de
+        // pagamento: pede a decisão sem desembolso.
+        if ($event === 'awaiting_payment'
+            && ! $locked->isRevision()
+            && $locked->payments()->doesntExist()
+            && app(MeasurementPaymentFinancialService::class)->amountDue($locked)->isNothingDue()) {
+            $event = 'awaiting_payment_without_disbursement';
+        }
+
         $this->notifyUsers($locked, $event, [$locked->operation->stageResponsibleId($result['next_stage'])]);
     }
 
@@ -1025,7 +1210,11 @@ class MeasurementWorkflow
                 'payments.*.financial_rule_id' => ['nullable', 'integer'],
                 'payments.*.financial_justification' => ['nullable', 'string', 'max:5000'],
                 'payments.*.financial_support' => ['nullable', 'file', 'max:10240'],
-            ], [], [
+            ], [
+                // "tomorrow", "+1 day", 14/10/2026 ou 30/02: a mesma frase da
+                // data do calendário conferida adiante, em vez da genérica.
+                'payments.*.pay_date.date' => self::INVALID_PAY_DATE_REFUSAL,
+            ], [
                 'payments' => 'pagamentos',
                 'payments.*.pay_date' => 'data do pagamento',
                 'payments.*.amount' => 'valor do pagamento',
@@ -1057,6 +1246,9 @@ class MeasurementWorkflow
             $validPlanSetIds = $approvedPlanSetIds->all();
             $defaultPlanSetId = (int) ($snapshotPlanSets->firstWhere('is_default', true)['plan_set_id']
                 ?? $validPlanSetIds[0]);
+            // O dia de hoje é o civil de Brasília, não o UTC: entre 21h e 24h o
+            // UTC já está no dia seguinte.
+            $businessToday = BusinessTime::dateString();
 
             foreach ($validated as $index => $row) {
                 if (filled($row['plan_set_id'] ?? null)
@@ -1065,11 +1257,32 @@ class MeasurementWorkflow
                         "payments.{$index}.plan_set_id" => 'O empreendimento informado não pertence ao contexto aprovado desta medição.',
                     ]);
                 }
+
+                // Todas as linhas antes de qualquer gravação: a data de um
+                // pagamento registrado não muda mais.
+                $payDate = self::civilPayDate($row['pay_date']);
+
+                if ($payDate === null) {
+                    throw ValidationException::withMessages([
+                        "payments.{$index}.pay_date" => self::INVALID_PAY_DATE_REFUSAL,
+                    ]);
+                }
+
+                if ($payDate > $businessToday) {
+                    throw ValidationException::withMessages([
+                        "payments.{$index}.pay_date" => sprintf(
+                            'A data do pagamento (%s) é posterior à data de hoje em Brasília (%s): um pagamento só é registrado depois de acontecer.',
+                            CarbonImmutable::createFromFormat('!Y-m-d', $payDate)->format('d/m/Y'),
+                            CarbonImmutable::createFromFormat('!Y-m-d', $businessToday)->format('d/m/Y'),
+                        ),
+                    ]);
+                }
+
+                $validated[$index]['pay_date'] = $payDate;
             }
 
             $payments = collect($validated)->map(function (array $row, int $index) use ($locked, $actor, $defaultPlanSetId): MeasurementPayment {
                 $row['plan_set_id'] ??= $defaultPlanSetId;
-                $row['pay_date'] = Carbon::parse($row['pay_date'])->toDateString();
                 // Na revisão, cada linha é conferida contra o saldo em aberto já
                 // descontado do que a família pagou antes e das linhas anteriores
                 // deste mesmo registro: o que já foi pago não se paga de novo.
@@ -1113,6 +1326,30 @@ class MeasurementWorkflow
         $this->notifyUsers($measurement, 'payment_registered', [$measurement->operation?->payment_manager_user_id]);
 
         return $created;
+    }
+
+    /**
+     * A data civil do pagamento como foi informada, sem trocar de fuso: a
+     * data de um `DateTimeInterface` no fuso dele, ou o `AAAA-MM-DD` de um texto
+     * (com ou sem horário), como escrito. Converter a data de um pagamento
+     * passado para UTC ou para Brasília deslocaria o dia; quem envia um
+     * instante UTC depois das 21h de Brasília envia o dia seguinte, e a data
+     * futura é recusada adiante. Texto relativo ("tomorrow", "+1 day") ou em
+     * outro formato não é data do calendário -- `null`.
+     */
+    private static function civilPayDate(mixed $value): ?string
+    {
+        if ($value instanceof DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        if (! is_string($value)
+            || preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:[ T]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/', $value, $match) !== 1
+            || ! checkdate((int) $match[2], (int) $match[3], (int) $match[1])) {
+            return null;
+        }
+
+        return "{$match[1]}-{$match[2]}-{$match[3]}";
     }
 
     public function attachReceipt(
@@ -1193,11 +1430,12 @@ class MeasurementWorkflow
         ?int $expectedRevision = null,
         ?string $expectedStatus = null,
         bool $acceptFinancialExceptions = false,
+        bool $acknowledgeNoDisbursement = false,
     ): void {
         $expectedRevision ??= (int) $measurement->workflow_revision;
         $expectedStatus ??= (string) $measurement->status;
 
-        $locked = DB::transaction(function () use ($measurement, $actor, $expectedRevision, $expectedStatus, $acceptFinancialExceptions): Measurement {
+        $locked = DB::transaction(function () use ($measurement, $actor, $expectedRevision, $expectedStatus, $acceptFinancialExceptions, $acknowledgeNoDisbursement): Measurement {
             $locked = $this->lockMeasurementWithOperation($measurement);
 
             $this->assertExpectedState($locked, $expectedRevision, self::STAGE_FINALIZATION, $expectedStatus);
@@ -1210,6 +1448,11 @@ class MeasurementWorkflow
                     'A medição ainda não está formalmente pronta para Finalização.',
                 );
             }
+
+            // A original sem pagamento: a decisão sem desembolso e a posição em
+            // que foi tomada são conferidas antes dos comprovantes -- sem
+            // pagamento não há comprovante, e a recusa certa é a da decisão.
+            $noDisbursement = $this->standingNoDisbursementDecision($locked);
 
             app(MeasurementReceiptEvidenceService::class)->ensurePaymentsApproved($locked);
 
@@ -1232,6 +1475,7 @@ class MeasurementWorkflow
             $financialExceptions = $financial->acceptForFinalization($locked, $acceptFinancialExceptions);
             $unpaidPlanSetsAccepted = $financial->acceptUnpaidPlanSetsForFinalization($locked, $acceptFinancialExceptions);
             $revisionOverpaymentsAccepted = $financial->acceptRevisionOverpaymentsForFinalization($locked, $acceptFinancialExceptions);
+            $noDisbursementAcknowledged = $this->acknowledgeNoDisbursement($noDisbursement, $actor, $acknowledgeNoDisbursement);
 
             $fromStatus = $locked->status;
             $locked->reviews()->updateOrCreate(
@@ -1254,6 +1498,7 @@ class MeasurementWorkflow
             $this->audit($locked, $actor, 'measurement_finalized', [
                 'financial_exceptions_accepted' => $financialExceptions,
                 'unpaid_plan_sets_accepted' => $unpaidPlanSetsAccepted,
+                ...($noDisbursementAcknowledged === null ? [] : ['no_disbursement_acknowledged' => $noDisbursementAcknowledged]),
                 ...($locked->isRevision() ? [
                     'revision_overpayments_accepted' => $revisionOverpaymentsAccepted,
                     'revision_positions' => array_map(
@@ -1669,7 +1914,8 @@ class MeasurementWorkflow
 
     /**
      * Se a medição tem o pagamento que a aprovação da etapa Pagamento exige:
-     * ao menos um, e todos com valor positivo e data.
+     * ao menos um, e todos com valor positivo e data -- ou nenhum, quando nada
+     * é devido.
      *
      * É a mesma conta da recusa em {@see self::ensureValidPaymentExists()},
      * exposta para o modal da etapa: sem pagamento válido, a justificativa da
@@ -1679,12 +1925,14 @@ class MeasurementWorkflow
     {
         $paymentCount = $measurement->payments()->count();
 
-        // A revisão cuja família já pagou, ou que não tem nada a pagar, não
-        // precisa de pagamento novo: o que falta ou sobra é a posição
-        // financeira dela, conferida à parte (saldo em aberto justificado, valor
-        // pago a maior decidido).
-        if ($paymentCount === 0 && $measurement->isRevision()) {
-            return $this->revisions()->allowsApprovalWithoutOwnPayment($measurement);
+        // Sem pagamento, vale a regra única de "nada a pagar": a revisão cuja
+        // família já pagou, ou a medição -- original ou revisão -- em que nada
+        // é devido, não precisa de pagamento novo. O que falta ou sobra na
+        // revisão é a posição financeira dela, conferida à parte; a original
+        // termina a etapa pela decisão sem desembolso
+        // ({@see self::ensureDisbursementDecision()}).
+        if ($paymentCount === 0) {
+            return app(MeasurementPaymentFinancialService::class)->allowsCompletionWithoutOwnPayment($measurement);
         }
 
         return $paymentCount > 0
@@ -1692,6 +1940,161 @@ class MeasurementWorkflow
                 ->where('amount', '>', 0)
                 ->whereNotNull('pay_date')
                 ->count();
+    }
+
+    /**
+     * A medição original sem nenhum pagamento registrado só termina a etapa
+     * Pagamento pela decisão expressa de concluí-la sem desembolso -- nunca
+     * por uma aprovação comum, e a decisão não cria pagamento algum, nem de
+     * valor zero. (Um pagamento de verdade registrado por quem decide segue o
+     * caminho de sempre: enquadramento, justificativa da divergência,
+     * comprovante e aceite do Finalizador.) A decisão exige
+     * que nada seja devido, demonstrado ({@see MeasurementPaymentFinancialService::amountDue()}):
+     * valor devido indeterminado (sem Fundo de Obra, sem registro verificável
+     * da Engenharia, fora do contexto aprovado) nunca é zero, e o
+     * empreendimento com valor a pagar continua exigindo o pagamento -- a
+     * decisão vale para a medição inteira, não para parte dela. E exige a
+     * justificativa, que a Finalização precisa conferir e confirmar.
+     *
+     * A revisão não passa por aqui: ela termina a etapa sem pagamento próprio
+     * pela posição financeira da família, como antes. Devolve a posição em que
+     * a decisão foi tomada, para a trilha protegida, ou `null` quando a etapa
+     * segue o caminho de sempre.
+     *
+     * Leitura simples, sob o lock da medição que a aprovação já detém:
+     * pagamento só nasce sob esse mesmo lock, e nenhum lock novo entra aqui.
+     *
+     * @throws ValidationException
+     */
+    private function ensureDisbursementDecision(Measurement $measurement, ?string $notes, bool $withoutDisbursement): ?MeasurementAmountDue
+    {
+        $financial = app(MeasurementPaymentFinancialService::class);
+        $original = ! $measurement->isRevision();
+        $withoutPayments = $measurement->payments()->doesntExist();
+
+        if (! $withoutDisbursement) {
+            // A original sem pagamento e sem valor devido não é aprovada em
+            // silêncio; com valor devido (ou indeterminado), a recusa de sempre
+            // vem de ensureValidPaymentExists().
+            if ($original && $withoutPayments && $financial->amountDue($measurement)->isNothingDue()) {
+                throw ValidationException::withMessages(['payments' => self::NO_DISBURSEMENT_DECISION_REQUIRED]);
+            }
+
+            return null;
+        }
+
+        if (! $original) {
+            throw ValidationException::withMessages([
+                'payments' => 'A conclusão sem desembolso é da medição original. A revisão termina a etapa Pagamento pela posição financeira da família: aprove a etapa.',
+            ]);
+        }
+
+        if (! $withoutPayments) {
+            throw ValidationException::withMessages([
+                'payments' => 'Há pagamento registrado nesta medição: aprove a etapa Pagamento com ele. A conclusão sem desembolso vale só para a medição sem nenhum pagamento.',
+            ]);
+        }
+
+        $amountDue = $financial->amountDue($measurement);
+
+        // Com valor devido, o caminho é o pagamento; com o valor devido
+        // indeterminado, é corrigir a origem da conta -- nunca um pagamento
+        // para contornar a falta dela.
+        if (! $amountDue->isNothingDue()) {
+            throw ValidationException::withMessages([
+                'payments' => 'A etapa Pagamento não pode ser concluída sem desembolso: '.implode(' ', $amountDue->refusals()).($amountDue->isDetermined()
+                    ? ' Registre o pagamento devido.'
+                    : ' Sem o valor devido determinado, a conclusão sem desembolso não é possível: corrija o Fundo de Obra na versão do plano ou o registro da Engenharia (devolvendo a medição àquela etapa).'),
+            ]);
+        }
+
+        // Espaço invisível (sem quebra, de largura zero) não é justificativa.
+        if (preg_replace('/[\s\p{Z}\p{Cf}]+/u', '', (string) $notes) === '') {
+            throw ValidationException::withMessages(['notes' => self::NO_DISBURSEMENT_JUSTIFICATION_REQUIRED]);
+        }
+
+        return $amountDue;
+    }
+
+    /**
+     * A decisão sem desembolso em que a Finalização da medição original sem
+     * pagamento se apoia: registrada na trilha protegida, com justificativa,
+     * sobre a mesma posição financeira de agora (o hash canônico do registro
+     * da Engenharia) e com nada devido. A nota da etapa, sozinha, não
+     * autoriza a Finalização. `null` quando a medição tem pagamento ou é
+     * revisão -- a Finalização segue o caminho de sempre.
+     *
+     * @return array{decision: array{activity_id: int, justification: string, decided_by: int|null, decided_at: string|null, delegated: bool, admin_override: bool, amount_due: array<string, mixed>}, amount_due: MeasurementAmountDue}|null
+     */
+    private function standingNoDisbursementDecision(Measurement $measurement): ?array
+    {
+        if ($measurement->isRevision() || $measurement->payments()->exists()) {
+            return null;
+        }
+
+        $decision = $this->noDisbursementDecision($measurement);
+
+        if ($decision === null) {
+            throw $this->invalidState($measurement, self::NO_DISBURSEMENT_DECISION_MISSING);
+        }
+
+        $amountDue = app(MeasurementPaymentFinancialService::class)->amountDue($measurement);
+
+        if (! $amountDue->isNothingDue()
+            || ($decision['amount_due']['engineering_snapshot_sha256'] ?? null) !== $amountDue->engineeringSnapshotSha256) {
+            throw $this->invalidState($measurement, self::NO_DISBURSEMENT_POSITION_CHANGED);
+        }
+
+        return ['decision' => $decision, 'amount_due' => $amountDue];
+    }
+
+    /**
+     * A Finalização da medição original sem pagamento exige a ciência expressa
+     * do Finalizador sobre a decisão conferida
+     * ({@see self::standingNoDisbursementDecision()}): nada é devido, nenhum
+     * pagamento bancário foi registrado, e a justificativa foi conferida.
+     *
+     * A ciência não é pagamento, devolução, estorno, regularização nem ajuste
+     * financeiro: é o registro de uma decisão operacional de que não há
+     * desembolso devido. Devolve o que foi conferido, para a auditoria
+     * congelar, ou `null` quando a medição tem pagamento ou é revisão.
+     *
+     * @param  array{decision: array{activity_id: int, justification: string, decided_by: int|null, decided_at: string|null, delegated: bool, admin_override: bool, amount_due: array<string, mixed>}, amount_due: MeasurementAmountDue}|null  $noDisbursement
+     * @return array<string, mixed>|null
+     *
+     * @throws ValidationException
+     */
+    private function acknowledgeNoDisbursement(?array $noDisbursement, User $actor, bool $acknowledged): ?array
+    {
+        if ($noDisbursement === null) {
+            return null;
+        }
+
+        ['decision' => $decision, 'amount_due' => $amountDue] = $noDisbursement;
+
+        if (! $acknowledged) {
+            throw ValidationException::withMessages(['acknowledge_no_disbursement' => self::NO_DISBURSEMENT_ACKNOWLEDGMENT_REQUIRED]);
+        }
+
+        return [
+            'decision_activity_id' => $decision['activity_id'],
+            'justification' => $decision['justification'],
+            'decided_by' => $decision['decided_by'],
+            'decided_at' => $decision['decided_at'],
+            // A segregação de funções é decisão pendente do dono (Fase 4B): a
+            // ciência dada por quem decidiu não é recusada, mas fica explícita,
+            // com a origem da autoridade de cada um.
+            'same_actor_as_decision' => $decision['decided_by'] === (int) $actor->getKey(),
+            'decision_delegated' => $decision['delegated'],
+            'decision_admin_override' => $decision['admin_override'],
+            'payments_registered' => 0,
+            'amount_due' => $amountDue->toArray(),
+            'acknowledged' => [
+                'no_payment_due' => true,
+                'no_bank_payment_registered' => true,
+                'payment_stage_justification_reviewed' => true,
+            ],
+        ];
     }
 
     private function ensureValidPaymentExists(Measurement $measurement): void

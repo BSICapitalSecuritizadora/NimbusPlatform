@@ -92,7 +92,10 @@ class MeasurementTimeline
         if ($activity->description === 'measurement_stage_approved'
             && (int) $activity->properties->get('stage') === MeasurementWorkflow::STAGE_PAYMENT) {
             return [
-                'title' => 'Etapa 4 aprovada — avançou para Finalização',
+                // A decisão sem desembolso não é pagamento: nenhum valor saiu.
+                'title' => is_array($activity->properties->get('no_disbursement'))
+                    ? 'Etapa 4 concluída sem desembolso — avançou para Finalização'
+                    : 'Etapa 4 aprovada — avançou para Finalização',
                 'color' => 'success',
                 'icon' => 'heroicon-o-check-circle',
             ];

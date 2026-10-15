@@ -2,9 +2,12 @@
 
 namespace App\Console\Commands;
 
+use App\Exceptions\AuditRetentionConfigurationException;
+use App\Support\ActivityLog\AuditRetentionPolicy;
 use Illuminate\Console\Command;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CleanFilteredActivityLogCommand extends Command
 {
@@ -16,9 +19,31 @@ class CleanFilteredActivityLogCommand extends Command
     {
         $dryRun = (bool) $this->option('dry-run');
 
-        // Retenção: descartável 365 dias; workflow/operational retido 7 anos (2555 dias).
-        $disposableDays = (int) config('audit.retention_disposable_days', 365);
-        $workflowDays = (int) config('audit.retention_workflow_days', 2555);
+        // Retenção: descartável 365 dias; workflow/operational retido 7 anos
+        // (2555 dias). Os dois prazos são conferidos antes de qualquer outra
+        // coisa -- inclusive no dry-run, que serve de conferência antes do
+        // deploy: um prazo ilegível não vira 0 dia nem é trocado por um padrão,
+        // e a limpeza não roda em parte (nem a protegida, nem a descartável).
+        try {
+            $retention = AuditRetentionPolicy::fromConfig();
+        } catch (AuditRetentionConfigurationException $exception) {
+            $this->error('Retenção da auditoria inválida: a limpeza foi abortada e nenhum registro foi apagado.');
+
+            foreach ($exception->problems as $problem) {
+                $this->error('- '.$problem);
+            }
+
+            // O scheduler descarta a saída do comando: sem o log, a limpeza
+            // abortada todo dia passaria despercebida.
+            Log::critical('audit:clean-filtered abortado: retenção da auditoria inválida; nenhum registro foi apagado.', [
+                'problems' => $exception->problems,
+            ]);
+
+            return self::FAILURE;
+        }
+
+        $disposableDays = $retention->disposableDays;
+        $workflowDays = $retention->protectedDays;
 
         $disposableCutoff = now()->subDays($disposableDays);
         $workflowCutoff = now()->subDays($workflowDays);

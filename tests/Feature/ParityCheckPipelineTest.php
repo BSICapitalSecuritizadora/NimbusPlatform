@@ -3,15 +3,10 @@
 use Illuminate\Support\Facades\Process;
 
 /**
- * O job `parity` do CI é o único lugar onde os grupos `parity` e `mysql` rodam.
- *
- * Por semanas ele morreu com exit 126 antes do primeiro teste: o workflow
- * chamava `./scripts/parity-check.sh` e o git guardava o arquivo sem bit de
- * execução. O vermelho era sempre o mesmo, e ninguém distinguiria dele uma
- * regressão real de lock ou de collation. Estes testes rodam na suíte comum,
- * no SQLite, justamente para que a volta do defeito apareça onde alguém olha.
+ * Durante o desenvolvimento, a execução MySQL fica disponível manualmente
+ * por `composer test:parity`, sem consumir horas no CI a cada alteração.
  */
-it('runs the parity script through bash in the CI workflow', function () {
+it('keeps the MySQL parity job out of the CI workflow', function () {
     $workflow = file_get_contents(base_path('.github/workflows/tests.yml'));
 
     $invocations = collect(preg_split('/\R/', $workflow))
@@ -20,7 +15,8 @@ it('runs the parity script through bash in the CI workflow', function () {
         ->values()
         ->all();
 
-    expect($invocations)->toBe(['run: bash ./scripts/parity-check.sh']);
+    expect($invocations)->toBe([])
+        ->and($workflow)->not->toMatch('/^  parity:/m');
 });
 
 it('runs the parity script through bash in the composer script', function () {

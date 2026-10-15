@@ -1054,9 +1054,10 @@ it('re-approves at Engineering a legacy paid measurement returned from Finalizat
     $june = Scenario::measured(periodLinkageUnderGoverning($scenario), '2027-06', 10);
     $workflow->approve($june->fresh(), $scenario['actor']);
     $workflow->approve($june->fresh(), $scenario['actor']);
+    // Pago no próprio dia: a data do pagamento nunca é futura.
     $workflow->registerPayment($june->fresh(), $scenario['actor'], [
         'plan_set_id' => $planSetId,
-        'pay_date' => '2027-08-12',
+        'pay_date' => '2027-08-10',
         'amount' => '2000000.00',
         'method' => 'TED',
     ]);

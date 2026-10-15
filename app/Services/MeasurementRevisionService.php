@@ -95,6 +95,12 @@ class MeasurementRevisionService
 
     public const UNPAID_FINALIZATION_REFUSAL = 'Esta revisão está na Finalização sem pagamento próprio. Para revisá-la, finalize-a ou devolva-a à etapa Pagamento.';
 
+    /**
+     * A medição original sem pagamento só chega à Finalização pela decisão sem
+     * desembolso da etapa Pagamento.
+     */
+    public const UNPAID_ORIGINAL_FINALIZATION_REFUSAL = 'Esta medição está na Finalização sem pagamento registrado. Para revisá-la, finalize-a ou devolva-a à etapa Pagamento.';
+
     public const FROZEN_WORKFLOW_REFUSAL = 'Esta medição tem a revisão %s em análise: o fluxo dela fica suspenso até a revisão ser recusada ou passar a valer.';
 
     public const STALE_REVISION_REFUSAL = 'A medição mudou depois que esta janela foi aberta. Atualize a página.';
@@ -1049,7 +1055,10 @@ class MeasurementRevisionService
      * decidido) -- ou quando não há nada a pagar: todo empreendimento com
      * referência financeira, saldo zerado e nenhum valor pago a maior a
      * reconhecer (a correção para 0% de uma medição ainda não paga, por
-     * exemplo). A medição sem revisão continua exigindo pagamento.
+     * exemplo). A regra de "nada a pagar" é a mesma da medição original
+     * ({@see MeasurementPaymentFinancialService::amountDue()}); a original só
+     * termina a etapa sem pagamento pela decisão expressa de concluí-la sem
+     * desembolso.
      */
     public function allowsApprovalWithoutOwnPayment(Measurement $revision): bool
     {
@@ -1057,17 +1066,7 @@ class MeasurementRevisionService
             return false;
         }
 
-        if ($this->familyHasHistoricalPayments($revision)) {
-            return true;
-        }
-
-        $positions = $this->positions($revision);
-
-        return $positions !== [] && collect($positions)->every(
-            fn (MeasurementRevisionPlanSetPosition $position): bool => $position->hasFinancialReference()
-                && bccomp((string) $position->openBalanceAmount, '0', 2) <= 0
-                && ! $position->hasUnacknowledgedOverpayment(),
-        );
+        return app(MeasurementPaymentFinancialService::class)->allowsCompletionWithoutOwnPayment($revision);
     }
 
     /**
@@ -1626,7 +1625,9 @@ class MeasurementRevisionService
                 && $this->hasOpenReview($measurement, MeasurementWorkflow::STAGE_PAYMENT)
                 ? null
                 : self::ELIGIBILITY_REFUSAL,
-            in_array($measurement->status, ['approved', 'awaiting_receipt'], true) && ! $hasOwnPayments => self::UNPAID_FINALIZATION_REFUSAL,
+            in_array($measurement->status, ['approved', 'awaiting_receipt'], true) && ! $hasOwnPayments => $measurement->isRevision()
+                ? self::UNPAID_FINALIZATION_REFUSAL
+                : self::UNPAID_ORIGINAL_FINALIZATION_REFUSAL,
             $measurement->status === 'awaiting_receipt' => self::PAID_RECEIPTS_PENDING_REFUSAL,
             $measurement->status === 'approved' => $stage === MeasurementWorkflow::STAGE_FINALIZATION
                 && $this->hasOpenReview($measurement, MeasurementWorkflow::STAGE_FINALIZATION)

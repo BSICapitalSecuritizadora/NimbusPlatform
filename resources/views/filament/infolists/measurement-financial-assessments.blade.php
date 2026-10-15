@@ -1,5 +1,8 @@
 @php
     $measurement ??= $getRecord();
+    // No modal da Finalização a decisão sem desembolso tem campo próprio, ao
+    // lado da ciência: aqui ela não se repete.
+    $noDisbursementDecisionShownApart ??= false;
     $measurement->loadMissing('payments');
     $money = fn ($value) => \App\Services\MeasurementFinancialReconciliationService::formatCurrency($value);
 
@@ -121,6 +124,45 @@
         $isClosedByRevision => $closedByRevisionNote,
         default => 'Divergência sujeita ao aceite explícito do Finalizador.',
     };
+
+    /*
+     * A medição original sem pagamento, da etapa Pagamento em diante: nada é
+     * devido, demonstrado -- ou o valor devido ainda depende de pagamento ou
+     * não pode ser determinado, e vale o texto de sempre. Depois da etapa, a
+     * decisão sem desembolso e a ciência da Finalização, lidas da trilha
+     * protegida. Nenhum pagamento aparece: não houve, nem de valor zero.
+     */
+    $noDisbursement = null;
+
+    if (! $isRevision && ! $isClosedByRevision && $stage >= \App\Services\MeasurementWorkflow::STAGE_PAYMENT && $measurement->payments->isEmpty()) {
+        $noDisbursementAmountDue = app(\App\Services\MeasurementPaymentFinancialService::class)->amountDue($measurement);
+
+        if ($noDisbursementAmountDue->isNothingDue()) {
+            $noDisbursementDecision = $stage >= \App\Services\MeasurementWorkflow::STAGE_FINALIZATION
+                ? $workflow->noDisbursementDecision($measurement)
+                : null;
+            $noDisbursementAcknowledgment = $workflow->noDisbursementAcknowledgment($measurement);
+            $noDisbursementPeople = \App\Models\User::query()
+                ->whereKey(array_filter([$noDisbursementDecision['decided_by'] ?? null, $noDisbursementAcknowledgment['acknowledged_by'] ?? null]))
+                ->pluck('name', 'id');
+            $noDisbursementWhen = fn (?string $instant): ?string => $instant === null
+                ? null
+                : \App\Support\BusinessTime::at(\Carbon\CarbonImmutable::parse($instant))->format('d/m/Y H:i');
+            $noDisbursement = [
+                'amount_due' => $noDisbursementAmountDue,
+                'decision' => $noDisbursementDecision,
+                'decided' => collect([
+                    isset($noDisbursementDecision['decided_by']) ? 'Decidida por '.($noDisbursementPeople[$noDisbursementDecision['decided_by']] ?? '—') : null,
+                    $noDisbursementWhen($noDisbursementDecision['decided_at'] ?? null) === null ? null : 'em '.$noDisbursementWhen($noDisbursementDecision['decided_at']),
+                ])->filter()->implode(' '),
+                'acknowledgment' => $noDisbursementAcknowledgment === null ? null : collect([
+                    'Ciência da ausência de pagamento confirmada na Finalização',
+                    isset($noDisbursementAcknowledgment['acknowledged_by']) ? 'por '.($noDisbursementPeople[$noDisbursementAcknowledgment['acknowledged_by']] ?? '—') : null,
+                    $noDisbursementWhen($noDisbursementAcknowledgment['acknowledged_at'] ?? null) === null ? null : 'em '.$noDisbursementWhen($noDisbursementAcknowledgment['acknowledged_at']),
+                ])->filter()->implode(' ').'.',
+            ];
+        }
+    }
 @endphp
 
 <div class="space-y-4 text-sm">
@@ -163,6 +205,38 @@
             <p class="text-gray-500 dark:text-gray-400">{{ $closedWithoutPaymentNote }}</p>
         @elseif ($revisionNoOwnPaymentNote !== null)
             <p class="text-gray-500 dark:text-gray-400">{{ $revisionNoOwnPaymentNote }}</p>
+        @elseif ($noDisbursement !== null && $noDisbursementDecisionShownApart)
+            <p class="text-gray-500 dark:text-gray-400">Nenhum pagamento devido: medição sem desembolso financeiro. A decisão de pagamento sem desembolso e a ciência da Finalização estão abaixo.</p>
+        @elseif ($noDisbursement !== null)
+            <section wire:key="financial-no-disbursement" class="space-y-2">
+                <h4 class="font-semibold">Nenhum pagamento devido</h4>
+                <p class="text-gray-500 dark:text-gray-400">Medição sem desembolso financeiro: o valor aprovado pela Engenharia é zero em todos os empreendimentos e nenhum pagamento foi registrado. Valor devido: {{ $money($noDisbursement['amount_due']->totalRemainingAmount()) }}.</p>
+                <ul class="space-y-1">
+                    @foreach ($noDisbursement['amount_due']->lines as $line)
+                        <li>
+                            <span class="font-medium text-gray-950 dark:text-white">{{ $line->label }}</span>
+                            · Fundo de Obra {{ $money($line->fundAmount) }}
+                            · realizado no mês {{ \App\Services\MeasurementFinancialReconciliationService::formatPercent($line->realizedMonthlyPercent) }}
+                            · valor devido {{ $money($line->remainingAmount) }}
+                        </li>
+                    @endforeach
+                </ul>
+                @if ($noDisbursement['decision'] !== null)
+                    <p><span class="font-medium text-gray-950 dark:text-white">Decisão de pagamento sem desembolso:</span> {{ $noDisbursement['decision']['justification'] }}</p>
+                    @if ($noDisbursement['decided'] !== '')
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ $noDisbursement['decided'] }}</p>
+                    @endif
+                    @if ($noDisbursement['acknowledgment'] !== null)
+                        <p class="text-gray-500 dark:text-gray-400">{{ $noDisbursement['acknowledgment'] }} A ciência não é pagamento, devolução, estorno nem regularização financeira.</p>
+                    @elseif ($measurement->status !== 'finalized')
+                        <p class="text-amber-700 dark:text-amber-400">A Finalização deverá confirmar ciência desta decisão.</p>
+                    @endif
+                @elseif ($stage === \App\Services\MeasurementWorkflow::STAGE_PAYMENT)
+                    <p class="text-gray-500 dark:text-gray-400">A etapa Pagamento pode ser concluída sem desembolso, com justificativa obrigatória; a Finalização deverá confirmar ciência desta decisão.</p>
+                @elseif ($measurement->status !== 'finalized')
+                    <p class="text-amber-700 dark:text-amber-400">{{ \App\Services\MeasurementWorkflow::NO_DISBURSEMENT_DECISION_MISSING }}</p>
+                @endif
+            </section>
         @else
             <p class="text-gray-500 dark:text-gray-400">O enquadramento financeiro aparecerá após o registro dos pagamentos.</p>
         @endif

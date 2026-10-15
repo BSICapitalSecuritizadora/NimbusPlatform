@@ -40,10 +40,24 @@
     @endif
 
     @if ($payments->isEmpty())
+        @php
+            // A original sem pagamento que passou da etapa Pagamento pela decisão
+            // sem desembolso registrada na trilha protegida: nada foi pago porque
+            // nada era devido.
+            $withoutDisbursement = ! $record->isRevision()
+                && in_array($record->status, ['approved', 'awaiting_receipt', 'finalized'], true)
+                && (int) $record->current_stage === \App\Services\MeasurementWorkflow::STAGE_FINALIZATION
+                && app(\App\Services\MeasurementWorkflow::class)->noDisbursementDecision($record) !== null;
+        @endphp
         <div class="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 p-6 text-center text-xs text-gray-500 dark:border-white/10 dark:text-gray-400">
             <x-heroicon-o-banknotes class="size-8 text-gray-400 dark:text-gray-500" />
-            <span class="mt-2 font-medium">Nenhum pagamento registrado nesta medição.</span>
-            <span class="mt-0.5 text-gray-400 dark:text-gray-500">Os pagamentos são lançados na Etapa 4 de Pagamentos.</span>
+            @if ($withoutDisbursement)
+                <span class="mt-2 font-medium">Medição sem desembolso financeiro.</span>
+                <span class="mt-0.5 text-gray-400 dark:text-gray-500">Nenhum pagamento é devido nem foi registrado: a etapa Pagamento foi concluída sem desembolso, com justificativa.</span>
+            @else
+                <span class="mt-2 font-medium">Nenhum pagamento registrado nesta medição.</span>
+                <span class="mt-0.5 text-gray-400 dark:text-gray-500">Os pagamentos são lançados na Etapa 4 de Pagamentos.</span>
+            @endif
         </div>
     @else
         <div class="space-y-2.5">

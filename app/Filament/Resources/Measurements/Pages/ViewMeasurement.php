@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Measurements\Pages;
 
 use App\Concerns\MoneyFormatter;
+use App\DTOs\Measurements\MeasurementAmountDue;
+use App\DTOs\Measurements\MeasurementAmountDueLine;
 use App\DTOs\Measurements\MeasurementFinancialReconciliationLine;
 use App\DTOs\Measurements\MeasurementPhysicalProgress;
 use App\DTOs\Measurements\MeasurementRevisionPlanSetPosition;
@@ -159,6 +161,7 @@ class ViewMeasurement extends ViewRecord
     {
         return [
             $this->approveAction(),
+            $this->concludeWithoutDisbursementAction(),
             $this->rejectAction(),
             $this->pauseAction(),
             $this->resumeAction(),
@@ -477,7 +480,10 @@ class ViewMeasurement extends ViewRecord
             ->label('Aprovar Etapa')
             ->icon('heroicon-o-check-circle')
             ->color('success')
-            ->visible(fn (): bool => $this->workflow()->canApprove($this->record, $this->actor()))
+            // A original sem pagamento em que nada é devido termina a etapa
+            // Pagamento pela decisão sem desembolso, não por esta aprovação.
+            ->visible(fn (): bool => $this->workflow()->canApprove($this->record, $this->actor())
+                && ! $this->workflow()->canConcludeWithoutDisbursement($this->record, $this->actor()))
             ->schema(fn (): array => $this->approveSchema())
             ->action(function (array $data): void {
                 $this->guarded(function () use ($data): void {
@@ -605,10 +611,24 @@ class ViewMeasurement extends ViewRecord
     private function paymentStageApprovalFields(): array
     {
         if (! $this->workflow()->hasValidPayment($this->record)) {
+            // Sem pagamento, a pessoa vê também por que a etapa não pode terminar
+            // sem desembolso: o valor devido de cada empreendimento, ou por que
+            // ele não pode ser determinado -- nunca tomado como zero.
+            $amountDue = ! $this->record->isRevision() && ! $this->record->payments()->exists()
+                ? app(MeasurementPaymentFinancialService::class)->amountDue($this->record)
+                : null;
+
             return [
                 Placeholder::make('payment_required')
                     ->hiddenLabel()
                     ->content(new HtmlString('<p class="text-sm text-gray-600 dark:text-gray-300">'.e(self::PAYMENT_REQUIRED_MESSAGE).'</p>')),
+                ...($amountDue === null || $amountDue->refusals() === [] ? [] : [
+                    Placeholder::make('amount_due_refusals')
+                        ->label('Por que a etapa não pode ser concluída sem desembolso')
+                        ->content(new HtmlString('<ul class="list-disc space-y-1 ps-5 text-sm text-gray-700 dark:text-gray-200">'
+                            .collect($amountDue->refusals())->map(fn (string $refusal): string => '<li>'.e($refusal).'</li>')->implode('')
+                            .'</ul>')),
+                ]),
             ];
         }
 
@@ -664,6 +684,78 @@ class ViewMeasurement extends ViewRecord
                     'required' => 'Justifique a ausência de pagamento nesta competência de: '.$financial->describeUnpaidPlanSets($unpaid).'; o Finalizador precisará aceitar expressamente.',
                 ]),
         ];
+    }
+
+    /**
+     * Conclui a etapa Pagamento da medição original sem desembolso: nenhum
+     * pagamento registrado e nada devido, demonstrado
+     * ({@see MeasurementPaymentFinancialService::amountDue()}). A pessoa vê a
+     * posição de cada empreendimento -- Fundo de Obra, realizado do mês e
+     * valor devido -- e registra a justificativa obrigatória; a Finalização
+     * precisará confirmar ciência da decisão. Nenhum pagamento é criado, nem de
+     * valor zero. A ação só aparece a quem decide a etapa, e o domínio confere
+     * tudo de novo, sob o lock.
+     */
+    private function concludeWithoutDisbursementAction(): Action
+    {
+        return Action::make('concludeWithoutDisbursement')
+            ->label('Concluir etapa sem desembolso')
+            ->icon('heroicon-o-check-circle')
+            ->color('success')
+            ->modalHeading('Decisão de pagamento sem desembolso')
+            ->modalDescription('Medição sem desembolso financeiro: nenhum pagamento é devido nem será registrado. A Finalização deverá confirmar ciência desta decisão.')
+            ->modalSubmitActionLabel('Concluir etapa sem desembolso')
+            ->visible(fn (): bool => $this->workflow()->canConcludeWithoutDisbursement($this->record, $this->actor()))
+            ->schema(fn (): array => [
+                Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),
+                Placeholder::make('amount_due')
+                    ->label('Nenhum pagamento devido')
+                    ->content(fn (): HtmlString => $this->amountDueContent(app(MeasurementPaymentFinancialService::class)->amountDue($this->record))),
+                Textarea::make('notes')
+                    ->label('Justificativa obrigatória')
+                    ->helperText('Informe a justificativa para concluir a etapa sem pagamento. A Finalização deverá confirmar ciência desta decisão. A decisão não é pagamento, estorno, devolução nem regularização financeira.')
+                    ->required()
+                    ->rows(4)
+                    ->maxLength(5000)
+                    ->validationMessages([
+                        'required' => MeasurementWorkflow::NO_DISBURSEMENT_JUSTIFICATION_REQUIRED,
+                    ]),
+            ])
+            ->action(function (array $data): void {
+                $this->guarded(function () use ($data): void {
+                    $this->workflow()->approve(
+                        $this->record,
+                        $this->actor(),
+                        $data['notes'] ?? null,
+                        expectedStage: MeasurementWorkflow::STAGE_PAYMENT,
+                        expectedRevision: (int) $data['expected_revision'],
+                        withoutDisbursement: true,
+                    );
+                    $this->notify('Etapa Pagamento concluída sem desembolso. A Finalização deverá confirmar ciência desta decisão.');
+                });
+            });
+    }
+
+    /**
+     * A posição de cada empreendimento como a pessoa confere antes de decidir:
+     * Fundo de Obra congelado, realizado do mês e valor devido.
+     */
+    private function amountDueContent(MeasurementAmountDue $amountDue): HtmlString
+    {
+        $items = collect($amountDue->lines)
+            ->map(fn (MeasurementAmountDueLine $line): string => sprintf(
+                '<li><span class="font-medium text-gray-950 dark:text-white">%s</span> · Fundo de Obra %s · realizado no mês %s · <span class="font-medium">Valor devido: %s</span></li>',
+                e($line->label),
+                e(MeasurementFinancialReconciliationService::formatCurrency($line->fundAmount)),
+                e(MeasurementFinancialReconciliationService::formatPercent($line->realizedMonthlyPercent)),
+                e(MeasurementFinancialReconciliationService::formatCurrency($line->remainingAmount)),
+            ))
+            ->implode('');
+
+        return new HtmlString(
+            '<p class="text-sm text-gray-600 dark:text-gray-300">Não há desembolso financeiro nesta medição: o valor aprovado pela Engenharia é zero em todos os empreendimentos e nenhum pagamento foi registrado.</p>'
+            .'<ul class="mt-2 list-disc space-y-1 ps-5 text-sm text-gray-700 dark:text-gray-200">'.$items.'</ul>'
+        );
     }
 
     /**
@@ -1199,11 +1291,37 @@ class ViewMeasurement extends ViewRecord
             ->values()
             ->all();
 
+        // Na original em que nada é devido, o pagamento não é o caminho: um
+        // pagamento registrado não se altera nem se exclui, e fecharia para
+        // sempre a conclusão sem desembolso.
+        $nothingDue = ! $this->record->isRevision()
+            && ! $this->record->payments()->exists()
+            && app(MeasurementPaymentFinancialService::class)->amountDue($this->record)->isNothingDue();
+
         // Método e valor respondem no próprio campo, com o texto do campo: a
         // mesma regra no domínio só aparecia depois, numerada pela linha.
         return [
+            ...($nothingDue ? [
+                Placeholder::make('nothing_due')
+                    ->hiddenLabel()
+                    ->content(new HtmlString('<p class="text-sm text-amber-700 dark:text-amber-400">Nenhum pagamento devido: o valor aprovado pela Engenharia é zero em todos os empreendimentos. Para concluir a etapa sem pagamento, use "Concluir etapa sem desembolso". Um pagamento registrado não pode ser alterado nem excluído.</p>')),
+            ] : []),
             Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),
-            DatePicker::make('pay_date')->label('Data do pagamento')->required()->default(now())->live(),
+            // Data civil de Brasília, não o dia UTC: entre 21h e 24h o UTC já
+            // está no dia seguinte, e a data de um pagamento registrado não muda
+            // mais. Instância à meia-noite, não texto: o seletor guarda
+            // `Y-m-d H:i:s` e preencheria a hora atual num texto, e o limite
+            // `before_or_equal` de hoje recusaria o próprio dia. O domínio recusa
+            // a data futura de novo ({@see MeasurementWorkflow::registerPayments()}).
+            DatePicker::make('pay_date')
+                ->label('Data do pagamento')
+                ->required()
+                ->default(fn (): CarbonImmutable => CarbonImmutable::parse(BusinessTime::dateString()))
+                ->maxDate(fn (): string => BusinessTime::dateString())
+                ->validationMessages([
+                    'before_or_equal' => MeasurementWorkflow::FUTURE_PAY_DATE_REFUSAL,
+                ])
+                ->live(),
             TextInput::make('method')->label('Método')->placeholder('TED, PIX, Boleto...')->maxLength(255),
             Repeater::make('payments')
                 ->label('Pagamento por empreendimento')
@@ -1240,7 +1358,7 @@ class ViewMeasurement extends ViewRecord
                         ->content(fn (Get $get): HtmlString => $this->paymentDivergenceContent($get('plan_set_id'), $get('amount'))),
                     ...$this->financialExceptionFields(
                         fn (Get $get): int => (int) $get('plan_set_id'),
-                        fn (Get $get): string => (string) ($get('../../pay_date') ?? now()->toDateString()),
+                        fn (Get $get): string => (string) ($get('../../pay_date') ?? BusinessTime::dateString()),
                     ),
                     Textarea::make('notes')->label('Observações')->rows(2)->columnSpanFull(),
                 ]),
@@ -1388,7 +1506,7 @@ class ViewMeasurement extends ViewRecord
                     }),
                 ...$this->financialExceptionFields(
                     fn (Get $get): int => (int) $this->record->payments()->find($get('payment_id'))?->plan_set_id,
-                    fn (Get $get): string => $this->record->payments()->find($get('payment_id'))?->pay_date?->toDateString() ?? now()->toDateString(),
+                    fn (Get $get): string => $this->record->payments()->find($get('payment_id'))?->pay_date?->toDateString() ?? BusinessTime::dateString(),
                 ),
             ])
             ->action(function (array $data): void {
@@ -1542,7 +1660,10 @@ class ViewMeasurement extends ViewRecord
                 Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),
                 Hidden::make('expected_status')->default(fn (): string => (string) $this->record->status),
                 Placeholder::make('financial_review')->label('Conferência financeira')
-                    ->content(fn (): View => view('filament.infolists.measurement-financial-assessments', ['measurement' => $this->record])),
+                    ->content(fn (): View => view('filament.infolists.measurement-financial-assessments', [
+                        'measurement' => $this->record,
+                        'noDisbursementDecisionShownApart' => $this->workflow()->requiresNoDisbursementAcknowledgment($this->record),
+                    ])),
                 Checkbox::make('accept_financial_exceptions')
                     ->label('Li as regras, justificativas e documentos e aceito expressamente as divergências financeiras.')
                     ->helperText(fn (): ?string => $this->revisionLeavesOpenDifference()
@@ -1554,6 +1675,22 @@ class ViewMeasurement extends ViewRecord
                     ->validationMessages([
                         'accepted' => fn (): string => $this->financialAcceptanceRefusal(),
                     ]),
+                // A medição original sem pagamento chega aqui pela decisão sem
+                // desembolso da etapa Pagamento: o Finalizador lê a decisão e
+                // confirma a ciência, que o domínio exige e grava na trilha.
+                Placeholder::make('no_disbursement_decision')
+                    ->label('Decisão de pagamento sem desembolso')
+                    ->visible(fn (): bool => $this->workflow()->requiresNoDisbursementAcknowledgment($this->record))
+                    ->content(fn (): HtmlString => $this->noDisbursementDecisionContent()),
+                Checkbox::make('acknowledge_no_disbursement')
+                    ->label('Ciência da ausência de pagamento: confirmo que esta medição não tem pagamento devido, que nenhum pagamento bancário foi registrado e que conferi a justificativa da etapa Pagamento.')
+                    ->helperText('A ciência não é pagamento, devolução, estorno nem regularização financeira: registra a decisão de que não há desembolso devido.')
+                    ->default(false)
+                    ->visible(fn (): bool => $this->workflow()->requiresNoDisbursementAcknowledgment($this->record))
+                    ->accepted(fn (): bool => $this->workflow()->requiresNoDisbursementAcknowledgment($this->record))
+                    ->validationMessages([
+                        'accepted' => MeasurementWorkflow::NO_DISBURSEMENT_ACKNOWLEDGMENT_REQUIRED,
+                    ]),
             ])
             ->action(function (array $data): void {
                 $this->guarded(function () use ($data): void {
@@ -1563,10 +1700,39 @@ class ViewMeasurement extends ViewRecord
                         expectedRevision: (int) $data['expected_revision'],
                         expectedStatus: (string) $data['expected_status'],
                         acceptFinancialExceptions: (bool) ($data['accept_financial_exceptions'] ?? false),
+                        acknowledgeNoDisbursement: (bool) ($data['acknowledge_no_disbursement'] ?? false),
                     );
                     $this->notify('Medição finalizada.');
                 });
             });
+    }
+
+    /**
+     * A decisão sem desembolso da etapa Pagamento como o Finalizador a confere:
+     * a justificativa, quem decidiu e quando, e a posição de cada
+     * empreendimento. Sem a decisão na trilha, diz o caminho -- o domínio
+     * recusa a Finalização do mesmo jeito.
+     */
+    private function noDisbursementDecisionContent(): HtmlString
+    {
+        $decision = $this->workflow()->noDisbursementDecision($this->record);
+
+        if ($decision === null) {
+            return new HtmlString('<p class="text-sm text-danger-600 dark:text-danger-400">'.e(MeasurementWorkflow::NO_DISBURSEMENT_DECISION_MISSING).'</p>');
+        }
+
+        $decidedBy = $decision['decided_by'] === null ? null : User::query()->whereKey($decision['decided_by'])->value('name');
+        $decidedAt = $decision['decided_at'] === null ? null : BusinessTime::at(CarbonImmutable::parse($decision['decided_at']))->format('d/m/Y H:i');
+
+        return new HtmlString(
+            '<p class="text-sm text-gray-600 dark:text-gray-300">Medição sem desembolso financeiro: nenhum pagamento é devido e nenhum pagamento foi registrado.</p>'
+            .'<p class="mt-2 text-sm text-gray-700 dark:text-gray-200"><span class="font-medium text-gray-950 dark:text-white">Justificativa:</span> '.e($decision['justification']).'</p>'
+            .'<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">'.e(collect([
+                $decidedBy === null ? null : 'Decidida por '.$decidedBy,
+                $decidedAt === null ? null : 'em '.$decidedAt,
+            ])->filter()->implode(' ')).'</p>'
+            .$this->amountDueContent(app(MeasurementPaymentFinancialService::class)->amountDue($this->record))->toHtml()
+        );
     }
 
     /**

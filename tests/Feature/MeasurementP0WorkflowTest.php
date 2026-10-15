@@ -10,6 +10,7 @@ use App\Models\Operation;
 use App\Models\User;
 use App\Notifications\MeasurementWorkflowNotification;
 use App\Services\MeasurementWorkflow;
+use App\Support\BusinessTime;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -484,7 +485,7 @@ it('allows finalization to return to an earlier stage only with persisted eviden
     advanceP0ToStage($scenario, 4);
     $workflow = app(MeasurementWorkflow::class);
     $payment = $workflow->registerPayment($scenario['measurement']->fresh(), $scenario['payment'], [
-        'pay_date' => now(),
+        'pay_date' => BusinessTime::dateString(),
         'amount' => 1000,
         'financial_justification' => 'Pagamento parcial previsto para esta medição.',
     ]);
@@ -523,7 +524,7 @@ it('keeps batch and per-development payments, records authors and rejects invali
 
     expect(fn () => $workflow->registerPayment($scenario['measurement']->fresh(), $scenario['payment'], [
         'amount' => -1,
-        'pay_date' => now(),
+        'pay_date' => BusinessTime::dateString(),
     ]))->toThrow(ValidationException::class);
 });
 

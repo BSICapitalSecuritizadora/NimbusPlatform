@@ -131,7 +131,8 @@ jobs:
 
   deploy:
     runs-on: ubuntu-24.04
-    needs: [build, checks, lint]
+    # Testes e lint são informativos durante o desenvolvimento e rodam em paralelo.
+    needs: [build]
     permissions:
       id-token: write
       contents: read

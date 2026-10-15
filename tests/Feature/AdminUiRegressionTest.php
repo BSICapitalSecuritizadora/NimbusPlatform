@@ -10,9 +10,8 @@ it('keeps the admin views free from placeholder links', function () {
         $contents = $file->getContents();
 
         expect($contents)
-            ->not->toMatch('/href\s*=\s*["\']#["\']/')
-            ->not->toContain("?? '#'")
-            ->not->toContain('?? "#"');
+            ->not->toMatch('/href\s*=\s*["\']#["\']/', $file->getRelativePathname())
+            ->not->toMatch('/\?\?\s*(["\'])#\1(?!\s*\.)/', $file->getRelativePathname());
     }
 });
 

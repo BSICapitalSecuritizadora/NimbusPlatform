@@ -162,8 +162,13 @@ class MeasurementPendingService
 
         if ($measurement->status === 'awaiting_payment'
             && $this->workflow->canRegisterPayment($measurement, $user, $capture)) {
+            // A original sem pagamento em que nada é devido não espera registro:
+            // espera a decisão de concluir a etapa sem desembolso.
             return $this->action(
-                'Registrar e aprovar pagamento',
+                ! $measurement->isRevision() && $measurement->payments->isEmpty()
+                    && app(MeasurementPaymentFinancialService::class)->amountDue($measurement)->isNothingDue()
+                    ? 'Concluir etapa sem desembolso'
+                    : 'Registrar e aprovar pagamento',
                 MeasurementResponsibility::PaymentManager,
                 $capture,
             );

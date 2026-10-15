@@ -7,6 +7,7 @@ use App\Models\Operation;
 use App\Models\User;
 use App\Services\MeasurementEngineeringService;
 use App\Services\MeasurementWorkflow;
+use App\Support\BusinessTime;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -199,7 +200,7 @@ it('allows only the payment manager to register payments in the pending payment 
     ]))->toThrow(AuthorizationException::class);
 
     $payment = app(MeasurementWorkflow::class)->registerPayment($measurement->fresh(), $manager, [
-        'pay_date' => now(),
+        'pay_date' => BusinessTime::dateString(),
         'amount' => 100,
     ]);
 

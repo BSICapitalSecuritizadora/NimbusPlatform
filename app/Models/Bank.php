@@ -31,4 +31,9 @@ class Bank extends Model
     {
         return $this->hasMany(Fund::class);
     }
+
+    public function bankAccounts(): HasMany
+    {
+        return $this->hasMany(BankAccount::class);
+    }
 }

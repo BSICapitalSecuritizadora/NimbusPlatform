@@ -193,6 +193,35 @@ class MeasurementOperationalReadModel
             ->applyDirectParticipation($operations, $user));
     }
 
+    /**
+     * As medições originais da consulta paradas na etapa Pagamento sem
+     * pagamento em que nada é devido -- as que esperam a decisão sem
+     * desembolso, e não um registro de pagamento. O predicado é o do domínio
+     * ({@see MeasurementPaymentFinancialService::amountDue()}), avaliado em PHP
+     * como o filtro de SLA: a conta não se reescreve em SQL. A consulta
+     * recebida precisa ser a já escopada de quem vê
+     * ({@see self::paymentQueryFor()}): sem escopo, a varredura alcançaria o
+     * banco inteiro.
+     *
+     * @param  Builder<Measurement>  $query
+     * @return list<int>
+     */
+    public function awaitingNoDisbursementDecisionIds(Builder $query): array
+    {
+        $financial = app(MeasurementPaymentFinancialService::class);
+
+        return (clone $query)
+            ->where('measurements.status', 'awaiting_payment')
+            ->where('measurements.revision_number', 0)
+            ->whereDoesntHave('payments')
+            ->reorder('measurements.id')
+            ->lazyById(100, column: 'measurements.id', alias: 'id')
+            ->filter(fn (Measurement $measurement): bool => $financial->amountDue($measurement)->isNothingDue())
+            ->map(fn (Measurement $measurement): int => (int) $measurement->getKey())
+            ->values()
+            ->all();
+    }
+
     /** @param Builder<Measurement> $query */
     public function applySlaFilter(Builder $query, mixed $status): Builder
     {
@@ -243,6 +272,15 @@ class MeasurementOperationalReadModel
         }
 
         if ($measurement->status === 'awaiting_payment') {
+            // A original sem pagamento em que nada é devido não espera registro:
+            // espera a decisão sem desembolso -- a mesma regra da etapa e do
+            // filtro da área de pagamentos ({@see self::awaitingNoDisbursementDecisionIds()}).
+            if ((int) $measurement->payments_count === 0
+                && ! $measurement->isRevision()
+                && app(MeasurementPaymentFinancialService::class)->amountDue($measurement)->isNothingDue()) {
+                return 'Nenhum pagamento devido · concluir sem desembolso';
+            }
+
             // A revisão cuja família já pagou não registra pagamento para ser
             // aprovada: o filtro da área de pagamentos usa a mesma regra.
             return (int) $measurement->payments_count === 0

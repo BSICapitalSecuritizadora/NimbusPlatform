@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use InvalidArgumentException;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -33,7 +34,40 @@ class Fund extends Model
         'minimum_balance_alert_minimum_balance',
         'minimum_balance_alert_recipients_hash',
         'conta_azul_account_id',
+        'bank_account_id',
+        'bank_application_id',
     ];
+
+    protected static function booted(): void
+    {
+        // Phase 1A cross-reference guard: a fund may only pair an account
+        // with an application that belongs to that same account. Rows with a
+        // NULL application (every legacy row, plus direct account links)
+        // return before any query, so legacy writes are untouched. The
+        // funds(bank_account_id, bank_application_id) composite foreign key
+        // enforces the same rule at the database level.
+        static::saving(function (Fund $fund): void {
+            if ($fund->bank_application_id === null) {
+                return;
+            }
+
+            $application = $fund->relationLoaded('bankApplication')
+                ? $fund->getRelation('bankApplication')
+                : null;
+
+            if (! $application instanceof BankApplication || (int) $application->getKey() !== (int) $fund->bank_application_id) {
+                $application = BankApplication::query()->find($fund->bank_application_id);
+            }
+
+            if (! $application instanceof BankApplication) {
+                throw new InvalidArgumentException('A aplicação bancária informada não existe.');
+            }
+
+            if (($fund->bank_account_id !== null) && ((int) $fund->bank_account_id !== (int) $application->bank_account_id)) {
+                throw new InvalidArgumentException('A aplicação bancária pertence a outra conta.');
+            }
+        });
+    }
 
     protected function casts(): array
     {
@@ -78,6 +112,16 @@ class Fund extends Model
     public function bank(): BelongsTo
     {
         return $this->belongsTo(Bank::class);
+    }
+
+    public function bankAccount(): BelongsTo
+    {
+        return $this->belongsTo(BankAccount::class);
+    }
+
+    public function bankApplication(): BelongsTo
+    {
+        return $this->belongsTo(BankApplication::class);
     }
 
     public function balanceHistories(): HasMany
