@@ -105,7 +105,7 @@ it('keeps a rejected version and creates a distinct successor with no inherited 
     $scenario = Scenario::open();
     $service = app(MeasurementReceiptEvidenceService::class);
     $first = $service->upload($scenario['payment'], $scenario['actor'], Scenario::file());
-    $service->review($first, $scenario['actor'], MeasurementReceiptReviewStatus::Rejected, true, rejectionReason: 'Documento incorreto');
+    $service->review($first, $scenario['finalizer'], MeasurementReceiptReviewStatus::Rejected, true, rejectionReason: 'Documento incorreto');
     $rejected = $first->fresh()->getRawOriginal();
     $second = $service->upload($scenario['payment'], $scenario['actor'], Scenario::file('correto.pdf'), $first->id, 'Substituição do documento incorreto');
 
@@ -125,7 +125,7 @@ it('requires explicit confirmation and a nonblank rejection reason', function (b
     $service = app(MeasurementReceiptEvidenceService::class);
     $evidence = $service->upload($scenario['payment'], $scenario['actor'], Scenario::file());
 
-    expect(fn () => $service->review($evidence, $scenario['actor'], MeasurementReceiptReviewStatus::Rejected, $confirmed, rejectionReason: $reason))
+    expect(fn () => $service->review($evidence, $scenario['finalizer'], MeasurementReceiptReviewStatus::Rejected, $confirmed, rejectionReason: $reason))
         ->toThrow(ValidationException::class);
     expect($evidence->fresh()->review_status)->toBe(MeasurementReceiptReviewStatus::Pending);
     Storage::disk('local')->assertExists($evidence->storage_path);
@@ -135,11 +135,11 @@ it('records an exact one-time decision and reviewer separately from the upload',
     $scenario = Scenario::open();
     $service = app(MeasurementReceiptEvidenceService::class);
     $evidence = $service->upload($scenario['payment'], $scenario['actor'], Scenario::file());
-    $service->review($evidence, $scenario['actor'], $decision, true, 'Conferência humana', 'Documento incorreto');
+    $service->review($evidence, $scenario['finalizer'], $decision, true, 'Conferência humana', 'Documento incorreto');
     $reviewed = $evidence->fresh();
 
     expect($reviewed->review_status)->toBe($decision)
-        ->and($reviewed->reviewer_user_id)->toBe($scenario['actor']->id)
+        ->and($reviewed->reviewer_user_id)->toBe($scenario['finalizer']->id)
         ->and($reviewed->reviewed_at)->not->toBeNull()
         ->and($reviewed->review_notes)->toBe('Conferência humana');
     $logs = Activity::query()->where('log_name', 'measurement_evidence')->where('subject_id', $evidence->id)->orderBy('id')->get();
@@ -150,7 +150,7 @@ it('records an exact one-time decision and reviewer separately from the upload',
         ->and($logs->last()->properties['authorization_source'])->toBe('direct')
         ->and(config('audit.protected_logs'))->toContain('measurement_evidence');
 
-    expect(fn () => $service->review($evidence, $scenario['actor'], $decision, true, rejectionReason: 'Nova decisão'))
+    expect(fn () => $service->review($evidence, $scenario['finalizer'], $decision, true, rejectionReason: 'Nova decisão'))
         ->toThrow(MeasurementWorkflowException::class);
 })->with([MeasurementReceiptReviewStatus::Approved, MeasurementReceiptReviewStatus::Rejected]);
 
@@ -160,13 +160,13 @@ it('blocks future finalization for missing pending rejected or legacy-unreviewed
     if ($status !== null) {
         $evidence = $service->upload($scenario['payment'], $scenario['actor'], Scenario::file());
         if ($status === MeasurementReceiptReviewStatus::Rejected) {
-            $service->review($evidence, $scenario['actor'], $status, true, rejectionReason: 'Documento incorreto');
+            $service->review($evidence, $scenario['finalizer'], $status, true, rejectionReason: 'Documento incorreto');
         } elseif ($status === MeasurementReceiptReviewStatus::LegacyUnreviewed) {
             DB::table('measurement_payment_receipt_evidences')->where('id', $evidence->id)->update(['review_status' => $status->value]);
         }
     }
 
-    expect(fn () => app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['actor']))
+    expect(fn () => app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['finalizer']))
         ->toThrow(MeasurementWorkflowException::class);
     expect($scenario['measurement']->fresh()->analyzed_at)->toBeNull();
 })->with([null, MeasurementReceiptReviewStatus::Pending, MeasurementReceiptReviewStatus::Rejected, MeasurementReceiptReviewStatus::LegacyUnreviewed]);
@@ -183,12 +183,12 @@ it('requires every current version to be approved before finalization', function
     $service = app(MeasurementReceiptEvidenceService::class);
     $first = $service->upload($scenario['payment'], $scenario['actor'], Scenario::file());
     $second = $service->upload($other, $scenario['actor'], Scenario::file());
-    $service->review($first, $scenario['actor'], MeasurementReceiptReviewStatus::Approved, true);
+    $service->review($first, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
 
-    expect(fn () => app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['actor']))
+    expect(fn () => app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['finalizer']))
         ->toThrow(MeasurementWorkflowException::class);
-    $service->review($second, $scenario['actor'], MeasurementReceiptReviewStatus::Approved, true);
-    app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['actor']);
+    $service->review($second, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
+    app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['finalizer']);
 
     expect($scenario['measurement']->fresh()->status)->toBe('finalized')
         ->and($scenario['measurement']->fresh()->analyzed_at)->not->toBeNull();
@@ -198,11 +198,11 @@ it('allows an open legacy receipt to finalize only after an individual documenta
     $scenario = Scenario::legacy(finalized: false);
     $evidence = $scenario['payment']->currentReceiptEvidence;
     expect($evidence->review_status)->toBe(MeasurementReceiptReviewStatus::Pending);
-    expect(fn () => app(MeasurementWorkflow::class)->finalize($scenario['measurement'], $scenario['actor']))
+    expect(fn () => app(MeasurementWorkflow::class)->finalize($scenario['measurement'], $scenario['finalizer']))
         ->toThrow(MeasurementWorkflowException::class);
 
-    Scenario::approveCurrentReceipt($scenario['payment'], $scenario['actor']);
-    app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['actor']);
+    Scenario::approveCurrentReceipt($scenario['payment'], $scenario['finalizer']);
+    app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['finalizer']);
 
     expect($scenario['measurement']->fresh()->status)->toBe('finalized')
         ->and($scenario['payment']->receiptEvidences()->count())->toBe(1)
@@ -214,15 +214,15 @@ it('refuses approval or finalization when the audited bytes are changed', functi
     $service = app(MeasurementReceiptEvidenceService::class);
     $evidence = $service->upload($scenario['payment'], $scenario['actor'], Scenario::file());
     if ($alreadyApproved) {
-        $service->review($evidence, $scenario['actor'], MeasurementReceiptReviewStatus::Approved, true);
+        $service->review($evidence, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
     }
     Storage::disk('local')->put($evidence->storage_path, '%PDF-1.7 altered bytes');
 
     if ($alreadyApproved) {
-        expect(fn () => app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['actor']))
+        expect(fn () => app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['finalizer']))
             ->toThrow(MeasurementWorkflowException::class);
     } else {
-        expect(fn () => $service->review($evidence, $scenario['actor'], MeasurementReceiptReviewStatus::Approved, true))
+        expect(fn () => $service->review($evidence, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true))
             ->toThrow(ValidationException::class);
     }
 })->with([false, true]);
@@ -247,7 +247,7 @@ it('corrects controlled finalized history without reopening or rewriting any can
         ->and($second->review_status)->toBe(MeasurementReceiptReviewStatus::Pending)
         ->and($service->documentaryStatus($measurement->fresh()))->toBe('Correção documental pendente');
 
-    $service->review($second, $scenario['actor'], $decision, true, rejectionReason: 'Comprovante ainda incorreto');
+    $service->review($second, $scenario['finalizer'], $decision, true, rejectionReason: 'Comprovante ainda incorreto');
     expect($service->documentaryStatus($measurement->fresh()))->toBe($label)
         ->and($measurement->fresh()->getRawOriginal())->toBe($before)
         ->and($measurement->reviews()->orderBy('id')->get()->toArray())->toBe($reviews)
@@ -307,7 +307,7 @@ it('rejects stale uploads and stale decisions without deleting the historical fi
     $first = $service->upload($scenario['payment'], $scenario['actor'], Scenario::file());
     $second = $service->upload($scenario['payment'], $scenario['actor'], Scenario::file(), $first->id, 'Correção');
 
-    expect(fn () => $service->review($first, $scenario['actor'], MeasurementReceiptReviewStatus::Approved, true))
+    expect(fn () => $service->review($first, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true))
         ->toThrow(MeasurementWorkflowException::class);
     expect(fn () => $service->upload($scenario['payment'], $scenario['actor'], Scenario::file(), $first->id, 'Requisição antiga'))
         ->toThrow(MeasurementWorkflowException::class);
@@ -321,24 +321,33 @@ it('uses canonical delegation and admin override with their distinct audit sourc
     $scenario = Scenario::open();
     $actor = User::factory()->withTwoFactor()->create();
     $actor->givePermissionTo(['measurements.receipts', 'measurements.finalize']);
+    // Fase 4B-1: quem enviou o comprovante não o aprova -- a conferência é de outra pessoa, pela mesma origem.
+    $reviewer = User::factory()->withTwoFactor()->create();
+    $reviewer->givePermissionTo('measurements.finalize');
+    // Fase 4B-1: quem age só pelo override administrativo informa o motivo, gravado na trilha.
+    $overrideReason = $source === 'admin_override' ? 'Cobertura administrativa da conferência documental' : null;
     if ($source === 'admin_override') {
         $actor->assignRole('admin');
+        $reviewer->assignRole('admin');
     } else {
-        ResponsibilityDelegation::factory()->active()->forOperation($scenario['operation'])->create([
-            'delegator_user_id' => $scenario['actor']->id,
-            'delegate_user_id' => $actor->id,
-            'created_by' => $scenario['actor']->id,
-        ]);
+        foreach ([[$scenario['actor'], $actor], [$scenario['finalizer'], $reviewer]] as [$delegator, $delegate]) {
+            ResponsibilityDelegation::factory()->active()->forOperation($scenario['operation'])->create([
+                'delegator_user_id' => $delegator->id,
+                'delegate_user_id' => $delegate->id,
+                'created_by' => $delegator->id,
+            ]);
+        }
     }
 
     $service = app(MeasurementReceiptEvidenceService::class);
-    $evidence = $service->upload($scenario['payment'], $actor, Scenario::file());
-    $service->review($evidence, $actor, MeasurementReceiptReviewStatus::Approved, true);
-    $logs = Activity::query()->where('log_name', 'measurement_evidence')->get();
-    expect($logs)->toHaveCount(2);
+    $evidence = $service->upload($scenario['payment'], $actor, Scenario::file(), overrideReason: $overrideReason);
+    $service->review($evidence, $reviewer, MeasurementReceiptReviewStatus::Approved, true, overrideReason: $overrideReason);
+    $logs = Activity::query()->where('log_name', 'measurement_evidence')->orderBy('id')->get();
+    expect($logs)->toHaveCount(2)
+        ->and($logs->map(fn (Activity $log): int => (int) $log->causer_id)->all())->toBe([$actor->id, $reviewer->id]);
     foreach ($logs as $log) {
         expect($log->properties['authorization_source'])->toBe($source)
-            ->and((int) $log->causer_id)->toBe($actor->id);
+            ->and($log->properties['admin_override_reason'] ?? null)->toBe($overrideReason);
         if ($source === 'delegated') {
             expect($log->properties['delegation_id'])->not->toBeNull();
         }
@@ -350,7 +359,7 @@ it('does not emit workflow activities when an open documentary state changes', f
     $logs = Activity::query()->whereIn('log_name', ['measurement_workflow', 'measurements'])->pluck('id')->all();
     $service = app(MeasurementReceiptEvidenceService::class);
     $evidence = $service->upload($scenario['payment'], $scenario['actor'], Scenario::file());
-    $service->review($evidence, $scenario['actor'], MeasurementReceiptReviewStatus::Approved, true);
+    $service->review($evidence, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
 
     expect($scenario['measurement']->fresh()->status)->toBe('approved')
         ->and(Activity::query()->whereIn('log_name', ['measurement_workflow', 'measurements'])->pluck('id')->all())->toBe($logs);
@@ -576,8 +585,10 @@ it('preserves legacy download without a hash while refusing to approve an unhash
     $scenario = Scenario::open();
     $path = 'nimbus_docs/measurements/receipts/unhashed.pdf';
     Storage::disk('local')->put($path, '%PDF-1.7 histórico');
+    // Fase 4B-1: versão sem quem a enviou é recusada antes (RECEIPT_UPLOADER_UNKNOWN); com o envio identificado, a recusa é a de integridade.
     DB::table('measurement_payments')->where('id', $scenario['payment']->id)->update([
         'receipt_path' => $path, 'receipt_disk' => 'local', 'receipt_sha256' => null, 'receipt_mime_type' => 'application/pdf',
+        'receipt_uploaded_by' => $scenario['actor']->id,
     ]);
     $this->actingAs($scenario['actor'])->get(route('admin.measurements.receipts.download', $scenario['payment']))->assertOk();
     expect(fn () => app(MeasurementReceiptEvidenceService::class)->upload($scenario['payment'], $scenario['actor'], Scenario::file()))
@@ -586,7 +597,7 @@ it('preserves legacy download without a hash while refusing to approve an unhash
     Scenario::backfill();
     $evidence = $scenario['payment']->fresh()->currentReceiptEvidence;
     $this->get(route('admin.measurements.receipt-evidences.download', ['payment' => $scenario['payment'], 'evidence' => $evidence]))->assertOk();
-    expect(fn () => app(MeasurementReceiptEvidenceService::class)->review($evidence, $scenario['actor'], MeasurementReceiptReviewStatus::Approved, true))
+    expect(fn () => app(MeasurementReceiptEvidenceService::class)->review($evidence, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true))
         ->toThrow(ValidationException::class);
 });
 
@@ -599,7 +610,7 @@ it('rejects unsafe receipt versions atomically including finalized corrections',
         default => null,
     };
     if ($previous !== null && $flow === 'replacement') {
-        $service->review($previous, $scenario['actor'], MeasurementReceiptReviewStatus::Approved, true);
+        $service->review($previous, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
         $previous->refresh();
     }
     if ($disk === 'private') {
@@ -671,7 +682,8 @@ function documentaryWorkScenario(bool $finalized = false): array
     config(['measurements.sla.calendar_code' => null]);
     SlaConfiguration::factory()->forStage(5, 3)->create();
 
-    return $scenario + ['finalizer' => $finalizer];
+    // O cenário já traz um Finalizador: o `+` o manteria; vale o desta helper, o da operação.
+    return array_merge($scenario, ['finalizer' => $finalizer]);
 }
 
 it('routes receipt work through upload review rejection replacement and finalization', function () {

@@ -118,10 +118,12 @@ it('requires a justification and the Finalizer acceptance to leave a positive di
 
     $workflow->approve($revision->fresh(), $scenario['actor'], 'Complemento pago na competência seguinte, por decisão do comitê.');
 
-    expect(revisionValidationMessage(fn () => $workflow->finalize($revision->fresh(), $scenario['actor']), 'accept_financial_exceptions'))
+    // Fase 4B-1: a Finalização é do Finalizador do cenário, outra pessoa que
+    // não o ator que aprovou a etapa Pagamento.
+    expect(revisionValidationMessage(fn () => $workflow->finalize($revision->fresh(), $scenario['finalizer']), 'accept_financial_exceptions'))
         ->toContain('Confirme expressamente');
 
-    $workflow->finalize($revision->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
+    $workflow->finalize($revision->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
     $position = revisionPosition($revision);
 
     expect($revision->fresh()->status)->toBe('finalized')
@@ -150,11 +152,13 @@ it('never refunds nor rewrites payments on a negative difference and requires an
     $workflow->approve($revision->fresh(), $scenario['actor'], 'Valor pago a maior será tratado fora do sistema com a construtora.');
     $approval = Activity::query()->where('description', 'measurement_stage_approved')->where('subject_id', $revision->id)->latest('id')->first();
 
+    // Fase 4B-1: a exceção financeira é aceita pelo Finalizador do cenário,
+    // outra pessoa que não o ator que pagou e aprovou a etapa Pagamento.
     expect($approval->properties['revision_overpayments'][0]['unresolved_overpayment_amount'])->toBe('20000.00')
-        ->and(revisionValidationMessage(fn () => $workflow->finalize($revision->fresh(), $scenario['actor']), 'accept_financial_exceptions'))
+        ->and(revisionValidationMessage(fn () => $workflow->finalize($revision->fresh(), $scenario['finalizer']), 'accept_financial_exceptions'))
         ->toContain('valor pago a maior desta revisão');
 
-    $workflow->finalize($revision->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
+    $workflow->finalize($revision->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
     $finalized = Activity::query()->where('description', 'measurement_finalized')->where('subject_id', $revision->id)->sole();
 
     expect($revision->fresh()->status)->toBe('finalized')
@@ -213,7 +217,8 @@ it('keeps flagging an overpayment accepted before, and leaves the replaced revis
     $may = Scenario::finalized($scenario, '2026-05', 10);
     $first = Scenario::effective($scenario, $may, 8);
     app(MeasurementWorkflow::class)->approve($first->fresh(), $scenario['actor'], 'Decisão: valor a maior tratado fora do sistema.');
-    app(MeasurementWorkflow::class)->finalize($first->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
+    // Fase 4B-1: a exceção financeira é aceita pelo Finalizador do cenário.
+    app(MeasurementWorkflow::class)->finalize($first->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
     $second = Scenario::effective($scenario, $first->fresh(), 9);
     $position = revisionPosition($second);
     $service = app(MeasurementRevisionService::class);
@@ -236,7 +241,8 @@ it('counts only the new excess of a second revision after an overpayment was alr
     $may = Scenario::finalized($scenario, '2026-05', 10);
     $first = Scenario::effective($scenario, $may, 8);
     app(MeasurementWorkflow::class)->approve($first->fresh(), $scenario['actor'], 'Decisão: valor a maior tratado fora do sistema.');
-    app(MeasurementWorkflow::class)->finalize($first->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
+    // Fase 4B-1: a exceção financeira é aceita pelo Finalizador do cenário.
+    app(MeasurementWorkflow::class)->finalize($first->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
 
     $second = Scenario::effective($scenario, $first->fresh(), 7);
     $position = revisionPosition($second);

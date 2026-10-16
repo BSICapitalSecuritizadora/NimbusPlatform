@@ -6,15 +6,18 @@ use App\Concerns\MoneyFormatter;
 use App\DTOs\Measurements\MeasurementAmountDue;
 use App\DTOs\Measurements\MeasurementAmountDueLine;
 use App\DTOs\Measurements\MeasurementFinancialReconciliationLine;
+use App\DTOs\Measurements\MeasurementFinancialRuleCoverage;
 use App\DTOs\Measurements\MeasurementPhysicalProgress;
 use App\DTOs\Measurements\MeasurementRevisionPlanSetPosition;
 use App\Enums\MeasurementReceiptReviewStatus;
 use App\Enums\MeasurementReconciliationStatus;
+use App\Enums\MeasurementResponsibility;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Filament\Resources\Measurements\MeasurementResource;
 use App\Filament\Support\DetectsConcurrentUpdates;
 use App\Filament\Support\SurfacesUnplacedValidationErrors;
 use App\Models\Measurement;
+use App\Models\MeasurementFinancialRule;
 use App\Models\MeasurementPayment;
 use App\Models\MeasurementPaymentReceiptEvidence;
 use App\Models\MeasurementPlanSet;
@@ -23,11 +26,11 @@ use App\Models\User;
 use App\Services\MeasurementAuthorizationService;
 use App\Services\MeasurementEngineeringService;
 use App\Services\MeasurementFinancialReconciliationService;
-use App\Services\MeasurementFinancialRuleService;
 use App\Services\MeasurementPaymentFinancialService;
 use App\Services\MeasurementPhysicalProgressService;
 use App\Services\MeasurementReceiptEvidenceService;
 use App\Services\MeasurementRevisionService;
+use App\Services\MeasurementSegregationService;
 use App\Services\MeasurementWorkflow;
 use App\Support\BusinessTime;
 use Carbon\CarbonImmutable;
@@ -156,6 +159,15 @@ class ViewMeasurement extends ViewRecord
      * @var array<int, list<array{measurement_id: int, revision_label: string, reference_month: string|null, basis_points: int, plan_line_lineage_key: string|null, invalidated_at: CarbonImmutable|null}>>|null
      */
     private ?array $reanalysisContributionsByPlanSet = null;
+
+    /**
+     * Os motivos de bloqueio lidos nesta requisição, por ação e versão do
+     * fluxo: o botão consulta o mesmo motivo para desabilitar e para o
+     * tooltip. Propriedade privada: o Livewire não a guarda entre requisições.
+     *
+     * @var array<string, string|null>
+     */
+    private array $blockReasons = [];
 
     protected function getHeaderActions(): array
     {
@@ -292,15 +304,33 @@ class ViewMeasurement extends ViewRecord
             ->modalHeading(fn (): string => 'Enviar a revisão '.$this->record->revisionLabel().' para a Engenharia')
             ->modalDescription(fn (): string => $this->submitRevisionDescription())
             ->visible(fn (): bool => $this->record->isDraftRevision() && $this->actor()->can('revise', $this->record))
+            // Sem aprovador de Compliance independente de quem criou e de quem
+            // envia, a revisão ficaria em análise para sempre: o envio fica
+            // desabilitado com o motivo, e o serviço recusa de novo.
+            ->disabled(fn (): bool => $this->submissionBlockReason() !== null)
+            ->tooltip(fn (): ?string => $this->submissionBlockReason())
             ->schema([
                 Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),
+                Textarea::make('override_reason')
+                    ->label('Motivo do override administrativo')
+                    ->helperText('Você envia esta revisão sem participar da operação: o envio fica registrado como override administrativo, com este motivo, na trilha protegida.')
+                    ->rows(2)
+                    ->maxLength(MeasurementSegregationService::OVERRIDE_REASON_MAX_LENGTH)
+                    ->visible(fn (): bool => $this->revisions()->actsByAdminOverride($this->record, $this->actor()))
+                    ->required(fn (): bool => $this->revisions()->actsByAdminOverride($this->record, $this->actor()))
+                    ->validationMessages(['required' => MeasurementSegregationService::OVERRIDE_REASON_REQUIRED]),
             ])
             ->action(function (array $data): void {
                 $this->guarded(function () use ($data): void {
-                    $this->revisions()->submit($this->record, $this->actor(), (int) $data['expected_revision']);
+                    $this->revisions()->submit($this->record, $this->actor(), (int) $data['expected_revision'], $data['override_reason'] ?? null);
                     $this->notify('Revisão enviada para a Engenharia.');
                 });
             });
+    }
+
+    private function submissionBlockReason(): ?string
+    {
+        return $this->blockReason('submitRevision', fn (): ?string => $this->revisions()->submissionBlockReason($this->record, $this->actor()));
     }
 
     /**
@@ -484,7 +514,12 @@ class ViewMeasurement extends ViewRecord
             // Pagamento pela decisão sem desembolso, não por esta aprovação.
             ->visible(fn (): bool => $this->workflow()->canApprove($this->record, $this->actor())
                 && ! $this->workflow()->canConcludeWithoutDisbursement($this->record, $this->actor()))
-            ->schema(fn (): array => $this->approveSchema())
+            // Quem criou ou enviou a revisão não a aprova na Compliance: o botão
+            // fica à vista, desabilitado com o motivo do domínio. A recusa
+            // continua disponível.
+            ->disabled(fn (): bool => $this->approvalBlockReason() !== null)
+            ->tooltip(fn (): ?string => $this->approvalBlockReason())
+            ->schema(fn (): array => [...$this->approveSchema(), $this->overrideReasonField(fn (): int => $this->stage())])
             ->action(function (array $data): void {
                 $this->guarded(function () use ($data): void {
                     $progress = isset($data['realized']) && is_array($data['realized']) ? $data['realized'] : [];
@@ -495,10 +530,54 @@ class ViewMeasurement extends ViewRecord
                         $progress,
                         expectedStage: (int) $data['expected_stage'],
                         expectedRevision: (int) $data['expected_revision'],
+                        overrideReason: $data['override_reason'] ?? null,
                     );
                     $this->notify('Etapa aprovada.');
                 });
             });
+    }
+
+    /**
+     * Por que a aprovação da etapa pendente está bloqueada para esta pessoa,
+     * ou `null` ({@see MeasurementWorkflow::approvalBlockReason()}), lido uma
+     * vez por versão do fluxo.
+     */
+    private function approvalBlockReason(): ?string
+    {
+        return $this->blockReason('approve', fn (): ?string => $this->workflow()->approvalBlockReason($this->record, $this->actor()));
+    }
+
+    private function blockReason(string $action, Closure $resolve): ?string
+    {
+        $key = $action.'|'.$this->record->getKey().'|'.$this->record->workflow_revision.'|'.$this->record->status;
+
+        if (! array_key_exists($key, $this->blockReasons)) {
+            $this->blockReasons[$key] = $resolve();
+        }
+
+        return $this->blockReasons[$key];
+    }
+
+    /**
+     * O motivo do override administrativo, à vista e obrigatório só para quem
+     * age nesta ação sem ser o responsável nem delegado dela
+     * ({@see MeasurementSegregationService::overrideReason()}). O domínio
+     * exige o motivo de novo e o grava na trilha protegida.
+     *
+     * @param  Closure(): (MeasurementResponsibility|int)  $responsibility
+     */
+    private function overrideReasonField(Closure $responsibility): Textarea
+    {
+        $actsByOverride = fn (): bool => app(MeasurementSegregationService::class)->actsByAdminOverride($this->actor(), $this->record, $responsibility());
+
+        return Textarea::make('override_reason')
+            ->label('Motivo do override administrativo')
+            ->helperText('Você age nesta medição sem ser o responsável nem delegado desta etapa: a ação fica registrada como override administrativo, com este motivo, na trilha protegida. O override não dispensa a segregação de funções.')
+            ->rows(2)
+            ->maxLength(MeasurementSegregationService::OVERRIDE_REASON_MAX_LENGTH)
+            ->visible($actsByOverride)
+            ->required($actsByOverride)
+            ->validationMessages(['required' => MeasurementSegregationService::OVERRIDE_REASON_REQUIRED]);
     }
 
     /**
@@ -713,13 +792,14 @@ class ViewMeasurement extends ViewRecord
                     ->content(fn (): HtmlString => $this->amountDueContent(app(MeasurementPaymentFinancialService::class)->amountDue($this->record))),
                 Textarea::make('notes')
                     ->label('Justificativa obrigatória')
-                    ->helperText('Informe a justificativa para concluir a etapa sem pagamento. A Finalização deverá confirmar ciência desta decisão. A decisão não é pagamento, estorno, devolução nem regularização financeira.')
+                    ->helperText('Informe a justificativa para concluir a etapa sem pagamento. A Finalização deverá confirmar ciência desta decisão, por um responsável diferente de quem a decidiu. A decisão não é pagamento, estorno, devolução nem regularização financeira.')
                     ->required()
                     ->rows(4)
                     ->maxLength(5000)
                     ->validationMessages([
                         'required' => MeasurementWorkflow::NO_DISBURSEMENT_JUSTIFICATION_REQUIRED,
                     ]),
+                $this->overrideReasonField(fn (): int => MeasurementWorkflow::STAGE_PAYMENT),
             ])
             ->action(function (array $data): void {
                 $this->guarded(function () use ($data): void {
@@ -730,6 +810,7 @@ class ViewMeasurement extends ViewRecord
                         expectedStage: MeasurementWorkflow::STAGE_PAYMENT,
                         expectedRevision: (int) $data['expected_revision'],
                         withoutDisbursement: true,
+                        overrideReason: $data['override_reason'] ?? null,
                     );
                     $this->notify('Etapa Pagamento concluída sem desembolso. A Finalização deverá confirmar ciência desta decisão.');
                 });
@@ -860,23 +941,34 @@ class ViewMeasurement extends ViewRecord
     private function unpaidPlanSetsContent(array $unpaid): HtmlString
     {
         $items = collect($unpaid)
-            ->map(fn (MeasurementFinancialReconciliationLine $line): string => bccomp($line->historicalPaidAmount, '0', 2) > 0
-                ? sprintf(
+            ->map(fn (MeasurementFinancialReconciliationLine $line): string => match (true) {
+                ! $line->hasFinancialReference() => sprintf(
+                    '<li><span class="font-medium text-gray-950 dark:text-white">%s</span> · valor devido indeterminado: sem Fundo de Obra, nenhum pagamento é registrado</li>',
+                    e($line->label),
+                ),
+                bccomp($line->historicalPaidAmount, '0', 2) > 0 => sprintf(
                     '<li><span class="font-medium text-gray-950 dark:text-white">%s</span> · valor esperado %s · pago antes da revisão %s · saldo em aberto %s</li>',
                     e($line->label),
                     e(MeasurementFinancialReconciliationService::formatCurrency($line->expectedAmount)),
                     e(MeasurementFinancialReconciliationService::formatCurrency($line->historicalPaidAmount)),
                     e(MeasurementFinancialReconciliationService::formatCurrency($line->expectedBalance)),
-                )
-                : sprintf(
+                ),
+                default => sprintf(
                     '<li><span class="font-medium text-gray-950 dark:text-white">%s</span> · valor esperado %s</li>',
                     e($line->label),
                     e(MeasurementFinancialReconciliationService::formatCurrency($line->expectedAmount)),
-                ))
+                ),
+            })
             ->implode('');
+        $undetermined = collect($unpaid)->reject(fn (MeasurementFinancialReconciliationLine $line): bool => $line->hasFinancialReference())->count();
+        $intro = match (true) {
+            $undetermined === 0 => 'A Engenharia aprovou valor a pagar para estes empreendimentos e nenhum pagamento foi registrado nesta medição. Registre o pagamento ou justifique a ausência abaixo.',
+            $undetermined === count($unpaid) => 'A Engenharia aprovou avanço no mês para estes empreendimentos, mas sem Fundo de Obra não há valor devido nem pagamento a registrar. Justifique a ausência abaixo; o Finalizador precisará aceitá-la.',
+            default => 'A Engenharia aprovou avanço no mês para estes empreendimentos e nenhum pagamento foi registrado nesta medição. Registre o pagamento ou justifique a ausência abaixo; o empreendimento sem Fundo de Obra não recebe pagamento, só a justificativa.',
+        };
 
         return new HtmlString(
-            '<p class="text-sm text-gray-600 dark:text-gray-300">A Engenharia aprovou valor a pagar para estes empreendimentos e nenhum pagamento foi registrado nesta medição. Registre o pagamento ou justifique a ausência abaixo.</p>'
+            '<p class="text-sm text-gray-600 dark:text-gray-300">'.e($intro).'</p>'
             .'<ul class="mt-2 list-disc space-y-1 ps-5 text-sm text-gray-700 dark:text-gray-200">'.$items.'</ul>'
         );
     }
@@ -1174,6 +1266,7 @@ class ViewMeasurement extends ViewRecord
                     ->whereNull('resumed_at')
                     ->latest('paused_at')
                     ->value('id')),
+                $this->overrideReasonField(fn (): int => $this->stage()),
             ])
             ->action(function (array $data): void {
                 $this->guarded(function () use ($data): void {
@@ -1183,6 +1276,7 @@ class ViewMeasurement extends ViewRecord
                         expectedStage: (int) $data['expected_stage'],
                         expectedRevision: (int) $data['expected_revision'],
                         expectedPauseId: (int) $data['expected_pause_id'],
+                        overrideReason: $data['override_reason'] ?? null,
                     );
                     $this->notify('Análise retomada.');
                 });
@@ -1219,6 +1313,7 @@ class ViewMeasurement extends ViewRecord
                             $this->actor(),
                             $rows,
                             expectedRevision: (int) $data['expected_revision'],
+                            overrideReason: $data['override_reason'] ?? null,
                         );
                     } catch (ValidationException $exception) {
                         throw $this->onPaymentRepeaterItems($exception, $rows);
@@ -1358,10 +1453,12 @@ class ViewMeasurement extends ViewRecord
                         ->content(fn (Get $get): HtmlString => $this->paymentDivergenceContent($get('plan_set_id'), $get('amount'))),
                     ...$this->financialExceptionFields(
                         fn (Get $get): int => (int) $get('plan_set_id'),
-                        fn (Get $get): string => (string) ($get('../../pay_date') ?? BusinessTime::dateString()),
+                        fn (Get $get): string => self::payDateString($get('../../pay_date')),
+                        fn (Get $get): mixed => $get('amount'),
                     ),
                     Textarea::make('notes')->label('Observações')->rows(2)->columnSpanFull(),
                 ]),
+            $this->overrideReasonField(fn (): MeasurementResponsibility => MeasurementResponsibility::PaymentManager),
         ];
     }
 
@@ -1380,7 +1477,7 @@ class ViewMeasurement extends ViewRecord
         }
 
         if (! $line->hasFinancialReference()) {
-            return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">Sem fundo de obra registrado no snapshot da Engenharia — não há valor esperado para comparar.</span>');
+            return new HtmlString('<span class="text-sm font-medium text-amber-700 dark:text-amber-400">'.e(sprintf(MeasurementPaymentFinancialService::MISSING_FUND_PAYMENT_REFUSAL, $line->label)).'</span>');
         }
 
         $cells = [
@@ -1450,8 +1547,13 @@ class ViewMeasurement extends ViewRecord
             }
         }
 
+        // Sem Fundo de Obra não há valor aprovado: nenhum pagamento aqui.
         if (! $line->hasFinancialReference()) {
-            return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">—</span>');
+            return new HtmlString(sprintf(
+                '<span class="text-sm font-medium %s">%s</span>',
+                $colors['warning'],
+                e(sprintf(MeasurementPaymentFinancialService::MISSING_FUND_PAYMENT_REFUSAL, $line->label)),
+            ));
         }
 
         if ($dueLine instanceof MeasurementAmountDueLine && $dueLine->hasFinancialReference() && ! $dueLine->isPayable()) {
@@ -1506,6 +1608,15 @@ class ViewMeasurement extends ViewRecord
             ->line($planSetId);
     }
 
+    /**
+     * Na medição original, o que passa do saldo a pagar é excedente: a frase
+     * diz que ele só entra com regra financeira, e quanto a regra precisa
+     * cobrir -- o excedente acumulado do empreendimento, não o deste
+     * pagamento. A revisão tem regras próprias, mais estritas (o pagamento
+     * complementar não passa do saldo nem com regra, e nenhum pagamento entra
+     * com valor pago a maior em aberto): a prévia dela continua neutra, e o
+     * registro explica a recusa.
+     */
     private function describeDivergence(MeasurementFinancialReconciliationLine $line): string
     {
         $divergence = MeasurementFinancialReconciliationService::formatCurrency(ltrim((string) $line->divergenceAmount, '-'));
@@ -1513,23 +1624,64 @@ class ViewMeasurement extends ViewRecord
         return match ($line->status) {
             MeasurementReconciliationStatus::Matched => 'Conciliado — o valor informado corresponde ao saldo esperado.',
             MeasurementReconciliationStatus::Under => "Divergência para menos — {$divergence} abaixo do saldo esperado.",
-            MeasurementReconciliationStatus::Over => "Divergência para mais — {$divergence} acima do saldo esperado.",
+            MeasurementReconciliationStatus::Over => $this->record->isRevision()
+                ? "Divergência para mais — {$divergence} acima do saldo esperado."
+                : "Excede o saldo a pagar — o excedente acumulado do empreendimento chega a {$divergence}. Acima do saldo, o pagamento só é registrado com uma regra financeira vigente que cubra o excedente acumulado; a justificativa sozinha não basta.",
             MeasurementReconciliationStatus::ReferenceUnavailable => 'Sem referência financeira para comparar.',
         };
     }
 
-    /** @return array<Component> */
-    private function financialExceptionFields(Closure $planSetId, Closure $paymentDate): array
+    /**
+     * A data do pagamento do modal como texto do calendário: o seletor guarda
+     * `Y-m-d H:i:s`, e a vigência da regra é por dia.
+     */
+    private static function payDateString(mixed $value): string
+    {
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        return is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}/', $value) === 1
+            ? substr($value, 0, 10)
+            : BusinessTime::dateString();
+    }
+
+    /**
+     * A regra, a justificativa e o documento do enquadramento -- no registro e
+     * na reavaliação. A regra é obrigatória acima do saldo a pagar, e a
+     * cobertura dela aparece antes do envio: o teto da regra, o percentual
+     * sobre o valor aprovado e se o excedente acumulado cabe nele.
+     *
+     * @param  Closure(Get): int  $planSetId
+     * @param  Closure(Get): string  $paymentDate
+     * @param  Closure(Get): mixed  $amount
+     * @param  (Closure(Get): ?MeasurementPayment)|null  $existingPayment
+     * @return array<Component>
+     */
+    private function financialExceptionFields(Closure $planSetId, Closure $paymentDate, Closure $amount, ?Closure $existingPayment = null): array
     {
         return [
-            Select::make('financial_rule_id')->label('Regra financeira aplicável')->columnSpanFull()->searchable()
-                ->placeholder('Exceção sem regra cadastrada')
-                ->helperText('Somente regras da emissão e obra aprovadas, vigentes na data do pagamento. Selecionar uma regra não dispensa a conferência do Finalizador.')
-                ->options(fn (Get $get): array => app(MeasurementFinancialRuleService::class)
-                    ->availableFor($this->record, $planSetId($get), $paymentDate($get))->orderBy('name')->get()
-                    ->mapWithKeys(fn ($rule): array => [$rule->id => $rule->name.' · versão '.$rule->version])->all()),
+            Select::make('financial_rule_id')->label('Regra financeira aplicável')->columnSpanFull()->searchable()->live()
+                ->placeholder($existingPayment === null ? 'Nenhuma regra' : 'Manter a regra atual do pagamento')
+                ->helperText(fn (): string => 'Obrigatória quando o valor passa do saldo a pagar: a regra precisa cobrir o excedente acumulado do empreendimento, dentro do limite em reais e do percentual sobre o valor aprovado. Só aparecem regras da emissão e da obra, vigentes na data do pagamento. Quem registrou a versão da regra não a usa no próprio pagamento, e a regra não dispensa a justificativa nem o aceite do Finalizador.'
+                    .($this->record->isRevision() ? ' Na revisão, o empreendimento já pago antes dela não recebe acima do saldo em aberto, nem com regra.' : ''))
+                // As regras que o domínio aceitaria: sem as que esta pessoa
+                // registrou, sem as registradas depois do pagamento reavaliado e
+                // sem as que não autorizam divergência alguma.
+                ->options(fn (Get $get): array => app(MeasurementPaymentFinancialService::class)
+                    ->selectableRules($this->record, $planSetId($get), $paymentDate($get), $this->actor(), $existingPayment === null ? null : $existingPayment($get))
+                    ->mapWithKeys(fn (MeasurementFinancialRule $rule): array => [$rule->id => self::ruleOptionLabel($rule)])->all()),
+            Placeholder::make('financial_rule_coverage')->label('Cobertura da regra')->columnSpanFull()
+                ->visible(fn (Get $get): bool => filled($get('financial_rule_id')))
+                ->content(fn (Get $get): HtmlString => $this->ruleCoverageContent(
+                    $planSetId($get),
+                    $amount($get),
+                    $get('financial_rule_id'),
+                    $paymentDate($get),
+                    $existingPayment === null ? null : $existingPayment($get),
+                )),
             Textarea::make('financial_justification')->label('Justificativa da divergência')->rows(3)->maxLength(5000)
-                ->helperText('Obrigatória quando o pagamento for diferente do saldo esperado, inclusive nos casos previstos por uma regra.')->columnSpanFull(),
+                ->helperText('Obrigatória quando o pagamento é diferente do saldo esperado, para menos ou para mais, inclusive com regra. Acima do saldo, a justificativa sozinha não autoriza o pagamento.')->columnSpanFull(),
             // O campo só recebe arquivo enviado agora; um caminho escrito no
             // estado do modal é recusado no próprio campo, em vez de chegar ao
             // domínio no lugar do arquivo.
@@ -1540,12 +1692,79 @@ class ViewMeasurement extends ViewRecord
         ];
     }
 
+    /**
+     * "Retenção contratual · versão 2 · até R$ 5.000,00 · 5% do valor
+     * aprovado · para mais": os limites à vista antes de escolher.
+     */
+    private static function ruleOptionLabel(MeasurementFinancialRule $rule): string
+    {
+        return collect([
+            $rule->name.' · versão '.$rule->version,
+            $rule->maximum_difference_amount === null ? null : 'até '.MeasurementFinancialReconciliationService::formatCurrency((string) $rule->maximum_difference_amount),
+            $rule->maximum_difference_percent === null ? null : MeasurementFinancialReconciliationService::formatPercent(rtrim(rtrim((string) $rule->maximum_difference_percent, '0'), '.'))
+                .($rule->percent_basis === MeasurementFinancialRuleCoverage::PERCENT_BASIS_APPROVED_AMOUNT ? ' do valor aprovado' : ' (base anterior, sem efeito)'),
+            mb_strtolower(MeasurementFinancialRule::DIRECTIONS[$rule->direction] ?? $rule->direction),
+        ])->filter()->implode(' · ');
+    }
+
+    /**
+     * Se a regra escolhida cobre o excedente acumulado com o valor informado,
+     * e por quê -- a conta do registro, sem lock. O registro confere de novo.
+     */
+    private function ruleCoverageContent(int $planSetId, mixed $amount, mixed $ruleId, string $paymentDate, ?MeasurementPayment $existing): HtmlString
+    {
+        if (blank($amount)) {
+            return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">Informe o valor para conferir a cobertura da regra.</span>');
+        }
+
+        // Na revisão, o que a família já pagou limita o pagamento antes da
+        // regra: a recusa dela vale qualquer que seja a cobertura.
+        $revisionRefusal = $existing === null ? $this->revisionPaymentRefusal($planSetId, $amount, $ruleId) : null;
+
+        if ($revisionRefusal !== null) {
+            return new HtmlString('<span class="text-sm font-medium text-amber-700 dark:text-amber-400">'.e($revisionRefusal).'</span>');
+        }
+
+        $coverage = app(MeasurementPaymentFinancialService::class)->coverageFor($this->record, $planSetId, $amount, $ruleId, $paymentDate, $existing);
+
+        if (! $coverage instanceof MeasurementFinancialRuleCoverage) {
+            return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">'.e(MeasurementPaymentFinancialService::RULE_UNAVAILABLE_REFUSAL).'</span>');
+        }
+
+        return new HtmlString(sprintf(
+            '<span class="text-sm font-medium %s">%s</span>',
+            $coverage->covered ? 'text-green-600 dark:text-green-400' : 'text-amber-700 dark:text-amber-400',
+            e($coverage->summary()),
+        ));
+    }
+
+    /**
+     * A recusa da revisão para este valor -- valor pago a maior em aberto na
+     * família, complemento acima do saldo em aberto --, que nenhuma regra
+     * supera; `null` fora de revisão ou quando ela aceita o valor.
+     */
+    private function revisionPaymentRefusal(int $planSetId, mixed $amount, mixed $ruleId): ?string
+    {
+        if (! $this->record->isRevision()) {
+            return null;
+        }
+
+        try {
+            $this->revisions()->assertRevisionPaymentFits($this->record, ['plan_set_id' => $planSetId, 'amount' => $amount, 'financial_rule_id' => $ruleId], 0);
+        } catch (ValidationException $exception) {
+            $message = collect($exception->errors())->flatten()->first();
+
+            return is_string($message) ? $message : null;
+        }
+
+        return null;
+    }
+
     private function reassessPaymentAction(): Action
     {
         return Action::make('reassessPayment')->label('Reavaliar enquadramento')->icon('heroicon-o-adjustments-horizontal')
             ->visible(fn (): bool => $this->workflow()->canRegisterPayment($this->record, $this->actor()) && $this->record->payments()->exists())
-            ->modalDescription(fn (): string => 'Atualize a regra e a justificativa de um pagamento existente após uma devolução. O valor do pagamento permanece preservado.'
-                .($this->record->isRevision() ? '' : ' Sem regra escolhida, o pagamento sem valor devido mantém a regra atual dele, enquanto ela cobrir a divergência.'))
+            ->modalDescription('Atualize a regra, a justificativa ou o documento de suporte de um pagamento existente após uma devolução. O valor do pagamento permanece preservado, e a conta é a do registro: os pagamentos registrados depois dele não mudam o enquadramento. Sem regra escolhida, o pagamento mantém a regra atual dele; uma regra registrada depois do pagamento não o autoriza retroativamente. Quem reavalia passa a responder pelo enquadramento e não aceita a exceção na Finalização.')
             ->schema([
                 Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),
                 Select::make('payment_id')->label('Pagamento')->required()->live()
@@ -1560,12 +1779,15 @@ class ViewMeasurement extends ViewRecord
                 ...$this->financialExceptionFields(
                     fn (Get $get): int => (int) $this->record->payments()->find($get('payment_id'))?->plan_set_id,
                     fn (Get $get): string => $this->record->payments()->find($get('payment_id'))?->pay_date?->toDateString() ?? BusinessTime::dateString(),
+                    fn (Get $get): mixed => $this->record->payments()->find($get('payment_id'))?->amount,
+                    fn (Get $get): ?MeasurementPayment => $this->record->payments()->find($get('payment_id')),
                 ),
+                $this->overrideReasonField(fn (): MeasurementResponsibility => MeasurementResponsibility::PaymentManager),
             ])
             ->action(function (array $data): void {
                 $this->guarded(function () use ($data): void {
                     $payment = $this->record->payments()->findOrFail($data['payment_id']);
-                    $this->workflow()->reassessPayment($payment, $this->actor(), $data, (int) $data['expected_revision']);
+                    $this->workflow()->reassessPayment($payment, $this->actor(), $data, (int) $data['expected_revision'], $data['override_reason'] ?? null);
                     $this->notify('Enquadramento financeiro atualizado para conferência do Finalizador.');
                 });
             });
@@ -1619,6 +1841,10 @@ class ViewMeasurement extends ViewRecord
                     ->label('Motivo da correção / substituição')
                     ->required(fn (Get $get): bool => $postFinalization || filled($get('expected_evidence_id')))
                     ->maxLength(5000)->rows(3),
+                // O motivo da correção, quando há, vale como o do override.
+                $this->overrideReasonField(fn (): MeasurementResponsibility => MeasurementResponsibility::ReceiptUploader)
+                    ->required(fn (Get $get): bool => blank($get('correction_reason'))
+                        && app(MeasurementSegregationService::class)->actsByAdminOverride($this->actor(), $this->record, MeasurementResponsibility::ReceiptUploader)),
             ])
             ->action(function (array $data) use ($postFinalization): void {
                 $this->guarded(function () use ($data, $postFinalization): void {
@@ -1627,9 +1853,9 @@ class ViewMeasurement extends ViewRecord
                     $service = app(MeasurementReceiptEvidenceService::class);
 
                     if ($postFinalization) {
-                        $service->correctFinalizedReceipt($payment, $this->actor(), $data['receipt'], $data['correction_reason'], $expectedEvidenceId);
+                        $service->correctFinalizedReceipt($payment, $this->actor(), $data['receipt'], $data['correction_reason'], $expectedEvidenceId, $data['override_reason'] ?? null);
                     } else {
-                        $service->upload($payment, $this->actor(), $data['receipt'], $expectedEvidenceId, $data['correction_reason'] ?? null, (int) $data['expected_revision']);
+                        $service->upload($payment, $this->actor(), $data['receipt'], $expectedEvidenceId, $data['correction_reason'] ?? null, (int) $data['expected_revision'], $data['override_reason'] ?? null);
                     }
 
                     $this->notify('Nova versão anexada. Aguardando conferência documental do Finalizador.');
@@ -1649,17 +1875,29 @@ class ViewMeasurement extends ViewRecord
                 Select::make('evidence_id')->label('Versão para conferência')->required()->live()
                     ->options(fn (): array => $this->pendingReceiptEvidences()
                         ->mapWithKeys(fn (MeasurementPaymentReceiptEvidence $evidence): array => [
-                            $evidence->getKey() => sprintf('Pagamento #%d · v%d · %s', $evidence->measurement_payment_id, $evidence->version, $evidence->original_filename ?? 'Nome original não registrado no fluxo legado'),
+                            $evidence->getKey() => sprintf('Pagamento #%d · v%d · %s', $evidence->measurement_payment_id, $evidence->version, $evidence->original_filename ?? 'Nome original não registrado no fluxo legado')
+                                .((int) $evidence->uploaded_by === (int) $this->actor()->getKey() ? ' · enviado por você' : ''),
                         ])->all())
-                    ->afterStateUpdated(fn (Set $set) => $set('confirmed', false)),
+                    ->afterStateUpdated(function (Set $set): void {
+                        $set('confirmed', false);
+                        $set('decision', null);
+                    }),
                 Placeholder::make('evidence_context')->label('Conferência documental')
                     ->content(function (Get $get): View {
                         $evidence = $this->pendingReceiptEvidences()->firstWhere('id', (int) $get('evidence_id'));
 
                         return view('filament.infolists.measurement-receipt-review', compact('evidence'));
                     }),
+                // Quem enviou a versão não a aprova: a opção fica desabilitada,
+                // com o motivo, e o domínio recusa de novo. Rejeitar o próprio
+                // envio continua possível.
                 Select::make('decision')->label('Decisão documental')->required()->live()
-                    ->options(['approved' => 'Aprovar comprovante', 'rejected' => 'Rejeitar comprovante']),
+                    ->options(['approved' => 'Aprovar comprovante', 'rejected' => 'Rejeitar comprovante'])
+                    ->disableOptionWhen(fn (string $value, Get $get): bool => $value === 'approved' && $this->receiptApprovalConflict($get('evidence_id')) !== null)
+                    ->helperText(fn (Get $get): ?string => $this->receiptApprovalConflict($get('evidence_id')))
+                    ->validationMessages([
+                        'in' => fn (Get $get): string => $this->receiptApprovalConflict($get('evidence_id')) ?? 'Escolha aprovar ou rejeitar o comprovante.',
+                    ]),
                 Textarea::make('notes')->label('Observação (opcional)')->maxLength(5000)->rows(2),
                 Textarea::make('rejection_reason')->label('Motivo da rejeição')->maxLength(5000)->rows(3)
                     ->visible(fn (Get $get): bool => $get('decision') === 'rejected')
@@ -1667,6 +1905,7 @@ class ViewMeasurement extends ViewRecord
                 Checkbox::make('confirmed')
                     ->label('Confirmo que conferi o comprovante correspondente a este pagamento.')
                     ->accepted()->required(),
+                $this->overrideReasonField(fn (): MeasurementResponsibility => MeasurementResponsibility::Finalizer),
             ])
             ->action(function (array $data): void {
                 $this->guarded(function () use ($data): void {
@@ -1680,10 +1919,28 @@ class ViewMeasurement extends ViewRecord
                         (bool) $data['confirmed'],
                         $data['notes'] ?? null,
                         $data['rejection_reason'] ?? null,
+                        $data['override_reason'] ?? null,
                     );
                     $this->notify('Decisão documental registrada para esta versão.');
                 });
             });
+    }
+
+    /**
+     * Por que esta pessoa não pode aprovar a versão escolhida -- ela a enviou,
+     * ou confere por delegação de quem a enviou --, ou `null`.
+     */
+    private function receiptApprovalConflict(mixed $evidenceId): ?string
+    {
+        if (blank($evidenceId)) {
+            return null;
+        }
+
+        $evidence = $this->pendingReceiptEvidences()->firstWhere('id', (int) $evidenceId);
+
+        return $evidence instanceof MeasurementPaymentReceiptEvidence
+            ? app(MeasurementReceiptEvidenceService::class)->approvalConflict($evidence, $this->record, $this->actor())
+            : null;
     }
 
     /** @return Collection<int, MeasurementPaymentReceiptEvidence> */
@@ -1709,6 +1966,10 @@ class ViewMeasurement extends ViewRecord
             ->modalDescription(fn (): string => 'A finalização do workflow será preservada. Correções posteriores de comprovantes exigirão nova versão e conferência documental.'
                 .($this->revisionLeavesOpenDifference() ? ' Finalizar não regulariza diferença financeira em aberto.' : ''))
             ->visible(fn (): bool => $this->workflow()->canFinalize($this->record, $this->actor()))
+            // Quem fez a exceção ou decidiu sem desembolso não finaliza aceitando
+            // o próprio ato: o botão fica à vista, desabilitado com o motivo.
+            ->disabled(fn (): bool => $this->finalizationBlockReason() !== null)
+            ->tooltip(fn (): ?string => $this->finalizationBlockReason())
             ->schema([
                 Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),
                 Hidden::make('expected_status')->default(fn (): string => (string) $this->record->status),
@@ -1717,6 +1978,11 @@ class ViewMeasurement extends ViewRecord
                         'measurement' => $this->record,
                         'noDisbursementDecisionShownApart' => $this->workflow()->requiresNoDisbursementAcknowledgment($this->record),
                     ])),
+                Placeholder::make('segregation_notice')->label('Conferência independente')
+                    ->visible(fn (): bool => $this->finalizationMakers() !== [])
+                    ->content(fn (): HtmlString => new HtmlString(
+                        '<p class="text-sm text-gray-600 dark:text-gray-300">'.e('O aceite e a ciência desta Finalização são de um responsável diferente de quem fez o que eles conferem: '.implode('; ', $this->finalizationMakers()).'.').'</p>'
+                    )),
                 Checkbox::make('accept_financial_exceptions')
                     ->label('Li as regras, justificativas e documentos e aceito expressamente as divergências financeiras.')
                     ->helperText(fn (): ?string => $this->revisionLeavesOpenDifference()
@@ -1744,6 +2010,7 @@ class ViewMeasurement extends ViewRecord
                     ->validationMessages([
                         'accepted' => MeasurementWorkflow::NO_DISBURSEMENT_ACKNOWLEDGMENT_REQUIRED,
                     ]),
+                $this->overrideReasonField(fn (): MeasurementResponsibility => MeasurementResponsibility::Finalizer),
             ])
             ->action(function (array $data): void {
                 $this->guarded(function () use ($data): void {
@@ -1754,10 +2021,31 @@ class ViewMeasurement extends ViewRecord
                         expectedStatus: (string) $data['expected_status'],
                         acceptFinancialExceptions: (bool) ($data['accept_financial_exceptions'] ?? false),
                         acknowledgeNoDisbursement: (bool) ($data['acknowledge_no_disbursement'] ?? false),
+                        overrideReason: $data['override_reason'] ?? null,
                     );
                     $this->notify('Medição finalizada.');
                 });
             });
+    }
+
+    /**
+     * Por que esta pessoa não pode finalizar pela segregação de funções, ou
+     * `null` ({@see MeasurementWorkflow::finalizationBlockReason()}).
+     */
+    private function finalizationBlockReason(): ?string
+    {
+        return $this->blockReason('finalize', fn (): ?string => $this->workflow()->finalizationBlockReason($this->record, $this->actor()));
+    }
+
+    /**
+     * Quem fez o que a Finalização confere, como a pessoa lê: "Fulano
+     * registrou o pagamento #12".
+     *
+     * @return list<string>
+     */
+    private function finalizationMakers(): array
+    {
+        return app(MeasurementSegregationService::class)->describeFinalizationMakers($this->record);
     }
 
     /**

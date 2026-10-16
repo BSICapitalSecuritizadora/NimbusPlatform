@@ -110,7 +110,7 @@ it('notifies the payment manager to attach receipts when a payment is registered
 
     $manager = measurementNotificationActor();
     $operation = Operation::factory()->create(['payment_manager_user_id' => $manager->id]);
-    $planSet = MeasurementPlanSet::factory()->default()->create(['operation_id' => $operation->id]);
+    $planSet = MeasurementPlanSet::factory()->default()->withConstructionFund('50000.00')->create(['operation_id' => $operation->id]);
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
         'storage_path' => null,
@@ -121,9 +121,10 @@ it('notifies the payment manager to attach receipts when a payment is registered
             'measurement_id' => 0,
             'operation_id' => $operation->id,
             'emission_id' => $operation->emission_id,
-            // Percentual e versão do plano, como a Engenharia grava; sem Fundo
-            // de Obra, o pagamento segue sem referência financeira.
-            'plan_sets' => [['plan_set_id' => $planSet->id, 'is_default' => true, 'plan_version_id' => $planSet->versions()->value('id'), 'realized_monthly_percent' => '0.00']],
+            // Percentual, versão do plano e Fundo de Obra, como a Engenharia
+            // grava (Fase 4B-1: sem Fundo, nenhum pagamento); o pagamento é o
+            // valor aprovado (10% do Fundo).
+            'plan_sets' => [['plan_set_id' => $planSet->id, 'is_default' => true, 'plan_version_id' => $planSet->versions()->value('id'), 'realized_monthly_percent' => '10.00', 'construction_fund_amount' => '50000.00']],
         ],
     ]);
     $snapshot = $measurement->engineering_snapshot;

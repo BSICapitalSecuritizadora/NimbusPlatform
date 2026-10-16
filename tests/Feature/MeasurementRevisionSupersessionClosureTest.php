@@ -279,7 +279,9 @@ describe('encerramento no fluxo, nas filas e no histórico', function () {
             ->and($pause->paused_operation_status)->toBe('awaiting_payment')
             ->and($pause->paused_at->equalTo($revision->uploaded_at))->toBeTrue()
             ->and($pause->resumed_at->equalTo(now()))->toBeTrue()
-            ->and($pause->paused_by)->toBe($actor->id)
+            // Fase 4B-1: quem envia a revisão do cenário -- e suspende o fluxo
+            // -- é o Finalizador; quem a faz valer é a Compliance do ator.
+            ->and($pause->paused_by)->toBe($scenario['finalizer']->id)
             ->and($pause->resumed_by)->toBe($actor->id)
             ->and($pause->pause_reason)->toBe('Fluxo suspenso pela revisão R1, em análise de 06/10/2026 a 08/10/2026; a revisão passou a valer.')
             // O encerramento na trilha protegida, com a autoridade da
@@ -1019,7 +1021,9 @@ describe('telas', function () {
             ->filterTable('operational_pending', 'ready_to_finalize')
             ->assertCanNotSeeTableRecords([$may]);
 
-        $receipts->review($correction, $actor, MeasurementReceiptReviewStatus::Rejected, true, rejectionReason: 'O CNPJ do comprovante reemitido continua errado.');
+        // Fase 4B-1: a conferência do comprovante é do Finalizador, outra
+        // pessoa que não o ator que o envia.
+        $receipts->review($correction, $scenario['finalizer'], MeasurementReceiptReviewStatus::Rejected, true, rejectionReason: 'O CNPJ do comprovante reemitido continua errado.');
 
         expect($may->fresh()->status)->toBe('superseded')
             ->and(app(MeasurementWorkflow::class)->pendingResponsibilities($may->fresh()))->toBe([MeasurementResponsibility::ReceiptUploader]);

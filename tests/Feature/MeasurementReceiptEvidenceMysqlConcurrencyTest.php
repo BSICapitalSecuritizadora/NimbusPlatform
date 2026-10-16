@@ -129,8 +129,9 @@ it('serializes approve against reject with exactly one immutable decision and au
     $scenario = Scenario::open();
     $evidence = app(MeasurementReceiptEvidenceService::class)->upload($scenario['payment'], $scenario['actor'], Scenario::file());
     $marker = temporaryTestFilePath('receipt-review-lock', 'lock');
+    // Fase 4B-1: o ator enviou o comprovante; quem o aprova ou rejeita é o Finalizador.
     $instruction = [
-        'actor_id' => $scenario['actor']->id,
+        'actor_id' => $scenario['finalizer']->id,
         'payment_id' => $scenario['payment']->id,
         'evidence_id' => $evidence->id,
         'storage_root' => Storage::disk('local')->path(''),
@@ -156,9 +157,10 @@ it('refuses a review waiting behind a replacement upload', function () {
         'evidence_id' => $first->id,
         'storage_root' => Storage::disk('local')->path(''),
     ];
+    // Fase 4B-1: o ator envia a nova versão; a aprovação que espera é do Finalizador.
     $results = Concurrency::driver('process')->run([
         receiptEvidenceMysqlTask(['action' => 'upload', 'lock_marker' => $marker] + $instruction),
-        receiptEvidenceMysqlTask(['action' => 'approved', 'wait_marker' => $marker] + $instruction),
+        receiptEvidenceMysqlTask(['action' => 'approved', 'wait_marker' => $marker, 'actor_id' => $scenario['finalizer']->id] + $instruction),
     ]);
 
     expect($results[0]['success'])->toBeTrue()

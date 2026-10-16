@@ -42,6 +42,9 @@ it('uploads through Filament as pending and requires human confirmation before a
     expect($evidence->review_status)->toBe(MeasurementReceiptReviewStatus::Pending)
         ->and($scenario['measurement']->fresh()->status)->toBe('awaiting_receipt');
 
+    // Fase 4B-1: quem enviou o comprovante não o aprova -- confere o Finalizador.
+    $this->actingAs($scenario['finalizer']);
+
     Livewire::test(ViewMeasurement::class, ['record' => $scenario['measurement']->id])
         ->assertSee('Pendente de conferência documental')
         ->callAction('reviewReceipt', data: [
@@ -58,7 +61,8 @@ it('uploads through Filament as pending and requires human confirmation before a
 it('requires a rejection reason in the review action', function () {
     $scenario = Scenario::open();
     $evidence = app(MeasurementReceiptEvidenceService::class)->upload($scenario['payment'], $scenario['actor'], Scenario::file());
-    $this->actingAs($scenario['actor']);
+    // Fase 4B-1: a conferência é do Finalizador, distinto de quem envia.
+    $this->actingAs($scenario['finalizer']);
 
     Livewire::test(ViewMeasurement::class, ['record' => $scenario['measurement']->id])
         ->callAction('reviewReceipt', data: [
@@ -88,6 +92,8 @@ it('shows finalized separately from the correction and renders each version with
         ])->assertHasNoActionErrors();
 
     $second = $scenario['payment']->fresh()->currentReceiptEvidence;
+    // Fase 4B-1: quem enviou a correção não a aprova -- confere o Finalizador.
+    $this->actingAs($scenario['finalizer']);
     Livewire::test(ViewMeasurement::class, ['record' => $scenario['measurement']->id])
         ->assertSee('Finalizada')
         ->assertSee('Correção documental pendente')
@@ -147,7 +153,8 @@ it('distinguishes receipt upload and review filters including finalized correcti
     Livewire::test(ListMeasurements::class)
         ->assertSee($finalized ? 'Conferir correção documental' : 'Conferir comprovante');
 
-    $service->review($evidence, $scenario['actor'], MeasurementReceiptReviewStatus::Rejected, true, rejectionReason: 'Substituir');
+    // Fase 4B-1: a conferência é do Finalizador, distinto de quem envia.
+    $service->review($evidence, $scenario['finalizer'], MeasurementReceiptReviewStatus::Rejected, true, rejectionReason: 'Substituir');
     Livewire::test(ListPaymentWorkspace::class)
         ->filterTable('operational_pending', 'awaiting_receipt')
         ->assertCanSeeTableRecords([$scenario['measurement']]);
@@ -158,6 +165,10 @@ it('distinguishes receipt upload and review filters including finalized correcti
 
 it('renders both documentary actions for a user holding upload and review responsibilities', function () {
     $scenario = Scenario::open();
+    // Fase 4B-1: o cenário separa o Finalizador; aqui a mesma pessoa volta a
+    // responder pelo envio e pela conferência -- a segregação é por ato (quem
+    // enviou não aprova), não por papel.
+    $scenario['operation']->forceFill(['payment_finalizer_user_id' => $scenario['actor']->id])->save();
     app(MeasurementReceiptEvidenceService::class)->upload($scenario['payment'], $scenario['actor'], Scenario::file());
     MeasurementPayment::factory()->create([
         'measurement_id' => $scenario['measurement']->id,

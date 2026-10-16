@@ -34,12 +34,20 @@ final class MeasurementReceiptEvidenceScenario
         );
     }
 
-    /** @return array{actor: User, operation: Operation, measurement: Measurement, payment: MeasurementPayment} */
+    /**
+     * Medição paga aguardando os comprovantes. O ator responde por todas as
+     * etapas, menos a Finalização: o Finalizador é outra pessoa, que confere
+     * os comprovantes que o ator envia -- quem envia não aprova.
+     *
+     * @return array{actor: User, finalizer: User, operation: Operation, measurement: Measurement, payment: MeasurementPayment}
+     */
     public static function open(): array
     {
         config()->set('filesystems.private_disk', 'local');
         $actor = User::factory()->withTwoFactor()->create();
         $actor->givePermissionTo(['measurements.view', 'measurements.create', 'measurements.receipts', 'measurements.finalize', 'measurements.review', 'measurements.pay', AccessPermission::MeasurementsCycleReportsView->value]);
+        $finalizer = User::factory()->withTwoFactor()->create();
+        $finalizer->givePermissionTo(['measurements.view', 'measurements.finalize', AccessPermission::MeasurementsCycleReportsView->value]);
         $operation = Operation::factory()->create([
             'status' => 'active',
             'assigned_user_id' => $actor->id,
@@ -48,7 +56,7 @@ final class MeasurementReceiptEvidenceScenario
             'stage3_reviewer_user_id' => $actor->id,
             'payment_manager_user_id' => $actor->id,
             'payment_receipt_uploader_user_id' => $actor->id,
-            'payment_finalizer_user_id' => $actor->id,
+            'payment_finalizer_user_id' => $finalizer->id,
         ]);
         $planSet = MeasurementPlanSet::factory()->default()->withConstructionFund('10114801.60')->create([
             'operation_id' => $operation->id,
@@ -87,7 +95,7 @@ final class MeasurementReceiptEvidenceScenario
         $measurement->refresh();
         $payment->refresh();
 
-        return compact('actor', 'operation', 'measurement', 'payment');
+        return compact('actor', 'finalizer', 'operation', 'measurement', 'payment');
     }
 
     /** @return array{actor: User, operation: Operation, measurement: Measurement, payment: MeasurementPayment} */

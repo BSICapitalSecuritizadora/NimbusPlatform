@@ -93,7 +93,9 @@ function revisionExposureAcknowledgments(Measurement $revision): array
 
 /**
  * Regra financeira da emissão da operação do cenário, para qualquer
- * empreendimento: tolera até R$ 10.000,00 acima do saldo.
+ * empreendimento: tolera até R$ 10.000,00 acima do saldo. Registrada por
+ * outra pessoa: quem registra a regra não a usa no próprio pagamento, nem
+ * aceita na Finalização o que ela autorizou (Fase 4B-1).
  *
  * @param  array{actor: User, operation: Operation, planSet: MeasurementPlanSet, lines: array<string, MeasurementPlanLine>}  $scenario
  */
@@ -104,7 +106,7 @@ function revisionExposureOverpaymentRule(array $scenario): MeasurementFinancialR
         'direction' => 'over',
         'maximum_difference_amount' => '10000.00',
         'maximum_difference_percent' => null,
-        'created_by' => $scenario['actor']->id,
+        'created_by' => User::factory()->create()->id,
     ]);
 }
 
@@ -132,11 +134,13 @@ function revisionExposureUnderpaidSource(array $scenario, string $case): Measure
 
 /**
  * O cenário de {@see Scenario::plan()} com o plano sem Fundo de Obra: a V1
- * nasce sem fundo e entra em vigor assim, como a ativação aceita quando nenhuma
- * versão o teve. A Engenharia aprova sem referência financeira, e o pagamento
- * não tem valor esperado com que comparar.
+ * nasce sem fundo e entra em vigor assim, como a ativação aceitava quando
+ * nenhuma versão o teve (estado legado: a ativação passou a exigir o Fundo na
+ * Fase 4B-1). A Engenharia aprova sem referência financeira, e nenhum
+ * pagamento é registrado sem ela. Como nos cenários compartilhados, o
+ * Finalizador é outra pessoa, que cria e envia as revisões.
  *
- * @return array{actor: User, operation: Operation, planSet: MeasurementPlanSet, lines: array<string, MeasurementPlanLine>}
+ * @return array{actor: User, finalizer: User, operation: Operation, planSet: MeasurementPlanSet, lines: array<string, MeasurementPlanLine>}
  */
 function revisionExposurePlanWithoutFund(): array
 {
@@ -147,6 +151,8 @@ function revisionExposurePlanWithoutFund(): array
         'measurements.view', 'measurements.create', 'measurements.update', 'measurements.review', 'measurements.pay',
         'measurements.receipts', 'measurements.finalize', AccessPermission::MeasurementsRevise->value,
     ]);
+    $finalizer = User::factory()->withTwoFactor()->create();
+    $finalizer->givePermissionTo(['measurements.view', 'measurements.finalize', AccessPermission::MeasurementsRevise->value]);
     $operation = Operation::factory()->create([
         'status' => 'active',
         'assigned_user_id' => $actor->id,
@@ -155,7 +161,7 @@ function revisionExposurePlanWithoutFund(): array
         'stage3_reviewer_user_id' => $actor->id,
         'payment_manager_user_id' => $actor->id,
         'payment_receipt_uploader_user_id' => $actor->id,
-        'payment_finalizer_user_id' => $actor->id,
+        'payment_finalizer_user_id' => $finalizer->id,
     ]);
     $planSet = MeasurementPlanSet::factory()->default()->withConstructionFund(null)->create([
         'operation_id' => $operation->id,
@@ -181,7 +187,7 @@ function revisionExposurePlanWithoutFund(): array
 
     MeasurementPlanVersionFixture::activate($planSet);
 
-    return compact('actor', 'operation', 'planSet', 'lines');
+    return compact('actor', 'finalizer', 'operation', 'planSet', 'lines');
 }
 
 it('keeps the overpayment of a downward revision open after acknowledging it at Finalization, without touching the payment', function () {
@@ -213,12 +219,14 @@ it('keeps the overpayment of a downward revision open after acknowledging it at 
     $workflow->approve($revision->fresh(), $scenario['actor'], 'Valor pago a maior será cobrado da construtora fora do sistema.');
     $this->travelTo(CarbonImmutable::parse('2026-10-14 12:00:00', 'America/Sao_Paulo'));
 
+    // Fase 4B-1: a exceção financeira é aceita pelo Finalizador do cenário,
+    // outra pessoa que não o ator que pagou e decidiu na etapa Pagamento.
     expect(app(MeasurementPaymentFinancialService::class)->requiresAcceptance($revision->fresh()))->toBeTrue()
-        ->and(revisionExposureMessage(fn () => $workflow->finalize($revision->fresh(), $scenario['actor']), 'accept_financial_exceptions'))
+        ->and(revisionExposureMessage(fn () => $workflow->finalize($revision->fresh(), $scenario['finalizer']), 'accept_financial_exceptions'))
         ->toContain('valor pago a maior desta revisão')
         ->and($revision->fresh()->status)->toBe('approved');
 
-    $workflow->finalize($revision->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
+    $workflow->finalize($revision->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
     $acknowledged = revisionExposurePosition($revision);
 
     // Reconhecer não é regularizar: o valor continua em aberto, e o pagamento
@@ -240,7 +248,7 @@ it('keeps the overpayment of a downward revision open after acknowledging it at 
         ->and($acknowledgment->properties['decision'])->toBe('Valor pago a maior será cobrado da construtora fora do sistema.')
         ->and($acknowledgment->properties['decided_by'])->toBe($scenario['actor']->id)
         ->and($acknowledgment->properties['decided_at'])->toBe('2026-10-13T15:00:00+00:00')
-        ->and($acknowledgment->properties['accepted_by'])->toBe($scenario['actor']->id)
+        ->and($acknowledgment->properties['accepted_by'])->toBe($scenario['finalizer']->id)
         ->and($acknowledgment->properties['accepted_at'])->toBe('2026-10-14T15:00:00+00:00')
         ->and($acknowledgment->properties['positions'])->toHaveCount(1)
         ->and($acknowledgment->properties['positions'][0])->toMatchArray([
@@ -308,11 +316,12 @@ it('splits the overpayment of a second downward revision into the part the first
 
     $workflow->approve($second->fresh(), $scenario['actor'], 'Decisão da R2: os R$ 10.000,00 adicionais seguem a mesma tratativa.');
 
+    // Fase 4B-1: a exceção financeira é aceita pelo Finalizador do cenário.
     expect(app(MeasurementPaymentFinancialService::class)->requiresAcceptance($second->fresh()))->toBeTrue()
-        ->and(revisionExposureMessage(fn () => $workflow->finalize($second->fresh(), $scenario['actor']), 'accept_financial_exceptions'))
+        ->and(revisionExposureMessage(fn () => $workflow->finalize($second->fresh(), $scenario['finalizer']), 'accept_financial_exceptions'))
         ->toContain('valor pago a maior desta revisão');
 
-    $workflow->finalize($second->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
+    $workflow->finalize($second->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
     $acknowledgment = revisionExposureAudits($second, 'measurement_revision_financial_difference_acknowledged')->sole();
 
     expect(revisionExposurePosition($second)->adjustmentStatus)->toBe(MeasurementRevisionAdjustmentStatus::OverpaymentAcceptedUnrecovered)
@@ -355,7 +364,8 @@ it('asks no new decision nor acceptance when an earlier Finalization already ack
 
     expect(app(MeasurementPaymentFinancialService::class)->requiresAcceptance($second->fresh()))->toBeFalse();
 
-    $workflow->finalize($second->fresh(), $scenario['actor']);
+    // Fase 4B-1: a Finalização é do Finalizador do cenário.
+    $workflow->finalize($second->fresh(), $scenario['finalizer']);
     $finalized = revisionExposurePosition($second);
     $exception = revisionExposureAudits($second, 'measurement_revision_financial_exception_unresolved')->sole();
 
@@ -417,11 +427,12 @@ it('never counts the supplementary payment of a revision replaced before its Fin
 
     $workflow->approve($third->fresh(), $scenario['actor'], 'Decisão da R3: complemento pago na R2 será cobrado de volta fora do sistema.');
 
-    expect(revisionExposureMessage(fn () => $workflow->finalize($third->fresh(), $scenario['actor']), 'accept_financial_exceptions'))
+    // Fase 4B-1: a exceção financeira é aceita pelo Finalizador do cenário.
+    expect(revisionExposureMessage(fn () => $workflow->finalize($third->fresh(), $scenario['finalizer']), 'accept_financial_exceptions'))
         ->toContain('valor pago a maior desta revisão')
         ->and($third->fresh()->status)->toBe('approved');
 
-    $workflow->finalize($third->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
+    $workflow->finalize($third->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
 
     expect($third->fresh()->status)->toBe('finalized')
         ->and(revisionExposurePosition($third)->adjustmentStatus)->toBe(MeasurementRevisionAdjustmentStatus::OverpaymentAcceptedUnrecovered);
@@ -449,7 +460,8 @@ it('keeps crediting an earlier Finalization that still covers more of the overpa
         ->and($position->adjustmentStatus)->toBe(MeasurementRevisionAdjustmentStatus::OverpaymentPreviouslyAccepted);
 
     $workflow->approve($third->fresh(), $scenario['actor']);
-    $workflow->finalize($third->fresh(), $scenario['actor']);
+    // Fase 4B-1: a Finalização é do Finalizador do cenário.
+    $workflow->finalize($third->fresh(), $scenario['finalizer']);
 
     expect($third->fresh()->status)->toBe('finalized')
         ->and(revisionExposurePosition($third)->adjustmentStatus)->toBe(MeasurementRevisionAdjustmentStatus::OverpaymentPreviouslyAccepted);
@@ -461,13 +473,15 @@ it('caps a supplementary payment at the remaining payable even when a financial 
     $revision = Scenario::effective($scenario, $may, 12);
     $rule = revisionExposureOverpaymentRule($scenario);
     $justification = 'Excedente dentro da tolerância da regra da emissão.';
+    // Fase 4B-1: o enquadramento é de quem registra o pagamento -- o ator, que
+    // não é o autor da regra.
     $assessment = app(MeasurementPaymentFinancialService::class)->assess($revision->fresh(), [
         'plan_set_id' => $scenario['planSet']->id,
         'pay_date' => '2026-07-20',
         'amount' => '25000.00',
         'financial_rule_id' => $rule->id,
         'financial_justification' => $justification,
-    ]);
+    ], $scenario['actor']);
 
     // A regra cobre os R$ 5.000,00 acima do saldo de R$ 20.000,00; ainda assim
     // o pagamento complementar não passa do saldo a pagar.
@@ -635,10 +649,12 @@ it('keeps a rule-covered excess of the revision own payment out of the amount to
     $workflow->approve($revision->fresh(), $scenario['actor']);
     Scenario::receiptsApproved($scenario, $revision);
 
-    expect(revisionExposureMessage(fn () => $workflow->finalize($revision->fresh(), $scenario['actor']), 'accept_financial_exceptions'))
+    // Fase 4B-1: o excedente é aceito pelo Finalizador do cenário, outra
+    // pessoa que não quem o pagou nem quem registrou a regra.
+    expect(revisionExposureMessage(fn () => $workflow->finalize($revision->fresh(), $scenario['finalizer']), 'accept_financial_exceptions'))
         ->toContain('Confirme expressamente o aceite das divergências');
 
-    $workflow->finalize($revision->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
+    $workflow->finalize($revision->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
     $accepted = revisionExposurePosition($revision);
 
     expect($revision->fresh()->status)->toBe('finalized')
@@ -649,7 +665,20 @@ it('keeps a rule-covered excess of the revision own payment out of the amount to
 
 it('marks the exposure unmeasurable and refuses new payments when the family paid a development without a construction fund', function () {
     $scenario = revisionExposurePlanWithoutFund();
-    $may = Scenario::finalized($scenario, '2026-05', 10, '50000.00');
+    $may = Scenario::awaitingPayment($scenario, '2026-05', 10);
+    // Fase 4B-1: sem Fundo de Obra o fluxo não registra pagamento; o que a
+    // família pagou é legado, gravado antes da exigência e sem enquadramento.
+    MeasurementPayment::factory()->create([
+        'operation_id' => $scenario['operation']->id,
+        'measurement_id' => $may->id,
+        'plan_set_id' => $scenario['planSet']->id,
+        'pay_date' => '2026-07-20',
+        'amount' => '50000.00',
+        'method' => 'TED',
+        'notes' => null,
+        'created_by' => $scenario['actor']->id,
+    ]);
+    $may = Scenario::closePaymentAndFinalize($scenario, $may);
     $revision = Scenario::effective($scenario, $may, 8);
     $position = revisionExposurePosition($revision);
 
@@ -669,16 +698,20 @@ it('marks the exposure unmeasurable and refuses new payments when the family pai
         ->and(Measurement::query()->withOpenRevisionFinancialPosition()->pluck('id')->all())->toBe([$revision->id]);
 });
 
-it('measures no exposure and still accepts the payment of a revision without a construction fund when nothing was paid before', function () {
+it('measures no exposure and refuses the payment of a revision without a construction fund even when nothing was paid before', function () {
     $scenario = revisionExposurePlanWithoutFund();
     $may = Scenario::awaitingPayment($scenario, '2026-05', 10);
     $revision = Scenario::effective($scenario, $may, 8);
     $position = revisionExposurePosition($revision);
 
+    // Fase 4B-1: sem Fundo de Obra não há valor aprovado, e nenhum pagamento é
+    // registrado -- nem na revisão cuja família nada pagou antes.
     expect($position->adjustmentStatus)->toBe(MeasurementRevisionAdjustmentStatus::ReferenceUnavailable)
         ->and($position->historicalPaidAmount)->toBe('0.00')
         ->and($position->isExposureUnmeasurable())->toBeFalse()
-        ->and(Scenario::pay($scenario, $revision, '30000.00')->amount)->toBe('30000.00')
+        ->and(revisionExposureMessage(fn () => Scenario::pay($scenario, $revision, '30000.00'), 'payments.0.amount'))
+        ->toBe(sprintf(MeasurementPaymentFinancialService::MISSING_FUND_PAYMENT_REFUSAL, $position->label))
+        ->and(MeasurementPayment::query()->count())->toBe(0)
         ->and($revision->fresh()->hasOpenRevisionFinancialPosition())->toBeFalse();
 });
 

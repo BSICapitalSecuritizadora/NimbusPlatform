@@ -177,7 +177,9 @@ it('never treats a missing Construction Fund as zero (E)', function (array $deve
         ->toContain('A etapa Pagamento não pode ser concluída sem desembolso')
         ->toContain($reason)
         // Sem conta, o caminho é corrigir a origem dela, não pagar para contorná-la.
-        ->toContain('corrija o Fundo de Obra na versão do plano ou o registro da Engenharia')
+        // Fase 4B-1: o Fundo ausente na versão congelada não se corrige pelo fluxo da medição.
+        ->toContain('corrija o registro da Engenharia devolvendo a medição àquela etapa')
+        ->toContain('peça ao administrador a correção do cadastro do plano')
         ->not->toContain('Registre o pagamento devido')
         ->and(noDisbursementValidationMessage(fn () => $workflow->approve($measurement->fresh(), $scenario['actor'], 'Sem pagamento.'), 'payments'))
         ->toBe('Cadastre ao menos um pagamento válido antes de aprovar a etapa Pagamento.');
@@ -312,8 +314,9 @@ it('keeps a real obligation of another construction mandatory and pays it normal
     expect($measurement->fresh()->status)->toBe('awaiting_receipt')
         ->and($workflow->requiresNoDisbursementAcknowledgment($measurement->fresh()))->toBeFalse();
 
-    MeasurementRevisionScenario::receiptsApproved(['actor' => $scenario['actor']], $measurement);
-    $workflow->finalize($measurement->fresh(), $scenario['actor']);
+    // Fase 4B-1: quem envia o comprovante não o aprova -- o Finalizador confere e finaliza.
+    MeasurementRevisionScenario::receiptsApproved(['actor' => $scenario['actor'], 'finalizer' => $scenario['finalizer']], $measurement);
+    $workflow->finalize($measurement->fresh(), $scenario['finalizer']);
 
     expect($measurement->fresh()->status)->toBe('finalized')
         ->and(MeasurementPayment::query()->pluck('id')->all())->toBe([$payment->id])
@@ -337,8 +340,9 @@ it('completes with one payment for the payable construction and none for the zer
         ->and(app(MeasurementPaymentFinancialService::class)->unpaidRequiredPlanSets($measurement->fresh()))->toBe([]);
 
     $workflow->approve($measurement->fresh(), $scenario['actor']);
-    MeasurementRevisionScenario::receiptsApproved(['actor' => $scenario['actor']], $measurement);
-    $workflow->finalize($measurement->fresh(), $scenario['actor']);
+    // Fase 4B-1: quem envia o comprovante não o aprova -- o Finalizador confere e finaliza.
+    MeasurementRevisionScenario::receiptsApproved(['actor' => $scenario['actor'], 'finalizer' => $scenario['finalizer']], $measurement);
+    $workflow->finalize($measurement->fresh(), $scenario['finalizer']);
 
     expect($measurement->fresh()->status)->toBe('finalized')
         ->and(MeasurementPayment::query()->count())->toBe(1);
@@ -350,7 +354,7 @@ it('refuses to finalize a payable original measurement that has no payment (I)',
     $workflow = app(MeasurementWorkflow::class);
 
     // Na etapa Pagamento, a Finalização não existe.
-    expect(noDisbursementRefusal(fn () => $workflow->finalize($measurement->fresh(), $scenario['actor'], acknowledgeNoDisbursement: true)))
+    expect(noDisbursementRefusal(fn () => $workflow->finalize($measurement->fresh(), $scenario['finalizer'], acknowledgeNoDisbursement: true)))
         ->toBe('A etapa desta medição foi alterada por outra ação. Atualize a página.');
 
     // Estado forçado: a medição na Finalização sem pagamento e com valor devido.
@@ -359,7 +363,7 @@ it('refuses to finalize a payable original measurement that has no payment (I)',
 
     // A decisão é conferida antes dos comprovantes: sem pagamento não há
     // comprovante a pedir, e a recusa certa é a da falta da decisão.
-    expect(noDisbursementRefusal(fn () => $workflow->finalize($measurement->fresh(), $scenario['actor'], acknowledgeNoDisbursement: true)))
+    expect(noDisbursementRefusal(fn () => $workflow->finalize($measurement->fresh(), $scenario['finalizer'], acknowledgeNoDisbursement: true)))
         ->toBe(MeasurementWorkflow::NO_DISBURSEMENT_DECISION_MISSING)
         ->and($measurement->fresh()->status)->toBe('approved');
 });
@@ -479,9 +483,9 @@ it('refuses the Finalization without the acknowledgment of the absence of paymen
     $workflow = app(MeasurementWorkflow::class);
 
     // O aceite das divergências financeiras não substitui a ciência.
-    expect(noDisbursementValidationMessage(fn () => $workflow->finalize($measurement->fresh(), $scenario['actor']), 'acknowledge_no_disbursement'))
+    expect(noDisbursementValidationMessage(fn () => $workflow->finalize($measurement->fresh(), $scenario['finalizer']), 'acknowledge_no_disbursement'))
         ->toBe(MeasurementWorkflow::NO_DISBURSEMENT_ACKNOWLEDGMENT_REQUIRED)
-        ->and(noDisbursementValidationMessage(fn () => $workflow->finalize($measurement->fresh(), $scenario['actor'], acceptFinancialExceptions: true), 'acknowledge_no_disbursement'))
+        ->and(noDisbursementValidationMessage(fn () => $workflow->finalize($measurement->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true), 'acknowledge_no_disbursement'))
         ->toBe(MeasurementWorkflow::NO_DISBURSEMENT_ACKNOWLEDGMENT_REQUIRED)
         ->and($measurement->fresh()->status)->toBe('approved')
         ->and(noDisbursementActivity($measurement, 'measurement_finalized'))->toBeNull();
@@ -491,7 +495,7 @@ it('asks for a new decision after the Finalization returns the measurement to th
     $scenario = Scenario::plan();
     $measurement = Scenario::concludeWithoutDisbursement($scenario, Scenario::awaitingPayment($scenario, '2026-05', [0]), 'Primeira decisão.');
     $workflow = app(MeasurementWorkflow::class);
-    $workflow->returnToStage($measurement->fresh(), $scenario['actor'], MeasurementWorkflow::STAGE_PAYMENT, 'Rever a decisão.');
+    $workflow->returnToStage($measurement->fresh(), $scenario['finalizer'], MeasurementWorkflow::STAGE_PAYMENT, 'Rever a decisão.');
 
     expect($measurement->fresh()->status)->toBe('awaiting_payment')
         ->and($workflow->noDisbursementDecision($measurement->fresh()))->toBeNull();
@@ -533,7 +537,7 @@ it('keeps original measurements with genuine payments on the ordinary path (L)',
     // A ciência pedida por engano a uma medição paga não é gravada.
     $workflow->approve($measurement->fresh(), $scenario['actor']);
     MeasurementRevisionScenario::receiptsApproved($scenario, $measurement);
-    $workflow->finalize($measurement->fresh(), $scenario['actor'], acknowledgeNoDisbursement: true);
+    $workflow->finalize($measurement->fresh(), $scenario['finalizer'], acknowledgeNoDisbursement: true);
 
     expect($measurement->fresh()->status)->toBe('finalized')
         ->and(noDisbursementActivity($measurement, 'measurement_finalized')->properties->has('no_disbursement_acknowledged'))->toBeFalse()
@@ -612,12 +616,13 @@ it('reconstructs the whole no-disbursement decision from the protected audit tra
             ['Torre Alfa', '1000000.00', '0.00', '0.00', '0.00'],
             ['Torre Beta', '0.00', '15.00', '0.00', '0.00'],
         ])
-        ->and($finalization->causer_id)->toBe($scenario['actor']->id)
+        ->and($finalization->causer_id)->toBe($scenario['finalizer']->id)
         ->and($finalization->properties['responsibility'])->toBe('payment_finalizer_user_id')
         ->and($finalization->properties['no_disbursement_acknowledged']['decision_activity_id'])->toBe($decision->id)
         ->and($finalization->properties['no_disbursement_acknowledged']['justification'])->toBe(Scenario::JUSTIFICATION)
         ->and($finalization->properties['no_disbursement_acknowledged']['decided_by'])->toBe($scenario['actor']->id)
-        ->and($finalization->properties['no_disbursement_acknowledged']['same_actor_as_decision'])->toBeTrue()
+        // Fase 4B-1: quem decidiu sem desembolso não dá a ciência; a chave fica, sempre falsa.
+        ->and($finalization->properties['no_disbursement_acknowledged']['same_actor_as_decision'])->toBeFalse()
         ->and($finalization->properties['no_disbursement_acknowledged']['decision_delegated'])->toBeFalse()
         ->and($finalization->properties['no_disbursement_acknowledged']['decision_admin_override'])->toBeFalse()
         ->and($finalization->properties['no_disbursement_acknowledged']['payments_registered'])->toBe(0)
@@ -640,7 +645,7 @@ it('notifies the Finalizer that the Payment stage ended without disbursement', f
     Scenario::concludeWithoutDisbursement($scenario, Scenario::awaitingPayment($scenario, '2026-05', [0]));
 
     Notification::assertSentTo(
-        $scenario['actor'],
+        $scenario['finalizer'],
         MeasurementWorkflowNotification::class,
         fn (MeasurementWorkflowNotification $notification): bool => $notification->event === 'ready_to_finalize_without_disbursement',
     );

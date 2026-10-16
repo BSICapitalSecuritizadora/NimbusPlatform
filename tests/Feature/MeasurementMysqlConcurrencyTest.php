@@ -261,7 +261,7 @@ it('serializes payment registration against payment approval on MySQL', function
         'assigned_user_id' => $actor->id,
         'payment_manager_user_id' => $actor->id,
     ]);
-    $planSet = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
+    $planSet = MeasurementPlanSet::factory()->withConstructionFund('3000.00')->create(['operation_id' => $operation->id]);
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
         'status' => 'awaiting_payment',
@@ -272,10 +272,13 @@ it('serializes payment registration against payment approval on MySQL', function
             'measurement_id' => 0,
             'operation_id' => $operation->id,
             'emission_id' => $operation->emission_id,
-            // Percentual e versão do plano, como a Engenharia grava: sem eles o
-            // valor devido não se determina, o pagamento seria sempre recusado
-            // e a corrida, decidida antes de começar.
-            'plan_sets' => [['plan_set_id' => $planSet->id, 'plan_version_id' => $planSet->versions()->value('id'), 'realized_monthly_percent' => '0.00']],
+            // Percentual, versão do plano e Fundo de Obra, como a Engenharia
+            // grava: sem eles o valor devido não se determina, o pagamento seria
+            // sempre recusado e a corrida, decidida antes de começar. Desde a
+            // Fase 4B-1 o que passa do saldo a pagar só entra com regra
+            // financeira: o aprovado (10% de R$ 3.000,00 = R$ 300,00) comporta o
+            // pagamento já registrado (R$ 100,00) e o da corrida (R$ 200,00).
+            'plan_sets' => [['plan_set_id' => $planSet->id, 'plan_version_id' => $planSet->versions()->value('id'), 'construction_fund_amount' => '3000.00', 'realized_monthly_percent' => '10.00']],
         ],
     ]);
     $snapshot = $measurement->engineering_snapshot;
@@ -386,8 +389,13 @@ it('forms the Engineering snapshot from the committed Operation emission on MySQ
 it('serializes finalize against finalize on MySQL', function () {
     Storage::fake('local');
     $actor = makeMysqlConcurrencyActor();
+    // Fase 4B-1: quem envia o comprovante não o aprova -- o envio é do
+    // responsável pelos comprovantes; a conferência e a Finalização, do ator.
+    $uploader = User::factory()->withTwoFactor()->create();
+    $uploader->givePermissionTo('measurements.receipts');
     $operation = Operation::factory()->create([
         'assigned_user_id' => $actor->id,
+        'payment_receipt_uploader_user_id' => $uploader->id,
         'payment_finalizer_user_id' => $actor->id,
     ]);
     $planSet = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
@@ -427,7 +435,7 @@ it('serializes finalize against finalize on MySQL', function () {
         'pay_date' => '2026-08-25',
         'amount' => 100,
     ]);
-    app(MeasurementWorkflow::class)->attachReceipt($payment, $actor, MeasurementReceiptEvidenceScenario::file());
+    app(MeasurementWorkflow::class)->attachReceipt($payment, $uploader, MeasurementReceiptEvidenceScenario::file());
     MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $actor);
     $revision = (int) $measurement->fresh()->workflow_revision;
     $instruction = [

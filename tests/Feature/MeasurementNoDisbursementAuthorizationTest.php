@@ -2,6 +2,7 @@
 
 use App\Enums\MeasurementResponsibility;
 use App\Enums\WorkflowAuthorizationSource;
+use App\Exceptions\MeasurementSegregationException;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Models\Measurement;
 use App\Models\MeasurementPayment;
@@ -11,6 +12,7 @@ use App\Models\ResponsibilityDelegation;
 use App\Models\User;
 use App\Notifications\MeasurementWorkflowNotification;
 use App\Services\MeasurementAuthorizationService;
+use App\Services\MeasurementSegregationService;
 use App\Services\MeasurementWorkflow;
 use App\Services\ResponsibilityDelegationService;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -291,6 +293,25 @@ function p4aAuthRewriteProperties(Activity $activity, Closure $rewrite): void
         ->update(['properties' => json_encode($rewrite($activity->properties->all()), JSON_THROW_ON_ERROR)]);
 }
 
+/**
+ * A decisão sem desembolso pelo domínio, como a do cenário compartilhado, mas
+ * com o motivo do override administrativo que a Fase 4B-1 exige de quem decide
+ * só por ele -- e que o domínio ignora quando a autoridade tem outra origem.
+ */
+function p4aAuthConclude(Measurement $measurement, User $actor, ?string $overrideReason, ?string $justification = Scenario::JUSTIFICATION): Measurement
+{
+    p4aAuthWorkflow()->approve(
+        $measurement->fresh(),
+        $actor,
+        $justification,
+        expectedStage: MeasurementWorkflow::STAGE_PAYMENT,
+        withoutDisbursement: true,
+        overrideReason: $overrideReason,
+    );
+
+    return $measurement->fresh();
+}
+
 // ── Premissa: um usuário por responsabilidade ────────────────────────────────
 
 it('gives every responsibility its own user and keeps everyone else out by responsibility, not by permission', function () {
@@ -509,13 +530,15 @@ it('authorizes an administrator who does not participate by the workflow overrid
         ->toBe(WorkflowAuthorizationSource::AdminOverride)
         ->and(p4aAuthWorkflow()->canConcludeWithoutDisbursement($measurement, $actor))->toBeTrue();
 
-    $measurement = Scenario::concludeWithoutDisbursement($s, $measurement, actor: $actor);
+    // Fase 4B-1: quem age só pelo override informa o motivo, gravado na trilha protegida.
+    $measurement = p4aAuthConclude($measurement, $actor, 'Gestor de Pagamento afastado: decisão pelo override.');
     $decision = p4aAuthActivities($measurement, 'measurement_stage_approved', MeasurementWorkflow::STAGE_PAYMENT)->sole();
 
     expect($measurement->status)->toBe('approved')
         ->and((int) $decision->causer_id)->toBe($actor->id)
         ->and($decision->properties['actual_actor_user_id'])->toBe($actor->id)
         ->and($decision->properties['admin_override'])->toBeTrue()
+        ->and($decision->properties['admin_override_reason'])->toBe('Gestor de Pagamento afastado: decisão pelo override.')
         ->and($decision->properties['delegated'])->toBeFalse()
         ->and($decision->properties['delegation_id'])->toBeNull()
         ->and($decision->properties['responsibility'])->toBe('payment_manager_user_id')
@@ -602,7 +625,10 @@ it('accepts the acknowledgment from a valid delegate of the Finalizer or by the 
     expect(app(MeasurementAuthorizationService::class)->resolveAuthorization($actor, $measurement, MeasurementResponsibility::Finalizer)->source)->toBe($source)
         ->and(p4aAuthWorkflow()->canFinalize($measurement, $actor))->toBeTrue();
 
-    $measurement = Scenario::finalizeAcknowledging($s, $measurement, $actor);
+    // Fase 4B-1: quem finaliza só pelo override informa o motivo; o delegado não precisa.
+    $overrideReason = $source === WorkflowAuthorizationSource::AdminOverride ? 'Finalizador afastado: ciência pelo override.' : null;
+    p4aAuthWorkflow()->finalize($measurement->fresh(), $actor, acknowledgeNoDisbursement: true, overrideReason: $overrideReason);
+    $measurement = $measurement->fresh();
     $finalization = p4aAuthActivities($measurement, 'measurement_finalized')->sole();
 
     expect($measurement->status)->toBe('finalized')
@@ -614,6 +640,7 @@ it('accepts the acknowledgment from a valid delegate of the Finalizer or by the 
         ->and($finalization->properties['delegated'])->toBe($source === WorkflowAuthorizationSource::Delegated)
         ->and($finalization->properties['delegation_id'])->toBe($source === WorkflowAuthorizationSource::Delegated ? $delegation->id : null)
         ->and($finalization->properties['admin_override'])->toBe($source === WorkflowAuthorizationSource::AdminOverride)
+        ->and($finalization->properties['admin_override_reason'] ?? null)->toBe($overrideReason)
         ->and($finalization->properties['no_disbursement_acknowledged']['decided_by'])->toBe($s['manager']->id)
         ->and(p4aAuthWorkflow()->noDisbursementAcknowledgment($measurement)['acknowledged_by'])->toBe($actor->id);
 })->with([
@@ -622,18 +649,27 @@ it('accepts the acknowledgment from a valid delegate of the Finalizer or by the 
     'a super-admin' => ['superAdmin', WorkflowAuthorizationSource::AdminOverride],
 ]);
 
-it('records, without refusing it, an acknowledgment given by whoever took the decision', function () {
-    // A segregação de funções é decisão pendente (Fase 4B): o administrador
-    // que decide pela sobreposição e depois dá a ciência não é recusado, mas a
-    // trilha diz que foi a mesma pessoa e por qual autoridade decidiu.
+it('refuses the acknowledgment from whoever took the decision, even by the administrative override, and records the one given by the Finalizer', function () {
+    // Fase 4B-1: quem decidiu sem desembolso não dá a ciência -- nem o
+    // administrador pelo override, que não dispensa a segregação de funções.
+    // A trilha da ciência de outra pessoa diz por qual autoridade se decidiu.
     $s = p4aAuthScenario();
-    $measurement = Scenario::concludeWithoutDisbursement($s, p4aAuthAtStage($s, MeasurementWorkflow::STAGE_PAYMENT), actor: $s['admin']);
-    $measurement = Scenario::finalizeAcknowledging($s, $measurement, $s['admin']);
+    $measurement = p4aAuthConclude(p4aAuthAtStage($s, MeasurementWorkflow::STAGE_PAYMENT), $s['admin'], 'Gestor de Pagamento afastado: decisão pelo override.');
+    $before = p4aAuthState($measurement);
+
+    $refusal = p4aAuthThrown(fn () => p4aAuthWorkflow()->finalize($measurement->fresh(), $s['admin'], acknowledgeNoDisbursement: true, overrideReason: 'Finalizador afastado: ciência pelo override.'));
+
+    expect($refusal)->toBeInstanceOf(MeasurementSegregationException::class)
+        ->and($refusal->getMessage())->toBe(MeasurementSegregationService::NO_DISBURSEMENT_SELF_ACKNOWLEDGMENT.' Você decidiu concluir a etapa Pagamento sem desembolso.')
+        ->and(p4aAuthState($measurement))->toBe($before)
+        ->and(p4aAuthActivities($measurement, 'measurement_finalized'))->toBeEmpty();
+
+    $measurement = Scenario::finalizeAcknowledging($s, $measurement, $s['finalizer']);
     $acknowledgment = p4aAuthActivities($measurement, 'measurement_finalized')->sole()->properties['no_disbursement_acknowledged'];
 
     expect($measurement->status)->toBe('finalized')
         ->and($acknowledgment['decided_by'])->toBe($s['admin']->id)
-        ->and($acknowledgment['same_actor_as_decision'])->toBeTrue()
+        ->and($acknowledgment['same_actor_as_decision'])->toBeFalse()
         ->and($acknowledgment['decision_delegated'])->toBeFalse()
         ->and($acknowledgment['decision_admin_override'])->toBeTrue();
 });
@@ -645,7 +681,8 @@ it('refuses a forged decision without justification, even from whoever is author
     $measurement = p4aAuthAtStage($s, MeasurementWorkflow::STAGE_PAYMENT);
     $before = p4aAuthState($measurement);
 
-    $refusal = p4aAuthThrown(fn () => Scenario::concludeWithoutDisbursement($s, $measurement, null, $s[$who]));
+    // Fase 4B-1: o override exige o motivo; com ele, a recusa é a da justificativa.
+    $refusal = p4aAuthThrown(fn () => p4aAuthConclude($measurement, $s[$who], 'Decisão pelo override administrativo.', null));
 
     expect($refusal)->toBeInstanceOf(ValidationException::class)
         ->and($refusal->errors())->toBe(['notes' => [MeasurementWorkflow::NO_DISBURSEMENT_JUSTIFICATION_REQUIRED]])
@@ -662,7 +699,8 @@ it('refuses a forged no-disbursement decision on a payable original measurement,
 
     expect(p4aAuthWorkflow()->canConcludeWithoutDisbursement($measurement, $s[$who]))->toBeFalse();
 
-    $refusal = p4aAuthThrown(fn () => Scenario::concludeWithoutDisbursement($s, $measurement, actor: $s[$who]));
+    // Fase 4B-1: o override exige o motivo; com ele, a recusa é a financeira.
+    $refusal = p4aAuthThrown(fn () => p4aAuthConclude($measurement, $s[$who], 'Decisão pelo override administrativo.'));
 
     // O override autoriza o ator, não a exceção financeira.
     expect($refusal)->toBeInstanceOf(ValidationException::class)

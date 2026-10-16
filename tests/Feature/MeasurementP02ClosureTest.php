@@ -61,10 +61,13 @@ function putP02Pdf(string $path, string $suffix): void
  * Engenharia. O cronograma e o Fundo de Obra de cada plano estão na V1,
  * vigente: é a versão que a medição leva. Com `$withSeptemberLine`, cada plano
  * já nasce com a medição prevista de setembro -- linha nova só entra num
- * rascunho, antes da ativação.
+ * rascunho, antes da ativação. O ator responde por todas as etapas, menos a
+ * Finalização: o Finalizador é outra pessoa, que confere os comprovantes que
+ * o ator envia e aceita o que ele aprovou na etapa Pagamento (Fase 4B-1).
  *
  * @return array{
  *     actor: User,
+ *     finalizer: User,
  *     emission: Emission,
  *     operation: Operation,
  *     measurement: Measurement,
@@ -76,6 +79,7 @@ function putP02Pdf(string $path, string $suffix): void
 function createP02EngineeringScenario(int $planSetCount = 1, bool $withSeptemberLine = false): array
 {
     $actor = makeP02User('admin');
+    $finalizer = makeP02User();
     test()->actingAs($actor);
     $emission = Emission::factory()->create(['name' => 'Emissão P0.2']);
     $operation = Operation::factory()->forEmission($emission)->create([
@@ -86,7 +90,7 @@ function createP02EngineeringScenario(int $planSetCount = 1, bool $withSeptember
         'stage3_reviewer_user_id' => $actor->id,
         'payment_manager_user_id' => $actor->id,
         'payment_receipt_uploader_user_id' => $actor->id,
-        'payment_finalizer_user_id' => $actor->id,
+        'payment_finalizer_user_id' => $finalizer->id,
     ]);
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
@@ -147,7 +151,7 @@ function createP02EngineeringScenario(int $planSetCount = 1, bool $withSeptember
 
     app(MeasurementWorkflow::class)->startReview($measurement->fresh(), $actor);
 
-    return compact('actor', 'emission', 'operation', 'measurement', 'planSets', 'lines', 'assets');
+    return compact('actor', 'finalizer', 'emission', 'operation', 'measurement', 'planSets', 'lines', 'assets');
 }
 
 /**
@@ -187,7 +191,7 @@ function approveP02Engineering(array $scenario, float $monthly = 10): void
 }
 
 /**
- * @param  array{actor: User, measurement: Measurement, planSets: Collection<int, MeasurementPlanSet>}  $scenario
+ * @param  array{actor: User, finalizer: User, measurement: Measurement, planSets: Collection<int, MeasurementPlanSet>}  $scenario
  */
 function advanceP02ToReadyForFinalization(array $scenario): void
 {
@@ -203,7 +207,8 @@ function advanceP02ToReadyForFinalization(array $scenario): void
     ]);
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
     $workflow->attachReceipt($payment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
-    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['actor']);
+    // Fase 4B-1: quem enviou o comprovante não o aprova -- o Finalizador confere.
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
 }
 
 it('persists the complete versioned Engineering context and approved evidence', function () {
@@ -389,9 +394,11 @@ it('blocks finalization after direct database divergence of any approved materia
         ]),
     };
 
+    // Fase 4B-1: finaliza o Finalizador do cenário -- o ator, administrador, só
+    // finalizaria pelo override, com motivo.
     expect(fn () => app(MeasurementWorkflow::class)->finalize(
         $scenario['measurement']->fresh(),
-        $scenario['actor'],
+        $scenario['finalizer'],
     ))->toThrow(MeasurementWorkflowException::class);
 })->with(['construction', 'realized', 'reference month', 'asset metadata', 'captured version fund']);
 
@@ -401,10 +408,11 @@ it('archives the invalidated snapshot and creates a different snapshot after Eng
     $paid = MeasurementRevisionScenario::paidAwaitingFinalization($scenario, '2026-05', 10);
 
     // A medição paga não volta da Finalização à Engenharia: o registro aprovado
-    // é a base do pagamento, e nada é invalidado nem arquivado.
+    // é a base do pagamento, e nada é invalidado nem arquivado. Fase 4B-1: quem
+    // devolve da Finalização e finaliza é o Finalizador do cenário, não o ator.
     expect(fn () => $workflow->returnToStage(
         $paid->fresh(),
-        $scenario['actor'],
+        $scenario['finalizer'],
         MeasurementWorkflow::STAGE_ENGINEERING,
         'Nova vistoria necessária',
     ))->toThrow(MeasurementWorkflowException::class, MeasurementWorkflow::PAID_ENGINEERING_RETURN_REFUSAL);
@@ -416,7 +424,7 @@ it('archives the invalidated snapshot and creates a different snapshot after Eng
 
     // A correção vem pela revisão. A R1 vigente não tem pagamento próprio -- a
     // família pagou na R0 --, e da Finalização ela volta à Engenharia.
-    $workflow->finalize($paid->fresh(), $scenario['actor']);
+    $workflow->finalize($paid->fresh(), $scenario['finalizer']);
     $revision = MeasurementRevisionScenario::effective($scenario, $paid, 10);
     $workflow->approve($revision->fresh(), $scenario['actor']);
     $oldSnapshot = $revision->fresh()->engineering_snapshot;
@@ -428,7 +436,7 @@ it('archives the invalidated snapshot and creates a different snapshot after Eng
 
     $workflow->returnToStage(
         $revision->fresh(),
-        $scenario['actor'],
+        $scenario['finalizer'],
         MeasurementWorkflow::STAGE_ENGINEERING,
         'Nova vistoria necessária',
     );
@@ -490,8 +498,11 @@ it('keeps old Measurements on A B C while new Measurements can approve D and pay
     // Os planos B e C ficam sem pagamento nesta competência: a etapa exige a justificativa.
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor'], 'Planos B e C sem pagamento nesta competência.');
     $workflow->attachReceipt($payment, $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
-    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['actor']);
-    $workflow->finalize($scenario['measurement']->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
+    // Fase 4B-1: quem enviou o comprovante não o aprova, e quem aprovou a etapa
+    // Pagamento sem os planos B e C não aceita essa exceção -- o Finalizador
+    // confere e finaliza.
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
+    $workflow->finalize($scenario['measurement']->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
 
     expect($scenario['measurement']->fresh()->status)->toBe('finalized')
         ->and($scenario['measurement']->fresh()->engineering_snapshot['plan_sets'])->toHaveCount(3);

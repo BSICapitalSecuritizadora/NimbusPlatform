@@ -518,7 +518,9 @@ it('records the administrative bypass as the authority of a super-admin only whe
     $cancelled = $revisions->create($source->fresh(), $admin, 'Rascunho aberto por engano.');
     $revisions->cancel($cancelled->fresh(), $admin, 'Aberto por engano.');
     $submitted = $revisions->create($source->fresh(), $admin, REVISION_REJECTION_NOTICE_REASON);
-    $revisions->submit($submitted->fresh(), $admin);
+    // Fase 4B-1: quem envia só pelo override administrativo informa o motivo;
+    // para quem participa da operação, o motivo é ignorado.
+    $revisions->submit($submitted->fresh(), $admin, overrideReason: 'Revisão enviada pela diretoria, fora da operação.');
 
     $authority = [
         'admin_override' => $adminOverride,
@@ -565,8 +567,11 @@ it('refuses the revision to an admin who does not participate in the operation, 
 it('notifies whoever cared for the closed workflow of the source when the revision becomes effective', function (string $case, string $event, array $responsibles, string $otherEvent) {
     $scenario = Scenario::plan();
     $source = revisionRejectionNoticeSource($scenario, $case);
-    $staff = revisionRejectionNoticeTeam($scenario, ['paymentManager', 'receiptUploader', 'finalizer']);
+    // Fase 4B-1: a revisão do cenário é criada e enviada pelo Finalizador dele,
+    // que precisa participar da operação; a equipe assume os papéis do fluxo
+    // encerrado depois do envio, antes de a revisão passar a valer.
     $revision = Scenario::engineeringApproved($scenario, $source, 12);
+    $staff = revisionRejectionNoticeTeam($scenario, ['paymentManager', 'receiptUploader', 'finalizer']);
     $workflow = app(MeasurementWorkflow::class);
     $workflow->approve($revision->fresh(), $scenario['actor']);
 

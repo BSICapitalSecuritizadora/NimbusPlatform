@@ -38,17 +38,27 @@ beforeEach(function () {
     config(['filesystems.private_disk' => 'local']);
 });
 
-/** @return array<string, mixed> */
+/**
+ * O ator responde por todas as etapas, menos a Finalização: o Finalizador é
+ * outra pessoa, que confere os comprovantes que o ator envia. E a regra do
+ * cenário é de outro responsável: quem registra a regra não a usa no próprio
+ * pagamento (Fase 4B-1).
+ *
+ * @return array<string, mixed>
+ */
 function financialRuleScenario(): array
 {
     $actor = makeAdminUser();
+    $finalizer = User::factory()->withTwoFactor()->create();
+    $finalizer->givePermissionTo(['measurements.view', 'measurements.finalize']);
+    $ruleAuthor = makeAdminUser();
     $emission = Emission::factory()->create();
     $construction = Construction::factory()->create(['emission_id' => $emission->id]);
     $operation = Operation::factory()->forEmission($emission)->create([
         'assigned_user_id' => $actor->id, 'responsible_user_id' => $actor->id,
         'stage2_reviewer_user_id' => $actor->id, 'stage3_reviewer_user_id' => $actor->id,
         'payment_manager_user_id' => $actor->id, 'payment_receipt_uploader_user_id' => $actor->id,
-        'payment_finalizer_user_id' => $actor->id,
+        'payment_finalizer_user_id' => $finalizer->id,
     ]);
     $plan = MeasurementPlanSet::factory()->default()->withConstructionFund('10000.00')->create([
         'operation_id' => $operation->id, 'construction_id' => $construction->id,
@@ -76,12 +86,12 @@ function financialRuleScenario(): array
     $measurement->refresh();
     $rule = MeasurementFinancialRule::factory()->create([
         'emission_id' => $emission->id, 'construction_id' => $construction->id,
-        'maximum_difference_amount' => '100.00', 'maximum_difference_percent' => '10.0000', 'created_by' => $actor->id,
+        'maximum_difference_amount' => '100.00', 'maximum_difference_percent' => '10.0000', 'created_by' => $ruleAuthor->id,
     ]);
     $data = ['plan_set_id' => $plan->id, 'pay_date' => '2026-05-20', 'amount' => '900.00',
         'financial_rule_id' => $rule->id, 'financial_justification' => 'Retenção conforme contrato da emissão.'];
 
-    return compact('actor', 'emission', 'construction', 'operation', 'plan', 'measurement', 'workflow', 'rule', 'data');
+    return compact('actor', 'finalizer', 'ruleAuthor', 'emission', 'construction', 'operation', 'plan', 'measurement', 'workflow', 'rule', 'data');
 }
 
 it('requires permission and validates the emission construction and validity of a rule', function () {
@@ -179,12 +189,13 @@ it('requires explicit acceptance at finalization and freezes the applied version
     app(MeasurementFinancialRuleService::class)->retire($s['rule'], $s['actor']);
     $s['workflow']->approve($s['measurement']->fresh(), $s['actor']);
     $evidence = app(MeasurementReceiptEvidenceService::class)->upload($payment, $s['actor'], MeasurementReceiptEvidenceScenario::file());
-    app(MeasurementReceiptEvidenceService::class)->review($evidence, $s['actor'], MeasurementReceiptReviewStatus::Approved, true);
-    expect(fn () => $s['workflow']->finalize($s['measurement']->fresh(), $s['actor']))->toThrow(ValidationException::class);
+    // Fase 4B-1: quem enviou o comprovante não o aprova; o Finalizador confere.
+    app(MeasurementReceiptEvidenceService::class)->review($evidence, $s['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
+    expect(fn () => $s['workflow']->finalize($s['measurement']->fresh(), $s['finalizer']))->toThrow(ValidationException::class);
     expect($s['measurement']->fresh()->status)->toBe('approved');
-    $s['workflow']->finalize($s['measurement']->fresh(), $s['actor'], acceptFinancialExceptions: true);
+    $s['workflow']->finalize($s['measurement']->fresh(), $s['finalizer'], acceptFinancialExceptions: true);
     $event = Activity::query()->where('description', 'measurement_finalized')->latest('id')->firstOrFail();
-    expect($event->causer_id)->toBe($s['actor']->id)
+    expect($event->causer_id)->toBe($s['finalizer']->id)
         ->and($event->properties['financial_exceptions_accepted'][0]['assessment']['rule']['version'])->toBe(1)
         ->and($s['measurement']->fresh()->status)->toBe('finalized');
 });
@@ -241,10 +252,11 @@ it('explains damaged support at finalization and allows correction after returni
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
     $evidenceService = app(MeasurementReceiptEvidenceService::class);
     $evidence = $evidenceService->upload($payment, $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
-    $evidenceService->review($evidence, $scenario['actor'], MeasurementReceiptReviewStatus::Approved, true);
+    // Fase 4B-1: quem enviou o comprovante não o aprova; o Finalizador confere.
+    $evidenceService->review($evidence, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
     Storage::disk('local')->delete($originalAssessment['support']['path']);
 
-    $this->actingAs($scenario['actor']);
+    $this->actingAs($scenario['finalizer']);
     Livewire::test(ViewMeasurement::class, ['record' => $scenario['measurement']->id])
         ->assertSee('-10,00%')
         ->callAction('finalize', data: ['accept_financial_exceptions' => true])
@@ -253,15 +265,15 @@ it('explains damaged support at finalization and allows correction after returni
             ->persistent());
     expect($scenario['measurement']->fresh()->status)->toBe('approved');
 
-    $workflow->returnToStage($scenario['measurement']->fresh(), $scenario['actor'], MeasurementWorkflow::STAGE_PAYMENT, 'Substituir documento de suporte.');
+    $workflow->returnToStage($scenario['measurement']->fresh(), $scenario['finalizer'], MeasurementWorkflow::STAGE_PAYMENT, 'Substituir documento de suporte.');
     $workflow->reassessPayment($payment->fresh(), $scenario['actor'], array_replace($scenario['data'], [
         'financial_justification' => 'Documento substituído após conferência do Finalizador.',
         'financial_support' => MeasurementReceiptEvidenceScenario::file('contrato-corrigido.pdf'),
     ]), $scenario['measurement']->fresh()->workflow_revision);
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
 
-    expect(fn () => $workflow->finalize($scenario['measurement']->fresh(), $scenario['actor']))->toThrow(ValidationException::class);
-    $workflow->finalize($scenario['measurement']->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
+    expect(fn () => $workflow->finalize($scenario['measurement']->fresh(), $scenario['finalizer']))->toThrow(ValidationException::class);
+    $workflow->finalize($scenario['measurement']->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
     expect($scenario['measurement']->fresh()->status)->toBe('finalized')
         ->and($payment->fresh()->financial_assessment['support']['name'])->toBe('contrato-corrigido.pdf')
         ->and(Activity::query()->where('log_name', 'measurement_payments')->where('subject_id', $payment->id)

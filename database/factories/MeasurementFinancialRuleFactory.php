@@ -26,10 +26,21 @@ class MeasurementFinancialRuleFactory extends Factory
             'direction' => 'under',
             'maximum_difference_amount' => '10000.00',
             'maximum_difference_percent' => null,
+            // A regra cadastrada hoje mede o percentual sobre o valor aprovado.
+            'percent_basis' => fn (array $attributes): ?string => $attributes['maximum_difference_percent'] === null ? null : 'approved_amount',
             'requires_document' => false,
             'effective_from' => '2026-01-01',
             'effective_until' => '2026-12-31',
             'created_by' => User::factory(),
         ];
+    }
+
+    /**
+     * Versão cadastrada antes da base explícita do limite percentual: o
+     * percentual dela era sobre o saldo a pagar e não autoriza divergência.
+     */
+    public function legacyPercentBasis(): static
+    {
+        return $this->state(fn (): array => ['percent_basis' => null]);
     }
 }

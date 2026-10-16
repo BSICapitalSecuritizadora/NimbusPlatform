@@ -38,6 +38,11 @@ class ContaAzulImportBatchFactory extends Factory
             'requested_by_user_id' => null,
             'started_at' => null,
             'finished_at' => null,
+            'last_heartbeat_at' => null,
+            'recovered_by_user_id' => null,
+            'recovered_at' => null,
+            'recovered_from_status' => null,
+            'recovery_reason' => null,
         ];
     }
 }

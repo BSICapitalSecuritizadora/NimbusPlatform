@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\DTOs\Measurements\MeasurementFinancialRuleCoverage;
 use App\Enums\AccessPermission;
 use App\Models\Measurement;
 use App\Models\MeasurementFinancialRule;
@@ -39,10 +40,13 @@ class MeasurementFinancialRuleService
             }
             $parent?->update(['retired_at' => now()]);
             $rule = MeasurementFinancialRule::query()->create($data + [
+                // O limite percentual da regra cadastrada a partir da Fase 4B-1
+                // é sobre o valor aprovado do empreendimento na competência.
+                'percent_basis' => filled($data['maximum_difference_percent'] ?? null) ? MeasurementFinancialRuleCoverage::PERCENT_BASIS_APPROVED_AMOUNT : null,
                 'created_by' => $actor->id, 'version' => ($parent?->version ?? 0) + 1, 'supersedes_id' => $parent?->id,
             ]);
             activity('measurement_financial_rules')->performedOn($rule)->causedBy($actor)
-                ->withProperties($rule->snapshot())->log('financial_rule_registered');
+                ->withProperties($rule->snapshot() + ['supersedes_id' => $parent?->id])->log('financial_rule_registered');
 
             return $rule;
         });
@@ -57,7 +61,9 @@ class MeasurementFinancialRuleService
                 throw ValidationException::withMessages(['rule' => 'Esta regra já foi encerrada.']);
             }
             $locked->update(['retired_at' => now()]);
-            activity('measurement_financial_rules')->performedOn($locked)->causedBy($actor)->log('financial_rule_retired');
+            activity('measurement_financial_rules')->performedOn($locked)->causedBy($actor)
+                ->withProperties(['id' => $locked->id, 'name' => $locked->name, 'version' => $locked->version, 'created_by' => (int) $locked->created_by])
+                ->log('financial_rule_retired');
         });
     }
 
@@ -75,6 +81,89 @@ class MeasurementFinancialRuleService
             ->whereNull('retired_at')
             ->whereDate('effective_from', '<=', $paymentDate)
             ->where(fn (Builder $query): Builder => $query->whereNull('effective_until')->orWhereDate('effective_until', '>=', $paymentDate));
+    }
+
+    /**
+     * Quem registrou esta versão da regra e as versões que ela substitui: a
+     * cadeia inteira. Uma versão idêntica registrada por outra pessoa não
+     * apaga quem ampliou o limite antes dela.
+     *
+     * @return list<int>
+     */
+    public function authorsOf(int $ruleId): array
+    {
+        return self::authorsIn($this->chainOf($ruleId));
+    }
+
+    /**
+     * @param  list<array{id: int, version: int, created_by: int|null}>  $chain
+     * @return list<int>
+     */
+    public static function authorsIn(array $chain): array
+    {
+        return array_values(array_unique(array_filter(
+            array_column($chain, 'created_by'),
+            fn (?int $userId): bool => $userId !== null,
+        )));
+    }
+
+    /**
+     * A versão e as que ela substitui, da aplicada para a mais antiga, com
+     * quem registrou cada uma.
+     *
+     * @return list<array{id: int, version: int, created_by: int|null}>
+     */
+    public function chainOf(int $ruleId): array
+    {
+        return $this->chainsOf([$ruleId])[$ruleId] ?? [];
+    }
+
+    /**
+     * As cadeias de várias regras, numa leitura por geração de versões -- e
+     * não uma por versão de cada regra.
+     *
+     * @param  list<int>  $ruleIds
+     * @return array<int, list<array{id: int, version: int, created_by: int|null}>>
+     */
+    public function chainsOf(array $ruleIds): array
+    {
+        $rules = [];
+        $pending = array_values(array_unique(array_map('intval', $ruleIds)));
+
+        while ($pending !== []) {
+            $next = [];
+
+            foreach (MeasurementFinancialRule::query()->whereKey($pending)->get(['id', 'version', 'created_by', 'supersedes_id']) as $rule) {
+                $rules[(int) $rule->id] = $rule;
+
+                if ($rule->supersedes_id !== null) {
+                    $next[] = (int) $rule->supersedes_id;
+                }
+            }
+
+            $pending = array_values(array_diff(array_unique($next), array_keys($rules)));
+        }
+
+        $chains = [];
+
+        foreach ($ruleIds as $ruleId) {
+            $chain = [];
+            $currentId = (int) $ruleId;
+
+            while (isset($rules[$currentId]) && ! in_array($currentId, array_column($chain, 'id'), true)) {
+                $rule = $rules[$currentId];
+                $chain[] = [
+                    'id' => (int) $rule->id,
+                    'version' => (int) $rule->version,
+                    'created_by' => $rule->created_by === null ? null : (int) $rule->created_by,
+                ];
+                $currentId = (int) $rule->supersedes_id;
+            }
+
+            $chains[(int) $ruleId] = $chain;
+        }
+
+        return $chains;
     }
 
     private function authorize(User $actor): void

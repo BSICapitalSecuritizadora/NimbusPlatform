@@ -79,7 +79,8 @@ it('creates R1 of a finalized measurement as a draft that inherits the frozen co
         ->and($revision->status)->toBe('pending')
         ->and($revision->current_stage)->toBe(0)
         ->and($revision->revision_reason)->toBe('Percentual de maio digitado errado.')
-        ->and($revision->revision_created_by)->toBe($scenario['actor']->id)
+        // Fase 4B-1: as revisões do cenário são criadas pelo Finalizador.
+        ->and($revision->revision_created_by)->toBe($scenario['finalizer']->id)
         ->and($revision->reference_month->toDateString())->toBe($may->reference_month->toDateString())
         ->and($revision->reviews()->exists())->toBeFalse()
         ->and($inherited->inherited_from_asset_id)->toBe($originalAsset->id)
@@ -255,7 +256,9 @@ it('closes a pending revision rejected by Engineering and keeps the effective re
         ->and($scenario['lines']['2026-05']->fresh()->measurement_id)->toBe($may->id)
         ->and(revisionEvents($revision))->toContain('measurement_revision_rejected');
 
-    Notification::assertSentTo($scenario['actor'], MeasurementWorkflowNotification::class, fn (MeasurementWorkflowNotification $notification): bool => $notification->event === 'revision_rejected');
+    // Fase 4B-1: quem criou e enviou a revisão do cenário é o Finalizador, e é
+    // ele quem recebe o aviso da recusa.
+    Notification::assertSentTo($scenario['finalizer'], MeasurementWorkflowNotification::class, fn (MeasurementWorkflowNotification $notification): bool => $notification->event === 'revision_rejected');
 
     // A família aceita uma nova revisão, com o número seguinte.
     expect(Scenario::revise($scenario, $may)->revisionNumber())->toBe(2);

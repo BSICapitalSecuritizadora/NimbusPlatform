@@ -36,6 +36,9 @@ enum AccessPermission: string
     case FundsDelete = 'funds.delete';
     case ContaAzulImportsView = 'conta-azul-imports.view';
     case ContaAzulImportsManage = 'conta-azul-imports.manage';
+    case ContaAzulImportsAttribute = 'conta-azul-imports.attribute';
+    case ContaAzulImportsCorrect = 'conta-azul-imports.correct';
+    case ContaAzulImportsRecover = 'conta-azul-imports.recover';
     case FundAllocationsView = 'fund-allocations.view';
     case FundAllocationsCreate = 'fund-allocations.create';
     case FundAllocationsSubmit = 'fund-allocations.submit';
@@ -308,6 +311,9 @@ enum AccessPermission: string
             self::FundsDelete => 'Fundos: excluir',
             self::ContaAzulImportsView => 'Importações Conta Azul: visualizar títulos importados',
             self::ContaAzulImportsManage => 'Importações Conta Azul: executar importações',
+            self::ContaAzulImportsAttribute => 'Importações Conta Azul: atribuir títulos a emissões',
+            self::ContaAzulImportsCorrect => 'Importações Conta Azul: corrigir atribuições',
+            self::ContaAzulImportsRecover => 'Importações Conta Azul: recuperar importações interrompidas',
             self::FundAllocationsView => 'Alocações: visualizar',
             self::FundAllocationsCreate => 'Alocações: criar rascunhos',
             self::FundAllocationsSubmit => 'Alocações: enviar para análise',

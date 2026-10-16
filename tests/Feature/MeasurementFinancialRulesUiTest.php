@@ -7,6 +7,7 @@ use App\Filament\Resources\Measurements\Pages\ViewMeasurement;
 use App\Models\Emission;
 use App\Models\MeasurementFinancialRule;
 use App\Models\User;
+use App\Services\MeasurementPaymentFinancialService;
 use App\Services\MeasurementWorkflow;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Testing\TestAction;
@@ -66,7 +67,8 @@ function financialRulesPaymentUiScenario(): array
 {
     $scenario = Scenario::open();
     $workflow = app(MeasurementWorkflow::class);
-    $workflow->returnToStage($scenario['measurement'], $scenario['actor'], 4, 'Complemento para conferência financeira.');
+    // Fase 4B-1: a devolução da Finalização é do Finalizador, que não é o ator.
+    $workflow->returnToStage($scenario['measurement'], $scenario['finalizer'], 4, 'Complemento para conferência financeira.');
     $scenario['measurement']->refresh();
     test()->actingAs($scenario['actor']);
 
@@ -75,49 +77,63 @@ function financialRulesPaymentUiScenario(): array
 
 it('shows financial validation on the correct payment row and preserves the submitted explanation', function () {
     // A divergência de um valor devido, como exceção sem regra cadastrada: o
-    // pagamento passa R$ 100,00 do esperado (R$ 100.000,00). Sem nada devido,
-    // o complemento só passaria coberto por regra.
+    // pagamento fica R$ 100,00 abaixo do esperado (R$ 100.000,00). Acima do
+    // saldo, o excedente só passaria coberto por regra.
     $revisionScenario = MeasurementRevisionScenario::plan();
     $measurement = MeasurementRevisionScenario::awaitingPayment($revisionScenario, '2026-05', 10);
     test()->actingAs($revisionScenario['actor']);
+
+    // Fase 4B-1: a justificativa sozinha não autoriza o excedente sobre o saldo a pagar.
+    $excess = Livewire::test(ViewMeasurement::class, ['record' => $measurement->id])
+        ->callAction('registerPayment', data: ['pay_date' => '2026-05-20', 'payments' => [[
+            'plan_set_id' => $revisionScenario['planSet']->id, 'amount' => '100.100,00',
+            'financial_justification' => 'Complemento contratual a conferir.',
+        ]]])
+        ->assertHasActionErrors(['payments.0.amount']);
+    expect($excess->errors()->first('mountedActions.0.data.payments.0.amount'))
+        ->toStartWith(MeasurementPaymentFinancialService::EXCESS_WITHOUT_RULE_REFUSAL)
+        ->and($measurement->payments()->count())->toBe(0);
+
     $data = ['pay_date' => '2026-05-20', 'payments' => [[
-        'plan_set_id' => $revisionScenario['planSet']->id, 'amount' => '100.100,00',
+        'plan_set_id' => $revisionScenario['planSet']->id, 'amount' => '99.900,00',
     ]]];
     Livewire::test(ViewMeasurement::class, ['record' => $measurement->id])
         ->callAction('registerPayment', data: $data)
         ->assertHasActionErrors(['payments.0.financial_justification']);
     expect($measurement->payments()->count())->toBe(0);
 
-    $data['payments'][0]['financial_justification'] = 'Complemento contratual a conferir.';
+    $data['payments'][0]['financial_justification'] = 'Retenção contratual a conferir.';
     Livewire::test(ViewMeasurement::class, ['record' => $measurement->id])
         ->callAction('registerPayment', data: $data)->assertHasNoActionErrors();
     $payment = $measurement->payments()->latest('id')->first();
     expect($payment->financial_assessment['requires_acceptance'])->toBeTrue()
         ->and($payment->financial_assessment['rule'])->toBeNull()
-        ->and($payment->financial_assessment['justification'])->toBe('Complemento contratual a conferir.');
+        ->and($payment->financial_assessment['justification'])->toBe('Retenção contratual a conferir.');
 });
 
 it('requires unchecked financial acceptance in the finalization action', function () {
     // A exceção sem regra cadastrada é a divergência de um valor devido: o
-    // pagamento passa R$ 100,00 do esperado (R$ 100.000,00). Sem nada devido,
-    // o complemento só passaria coberto por regra.
+    // pagamento fica R$ 100,00 abaixo do esperado (R$ 100.000,00). Acima do
+    // saldo, desde a Fase 4B-1, só passaria coberto por regra.
     $revisionScenario = MeasurementRevisionScenario::plan();
     $s = [
         'actor' => $revisionScenario['actor'],
+        'finalizer' => $revisionScenario['finalizer'],
         'measurement' => MeasurementRevisionScenario::awaitingPayment($revisionScenario, '2026-05', 10),
     ];
     test()->actingAs($s['actor']);
     $workflow = app(MeasurementWorkflow::class);
     $workflow->registerPayment($s['measurement'], $s['actor'], [
-        'plan_set_id' => $revisionScenario['planSet']->id, 'pay_date' => '2026-05-20', 'amount' => '100100.00',
-        'financial_justification' => 'Complemento contratual <script>alert(1)</script>',
+        'plan_set_id' => $revisionScenario['planSet']->id, 'pay_date' => '2026-05-20', 'amount' => '99900.00',
+        'financial_justification' => 'Retenção contratual <script>alert(1)</script>',
     ]);
     $workflow->approve($s['measurement']->fresh(), $s['actor']);
     foreach ($s['measurement']->payments()->get() as $payment) {
         $workflow->attachReceipt($payment, $s['actor'], Scenario::file());
-        Scenario::approveCurrentReceipt($payment, $s['actor']);
+        // Fase 4B-1: quem enviou o comprovante não o aprova; o Finalizador confere.
+        Scenario::approveCurrentReceipt($payment, $s['finalizer']);
     }
-    $page = Livewire::test(ViewMeasurement::class, ['record' => $s['measurement']->id])
+    $page = Livewire::actingAs($s['finalizer'])->test(ViewMeasurement::class, ['record' => $s['measurement']->id])
         ->assertSee('Exceção sem regra cadastrada')->assertDontSee('<script>alert(1)</script>', false)
         ->mountAction('finalize')
         ->assertSet('mountedActions.0.data.accept_financial_exceptions', false)

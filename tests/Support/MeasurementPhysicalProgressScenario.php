@@ -26,8 +26,12 @@ use Illuminate\Support\Facades\Storage;
 final class MeasurementPhysicalProgressScenario
 {
     /**
+     * O ator responde por todas as etapas, menos a Finalização: o
+     * Finalizador é outra pessoa, que confere os comprovantes que o ator envia
+     * e aceita o que ele fez -- a segregação de funções da Fase 4B-1.
+     *
      * @param  list<string>  $months  meses do cronograma ('Y-m'), na ordem das sequências
-     * @return array{actor: User, operation: Operation, planSet: MeasurementPlanSet, lines: array<string, MeasurementPlanLine>}
+     * @return array{actor: User, finalizer: User, operation: Operation, planSet: MeasurementPlanSet, lines: array<string, MeasurementPlanLine>}
      */
     public static function plan(array $months = ['2026-05', '2026-06', '2026-07'], string $initialPercent = '0.00', ?string $referenceDate = null): array
     {
@@ -35,6 +39,8 @@ final class MeasurementPhysicalProgressScenario
 
         $actor = User::factory()->withTwoFactor()->create();
         $actor->givePermissionTo(['measurements.view', 'measurements.create', 'measurements.update', 'measurements.review', 'measurements.pay', 'measurements.receipts', 'measurements.finalize']);
+        $finalizer = User::factory()->withTwoFactor()->create();
+        $finalizer->givePermissionTo(['measurements.view', 'measurements.finalize']);
 
         $operation = Operation::factory()->create([
             'status' => 'active',
@@ -44,7 +50,7 @@ final class MeasurementPhysicalProgressScenario
             'stage3_reviewer_user_id' => $actor->id,
             'payment_manager_user_id' => $actor->id,
             'payment_receipt_uploader_user_id' => $actor->id,
-            'payment_finalizer_user_id' => $actor->id,
+            'payment_finalizer_user_id' => $finalizer->id,
         ]);
 
         $planSet = MeasurementPlanSet::factory()->default()->withConstructionFund('1000000.00')->create([
@@ -73,7 +79,7 @@ final class MeasurementPhysicalProgressScenario
 
         MeasurementPlanVersionFixture::activate($planSet);
 
-        return compact('actor', 'operation', 'planSet', 'lines');
+        return compact('actor', 'finalizer', 'operation', 'planSet', 'lines');
     }
 
     /**

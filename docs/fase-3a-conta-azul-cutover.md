@@ -76,3 +76,55 @@ para a conta, restaurar o `conta_azul_account_id` dos `Fund`s a partir do
 backup pré-migração, e reprocessar o período pelo legado. O staging
 preservado (`source_payload` + `payload_fingerprint`) serve de evidência
 para o diagnóstico — nunca é apagado no rollback.
+
+---
+
+# Fase 3B — addendum: conciliação governada entregue
+
+> Status: implementado. A atribuição vive só no staging
+> (`attributed_emission_id` + `conta_azul_bill_attributions`); nenhum
+> `Expense`/`ExpenseHistory` é criado ou reescrito pela conciliação. O job
+> legado segue como único pipeline operacional. Nenhum cutover é executado
+> aqui — aguardar autorização explícita para qualquer mudança 3C.
+
+## O que a 3B resolveu (refina os pré-requisitos acima)
+
+- **Revisão e atribuição governada operantes** (pré-requisito 1, feito):
+  `Conciliação Conta Azul` e `Importações Conta Azul` sob Financeiro;
+  estados `pending` → `insufficient_information`/`ready_for_review` →
+  `attributed`; um título, uma emissão; correções só por ação governada
+  com histórico append-only (`ContaAzulBillAttributionService`).
+- **Mudança externa após atribuição:** reimportações com alteração
+  relevante (valor, fornecedor, vencimento, categoria, centro de custo,
+  estado de pagamento) levantam `needs_re_review` com motivo e valores
+  anteriores na trilha, sem mover a atribuição; metadados inócuos
+  atualizam em silêncio (`ContaAzulExternalChangePolicy`).
+- **Consciência do legado:** cada título exibe se já existe em
+  `expense_histories` ("Já registrado no fluxo legado") e divergências de
+  emissão entre staging e legado ficam explícitas para reconciliação
+  futura — insumo direto do passo 3 da sequência por conta.
+- **Recuperação de lote interrompido:** lotes `running` sem heartbeat por
+  mais de `conta-azul.stale_batch_timeout_minutes` (padrão 60) são
+  recuperáveis para `abandoned` (terminal, retomável) por ação
+  administrativa ou `conta-azul:recover-stale-batch`; lotes ativos são
+  recusados; títulos preservados; retry referencia o lote abandonado.
+- **Elegibilidade por verificação:** atribuição final exige conteúdo
+  verificado por importação `completed` (lote de conteúdo ou última
+  observação completa), salvo exceção justificada registrada na decisão.
+
+## O que permanece para a 3C (não implementado)
+
+1. Promoção staging → `Expense`/`ExpenseHistory` (pré-requisito 2):
+   inserir somente `bill_id`s ausentes no legado, com a atribuição
+   vigente como emissão; `bill_id`s já presentes nunca são duplicados
+   nem reescritos — a detecção 3B vira a guarda da promoção.
+2. Reconciliação conta a conta do período de sobreposição (passo 3),
+   consumindo o indicador de divergência legado × staging.
+3. Estratégia de coordenação aprovada para pausar o legado por conta
+   (passo 1) e habilitar o pipeline novo (passo 6), mantido o invariante
+   de um pipeline ativo por conta financeira.
+4. Decisão de retenção: a trilha `conta_azul_imports` segue descartável
+   (365 dias) com as decisões duráveis na tabela de atribuições; se a
+   governança exigir trilha de auditoria de longo prazo para as decisões,
+   promover o log antes do cutover (requer sign-off de negócio/jurídico
+   conforme `config/audit.php`).

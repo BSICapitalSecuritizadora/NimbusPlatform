@@ -861,12 +861,13 @@ it('wires exactly the Categoria SelectFilters rendered by the JS select to the s
         || str_contains($chain['chain'], '->multiple()');
     $isWired = fn (array $chain): bool => str_contains($chain['chain'], '->modifyFormFieldUsing(AnchoredFilterDropdown::modifyFormField())');
 
-    // Documentos e Biblioteca Geral renderizam o select JS e aderem; o de Despesas é `<select>`
-    // nativo, cujo popup é do navegador e nunca foi 100vw. A contagem total é o contrato para
-    // um filtro "Categoria" novo.
-    expect($chains)->toHaveCount(3)
+    // Documentos, Biblioteca Geral e Conciliação Conta Azul renderizam o select JS e
+    // aderem; o de Despesas é `<select>` nativo, cujo popup é do navegador e nunca
+    // foi 100vw. A contagem total é o contrato para um filtro "Categoria" novo.
+    expect($chains)->toHaveCount(4)
         ->and($chains->filter($rendersJsSelect)->pluck('path')->sort()->values()->all())
         ->toBe([
+            'app/Filament/Resources/ContaAzulImportedBills/Tables/ContaAzulImportedBillsTable.php',
             'app/Filament/Resources/Documents/Tables/DocumentsTable.php',
             'app/Filament/Resources/Nimbus/GeneralDocuments/Tables/GeneralDocumentsTable.php',
         ])

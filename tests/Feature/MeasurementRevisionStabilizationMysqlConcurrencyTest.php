@@ -127,11 +127,16 @@ function p31RaceCreate(Measurement $source): array
 }
 
 /**
+ * O envio do rascunho por quem o criou -- o Finalizador, nos rascunhos de
+ * {@see Scenario::revise()} --: a Compliance do ator fica independente da
+ * revisão (Fase 4B-1).
+ *
+ * @param  array<string, mixed>  $scenario
  * @return array<string, mixed>
  */
-function p31RaceSubmit(Measurement $draft): array
+function p31RaceSubmit(array $scenario, Measurement $draft): array
 {
-    return ['action' => 'submit_revision', 'measurement_id' => $draft->id];
+    return ['action' => 'submit_revision', 'actor_id' => $scenario['finalizer']->id, 'measurement_id' => $draft->id];
 }
 
 /**
@@ -152,14 +157,18 @@ function p31RaceDecision(string $action, Measurement $measurement): array
 }
 
 /**
+ * A Finalização pelo Finalizador (Fase 4B-1: o ator não finaliza o que fez).
+ *
+ * @param  array<string, mixed>  $scenario
  * @return array<string, mixed>
  */
-function p31RaceFinalize(Measurement $measurement): array
+function p31RaceFinalize(array $scenario, Measurement $measurement): array
 {
     $measurement = $measurement->fresh();
 
     return [
         'action' => 'finalize',
+        'actor_id' => $scenario['finalizer']->id,
         'measurement_id' => $measurement->id,
         'revision' => (int) $measurement->workflow_revision,
         'status' => $measurement->status,
@@ -181,11 +190,15 @@ function p31RaceReceiptUpload(MeasurementPayment $payment): array
 }
 
 /**
+ * A aprovação do comprovante pelo Finalizador: quem o enviou -- o ator -- não o
+ * aprova (Fase 4B-1).
+ *
+ * @param  array<string, mixed>  $scenario
  * @return array<string, mixed>
  */
-function p31RaceReceiptApproval(MeasurementPaymentReceiptEvidence $evidence): array
+function p31RaceReceiptApproval(array $scenario, MeasurementPaymentReceiptEvidence $evidence): array
 {
-    return ['action' => 'approve_receipt', 'evidence_id' => $evidence->id];
+    return ['action' => 'approve_receipt', 'actor_id' => $scenario['finalizer']->id, 'evidence_id' => $evidence->id];
 }
 
 /**
@@ -247,7 +260,7 @@ it('refuses the submission of a paid revision behind a receipt correction of the
     $payment = $may->payments()->sole();
     $approvedReceipt = $payment->currentReceiptEvidence;
 
-    [$upload, $submission] = p31Race($scenario, p31RaceReceiptUpload($payment), p31RaceSubmit($draft), RaceTasks::MEASUREMENTS);
+    [$upload, $submission] = p31Race($scenario, p31RaceReceiptUpload($payment), p31RaceSubmit($scenario, $draft), RaceTasks::MEASUREMENTS);
 
     expect($upload['success'])->toBeTrue(p31RaceReason($upload))
         ->and($submission['success'])->toBeFalse()
@@ -276,7 +289,8 @@ it('refuses the submission of a paid revision behind a receipt correction of the
             ->and($exception->getMessage())->toContain('O rascunho continua válido');
     });
 
-    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['actor']);
+    // Fase 4B-1: o ator enviou a correção; quem a aprova é o Finalizador.
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
 
     expect(Scenario::submit($scenario, $draft)->revisionStatus())->toBe(MeasurementRevisionStatus::UnderReview)
         ->and($may->fresh()->isFrozenByRevision())->toBeTrue();
@@ -289,7 +303,7 @@ it('refuses a receipt correction of the paid source while its revision is submit
     $payment = $may->payments()->sole();
     $filesBefore = p31RaceReceiptFiles();
 
-    [$submission, $upload] = p31Race($scenario, p31RaceSubmit($draft), p31RaceReceiptUpload($payment), RaceTasks::MEASUREMENTS);
+    [$submission, $upload] = p31Race($scenario, p31RaceSubmit($scenario, $draft), p31RaceReceiptUpload($payment), RaceTasks::MEASUREMENTS);
 
     expect($submission['success'])->toBeTrue(p31RaceReason($submission))
         ->and($upload['success'])->toBeFalse()
@@ -370,7 +384,7 @@ it('refuses the submission of a paid revision while the last receipt of the sour
         'Comprovante reemitido pelo banco.',
     );
 
-    [$submission, $approval] = p31Race($scenario, p31RaceSubmit($draft), p31RaceReceiptApproval($pending), RaceTasks::MEASUREMENTS);
+    [$submission, $approval] = p31Race($scenario, p31RaceSubmit($scenario, $draft), p31RaceReceiptApproval($scenario, $pending), RaceTasks::MEASUREMENTS);
 
     expect($submission['success'])->toBeFalse()
         ->and($submission['exception'])->toBe(MeasurementWorkflowException::class)
@@ -399,7 +413,7 @@ it('refuses the submission of a paid revision that waited behind the approval of
         'Comprovante reemitido pelo banco.',
     );
 
-    [$approval, $submission] = p31Race($scenario, p31RaceReceiptApproval($pending), p31RaceSubmit($draft), RaceTasks::MEASUREMENTS);
+    [$approval, $submission] = p31Race($scenario, p31RaceReceiptApproval($scenario, $pending), p31RaceSubmit($scenario, $draft), RaceTasks::MEASUREMENTS);
 
     expect($approval['success'])->toBeTrue(p31RaceReason($approval))
         ->and($submission['success'])->toBeFalse()
@@ -421,7 +435,7 @@ it('submits the revision of a paid source finalized while the submission waited,
     $may = Scenario::paidAwaitingFinalization($scenario, '2026-05', 10);
     $draft = Scenario::revise($scenario, $may);
 
-    [$finalization, $submission] = p31Race($scenario, p31RaceFinalize($may), p31RaceSubmit($draft), RaceTasks::OPERATIONS);
+    [$finalization, $submission] = p31Race($scenario, p31RaceFinalize($scenario, $may), p31RaceSubmit($scenario, $draft), RaceTasks::OPERATIONS);
 
     expect($finalization['success'])->toBeTrue(p31RaceReason($finalization))
         ->and($submission['success'])->toBeTrue(p31RaceReason($submission))
@@ -443,7 +457,7 @@ it('refuses to finalize the paid source once its revision was submitted first on
     $may = Scenario::paidAwaitingFinalization($scenario, '2026-05', 10);
     $draft = Scenario::revise($scenario, $may);
 
-    [$submission, $finalization] = p31Race($scenario, p31RaceSubmit($draft), p31RaceFinalize($may), RaceTasks::OPERATIONS);
+    [$submission, $finalization] = p31Race($scenario, p31RaceSubmit($scenario, $draft), p31RaceFinalize($scenario, $may), RaceTasks::OPERATIONS);
 
     expect($submission['success'])->toBeTrue(p31RaceReason($submission))
         ->and($finalization['success'])->toBeFalse()
@@ -468,7 +482,7 @@ it('finalizes the paid source after the rejection of its revision, with the susp
     $may = Scenario::paidAwaitingFinalization($scenario, '2026-05', 10);
     $revision = Scenario::submit($scenario, Scenario::revise($scenario, $may));
 
-    [$rejection, $finalization] = p31Race($scenario, p31RaceDecision('reject', $revision), p31RaceFinalize($may), RaceTasks::OPERATIONS);
+    [$rejection, $finalization] = p31Race($scenario, p31RaceDecision('reject', $revision), p31RaceFinalize($scenario, $may), RaceTasks::OPERATIONS);
 
     expect($rejection['success'])->toBeTrue(p31RaceReason($rejection))
         ->and($finalization['success'])->toBeTrue(p31RaceReason($finalization))
@@ -496,7 +510,7 @@ it('refuses to finalize the frozen paid source and lets the waiting rejection of
     $may = Scenario::paidAwaitingFinalization($scenario, '2026-05', 10);
     $revision = Scenario::submit($scenario, Scenario::revise($scenario, $may));
 
-    [$finalization, $rejection] = p31Race($scenario, p31RaceFinalize($may), p31RaceDecision('reject', $revision), RaceTasks::OPERATIONS);
+    [$finalization, $rejection] = p31Race($scenario, p31RaceFinalize($scenario, $may), p31RaceDecision('reject', $revision), RaceTasks::OPERATIONS);
 
     expect($finalization['success'])->toBeFalse()
         ->and($finalization['exception'])->toBe(MeasurementWorkflowException::class)
@@ -561,7 +575,7 @@ it('never finalizes the paid source while its revision becomes effective on MySQ
     $revision = Scenario::engineeringApproved($scenario, $may, 8);
     app(MeasurementWorkflow::class)->approve($revision->fresh(), $scenario['actor']);
     $effectiveness = p31RaceDecision('approve', $revision);
-    $finalization = p31RaceFinalize($may);
+    $finalization = p31RaceFinalize($scenario, $may);
 
     $results = $effectivenessFirst
         ? p31Race($scenario, $effectiveness, $finalization, RaceTasks::OPERATIONS)
@@ -606,9 +620,10 @@ it('keeps the measurement awaiting receipts when a receipt correction and the ap
     $receipts = app(MeasurementReceiptEvidenceService::class);
     $pending = $receipts->upload($firstPayment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file('parcela-1.pdf', '%PDF-1.7 parcela 1'));
     $receipts->upload($secondPayment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file('parcela-2.pdf', '%PDF-1.7 parcela 2'));
-    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($secondPayment, $scenario['actor']);
+    // Fase 4B-1: o ator enviou os comprovantes; quem os aprova é o Finalizador.
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($secondPayment, $scenario['finalizer']);
     $correction = p31RaceReceiptUpload($secondPayment);
-    $approval = p31RaceReceiptApproval($pending);
+    $approval = p31RaceReceiptApproval($scenario, $pending);
 
     $results = $correctionFirst
         ? p31Race($scenario, $correction, $approval, RaceTasks::MEASUREMENTS)

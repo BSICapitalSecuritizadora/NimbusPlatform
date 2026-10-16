@@ -8,6 +8,7 @@ use App\DTOs\Measurements\MeasurementRevisionPlanSetPosition;
 use App\Enums\MeasurementResponsibility;
 use App\Enums\MeasurementRevisionAdjustmentStatus;
 use App\Enums\MeasurementRevisionStatus;
+use App\Exceptions\MeasurementSegregationException;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Models\Construction;
 use App\Models\Measurement;
@@ -507,6 +508,12 @@ class MeasurementWorkflow
      * da medição original sem desembolso -- sem pagamento registrado, com nada
      * devido e com a justificativa em `$notes` ({@see self::ensureDisbursementDecision()}).
      *
+     * `$overrideReason` é o motivo exigido de quem aprova só pelo override
+     * administrativo ({@see MeasurementSegregationService::overrideReason()}).
+     * A aprovação da Compliance de uma revisão é de quem não a criou nem a
+     * enviou, qualquer que seja a origem da autoridade
+     * ({@see MeasurementSegregationService::assertRevisionComplianceIsIndependent()}).
+     *
      * @param  array<int|string, mixed>  $engineeringProgress
      */
     public function approve(
@@ -517,6 +524,7 @@ class MeasurementWorkflow
         ?int $expectedStage = null,
         ?int $expectedRevision = null,
         bool $withoutDisbursement = false,
+        ?string $overrideReason = null,
     ): void {
         $expectedStage ??= $this->unifiedStage($measurement);
         $expectedRevision ??= (int) $measurement->workflow_revision;
@@ -528,7 +536,7 @@ class MeasurementWorkflow
             ? $this->revisions()->verifyPaidSourceEvidenceBeforeEffectiveness($measurement)
             : null;
 
-        $result = DB::transaction(function () use ($measurement, $actor, $expectedStage, $expectedRevision, $notes, $engineeringProgress, $verifiedSourceWorkflowRevision, $withoutDisbursement): array {
+        $result = DB::transaction(function () use ($measurement, $actor, $expectedStage, $expectedRevision, $notes, $engineeringProgress, $verifiedSourceWorkflowRevision, $withoutDisbursement, $overrideReason): array {
             // A revisão trava a Operation e a família inteira (a vigente que ela
             // vai substituir inclusive) na Engenharia e na Compliance: a
             // Engenharia confere a ocupação da linha pela vigente e o teto sem
@@ -556,6 +564,15 @@ class MeasurementWorkflow
             if ($withoutDisbursement && $stage !== self::STAGE_PAYMENT) {
                 throw $this->invalidState($locked, 'A conclusão sem desembolso é uma decisão da etapa Pagamento.');
             }
+
+            $segregation = app(MeasurementSegregationService::class);
+            $authorization = $this->authorization->resolveAuthorization($actor, $locked, $stage);
+            // Quem criou ou enviou a revisão não a aprova na Compliance -- nem
+            // por delegação de quem a fez, nem pelo override administrativo.
+            $revisionSegregation = $stage === 3 && $locked->isRevision()
+                ? $segregation->assertRevisionComplianceIsIndependent($locked, $actor, $authorization)
+                : null;
+            $overrideReason = $segregation->overrideReason($authorization, $overrideReason);
 
             if ($stage === self::STAGE_ENGINEERING) {
                 $engineeringSnapshot = $this->engineering->validateAndRecord($locked, $engineeringProgress);
@@ -655,6 +672,8 @@ class MeasurementWorkflow
                 'notes' => $notes,
                 'responsibility' => $this->authorization->responsibilityForStage($stage),
                 'expected_responsible_user_id' => $locked->operation->stageResponsibleId($stage),
+                ...($overrideReason === null ? [] : ['admin_override_reason' => $overrideReason]),
+                ...($revisionSegregation === null ? [] : ['segregation' => $revisionSegregation]),
             ];
 
             if ($stage === self::STAGE_PAYMENT) {
@@ -854,6 +873,7 @@ class MeasurementWorkflow
                 'notes' => $notes,
                 'responsibility' => $this->authorization->responsibilityForStage($stage),
                 'expected_responsible_user_id' => $locked->operation->stageResponsibleId($stage),
+                ...$this->overrideReasonFromNote($locked, $actor, $stage, $notes),
             ]);
 
             $resumedSource = null;
@@ -989,6 +1009,7 @@ class MeasurementWorkflow
                 'notes' => $reason,
                 'responsibility' => 'payment_finalizer_user_id',
                 'expected_responsible_user_id' => $locked->operation->payment_finalizer_user_id,
+                ...$this->overrideReasonFromNote($locked, $actor, MeasurementResponsibility::Finalizer, $reason),
             ]);
 
             return $locked;
@@ -1057,6 +1078,7 @@ class MeasurementWorkflow
                 'notes' => $reason,
                 'responsibility' => $this->authorization->responsibilityForStage($stage),
                 'expected_responsible_user_id' => $locked->operation->stageResponsibleId($stage),
+                ...$this->overrideReasonFromNote($locked, $actor, $stage, $reason),
             ]);
 
             return $locked;
@@ -1071,6 +1093,7 @@ class MeasurementWorkflow
         ?int $expectedStage = null,
         ?int $expectedRevision = null,
         ?int $expectedPauseId = null,
+        ?string $overrideReason = null,
     ): void {
         $expectedStage ??= $this->unifiedStage($measurement);
         $expectedRevision ??= (int) $measurement->workflow_revision;
@@ -1079,7 +1102,7 @@ class MeasurementWorkflow
             ->latest('paused_at')
             ->value('id');
 
-        $locked = DB::transaction(function () use ($measurement, $actor, $expectedStage, $expectedRevision, $expectedPauseId): Measurement {
+        $locked = DB::transaction(function () use ($measurement, $actor, $expectedStage, $expectedRevision, $expectedPauseId, $overrideReason): Measurement {
             $locked = $this->lockMeasurement($measurement);
             $this->assertExpectedState($locked, $expectedRevision, $expectedStage, 'paused');
             $this->assertNotFrozenByRevision($locked);
@@ -1095,6 +1118,11 @@ class MeasurementWorkflow
             if (! $this->authorization->canPauseStage($actor, $locked, $stage)) {
                 throw new AuthorizationException('Você não pode retomar esta etapa da medição.');
             }
+
+            $overrideReason = app(MeasurementSegregationService::class)->overrideReason(
+                $this->authorization->resolveAuthorization($actor, $locked, $stage),
+                $overrideReason,
+            );
 
             $review = $locked->reviews()->where('stage', $stage)->lockForUpdate()->first();
 
@@ -1130,6 +1158,7 @@ class MeasurementWorkflow
                 'to_status' => $restoreStatus,
                 'responsibility' => $this->authorization->responsibilityForStage($stage),
                 'expected_responsible_user_id' => $locked->operation->stageResponsibleId($stage),
+                ...($overrideReason === null ? [] : ['admin_override_reason' => $overrideReason]),
             ]);
 
             return $locked;
@@ -1146,8 +1175,9 @@ class MeasurementWorkflow
         User $actor,
         array $data,
         ?int $expectedRevision = null,
+        ?string $overrideReason = null,
     ): MeasurementPayment {
-        return $this->registerPayments($measurement, $actor, [$data], $expectedRevision)->firstOrFail();
+        return $this->registerPayments($measurement, $actor, [$data], $expectedRevision, $overrideReason)->firstOrFail();
     }
 
     /**
@@ -1162,6 +1192,10 @@ class MeasurementWorkflow
      * encerramento da operação (Operation, depois as medições) e o envio de
      * medição (Operation, depois os arquivos que referenciam os planos).
      *
+     * O pagamento acima do saldo a pagar só entra coberto por regra
+     * financeira ({@see MeasurementPaymentFinancialService::assess()}), e quem
+     * registra só pelo override administrativo informa o motivo.
+     *
      * @param  array<int, array{pay_date: mixed, amount: mixed, method?: ?string, notes?: ?string, plan_set_id?: ?int}>  $rows
      * @return Collection<int, MeasurementPayment>
      */
@@ -1170,10 +1204,11 @@ class MeasurementWorkflow
         User $actor,
         array $rows,
         ?int $expectedRevision = null,
+        ?string $overrideReason = null,
     ): Collection {
         $expectedRevision ??= (int) $measurement->workflow_revision;
 
-        $created = DB::transaction(function () use ($measurement, $actor, $expectedRevision, $rows): Collection {
+        $created = DB::transaction(function () use ($measurement, $actor, $expectedRevision, $rows, $overrideReason): Collection {
             $locked = $this->lockMeasurementWithOperation($measurement);
 
             $this->assertExpectedState($locked, $expectedRevision, self::STAGE_PAYMENT, 'awaiting_payment');
@@ -1186,6 +1221,11 @@ class MeasurementWorkflow
                     'Pagamentos só podem ser registrados enquanto a etapa Pagamento está pendente.',
                 );
             }
+
+            $overrideReason = app(MeasurementSegregationService::class)->overrideReason(
+                $this->authorization->resolveAuthorization($actor, $locked, MeasurementResponsibility::PaymentManager),
+                $overrideReason,
+            );
 
             $this->ensureEngineeringSnapshotTopLevelIsIntact($locked);
 
@@ -1287,11 +1327,11 @@ class MeasurementWorkflow
                 // descontado do que a família pagou antes e das linhas anteriores
                 // deste mesmo registro: o que já foi pago não se paga de novo.
                 $this->revisions()->assertRevisionPaymentFits($locked, $row, $index);
-                // Na original, o empreendimento sem nada devido só recebe
-                // pagamento coberto por regra financeira.
+                // Na original, nenhum pagamento sem Fundo de Obra, e o que passa
+                // do saldo a pagar só com regra financeira que o cubra.
                 app(MeasurementPaymentFinancialService::class)->assertOriginalPaymentFits($locked, $row, $index);
                 try {
-                    $assessment = app(MeasurementPaymentFinancialService::class)->assess($locked, $row);
+                    $assessment = app(MeasurementPaymentFinancialService::class)->assess($locked, $row, $actor);
                 } catch (ValidationException $exception) {
                     throw ValidationException::withMessages(collect($exception->errors())
                         ->mapWithKeys(fn (array $messages, string $field): array => ["payments.{$index}.{$field}" => $messages])->all());
@@ -1314,10 +1354,13 @@ class MeasurementWorkflow
                 'stage' => self::STAGE_PAYMENT,
                 'from_status' => $locked->status,
                 'to_status' => $locked->status,
-                'amount' => $payments->sum(fn (MeasurementPayment $payment): float => (float) $payment->amount),
+                // Soma em decimal, sem float: valores de 16 dígitos perdem os
+                // centavos num float.
+                'amount' => $payments->reduce(fn (string $total, MeasurementPayment $payment): string => bcadd($total, (string) $payment->amount, 2), '0.00'),
                 'payment_ids' => $payments->pluck('id')->all(),
                 'responsibility' => 'payment_manager_user_id',
                 'expected_responsible_user_id' => $locked->operation->payment_manager_user_id,
+                ...($overrideReason === null ? [] : ['admin_override_reason' => $overrideReason]),
             ]);
 
             $this->advanceRevision($locked);
@@ -1373,8 +1416,18 @@ class MeasurementWorkflow
         );
     }
 
-    /** @param array<string, mixed> $data */
-    public function reassessPayment(MeasurementPayment $payment, User $actor, array $data, int $expectedRevision): void
+    /**
+     * Reavalia o enquadramento de um pagamento já registrado: a regra, a
+     * justificativa e o documento de suporte. O pagamento não muda, e a
+     * reavaliação não cria autorização -- a exposição é a do registro, a regra
+     * mantida é a atual, e a escolhida precisa existir quando o pagamento foi
+     * registrado ({@see MeasurementPaymentFinancialService::assess()}). Quem
+     * reavalia vira autor do enquadramento e não aceita a exceção na
+     * Finalização.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function reassessPayment(MeasurementPayment $payment, User $actor, array $data, int $expectedRevision, ?string $overrideReason = null): void
     {
         // O id da medição vem do pagamento já carregado, fora da transação: a
         // primeira instrução dela é o lock da medição, e a fotografia
@@ -1382,22 +1435,43 @@ class MeasurementWorkflow
         // que suspende esta medição.
         $measurementId = (int) $payment->measurement_id;
 
-        DB::transaction(function () use ($measurementId, $payment, $actor, $data, $expectedRevision): void {
+        DB::transaction(function () use ($measurementId, $payment, $actor, $data, $expectedRevision, $overrideReason): void {
             $locked = $this->lockMeasurement($measurementId);
             $this->assertExpectedState($locked, $expectedRevision, self::STAGE_PAYMENT, 'awaiting_payment');
             $this->assertNotFrozenByRevision($locked);
             if (! $this->authorization->canRegisterPayment($actor, $locked)) {
                 throw new AuthorizationException;
             }
+            $overrideReason = app(MeasurementSegregationService::class)->overrideReason(
+                $this->authorization->resolveAuthorization($actor, $locked, MeasurementResponsibility::PaymentManager),
+                $overrideReason,
+            );
             $this->ensureEngineeringSnapshotTopLevelIsIntact($locked);
             $payment = $locked->payments()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
+            $previous = $payment->financial_assessment;
             $assessment = app(MeasurementPaymentFinancialService::class)->assess($locked, array_merge($data, [
                 'plan_set_id' => $payment->plan_set_id, 'amount' => $payment->amount, 'pay_date' => $payment->pay_date->toDateString(),
-            ]), $payment);
+            ]), $actor, $payment);
             $payment->update(['financial_rule_id' => $assessment['rule']['id'] ?? null, 'financial_assessment' => $assessment]);
             $this->advanceRevision($locked);
             $this->audit($locked, $actor, 'measurement_payment_reassessed', [
-                'payment_id' => $payment->id, 'assessment' => $assessment, 'responsibility' => 'payment_manager_user_id',
+                'stage' => self::STAGE_PAYMENT,
+                'payment_id' => $payment->id,
+                'assessment' => $assessment,
+                // O que a reavaliação substituiu: a correção fica distinguível
+                // de uma autorização nova.
+                'previous_assessment' => is_array($previous) ? [
+                    'schema_version' => $previous['schema_version'] ?? null,
+                    'rule_id' => $previous['rule']['id'] ?? null,
+                    'rule_version' => $previous['rule']['version'] ?? null,
+                    'requires_acceptance' => (bool) ($previous['requires_acceptance'] ?? false),
+                    'excess_amount' => $previous['excess_amount'] ?? null,
+                    'assessed_by_user_id' => $previous['assessed_by_user_id'] ?? null,
+                    'support_sha256' => $previous['support']['sha256'] ?? null,
+                ] : null,
+                'responsibility' => 'payment_manager_user_id',
+                'expected_responsible_user_id' => $locked->operation?->payment_manager_user_id,
+                ...($overrideReason === null ? [] : ['admin_override_reason' => $overrideReason]),
             ]);
         });
     }
@@ -1434,11 +1508,12 @@ class MeasurementWorkflow
         ?string $expectedStatus = null,
         bool $acceptFinancialExceptions = false,
         bool $acknowledgeNoDisbursement = false,
+        ?string $overrideReason = null,
     ): void {
         $expectedRevision ??= (int) $measurement->workflow_revision;
         $expectedStatus ??= (string) $measurement->status;
 
-        $locked = DB::transaction(function () use ($measurement, $actor, $expectedRevision, $expectedStatus, $acceptFinancialExceptions, $acknowledgeNoDisbursement): Measurement {
+        $locked = DB::transaction(function () use ($measurement, $actor, $expectedRevision, $expectedStatus, $acceptFinancialExceptions, $acknowledgeNoDisbursement, $overrideReason): Measurement {
             $locked = $this->lockMeasurementWithOperation($measurement);
 
             $this->assertExpectedState($locked, $expectedRevision, self::STAGE_FINALIZATION, $expectedStatus);
@@ -1456,6 +1531,17 @@ class MeasurementWorkflow
             // que foi tomada são conferidas antes dos comprovantes -- sem
             // pagamento não há comprovante, e a recusa certa é a da decisão.
             $noDisbursement = $this->standingNoDisbursementDecision($locked);
+
+            // Quem fez a exceção não a aceita, e quem decidiu sem desembolso não
+            // dá a ciência: a conferência é de outra pessoa, qualquer que seja a
+            // origem da autoridade de quem finaliza. Leituras comuns, sob o lock
+            // da Operation e da medição: pagamento só nasce e só é reavaliado sob
+            // o lock da medição, numa etapa que não é esta.
+            $segregation = $this->assertFinalizationIsIndependent($locked, $actor, $noDisbursement);
+            $overrideReason = app(MeasurementSegregationService::class)->overrideReason(
+                $this->authorization->resolveAuthorization($actor, $locked, MeasurementResponsibility::Finalizer),
+                $overrideReason,
+            );
 
             app(MeasurementReceiptEvidenceService::class)->ensurePaymentsApproved($locked);
 
@@ -1502,6 +1588,8 @@ class MeasurementWorkflow
                 'financial_exceptions_accepted' => $financialExceptions,
                 'unpaid_plan_sets_accepted' => $unpaidPlanSetsAccepted,
                 ...($noDisbursementAcknowledged === null ? [] : ['no_disbursement_acknowledged' => $noDisbursementAcknowledged]),
+                ...($segregation === [] ? [] : ['segregation' => $segregation]),
+                ...($overrideReason === null ? [] : ['admin_override_reason' => $overrideReason]),
                 ...($locked->isRevision() ? [
                     'revision_overpayments_accepted' => $revisionOverpaymentsAccepted,
                     'revision_positions' => array_map(
@@ -2008,7 +2096,7 @@ class MeasurementWorkflow
             throw ValidationException::withMessages([
                 'payments' => 'A etapa Pagamento não pode ser concluída sem desembolso: '.implode(' ', $amountDue->refusals()).($amountDue->isDetermined()
                     ? ' Registre o pagamento devido.'
-                    : ' Sem o valor devido determinado, a conclusão sem desembolso não é possível: corrija o Fundo de Obra na versão do plano ou o registro da Engenharia (devolvendo a medição àquela etapa).'),
+                    : ' Sem o valor devido determinado, a conclusão sem desembolso não é possível: corrija o registro da Engenharia devolvendo a medição àquela etapa. O Fundo de Obra ausente na versão do plano congelada não se corrige pelo fluxo da medição: peça ao administrador a correção do cadastro do plano.'),
             ]);
         }
 
@@ -2085,9 +2173,9 @@ class MeasurementWorkflow
             'justification' => $decision['justification'],
             'decided_by' => $decision['decided_by'],
             'decided_at' => $decision['decided_at'],
-            // A segregação de funções é decisão pendente do dono (Fase 4B): a
-            // ciência dada por quem decidiu não é recusada, mas fica explícita,
-            // com a origem da autoridade de cada um.
+            // Desde a Fase 4B-1 a ciência de quem decidiu é recusada antes
+            // ({@see self::assertFinalizationIsIndependent()}): a chave fica,
+            // sempre falsa, para quem já lê a trilha.
             'same_actor_as_decision' => $decision['decided_by'] === (int) $actor->getKey(),
             'decision_delegated' => $decision['delegated'],
             'decision_admin_override' => $decision['admin_override'],
@@ -2099,6 +2187,74 @@ class MeasurementWorkflow
                 'payment_stage_justification_reviewed' => true,
             ],
         ];
+    }
+
+    /**
+     * A Finalização é de quem não fez o que ela aceita: a exceção financeira
+     * (pagamento com divergência, empreendimento sem pagamento justificado,
+     * valor pago a maior da revisão) e a decisão sem desembolso. Devolve as
+     * conferências feitas, para a trilha protegida.
+     *
+     * @param  array{decision: array{activity_id: int, justification: string, decided_by: int|null, decided_at: string|null, delegated: bool, admin_override: bool, amount_due: array<string, mixed>}, amount_due: MeasurementAmountDue}|null  $noDisbursement
+     * @return array<string, array<string, mixed>>
+     *
+     * @throws MeasurementSegregationException
+     */
+    private function assertFinalizationIsIndependent(Measurement $measurement, User $actor, ?array $noDisbursement): array
+    {
+        $segregation = app(MeasurementSegregationService::class);
+        $authorization = $this->authorization->resolveAuthorization($actor, $measurement, MeasurementResponsibility::Finalizer);
+        $checks = [];
+
+        if ($noDisbursement !== null) {
+            $checks['no_disbursement'] = $segregation->assertNoDisbursementAcknowledgmentIsIndependent($measurement, $noDisbursement['decision'], $actor, $authorization);
+        }
+
+        // Só a exceção de fato -- excedente, ausência justificada de pagamento,
+        // valor pago a maior --; o pagamento parcial é pagamento comum.
+        if ($segregation->financialExceptionMakers($measurement) !== []) {
+            $checks['financial_exceptions'] = $segregation->assertFinancialAcceptanceIsIndependent($measurement, $actor, $authorization);
+        }
+
+        return $checks;
+    }
+
+    /**
+     * Por que esta pessoa não pode aprovar a etapa pendente agora -- para a
+     * tela desabilitar a aprovação com o motivo --, ou `null`: na Compliance
+     * de uma revisão, quem a criou ou enviou não a aprova. A aprovação
+     * confere de novo, sob o lock.
+     */
+    public function approvalBlockReason(Measurement $measurement, User $actor): ?string
+    {
+        if ($this->unifiedStage($measurement) === 3 && $measurement->isRevision()) {
+            return app(MeasurementSegregationService::class)->revisionComplianceConflict($measurement, $actor);
+        }
+
+        return null;
+    }
+
+    /**
+     * Por que esta pessoa não pode finalizar agora pela segregação de funções,
+     * ou `null` ({@see MeasurementSegregationService::finalizationConflict()}).
+     */
+    public function finalizationBlockReason(Measurement $measurement, User $actor): ?string
+    {
+        return app(MeasurementSegregationService::class)->finalizationConflict($measurement, $actor);
+    }
+
+    /**
+     * A recusa, a devolução e a pausa já exigem o motivo da própria ação:
+     * feitas só pelo override administrativo, esse motivo é também o do
+     * override, e fica na trilha com a chave de todo override.
+     *
+     * @return array{admin_override_reason?: string}
+     */
+    private function overrideReasonFromNote(Measurement $measurement, User $actor, MeasurementResponsibility|int $responsibility, string $note): array
+    {
+        return $this->authorization->resolveAuthorization($actor, $measurement, $responsibility)->isAdminOverride()
+            ? ['admin_override_reason' => $note]
+            : [];
     }
 
     private function ensureValidPaymentExists(Measurement $measurement): void

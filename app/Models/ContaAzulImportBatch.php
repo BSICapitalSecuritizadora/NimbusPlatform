@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\BankIdentifierMasker;
+use Carbon\CarbonInterface;
 use Database\Factories\ContaAzulImportBatchFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,7 +18,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * range. It is never per-Fund and never per-Emission: sharing a BankAccount
  * across Funds or Emissions does not multiply fetches.
  *
- * Lifecycle: pending → running → completed | partial | failed. Terminal
+ * Lifecycle: pending → running → completed | partial | failed, plus the
+ * Phase 3B `abandoned` terminal state for recovered stale batches. Terminal
  * states are final; a retry is a NEW batch with `retries_batch_id` pointing
  * back. `completed` additionally guarantees the page stream ended without
  * failure and records_received reached the advertised total — incomplete
@@ -41,6 +43,8 @@ class ContaAzulImportBatch extends Model
 
     public const STATUS_FAILED = 'failed';
 
+    public const STATUS_ABANDONED = 'abandoned';
+
     /**
      * @var array<string, string>
      */
@@ -50,6 +54,7 @@ class ContaAzulImportBatch extends Model
         self::STATUS_COMPLETED => 'Concluído',
         self::STATUS_PARTIAL => 'Parcial',
         self::STATUS_FAILED => 'Falhou',
+        self::STATUS_ABANDONED => 'Abandonado (recuperado)',
     ];
 
     /**
@@ -59,6 +64,7 @@ class ContaAzulImportBatch extends Model
         self::STATUS_COMPLETED,
         self::STATUS_PARTIAL,
         self::STATUS_FAILED,
+        self::STATUS_ABANDONED,
     ];
 
     /**
@@ -67,6 +73,7 @@ class ContaAzulImportBatch extends Model
     public const RETRIABLE_STATUSES = [
         self::STATUS_PARTIAL,
         self::STATUS_FAILED,
+        self::STATUS_ABANDONED,
     ];
 
     protected $fillable = [
@@ -89,6 +96,11 @@ class ContaAzulImportBatch extends Model
         'requested_by_user_id',
         'started_at',
         'finished_at',
+        'last_heartbeat_at',
+        'recovered_by_user_id',
+        'recovered_at',
+        'recovered_from_status',
+        'recovery_reason',
     ];
 
     protected $attributes = [
@@ -109,6 +121,8 @@ class ContaAzulImportBatch extends Model
             'bills_reobserved' => 'integer',
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
+            'last_heartbeat_at' => 'datetime',
+            'recovered_at' => 'datetime',
         ];
     }
 
@@ -148,6 +162,19 @@ class ContaAzulImportBatch extends Model
         return $this->hasMany(ContaAzulImportedBill::class, 'last_seen_batch_id');
     }
 
+    /**
+     * Bills whose current content this batch established.
+     */
+    public function contentBills(): HasMany
+    {
+        return $this->hasMany(ContaAzulImportedBill::class, 'content_batch_id');
+    }
+
+    public function recoveredBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'recovered_by_user_id');
+    }
+
     public function isTerminal(): bool
     {
         return in_array($this->status, self::TERMINAL_STATUSES, true);
@@ -161,6 +188,39 @@ class ContaAzulImportBatch extends Model
     public function isCompleted(): bool
     {
         return $this->status === self::STATUS_COMPLETED;
+    }
+
+    public function isAbandoned(): bool
+    {
+        return $this->status === self::STATUS_ABANDONED;
+    }
+
+    /**
+     * Most recent proof of life: heartbeat, then start, then creation.
+     */
+    public function lastActivityAt(): ?CarbonInterface
+    {
+        return $this->last_heartbeat_at ?? $this->started_at ?? $this->created_at;
+    }
+
+    /**
+     * Whether this running batch is abandoned work rather than an active
+     * import. Only `running` batches can be stale; anything else answers
+     * false regardless of age.
+     */
+    public function isStale(int $timeoutMinutes): bool
+    {
+        if ($this->status !== self::STATUS_RUNNING) {
+            return false;
+        }
+
+        $activity = $this->lastActivityAt();
+
+        if (! $activity instanceof CarbonInterface) {
+            return false;
+        }
+
+        return $activity->diffInMinutes(now()) >= $timeoutMinutes;
     }
 
     /**

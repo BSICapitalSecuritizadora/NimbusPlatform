@@ -22,6 +22,12 @@ use Throwable;
 
 class MeasurementReceiptEvidenceService
 {
+    /**
+     * O motivo da correção também vale como o motivo do override de quem
+     * envia só pelo override, e segue este limite.
+     */
+    public const CORRECTION_REASON_MAX_LENGTH = 5000;
+
     public function __construct(
         private MeasurementAuthorizationService $authorization,
         private DocumentStorageService $storage,
@@ -42,6 +48,21 @@ class MeasurementReceiptEvidenceService
             && $this->authorization->canFinalize($actor, $measurement);
     }
 
+    /**
+     * Por que esta pessoa não pode aprovar esta versão do comprovante -- ela a
+     * enviou, ou confere por delegação de quem a enviou --, ou `null`. É o que
+     * a tela usa para desabilitar a aprovação; a conferência confere de novo,
+     * sob o lock.
+     */
+    public function approvalConflict(MeasurementPaymentReceiptEvidence $evidence, Measurement $measurement, User $actor): ?string
+    {
+        return app(MeasurementSegregationService::class)->receiptApprovalConflict(
+            $evidence,
+            $actor,
+            $this->authorization->resolveAuthorization($actor, $measurement, MeasurementResponsibility::Finalizer),
+        );
+    }
+
     public function upload(
         MeasurementPayment $payment,
         User $actor,
@@ -49,8 +70,9 @@ class MeasurementReceiptEvidenceService
         ?int $expectedEvidenceId = null,
         ?string $correctionReason = null,
         ?int $expectedRevision = null,
+        ?string $overrideReason = null,
     ): MeasurementPaymentReceiptEvidence {
-        return $this->store($payment, $actor, $file, $expectedEvidenceId, $correctionReason, false, $expectedRevision);
+        return $this->store($payment, $actor, $file, $expectedEvidenceId, $correctionReason, false, $expectedRevision, $overrideReason);
     }
 
     public function correctFinalizedReceipt(
@@ -59,8 +81,9 @@ class MeasurementReceiptEvidenceService
         UploadedFile $file,
         string $correctionReason,
         ?int $expectedEvidenceId,
+        ?string $overrideReason = null,
     ): MeasurementPaymentReceiptEvidence {
-        return $this->store($payment, $actor, $file, $expectedEvidenceId, $correctionReason, true, null);
+        return $this->store($payment, $actor, $file, $expectedEvidenceId, $correctionReason, true, null, $overrideReason);
     }
 
     private function store(
@@ -71,13 +94,19 @@ class MeasurementReceiptEvidenceService
         ?string $correctionReason,
         bool $postFinalization,
         ?int $expectedRevision,
+        ?string $overrideReason = null,
     ): MeasurementPaymentReceiptEvidence {
         $stored = null;
 
         try {
-            return DB::transaction(function () use ($payment, $actor, $file, $expectedEvidenceId, $correctionReason, $postFinalization, $expectedRevision, &$stored): MeasurementPaymentReceiptEvidence {
+            return DB::transaction(function () use ($payment, $actor, $file, $expectedEvidenceId, $correctionReason, $postFinalization, $expectedRevision, $overrideReason, &$stored): MeasurementPaymentReceiptEvidence {
                 $measurement = $this->lockMeasurement((int) $payment->measurement_id);
                 $authorization = $this->authorize($measurement, $actor, MeasurementResponsibility::ReceiptUploader);
+                // Quem envia só pelo override administrativo informa o motivo --
+                // o da correção, quando há, vale como ele, com o limite dela.
+                $overrideReason = filled($overrideReason)
+                    ? app(MeasurementSegregationService::class)->overrideReason($authorization, $overrideReason)
+                    : app(MeasurementSegregationService::class)->overrideReason($authorization, $correctionReason, self::CORRECTION_REASON_MAX_LENGTH);
                 $lockedPayment = $measurement->payments()->whereKey($payment->getKey())->lockForUpdate()->firstOrFail();
                 $current = $lockedPayment->receiptEvidences()->lockForUpdate()->first();
 
@@ -103,7 +132,7 @@ class MeasurementReceiptEvidenceService
                 Validator::make(['receipt' => $file, 'correction_reason' => $reason, 'original_filename' => $file->getClientOriginalName()], [
                     'receipt' => ['required', 'file', 'extensions:'.implode(',', config('uploads.measurement_receipt.allowed_extensions', [])), 'max:'.config('uploads.measurement_receipt.max_kb', 10240)],
                     'original_filename' => ['required', 'string', 'max:255'],
-                    'correction_reason' => [$postFinalization || $current !== null ? 'required' : 'nullable', 'string', 'max:5000'],
+                    'correction_reason' => [$postFinalization || $current !== null ? 'required' : 'nullable', 'string', 'max:'.self::CORRECTION_REASON_MAX_LENGTH],
                 ])->validate();
 
                 $directory = 'measurements/receipts/'.Str::uuid();
@@ -138,10 +167,11 @@ class MeasurementReceiptEvidenceService
                 ]);
 
                 $this->updateOpenDocumentaryState($measurement);
-                $this->audit($measurement, $evidence, $actor, $authorization, 'receipt_evidence_uploaded');
+                $override = $overrideReason === null ? [] : ['admin_override_reason' => $overrideReason];
+                $this->audit($measurement, $evidence, $actor, $authorization, 'receipt_evidence_uploaded', $override);
 
                 if ($postFinalization) {
-                    $this->audit($measurement, $evidence, $actor, $authorization, 'receipt_evidence_corrected_after_finalization');
+                    $this->audit($measurement, $evidence, $actor, $authorization, 'receipt_evidence_corrected_after_finalization', $override);
                 }
 
                 return $evidence;
@@ -185,6 +215,13 @@ class MeasurementReceiptEvidenceService
         }, report: true);
     }
 
+    /**
+     * Decide a versão pendente do comprovante. Quem enviou a versão não a
+     * aprova -- nem por delegação de quem a enviou, nem pelo override
+     * administrativo ({@see MeasurementSegregationService::assertReceiptApprovalIsIndependent()});
+     * rejeitar o próprio envio continua livre. Quem confere só pelo override
+     * informa o motivo.
+     */
     public function review(
         MeasurementPaymentReceiptEvidence $evidence,
         User $actor,
@@ -192,6 +229,7 @@ class MeasurementReceiptEvidenceService
         bool $confirmed,
         ?string $notes = null,
         ?string $rejectionReason = null,
+        ?string $overrideReason = null,
     ): MeasurementPaymentReceiptEvidence {
         // A medição do comprovante é lida antes da transação: a primeira
         // instrução dela é o lock da medição, e a fotografia (REPEATABLE READ)
@@ -199,7 +237,7 @@ class MeasurementReceiptEvidenceService
         // medição. O pagamento nunca muda de medição.
         $measurementId = (int) $evidence->payment()->value('measurement_id');
 
-        return DB::transaction(function () use ($evidence, $actor, $decision, $confirmed, $notes, $rejectionReason, $measurementId): MeasurementPaymentReceiptEvidence {
+        return DB::transaction(function () use ($evidence, $actor, $decision, $confirmed, $notes, $rejectionReason, $measurementId, $overrideReason): MeasurementPaymentReceiptEvidence {
             $measurement = $this->lockMeasurement($measurementId);
             $payment = $measurement->payments()->whereKey($evidence->measurement_payment_id)->firstOrFail();
             $authorization = $this->authorize($measurement, $actor, MeasurementResponsibility::Finalizer);
@@ -213,6 +251,12 @@ class MeasurementReceiptEvidenceService
             if (! in_array($decision, [MeasurementReceiptReviewStatus::Approved, MeasurementReceiptReviewStatus::Rejected], true)) {
                 throw ValidationException::withMessages(['decision' => 'Escolha aprovar ou rejeitar o comprovante.']);
             }
+
+            $segregationService = app(MeasurementSegregationService::class);
+            $segregation = $decision === MeasurementReceiptReviewStatus::Approved
+                ? $segregationService->assertReceiptApprovalIsIndependent($measurement, $current, $actor, $authorization)
+                : null;
+            $overrideReason = $segregationService->overrideReason($authorization, $overrideReason);
 
             $reason = is_string($rejectionReason) ? trim($rejectionReason) : null;
             Validator::make(['confirmed' => $confirmed, 'notes' => $notes, 'rejection_reason' => $reason], [
@@ -234,7 +278,10 @@ class MeasurementReceiptEvidenceService
             ])->save();
 
             $this->updateOpenDocumentaryState($measurement);
-            $this->audit($measurement, $current, $actor, $authorization, $decision === MeasurementReceiptReviewStatus::Approved ? 'receipt_evidence_approved' : 'receipt_evidence_rejected');
+            $this->audit($measurement, $current, $actor, $authorization, $decision === MeasurementReceiptReviewStatus::Approved ? 'receipt_evidence_approved' : 'receipt_evidence_rejected', array_filter([
+                'segregation' => $segregation,
+                'admin_override_reason' => $overrideReason,
+            ], fn (mixed $value): bool => $value !== null));
 
             return $current;
         });
@@ -484,12 +531,22 @@ class MeasurementReceiptEvidenceService
         ])->saveQuietly();
     }
 
+    /**
+     * A trilha protegida do comprovante. Além da origem da autoridade em texto
+     * (`authorization_source`), grava os dois booleanos que a trilha do fluxo
+     * usa (`delegated`, `admin_override`), para a Auditoria mostrar e filtrar a
+     * origem também aqui, e quem enviou a versão -- o autor que a conferência
+     * não pode ser.
+     *
+     * @param  array<string, mixed>  $extra
+     */
     private function audit(
         Measurement $measurement,
         MeasurementPaymentReceiptEvidence $evidence,
         User $actor,
         ResponsibilityAuthorization $authorization,
         string $event,
+        array $extra = [],
     ): void {
         activity('measurement_evidence')
             ->performedOn($evidence)
@@ -504,16 +561,26 @@ class MeasurementReceiptEvidenceService
                 'supersedes_id' => $evidence->supersedes_id,
                 'previous_version' => $evidence->version > 1 ? $evidence->version - 1 : null,
                 'review_status' => $evidence->review_status->value,
+                'uploaded_by' => $evidence->uploaded_by === null ? null : (int) $evidence->uploaded_by,
                 'reviewer_user_id' => $evidence->reviewer_user_id,
                 'review_notes' => $evidence->review_notes,
                 'rejection_reason' => $evidence->rejection_reason,
                 'correction_reason' => $evidence->correction_reason,
                 'is_post_finalization' => $evidence->is_post_finalization,
                 'actor_id' => $actor->getKey(),
+                'actual_actor_user_id' => $actor->getKey(),
                 'authorization_source' => $authorization->source->value,
+                'delegated' => $authorization->isDelegated(),
+                'admin_override' => $authorization->isAdminOverride(),
                 'delegation_id' => $authorization->delegation?->getKey(),
                 'delegator_user_id' => $authorization->delegation?->delegator_user_id,
+                'expected_responsible_user_id' => $measurement->operation?->responsibleUserIdFor(
+                    $event === 'receipt_evidence_uploaded' || $event === 'receipt_evidence_corrected_after_finalization'
+                        ? MeasurementResponsibility::ReceiptUploader
+                        : MeasurementResponsibility::Finalizer,
+                ),
                 'timestamp' => now()->toIso8601String(),
+                ...$extra,
             ])->log($event);
     }
 }

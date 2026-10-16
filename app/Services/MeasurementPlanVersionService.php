@@ -899,12 +899,17 @@ class MeasurementPlanVersionService
             $errors['revision_reason'] = 'Justifique a revisão do plano antes de ativá-la.';
         }
 
-        if ($isRevision && $active?->construction_fund_amount !== null && $draft->construction_fund_amount === null) {
-            $errors['construction_fund_amount'] = sprintf(
-                'Informe o Fundo de Obra da revisão: a %s vigente tem %s, e a revisão não pode deixar o custo previsto em branco.',
-                $active->label(),
-                'R$ '.IntegerMoney::format((int) $active->constructionFundCents()),
-            );
+        // O Fundo de Obra da versão é a base financeira das medições que ela
+        // rege, e a versão ativa não muda mais: sem ele, a medição chegaria ao
+        // pagamento sem valor aprovado. Zero é Fundo válido; vazio, não.
+        if ($draft->construction_fund_amount === null) {
+            $errors['construction_fund_amount'] = $isRevision && $active?->construction_fund_amount !== null
+                ? sprintf(
+                    'Informe o Fundo de Obra da revisão: a %s vigente tem %s, e a revisão não pode deixar o custo previsto em branco.',
+                    $active->label(),
+                    'R$ '.IntegerMoney::format((int) $active->constructionFundCents()),
+                )
+                : 'Informe o Fundo de Obra da versão antes de ativá-la (zero é aceito): ele é a base financeira das medições deste plano, e a versão ativa não muda mais.';
         }
 
         if ($lines->isEmpty()) {

@@ -210,19 +210,34 @@ it('round-trips the staging migrations on real DDL', function () {
     $permissions = $base.'/2026_10_15_130200_seed_conta_azul_import_permissions.php';
     $batches = $base.'/2026_10_15_130000_create_conta_azul_import_batches_table.php';
     $bills = $base.'/2026_10_15_130100_create_conta_azul_imported_bills_table.php';
+    $billColumns = $base.'/2026_10_15_170612_add_phase_3b_columns_to_conta_azul_imported_bills_table.php';
+    $batchColumns = $base.'/2026_10_15_170613_add_phase_3b_columns_to_conta_azul_import_batches_table.php';
+    $attributions = $base.'/2026_10_15_170614_create_conta_azul_bill_attributions_table.php';
+    $reconPermissions = $base.'/2026_10_15_170615_seed_conta_azul_reconciliation_permissions.php';
 
-    // Down in reverse dependency order: bills reference batches, the
-    // permission seed depends on nothing.
+    // Down in real rollback order: the Phase 3B schema depends on the 3A
+    // tables (attribution history references bills), so it unwinds first —
+    // exactly as `migrate:rollback` would. Bills reference batches, the
+    // permission seeds depend on nothing.
+    (require $reconPermissions)->down();
+    (require $attributions)->down();
+    (require $billColumns)->down();
+    (require $batchColumns)->down();
     (require $bills)->down();
     (require $batches)->down();
     (require $permissions)->down();
 
     expect(Schema::hasTable('conta_azul_imported_bills'))->toBeFalse()
-        ->and(Schema::hasTable('conta_azul_import_batches'))->toBeFalse();
+        ->and(Schema::hasTable('conta_azul_import_batches'))->toBeFalse()
+        ->and(Schema::hasTable('conta_azul_bill_attributions'))->toBeFalse();
 
     (require $permissions)->up();
     (require $batches)->up();
     (require $bills)->up();
+    (require $batchColumns)->up();
+    (require $billColumns)->up();
+    (require $attributions)->up();
+    (require $reconPermissions)->up();
 
     expect(Schema::hasTable('conta_azul_import_batches'))->toBeTrue()
         ->and(Schema::hasTable('conta_azul_imported_bills'))->toBeTrue();

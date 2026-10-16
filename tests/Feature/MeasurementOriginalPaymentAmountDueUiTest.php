@@ -3,6 +3,7 @@
 use App\Filament\Resources\Measurements\Pages\ViewMeasurement;
 use App\Models\MeasurementFinancialRule;
 use App\Models\MeasurementPayment;
+use App\Services\MeasurementPaymentFinancialService;
 use App\Services\MeasurementWorkflow;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Action;
@@ -144,8 +145,15 @@ it('sends a paid original whose engineering record is not verifiable back to Eng
 it('adds what was already paid above the approved amount to the divergence a rule must cover', function () {
     $scenario = Scenario::plan();
     $measurement = Scenario::awaitingPayment($scenario, '2026-05', [10]);
+    // Fase 4B-1: o excedente já registrado só entrou com regra que o cobria.
+    $rule = MeasurementFinancialRule::factory()->create([
+        'emission_id' => $measurement->operation->emission_id,
+        'direction' => 'over',
+        'maximum_difference_amount' => '20000.00',
+    ]);
     app(MeasurementWorkflow::class)->registerPayment($measurement->fresh(), $scenario['actor'], [
         'plan_set_id' => $scenario['planSets'][0]->id, 'pay_date' => '2026-06-10', 'amount' => '120000.00',
+        'financial_rule_id' => $rule->id,
         'financial_justification' => 'Medição complementar paga junto.',
     ]);
     $this->actingAs($scenario['actor']);
@@ -198,7 +206,10 @@ it('warns about an undetermined position also on the construction without Constr
         ->and(MeasurementPayment::query()->count())->toBe(0);
 });
 
-it('says in the reassessment of an original, and only there, that a blank rule keeps the current one while it covers', function () {
+it('says in the reassessment of an original and of a revision that a blank rule keeps the current one', function () {
+    // Fase 4B-1: a reavaliação é uma só na original e na revisão -- a conta é
+    // a do registro, e em branco a regra atual é mantida.
+    $description = 'Atualize a regra, a justificativa ou o documento de suporte de um pagamento existente após uma devolução. O valor do pagamento permanece preservado, e a conta é a do registro: os pagamentos registrados depois dele não mudam o enquadramento. Sem regra escolhida, o pagamento mantém a regra atual dele; uma regra registrada depois do pagamento não o autoriza retroativamente. Quem reavalia passa a responder pelo enquadramento e não aceita a exceção na Finalização.';
     $scenario = Scenario::plan();
     $measurement = Scenario::awaitingPayment($scenario, '2026-05', [10]);
     app(MeasurementWorkflow::class)->registerPayment($measurement->fresh(), $scenario['actor'], [
@@ -207,16 +218,15 @@ it('says in the reassessment of an original, and only there, that a blank rule k
     $this->actingAs($scenario['actor']);
 
     Livewire::test(ViewMeasurement::class, ['record' => $measurement->getRouteKey()])
-        ->assertActionExists('reassessPayment', fn (Action $action): bool => $action->getModalDescription() === 'Atualize a regra e a justificativa de um pagamento existente após uma devolução. O valor do pagamento permanece preservado. Sem regra escolhida, o pagamento sem valor devido mantém a regra atual dele, enquanto ela cobrir a divergência.');
+        ->assertActionExists('reassessPayment', fn (Action $action): bool => $action->getModalDescription() === $description);
 
-    // Na revisão a regra própria vale: em branco, a regra não é mantida.
     $revisionScenario = MeasurementRevisionScenario::plan();
     $revision = MeasurementRevisionScenario::effective($revisionScenario, MeasurementRevisionScenario::finalized($revisionScenario, '2026-05', 10), 12);
     MeasurementRevisionScenario::pay($revisionScenario, $revision, '20000.00');
     $this->actingAs($revisionScenario['actor']);
 
     Livewire::test(ViewMeasurement::class, ['record' => $revision->getRouteKey()])
-        ->assertActionExists('reassessPayment', fn (Action $action): bool => $action->getModalDescription() === 'Atualize a regra e a justificativa de um pagamento existente após uma devolução. O valor do pagamento permanece preservado.');
+        ->assertActionExists('reassessPayment', fn (Action $action): bool => $action->getModalDescription() === $description);
 });
 
 it('tells in the payment modal that no payment is registered while the amount due cannot be determined', function () {
@@ -275,7 +285,7 @@ it('refuses on the amount of the zero-due construction a payment justified witho
 
     // A mensagem tem ':' -- lida do error bag, não pelo assertHasErrors.
     expect($component->errors()->get("mountedActions.0.data.payments.{$zeroDue}.amount"))
-        ->toBe(['Nada é devido para Torre A nesta medição: valor aprovado R$ 0,00, já registrado R$ 0,00, valor devido R$ 0,00. Sem valor devido, o pagamento só é registrado com uma regra financeira que o cubra; a justificativa sozinha não basta.'])
+        ->toBe([MeasurementPaymentFinancialService::EXCESS_WITHOUT_RULE_REFUSAL.' Torre A: valor aprovado R$ 0,00, já registrado R$ 0,00, saldo a pagar R$ 0,00; com este pagamento, o excedente acumulado chega a R$ 1.000,00. Acima do saldo, o pagamento só é registrado com uma regra financeira vigente que cubra o excedente acumulado; a justificativa sozinha não basta.'])
         ->and(MeasurementPayment::query()->count())->toBe(0);
 
     $component->assertActionMounted('registerPayment');

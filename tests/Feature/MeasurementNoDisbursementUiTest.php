@@ -214,8 +214,13 @@ it('concludes the Payment stage without disbursement from the modal, with the ty
         ->assertActionNotMounted()
         ->assertActionHidden('concludeWithoutDisbursement')
         ->assertActionHidden('registerPayment')
-        ->assertActionVisible('finalize')
+        // Fase 4B-1: a Finalização é do Finalizador, não de quem decidiu sem desembolso.
+        ->assertActionHidden('finalize')
         ->assertNotified('Etapa Pagamento concluída sem desembolso. A Finalização deverá confirmar ciência desta decisão.');
+
+    $this->actingAs($scenario['finalizer']);
+    Livewire::test(ViewMeasurement::class, ['record' => $measurement->getRouteKey()])
+        ->assertActionVisible('finalize');
 
     $measurement->refresh();
     $decision = p4aUiActivity($measurement, 'measurement_stage_approved', MeasurementWorkflow::STAGE_PAYMENT);
@@ -232,7 +237,7 @@ it('concludes the Payment stage without disbursement from the modal, with the ty
         ->and($decision?->properties['no_disbursement']['payments_registered'] ?? null)->toBe(0);
 
     Notification::assertSentTo(
-        $scenario['actor'],
+        $scenario['finalizer'],
         MeasurementWorkflowNotification::class,
         fn (MeasurementWorkflowNotification $notification): bool => $notification->event === 'ready_to_finalize_without_disbursement',
     );
@@ -358,7 +363,8 @@ it('ignores a forged ordinary approval of a zero-due original, whose Payment sta
 it('shows the no-disbursement decision at the Finalization and requires the acknowledgment of the absence of payment', function () {
     $scenario = Scenario::plan();
     $measurement = Scenario::concludeWithoutDisbursement($scenario, Scenario::awaitingPayment($scenario, '2026-05', [0]));
-    $this->actingAs($scenario['actor']);
+    // Fase 4B-1: a ciência é do Finalizador, não de quem decidiu sem desembolso.
+    $this->actingAs($scenario['finalizer']);
 
     $page = Livewire::test(ViewMeasurement::class, ['record' => $measurement->getRouteKey()])
         ->assertActionVisible('finalize')
@@ -393,7 +399,7 @@ it('shows the no-disbursement decision at the Finalization and requires the ackn
         ->and(app(MeasurementWorkflow::class)->noDisbursementAcknowledgment($measurement->fresh()))->toMatchArray([
             'justification' => Scenario::JUSTIFICATION,
             'payments_registered' => 0,
-            'acknowledged_by' => $scenario['actor']->id,
+            'acknowledged_by' => $scenario['finalizer']->id,
             'acknowledged' => [
                 'no_payment_due' => true,
                 'no_bank_payment_registered' => true,
@@ -405,7 +411,8 @@ it('shows the no-disbursement decision at the Finalization and requires the ackn
 it('does not ask for the acknowledgment of the absence of payment at the Finalization of a paid original', function () {
     $scenario = MeasurementRevisionScenario::plan();
     $measurement = MeasurementRevisionScenario::paidAwaitingFinalization($scenario, '2026-05', 10);
-    $this->actingAs($scenario['actor']);
+    // Fase 4B-1: a Finalização é do Finalizador do cenário, separado de quem paga.
+    $this->actingAs($scenario['finalizer']);
 
     $page = Livewire::test(ViewMeasurement::class, ['record' => $measurement->getRouteKey()])
         ->assertActionVisible('finalize')
@@ -443,6 +450,9 @@ it('keeps the ordinary approval and Finalization, without decision or acknowledg
 
     expect($revision->fresh()->status)->toBe('approved')
         ->and(p4aUiActivity($revision, 'measurement_stage_approved', MeasurementWorkflow::STAGE_PAYMENT)?->properties->has('no_disbursement'))->toBeFalse();
+
+    // Fase 4B-1: a Finalização é do Finalizador do cenário, separado de quem aprova o Pagamento.
+    $this->actingAs($scenario['finalizer']);
 
     $page = Livewire::test(ViewMeasurement::class, ['record' => $revision->getRouteKey()])
         ->assertActionVisible('finalize')

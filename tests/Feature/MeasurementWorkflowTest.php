@@ -44,10 +44,20 @@ function workflowEngineeringProgress(Measurement $measurement): array
     return $measurement->operation->planSets()->pluck('id')->mapWithKeys(fn (int $id): array => [$id => 10.0])->all();
 }
 
-function makeWorkflowMeasurement(array $operationOverrides = []): Measurement
+/**
+ * Sem `$constructionFund`, o plano nasce com o Fundo de Obra aleatório da
+ * fábrica; quem paga precisa de um valor aprovado conhecido.
+ */
+function makeWorkflowMeasurement(array $operationOverrides = [], ?string $constructionFund = null): Measurement
 {
     $operation = Operation::factory()->create($operationOverrides);
-    $planSet = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
+    $planSetFactory = MeasurementPlanSet::factory();
+
+    if ($constructionFund !== null) {
+        $planSetFactory = $planSetFactory->withConstructionFund($constructionFund);
+    }
+
+    $planSet = $planSetFactory->create(['operation_id' => $operation->id]);
     $line = MeasurementPlanLine::factory()->create([
         'plan_set_id' => $planSet->id,
         'operation_id' => $operation->id,
@@ -102,7 +112,8 @@ it('advances to the next configured stage on approval', function () {
 
     $workflow = app(MeasurementWorkflow::class);
     $workflow->startReview($measurement, $actor);
-    $workflow->approve($measurement->fresh(), $actor, engineeringProgress: workflowEngineeringProgress($measurement));
+    // Fase 4B-1: quem aprova só pelo override administrativo informa o motivo.
+    $workflow->approve($measurement->fresh(), $actor, engineeringProgress: workflowEngineeringProgress($measurement), overrideReason: 'Responsável da Engenharia ausente; aprovação pelo administrador.');
 
     $measurement->refresh();
 
@@ -124,7 +135,8 @@ it('moves to awaiting payment when the last stage is approved', function () {
 
     $workflow = app(MeasurementWorkflow::class);
     $workflow->startReview($measurement, $actor);
-    $workflow->approve($measurement->fresh(), $actor, engineeringProgress: workflowEngineeringProgress($measurement));
+    // Fase 4B-1: na Engenharia o ator age só pelo override administrativo, e informa o motivo.
+    $workflow->approve($measurement->fresh(), $actor, engineeringProgress: workflowEngineeringProgress($measurement), overrideReason: 'Responsável da Engenharia ausente; aprovação pelo administrador.');
     $workflow->approve($measurement->fresh(), $actor);
     $workflow->approve($measurement->fresh(), $actor);
 
@@ -335,8 +347,8 @@ it('targets the schedule line chosen on each development asset', function () {
 it('registers one payment per development', function () {
     $actor = workflowTestActor();
     $operation = Operation::factory()->create(['payment_manager_user_id' => $actor->id]);
-    $planA = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
-    $planB = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
+    $planA = MeasurementPlanSet::factory()->withConstructionFund('1000000.00')->create(['operation_id' => $operation->id]);
+    $planB = MeasurementPlanSet::factory()->withConstructionFund('500000.00')->create(['operation_id' => $operation->id]);
     // Só plano vigente recebe medição: o snapshot da Engenharia abaixo
     // pressupõe os dois ativados.
     MeasurementPlanVersionFixture::activate($planA, $planB);
@@ -353,10 +365,11 @@ it('registers one payment per development', function () {
             'emission_id' => $operation->emission_id,
             // Percentual e versão do plano, como a Engenharia grava: sem eles
             // o valor devido não se determina e nenhum pagamento é registrado.
-            // Sem Fundo de Obra, os pagamentos seguem sem referência financeira.
+            // Fase 4B-1: sem Fundo de Obra também não -- cada pagamento abaixo
+            // é o valor aprovado (10% do Fundo da versão).
             'plan_sets' => [
-                ['plan_set_id' => $planA->id, 'is_default' => true, 'plan_version_id' => $planA->versions()->value('id'), 'realized_monthly_percent' => '0.00'],
-                ['plan_set_id' => $planB->id, 'is_default' => false, 'plan_version_id' => $planB->versions()->value('id'), 'realized_monthly_percent' => '0.00'],
+                ['plan_set_id' => $planA->id, 'is_default' => true, 'plan_version_id' => $planA->versions()->value('id'), 'realized_monthly_percent' => '10.00', 'construction_fund_amount' => '1000000.00'],
+                ['plan_set_id' => $planB->id, 'is_default' => false, 'plan_version_id' => $planB->versions()->value('id'), 'realized_monthly_percent' => '10.00', 'construction_fund_amount' => '500000.00'],
             ],
         ],
     ]);
@@ -379,8 +392,8 @@ it('registers one payment per development', function () {
 it('ignores payment rows without an amount', function () {
     $actor = workflowTestActor();
     $operation = Operation::factory()->create(['payment_manager_user_id' => $actor->id]);
-    $planA = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
-    $planB = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
+    $planA = MeasurementPlanSet::factory()->withConstructionFund('1000000.00')->create(['operation_id' => $operation->id]);
+    $planB = MeasurementPlanSet::factory()->withConstructionFund('500000.00')->create(['operation_id' => $operation->id]);
     // Só plano vigente recebe medição: o snapshot da Engenharia abaixo
     // pressupõe os dois ativados.
     MeasurementPlanVersionFixture::activate($planA, $planB);
@@ -395,11 +408,12 @@ it('ignores payment rows without an amount', function () {
             'measurement_id' => 0,
             'operation_id' => $operation->id,
             'emission_id' => $operation->emission_id,
-            // Percentual e versão do plano, como a Engenharia grava; sem Fundo
-            // de Obra, os pagamentos seguem sem referência financeira.
+            // Percentual, versão do plano e Fundo de Obra, como a Engenharia
+            // grava (Fase 4B-1: sem Fundo, nenhum pagamento); o pagamento de A
+            // é o valor aprovado (10% do Fundo da versão).
             'plan_sets' => [
-                ['plan_set_id' => $planA->id, 'is_default' => true, 'plan_version_id' => $planA->versions()->value('id'), 'realized_monthly_percent' => '0.00'],
-                ['plan_set_id' => $planB->id, 'is_default' => false, 'plan_version_id' => $planB->versions()->value('id'), 'realized_monthly_percent' => '0.00'],
+                ['plan_set_id' => $planA->id, 'is_default' => true, 'plan_version_id' => $planA->versions()->value('id'), 'realized_monthly_percent' => '10.00', 'construction_fund_amount' => '1000000.00'],
+                ['plan_set_id' => $planB->id, 'is_default' => false, 'plan_version_id' => $planB->versions()->value('id'), 'realized_monthly_percent' => '10.00', 'construction_fund_amount' => '500000.00'],
             ],
         ],
     ]);
@@ -419,14 +433,18 @@ it('ignores payment rows without an amount', function () {
 
 it('registers a payment then attaches a receipt and finalizes', function () {
     $actor = workflowTestActor();
+    // Fase 4B-1: quem envia o comprovante não o aprova -- a Finalização é de outra pessoa.
+    $finalizer = workflowTestActor();
+    // Fase 4B-1: acima do saldo a pagar só com regra financeira. Com o Fundo
+    // fixo, os 10% aprovados somam R$ 200.000,00 e o pagamento segue parcial.
     $measurement = makeWorkflowMeasurement([
         'responsible_user_id' => $actor->id,
         'stage2_reviewer_user_id' => $actor->id,
         'stage3_reviewer_user_id' => $actor->id,
         'payment_manager_user_id' => $actor->id,
         'payment_receipt_uploader_user_id' => $actor->id,
-        'payment_finalizer_user_id' => $actor->id,
-    ]);
+        'payment_finalizer_user_id' => $finalizer->id,
+    ], constructionFund: '2000000.00');
 
     $workflow = app(MeasurementWorkflow::class);
     $workflow->startReview($measurement, $actor);
@@ -447,13 +465,13 @@ it('registers a payment then attaches a receipt and finalizes', function () {
 
     $workflow->approve($measurement->fresh(), $actor);
     $workflow->attachReceipt($payment, $actor, MeasurementReceiptEvidenceScenario::file());
-    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $actor);
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $finalizer);
     expect($payment->fresh()->hasReceipt())->toBeTrue();
 
-    $workflow->finalize($measurement->fresh(), $actor, acceptFinancialExceptions: true);
+    $workflow->finalize($measurement->fresh(), $finalizer, acceptFinancialExceptions: true);
     $measurement->refresh();
 
     expect($measurement->status)->toBe('finalized')
-        ->and($measurement->analyzed_by)->toBe($actor->id)
+        ->and($measurement->analyzed_by)->toBe($finalizer->id)
         ->and($measurement->analyzed_at)->not->toBeNull();
 });

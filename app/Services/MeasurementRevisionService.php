@@ -5,10 +5,12 @@ namespace App\Services;
 use App\DTOs\Measurements\MeasurementPhysicalProgress;
 use App\DTOs\Measurements\MeasurementRevisionPlanSetPosition;
 use App\Enums\MeasurementReceiptReviewStatus;
+use App\Enums\MeasurementReconciliationStatus;
 use App\Enums\MeasurementResponsibility;
 use App\Enums\MeasurementRevisionAdjustmentStatus;
 use App\Enums\MeasurementRevisionDifferenceType;
 use App\Enums\MeasurementRevisionStatus;
+use App\Exceptions\MeasurementSegregationException;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Filament\Resources\Measurements\MeasurementResource;
 use App\Models\Measurement;
@@ -82,6 +84,19 @@ class MeasurementRevisionService
     public const PAID_RECEIPTS_PENDING_REFUSAL = 'Há comprovante de pagamento ausente, em conferência ou rejeitado nesta medição. Conclua a conferência documental (situação "Documentação financeira completa") antes de revisá-la: a revisão preserva os pagamentos como histórico, e eles precisam estar comprovados.';
 
     public const PAUSED_REFUSAL = 'A medição está pausada: retome a etapa antes de revisá-la.';
+
+    /**
+     * A medição paga com pagamento acima do saldo a pagar (exceção financeira)
+     * só é revisada depois de finalizada: o aceite da exceção é da
+     * Finalização dela, por um responsável independente.
+     */
+    public const PAID_EXCEPTION_UNACCEPTED_REFUSAL = 'Esta medição tem pagamento acima do saldo autorizado (pagamento #%s), uma exceção financeira que só é aceita na Finalização, por um responsável diferente de quem a fez. Finalize a medição primeiro e então crie a revisão: substituída antes, a exceção ficaria sem esse aceite.';
+
+    /**
+     * O excedente registrado sem regra antes da Fase 4B-1 nem é aceito na
+     * Finalização: o caminho é reavaliá-lo na etapa Pagamento.
+     */
+    public const PAID_LEGACY_EXCESS_REFUSAL = 'Esta medição tem pagamento acima do saldo autorizado sem regra financeira (pagamento #%s, registro anterior à exigência da regra): ele não é aceito na Finalização nem passa para uma revisão. Devolva a medição à etapa Pagamento e reavalie o enquadramento com uma regra financeira que já existia quando o pagamento foi registrado; sem ela, a medição precisa ser corrigida pelo procedimento de dados.';
 
     /**
      * Argumento: a etapa em que a medição paga está de novo em análise.
@@ -264,6 +279,9 @@ class MeasurementRevisionService
                 'source_status' => $effective->status,
                 'source_eligibility' => $this->eligibilityCase($effective),
                 'source_payments' => $this->paymentSummary($effective),
+                // O super-admin que revisa sem participar da operação age pelo
+                // override: o motivo da revisão é o motivo dele.
+                ...($this->reviseAuthorization($actor, $operation)->isAdminOverride() ? ['admin_override_reason' => $reason] : []),
             ], $this->reviseAuthorization($actor, $operation), $effective);
 
             return $revision;
@@ -278,13 +296,13 @@ class MeasurementRevisionService
      * ficado velho: a vigente recebeu pagamento ou andou) e que os arquivos
      * são exatamente os herdados.
      */
-    public function submit(Measurement $draft, User $actor, ?int $expectedWorkflowRevision = null): void
+    public function submit(Measurement $draft, User $actor, ?int $expectedWorkflowRevision = null, ?string $overrideReason = null): void
     {
         $verifiedSourceWorkflowRevision = $draft->previous_revision_id === null
             ? null
             : $this->verifyPaidSourceEvidence((int) $draft->previous_revision_id);
 
-        DB::transaction(function () use ($draft, $actor, $expectedWorkflowRevision, $verifiedSourceWorkflowRevision): void {
+        DB::transaction(function () use ($draft, $actor, $expectedWorkflowRevision, $verifiedSourceWorkflowRevision, $overrideReason): void {
             ['operation' => $operation, 'members' => $members] = $this->lockFamilyWithOperation($draft);
             $locked = $this->member($members, $draft);
 
@@ -330,6 +348,12 @@ class MeasurementRevisionService
 
             $this->inheritedAssetPairs($locked);
 
+            // Quem cria ou envia a revisão não a aprova na Compliance: sem outro
+            // aprovador possível, ela ficaria em análise para sempre, com a
+            // vigente suspensa. Leitura comum, sob o lock da Operation.
+            $this->assertIndependentComplianceApprover($locked, $operation, $actor);
+            $overrideReason = app(MeasurementSegregationService::class)->overrideReason($this->reviseAuthorization($actor, $operation), $overrideReason);
+
             // "Enviada por" é quem envia a revisão à análise; quem a criou fica em
             // `revision_created_by`.
             $locked->forceFill([
@@ -359,6 +383,7 @@ class MeasurementRevisionService
                 'suspended_source_stage' => $sourceStage,
                 'source_eligibility' => $sourceEligibility,
                 'source_payments' => $sourcePayments,
+                ...($overrideReason === null ? [] : ['admin_override_reason' => $overrideReason]),
             ], $authorization, $previous);
 
             // A trilha da própria anterior registra a suspensão, como registra a
@@ -377,6 +402,70 @@ class MeasurementRevisionService
                 ], $authorization, $locked);
             }
         });
+    }
+
+    /**
+     * Quem cria, envia ou cancela esta revisão o faz só pelo override
+     * administrativo (o super-admin fora da operação)? É o que mostra o campo
+     * de motivo do envio.
+     */
+    public function actsByAdminOverride(Measurement $revision, User $actor): bool
+    {
+        return $revision->operation instanceof Operation
+            && $this->reviseAuthorization($actor, $revision->operation)->isAdminOverride();
+    }
+
+    /**
+     * Por que esta pessoa não pode enviar o rascunho agora por falta de um
+     * aprovador independente na Compliance, ou `null` -- para a tela
+     * desabilitar o envio com o motivo. O envio confere de novo, sob o lock.
+     */
+    public function submissionBlockReason(Measurement $draft, User $actor): ?string
+    {
+        $operation = $draft->operation;
+
+        if (! $draft->isDraftRevision() || ! $operation instanceof Operation) {
+            return null;
+        }
+
+        return app(MeasurementSegregationService::class)->independentComplianceApproverExists($operation, $this->revisionMakerIds($draft, $actor))
+            ? null
+            : MeasurementSegregationService::NO_INDEPENDENT_COMPLIANCE_APPROVER;
+    }
+
+    /**
+     * @throws MeasurementSegregationException
+     */
+    private function assertIndependentComplianceApprover(Measurement $draft, Operation $operation, User $submitter): void
+    {
+        $makerIds = $this->revisionMakerIds($draft, $submitter);
+
+        if (! app(MeasurementSegregationService::class)->independentComplianceApproverExists($operation, $makerIds)) {
+            throw new MeasurementSegregationException(MeasurementSegregationService::NO_INDEPENDENT_COMPLIANCE_APPROVER, [
+                'control' => MeasurementSegregationService::CONTROL_REVISION,
+                'measurement_id' => $draft->getKey(),
+                'maker_user_ids' => $makerIds,
+            ]);
+        }
+    }
+
+    /**
+     * Quem criou a revisão, quem alterou o conteúdo dela e quem a envia agora.
+     *
+     * @return list<int>
+     */
+    private function revisionMakerIds(Measurement $draft, User $submitter): array
+    {
+        $createdBy = Measurement::query()->whereKey($draft->getKey())->value('revision_created_by');
+
+        return array_values(array_unique(array_filter(
+            [
+                $createdBy === null ? null : (int) $createdBy,
+                (int) $submitter->getKey(),
+                ...app(MeasurementSegregationService::class)->revisionContentEditorIds($draft),
+            ],
+            fn (?int $id): bool => $id !== null,
+        )));
     }
 
     /**
@@ -415,6 +504,7 @@ class MeasurementRevisionService
                 'revision_status_from' => MeasurementRevisionStatus::Draft->value,
                 'revision_status_to' => MeasurementRevisionStatus::Cancelled->value,
                 'reason' => $reason,
+                ...($this->reviseAuthorization($actor, $operation)->isAdminOverride() ? ['admin_override_reason' => $reason] : []),
             ], $this->reviseAuthorization($actor, $operation), $members->firstWhere('id', $locked->previous_revision_id));
         });
     }
@@ -1070,16 +1160,16 @@ class MeasurementRevisionService
     }
 
     /**
-     * Confere uma linha de pagamento da revisão antes de registrá-la: nada a
-     * pagar onde o saldo não é positivo, nenhum pagamento enquanto a família
-     * tiver valor pago a maior em aberto (reconhecido ou não), nenhum
-     * pagamento sem referência financeira quando a família já pagou -- não há
-     * como conciliar --, e o pagamento complementar (a família já pagou o
-     * empreendimento antes) nunca passa do saldo a pagar, nem com regra
-     * financeira. Sem pagamento anterior, o pagamento é o da competência:
-     * acima do saldo, só dentro de uma regra financeira que cubra a
-     * divergência. (Na medição original, a regra é exigida só quando nada é
-     * devido: {@see MeasurementPaymentFinancialService::assertOriginalPaymentFits()}.)
+     * Confere uma linha de pagamento da revisão antes de registrá-la: nenhum
+     * pagamento sem referência financeira (sem Fundo de Obra não há valor
+     * aprovado), nada a pagar onde o saldo não é positivo, nenhum pagamento
+     * enquanto a família tiver valor pago a maior em aberto (reconhecido ou
+     * não), e o pagamento complementar (a família já pagou o empreendimento
+     * antes) nunca passa do saldo a pagar, nem com regra financeira. Sem
+     * pagamento anterior, o pagamento é o da competência: acima do saldo, só
+     * dentro de uma regra financeira que cubra a divergência acumulada -- a
+     * mesma regra da medição original
+     * ({@see MeasurementPaymentFinancialService::assertOriginalPaymentFits()}).
      *
      * @param  array<string, mixed>  $row
      *
@@ -1092,24 +1182,32 @@ class MeasurementRevisionService
         }
 
         $planSetId = (int) ($row['plan_set_id'] ?? 0);
+        $field = "payments.{$index}.amount";
+        // A posição autoritativa da revisão, como na medição original: sem
+        // ela -- registro da Engenharia ilegível, revisão anterior sem
+        // registro, empreendimento fora dele --, nenhum pagamento.
+        $amountDue = app(MeasurementPaymentFinancialService::class)->amountDue($revision);
         $position = collect($this->positions($revision))->firstWhere('planSetId', $planSetId);
 
-        if (! $position instanceof MeasurementRevisionPlanSetPosition) {
-            return;
+        if (! $position instanceof MeasurementRevisionPlanSetPosition
+            || ! collect($amountDue->lines)->contains(fn ($line): bool => $line->planSetId === $planSetId)) {
+            throw ValidationException::withMessages([$field => sprintf(
+                'Nenhum pagamento é registrado sem a posição financeira desta revisão. %s',
+                implode(' ', $amountDue->undetermined ?: ['O empreendimento não está no registro aprovado pela Engenharia da revisão: o valor devido não pode ser determinado.']),
+            )]);
         }
 
-        $field = "payments.{$index}.amount";
-
+        // Sem Fundo de Obra não há valor aprovado: nenhum pagamento, tenha a
+        // família pago antes ou não -- nulo nunca é licença para pagar sem
+        // limite.
         if (! $position->hasFinancialReference()) {
-            if ($position->hasHistoricalPayment()) {
-                throw ValidationException::withMessages([$field => sprintf(
+            throw ValidationException::withMessages([$field => $position->hasHistoricalPayment()
+                ? sprintf(
                     '%s não tem referência financeira (sem Fundo de Obra na versão do plano) e já recebeu %s nas revisões anteriores: um novo pagamento desta revisão não pode ser conciliado com o que já foi pago.',
                     $position->label,
                     MeasurementFinancialReconciliationService::formatCurrency($position->historicalPaidAmount),
-                )]);
-            }
-
-            return;
+                )
+                : sprintf(MeasurementPaymentFinancialService::MISSING_FUND_PAYMENT_REFUSAL, $position->label)]);
         }
 
         if ($position->hasOutstandingOverpayment()) {
@@ -1694,6 +1792,27 @@ class MeasurementRevisionService
                     $payment->getKey(),
                 );
             }
+        }
+
+        // O pagamento acima do saldo a pagar só fica aceito na Finalização,
+        // por um Finalizador independente de quem o fez; substituída antes
+        // dela, a medição levaria a exceção para o histórico sem esse aceite.
+        $exceptional = app(MeasurementSegregationService::class)->exceptionalPayments($measurement);
+
+        if ($exceptional !== []) {
+            $withoutRule = MeasurementPayment::query()
+                ->whereKey($exceptional)
+                ->orderBy('id')
+                ->get(['id', 'financial_assessment'])
+                ->filter(fn (MeasurementPayment $payment): bool => ($payment->financial_assessment['reference']['status'] ?? null) === MeasurementReconciliationStatus::Over->value
+                    && ! is_array($payment->financial_assessment['rule'] ?? null))
+                ->map(fn (MeasurementPayment $payment): int => (int) $payment->id)
+                ->values()
+                ->all();
+
+            return $withoutRule === []
+                ? sprintf(self::PAID_EXCEPTION_UNACCEPTED_REFUSAL, implode(', #', $exceptional))
+                : sprintf(self::PAID_LEGACY_EXCESS_REFUSAL, implode(', #', $withoutRule));
         }
 
         return null;

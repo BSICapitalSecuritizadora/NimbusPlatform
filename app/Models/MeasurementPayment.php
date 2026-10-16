@@ -65,6 +65,14 @@ class MeasurementPayment extends Model
                     'payment_id' => $payment->getKey(),
                 ]);
             }
+
+            // Quem registrou o pagamento é quem a segregação de funções compara
+            // com quem aceita a exceção dele: o autor não muda depois.
+            if ($payment->isDirty('created_by')) {
+                throw new MeasurementWorkflowException('Quem registrou o pagamento não pode ser alterado: o autor do pagamento é histórico.', [
+                    'payment_id' => $payment->getKey(),
+                ]);
+            }
         });
 
         static::deleting(function (self $payment): never {

@@ -599,8 +599,9 @@ it('keeps counting a paid measurement that Finalization cannot send back to Engi
     expect($service->forPlanSet($planSet)->currentPercent())->toBe('10.00');
 
     // O registro aprovado é a base do pagamento: a medição paga não volta à
-    // Engenharia, e a contribuição dela continua no avanço reconhecido.
-    expect(fn () => app(MeasurementWorkflow::class)->returnToStage($scenario['measurement']->fresh(), $scenario['actor'], 1, 'Refazer a medição.'))
+    // Engenharia, e a contribuição dela continua no avanço reconhecido. Quem
+    // devolve da Finalização é o Finalizador (Fase 4B-1: outra pessoa).
+    expect(fn () => app(MeasurementWorkflow::class)->returnToStage($scenario['measurement']->fresh(), $scenario['finalizer'], 1, 'Refazer a medição.'))
         ->toThrow(MeasurementWorkflowException::class, MeasurementWorkflow::PAID_ENGINEERING_RETURN_REFUSAL);
 
     expect($service->forPlanSet($planSet)->currentPercent())->toBe('10.00')
@@ -622,7 +623,8 @@ it('stops counting a measurement that Finalization sends back to Engineering', f
         ->and($revision->fresh()->payments()->exists())->toBeFalse()
         ->and(Scenario::progress($scenario)->currentPercent())->toBe('42.00');
 
-    $workflow->returnToStage($revision->fresh(), $scenario['actor'], 1, 'Refazer a medição.');
+    // Fase 4B-1: a Finalização é de outra pessoa, e é ela quem devolve.
+    $workflow->returnToStage($revision->fresh(), $scenario['finalizer'], 1, 'Refazer a medição.');
 
     expect(Scenario::progress($scenario)->currentPercent())->toBe('30.00')
         ->and($revision->fresh()->engineering_snapshot)->toBeNull();
@@ -658,8 +660,9 @@ it('keeps the Finalization of an approved measurement valid after another month 
 
     Scenario::measured($scenario, '2026-04', 3);
     $workflow->attachReceipt($payment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
-    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['actor']);
-    $workflow->finalize($may->fresh(), $scenario['actor']);
+    // Fase 4B-1: quem enviou o comprovante não o aprova -- a Finalização é de outra pessoa.
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
+    $workflow->finalize($may->fresh(), $scenario['finalizer']);
 
     expect($may->fresh()->status)->toBe('finalized')
         ->and($scenario['lines']['2026-04']->fresh()->realized_cumulative_percent)->toBe('3.00')

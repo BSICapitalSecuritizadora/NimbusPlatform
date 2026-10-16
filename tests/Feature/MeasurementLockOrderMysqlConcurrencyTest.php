@@ -224,7 +224,7 @@ function measurementLockOrderTask(array $instruction): Closure
  * Maio aprovado até a etapa Pagamento, na operação e no plano do cenário de
  * avanço físico (fundo de obra de R$ 1.000.000,00, maio medido a 10%).
  *
- * @return array{actor: User, operation: Operation, planSet: MeasurementPlanSet, lines: array<string, MeasurementPlanLine>, may: Measurement}
+ * @return array{actor: User, finalizer: User, operation: Operation, planSet: MeasurementPlanSet, lines: array<string, MeasurementPlanLine>, may: Measurement}
  */
 function measurementLockOrderScenario(): array
 {
@@ -429,7 +429,8 @@ it('serializes the Finalization and an Engineering approval of the same operatio
     ]);
     $workflow->approve($scenario['may']->fresh(), $scenario['actor']);
     $workflow->attachReceipt($payment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
-    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['actor']);
+    // Fase 4B-1: o ator enviou o comprovante; a conferência e a Finalização são do Finalizador.
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
     $june = Scenario::measurement($scenario, '2026-06');
     $markers = measurementLockOrderMarkers('lock-order-finalization-engineering');
 
@@ -438,7 +439,7 @@ it('serializes the Finalization and an Engineering approval of the same operatio
     $results = Concurrency::driver('process')->run([
         measurementLockOrderTask([
             'action' => 'finalize',
-            'actor_id' => $scenario['actor']->id,
+            'actor_id' => $scenario['finalizer']->id,
             'measurement_id' => $scenario['may']->id,
             'revision' => (int) $scenario['may']->fresh()->workflow_revision,
             'storage_root' => Storage::disk('local')->path(''),

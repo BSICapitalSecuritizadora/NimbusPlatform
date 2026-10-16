@@ -663,19 +663,28 @@ it('refuses a revision that leaves blank the construction fund the active versio
     expect(planVersionActivationFootprint($planSet))->toBe($before);
 });
 
-it('accepts a revision without construction fund when the active version never had one', function () {
+it('refuses a revision without construction fund even when the active version never had one', function () {
     $this->travelTo(CarbonImmutable::parse('2027-01-10 12:00:00', 'UTC'));
     ['actor' => $actor, 'operation' => $operation] = planVersionActivationOperation();
     $planSet = planVersionActivationPlan($operation, $actor, planVersionActivationMonthly('2027-01', 12, '5.00'), fund: null);
-    planVersionActivationActivate(planVersionActivationVersion($planSet, 1), $actor);
+    // Estado legado: a V1 entrou em vigor sem Fundo antes da exigência, que
+    // hoje recusa a ativação (a fixture ativa sem as conferências).
+    MeasurementPlanVersionFixture::activate($planSet);
 
     $this->travelTo(CarbonImmutable::parse('2027-07-05 12:00:00', 'UTC'));
-    $v2 = planVersionActivationActivate(planVersionActivationRevision($planSet, $actor), $actor);
+    $draft = planVersionActivationRevision($planSet, $actor);
+    $before = planVersionActivationFootprint($planSet);
 
-    // A regra protege o fundo que existia; a revisão não inventa um.
-    expect($v2->status)->toBe(MeasurementPlanVersionStatus::Active)
-        ->and($v2->construction_fund_amount)->toBeNull()
-        ->and(planVersionActivationVersion($planSet, 1)->construction_fund_amount)->toBeNull();
+    // Fase 4B-1: nenhuma versão é ativada sem Fundo de Obra (zero é aceito) --
+    // nem a revisão de uma vigente que nunca o teve.
+    expect($draft->construction_fund_amount)->toBeNull()
+        ->and(planVersionActivationRefusal(fn () => planVersionActivationActivate($draft, $actor)))
+        ->toBe(['construction_fund_amount' => ['Informe o Fundo de Obra da versão antes de ativá-la (zero é aceito): ele é a base financeira das medições deste plano, e a versão ativa não muda mais.']]);
+
+    expect(planVersionActivationFootprint($planSet))->toBe($before)
+        ->and(planVersionActivationVersion($planSet, 1)->status)->toBe(MeasurementPlanVersionStatus::Active)
+        ->and(planVersionActivationVersion($planSet, 1)->construction_fund_amount)->toBeNull()
+        ->and($draft->fresh()->status)->toBe(MeasurementPlanVersionStatus::Draft);
 });
 
 it('refuses to activate a version without any planned measurement', function (string $case) {

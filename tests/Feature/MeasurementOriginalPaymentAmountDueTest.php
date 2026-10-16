@@ -20,7 +20,8 @@ use Tests\Support\MeasurementRevisionScenario;
  * O pagamento da medição original sem valor devido: o registro só o aceita
  * coberto por regra financeira -- a justificativa sozinha não basta --, e o
  * valor devido indeterminado nunca é licença para pagar. O pagamento devido,
- * parcial ou final, segue o caminho de sempre.
+ * parcial ou final, segue o caminho de sempre. Desde a Fase 4B-1, o que passa
+ * do saldo a pagar -- zero ou não -- também só entra com regra que o cubra.
  */
 pest()->group('parity');
 
@@ -46,6 +47,17 @@ function originalDueRefusal(callable $action, string $field = 'payments.0.amount
     }
 
     return null;
+}
+
+/**
+ * A recusa do pagamento acima do saldo a pagar sem regra financeira, com a
+ * conta do empreendimento (Fase 4B-1: a justificativa sozinha não basta).
+ */
+function originalDueExcessRefusal(string $construction, string $approved, string $registered, string $remaining, string $excess, bool $suggestsNoDisbursement = false): string
+{
+    return MeasurementPaymentFinancialService::EXCESS_WITHOUT_RULE_REFUSAL
+        ." {$construction}: valor aprovado {$approved}, já registrado {$registered}, saldo a pagar {$remaining}; com este pagamento, o excedente acumulado chega a {$excess}. Acima do saldo, o pagamento só é registrado com uma regra financeira vigente que cubra o excedente acumulado; a justificativa sozinha não basta."
+        .($suggestsNoDisbursement ? ' Sem valor devido em nenhum empreendimento, conclua a etapa Pagamento sem desembolso, com a justificativa obrigatória.' : '');
 }
 
 /**
@@ -141,7 +153,7 @@ it('refuses a payment without financial rule on an original with nothing due and
         originalDueRow($scenario, 0, '1000.00', ['financial_justification' => 'Adiantamento pedido pela construtora.']),
     ));
 
-    expect($refusal)->toBe('Nada é devido para Torre A nesta medição: valor aprovado R$ 0,00, já registrado R$ 0,00, valor devido R$ 0,00. Sem valor devido, o pagamento só é registrado com uma regra financeira que o cubra; a justificativa sozinha não basta. Sem valor devido em nenhum empreendimento, conclua a etapa Pagamento sem desembolso, com a justificativa obrigatória.')
+    expect($refusal)->toBe(originalDueExcessRefusal('Torre A', 'R$ 0,00', 'R$ 0,00', 'R$ 0,00', 'R$ 1.000,00', suggestsNoDisbursement: true))
         ->and(originalDueState($measurement))->toBe($before)
         ->and($workflow->canConcludeWithoutDisbursement($measurement->fresh(), $scenario['actor']))->toBeTrue();
 
@@ -168,7 +180,7 @@ it('refuses an extra payment without rule once the original construction is full
         originalDueRow($scenario, 0, '10000.00', ['financial_justification' => 'Complemento pedido pela construtora.']),
     ));
 
-    expect($refusal)->toBe('Nada é devido para Torre A nesta medição: valor aprovado R$ 100.000,00, já registrado R$ 100.000,00, valor devido R$ 0,00. Sem valor devido, o pagamento só é registrado com uma regra financeira que o cubra; a justificativa sozinha não basta.')
+    expect($refusal)->toBe(originalDueExcessRefusal('Torre A', 'R$ 100.000,00', 'R$ 100.000,00', 'R$ 0,00', 'R$ 10.000,00'))
         ->and(originalDueState($measurement))->toBe($before);
 });
 
@@ -176,8 +188,10 @@ it('reads an original already paid above the approved amount as nothing due, nev
     $scenario = Scenario::plan([['fund' => '1000000.00']]);
     $measurement = Scenario::awaitingPayment($scenario, '2026-05', [10]);
     $workflow = app(MeasurementWorkflow::class);
-    // Divergência para mais com o valor devido em aberto: o caminho de sempre.
+    // Divergência para mais com o valor devido em aberto -- Fase 4B-1: só com
+    // regra que cubra o excedente.
     $workflow->registerPayment($measurement->fresh(), $scenario['actor'], originalDueRow($scenario, 0, '120000.00', [
+        'financial_rule_id' => originalDueRule($measurement, ['maximum_difference_amount' => '20000.00'])->id,
         'financial_justification' => 'Medição complementar paga junto, conforme e-mail da construtora.',
     ]));
     $before = originalDueState($measurement);
@@ -188,7 +202,7 @@ it('reads an original already paid above the approved amount as nothing due, nev
         originalDueRow($scenario, 0, '0.01', ['financial_justification' => 'Ajuste de centavos.']),
     ));
 
-    expect($refusal)->toBe('Nada é devido para Torre A nesta medição: valor aprovado R$ 100.000,00, já registrado R$ 120.000,00, valor devido R$ 0,00. Sem valor devido, o pagamento só é registrado com uma regra financeira que o cubra; a justificativa sozinha não basta.')
+    expect($refusal)->toBe(originalDueExcessRefusal('Torre A', 'R$ 100.000,00', 'R$ 120.000,00', 'R$ 0,00', 'R$ 20.000,01'))
         ->and(originalDueState($measurement))->toBe($before);
 });
 
@@ -228,21 +242,29 @@ it('never takes invisible characters as the justification of a divergence', func
     'word joiner between spaces' => [" \u{2060} "],
 ]);
 
-it('keeps a payment above a remaining amount due as a divergence for the Finalizer, as before (C)', function () {
+it('keeps a payment above a remaining amount due as a divergence for the Finalizer, only under a covering rule (C)', function () {
     $scenario = Scenario::plan([['fund' => '1000000.00']]);
     $measurement = Scenario::awaitingPayment($scenario, '2026-05', [10]);
     $workflow = app(MeasurementWorkflow::class);
     $workflow->registerPayment($measurement->fresh(), $scenario['actor'], originalDueRow($scenario, 0, '60000.00', [
         'financial_justification' => 'Primeira parcela.',
     ]));
-
-    $payment = $workflow->registerPayment($measurement->fresh(), $scenario['actor'], originalDueRow($scenario, 0, '50000.00', [
+    $before = originalDueState($measurement);
+    $row = originalDueRow($scenario, 0, '50000.00', [
         'financial_justification' => 'Saldo pago com a retenção da medição anterior.',
-    ]));
+    ]);
+
+    // Fase 4B-1: acima do saldo a pagar, a justificativa sozinha não autoriza o excedente.
+    expect(originalDueRefusal(fn () => $workflow->registerPayment($measurement->fresh(), $scenario['actor'], $row)))
+        ->toBe(originalDueExcessRefusal('Torre A', 'R$ 100.000,00', 'R$ 60.000,00', 'R$ 40.000,00', 'R$ 10.000,00'))
+        ->and(originalDueState($measurement))->toBe($before);
+
+    $rule = originalDueRule($measurement, ['maximum_difference_amount' => '10000.00']);
+    $payment = $workflow->registerPayment($measurement->fresh(), $scenario['actor'], [...$row, 'financial_rule_id' => $rule->id]);
 
     expect($payment->financial_assessment['reference']['expected_balance'])->toBe('40000.00')
         ->and($payment->financial_assessment['reference']['divergence_amount'])->toBe('10000.00')
-        ->and($payment->financial_assessment['rule'])->toBeNull()
+        ->and($payment->financial_assessment['rule']['id'])->toBe($rule->id)
         ->and($payment->financial_assessment['requires_acceptance'])->toBeTrue();
 });
 
@@ -264,7 +286,7 @@ it('refuses the whole registration when a construction has nothing due, insertin
         array_map(fn (int $planSet): array => $rows[$planSet], $order),
     ), $field);
 
-    expect($refusal)->toBe('Nada é devido para Torre A nesta medição: valor aprovado R$ 0,00, já registrado R$ 0,00, valor devido R$ 0,00. Sem valor devido, o pagamento só é registrado com uma regra financeira que o cubra; a justificativa sozinha não basta.')
+    expect($refusal)->toBe(originalDueExcessRefusal('Torre A', 'R$ 0,00', 'R$ 0,00', 'R$ 0,00', 'R$ 1.000,00'))
         ->and(originalDueState($measurement))->toBe($before);
 
     $payment = $workflow->registerPayment($measurement->fresh(), $scenario['actor'], $rows[1]);
@@ -287,7 +309,7 @@ it('counts the earlier rows of the same registration, so the amount due is not p
         originalDueRow($scenario, 1, '80000.00', ['financial_justification' => 'Repetido por engano.']),
     ]), 'payments.1.amount');
 
-    expect($refusal)->toBe('Nada é devido para Torre B nesta medição: valor aprovado R$ 80.000,00, já registrado R$ 80.000,00, valor devido R$ 0,00. Sem valor devido, o pagamento só é registrado com uma regra financeira que o cubra; a justificativa sozinha não basta.')
+    expect($refusal)->toBe(originalDueExcessRefusal('Torre B', 'R$ 80.000,00', 'R$ 80.000,00', 'R$ 0,00', 'R$ 80.000,00'))
         ->and(originalDueState($measurement))->toBe($before);
 });
 
@@ -364,23 +386,25 @@ it('points a paid original whose engineering record no longer supports the accou
         ->and(originalDueState($measurement))->toBe($before);
 });
 
-it('keeps paying a construction without Construction Fund without financial reference, and refuses the zero-due one next to it (E)', function () {
+it('refuses a payment on a construction without Construction Fund, as on the zero-due one next to it without rule (E)', function () {
     $scenario = Scenario::plan([['fund' => null], ['fund' => '1000000.00']]);
     $measurement = Scenario::awaitingPayment($scenario, '2026-05', [10, 0]);
     $workflow = app(MeasurementWorkflow::class);
-
-    $payment = $workflow->registerPayment($measurement->fresh(), $scenario['actor'], originalDueRow($scenario, 0, '50000.00'));
-
-    expect($payment->financial_assessment['reference']['status'])->toBe('reference_unavailable')
-        ->and($payment->financial_assessment['requires_acceptance'])->toBeFalse();
-
     $before = originalDueState($measurement);
+
+    // Fase 4B-1: sem Fundo de Obra não há valor aprovado, e nenhum pagamento é registrado.
+    expect(originalDueRefusal(fn () => $workflow->registerPayment(
+        $measurement->fresh(),
+        $scenario['actor'],
+        originalDueRow($scenario, 0, '50000.00'),
+    )))->toBe(sprintf(MeasurementPaymentFinancialService::MISSING_FUND_PAYMENT_REFUSAL, 'Torre A'))
+        ->and(originalDueState($measurement))->toBe($before);
 
     expect(originalDueRefusal(fn () => $workflow->registerPayment(
         $measurement->fresh(),
         $scenario['actor'],
         originalDueRow($scenario, 1, '1000.00', ['financial_justification' => 'Adiantamento.']),
-    )))->toBe('Nada é devido para Torre B nesta medição: valor aprovado R$ 0,00, já registrado R$ 0,00, valor devido R$ 0,00. Sem valor devido, o pagamento só é registrado com uma regra financeira que o cubra; a justificativa sozinha não basta.')
+    )))->toBe(originalDueExcessRefusal('Torre B', 'R$ 0,00', 'R$ 0,00', 'R$ 0,00', 'R$ 1.000,00'))
         ->and(originalDueState($measurement))->toBe($before);
 });
 
@@ -407,10 +431,10 @@ it('registers a zero-due payment covered by a financial rule and requires the ex
     $workflow->approve($measurement->fresh(), $scenario['actor']);
     MeasurementRevisionScenario::receiptsApproved($scenario, $measurement);
 
-    expect(originalDueRefusal(fn () => $workflow->finalize($measurement->fresh(), $scenario['actor']), 'accept_financial_exceptions'))
+    expect(originalDueRefusal(fn () => $workflow->finalize($measurement->fresh(), $scenario['finalizer']), 'accept_financial_exceptions'))
         ->toBe('Confirme expressamente o aceite das divergências e justificativas financeiras.');
 
-    $workflow->finalize($measurement->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
+    $workflow->finalize($measurement->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
 
     expect($measurement->fresh()->status)->toBe('finalized')
         ->and(MeasurementPayment::query()->pluck('id')->all())->toBe([$payment->id]);
@@ -441,6 +465,13 @@ it('refuses a zero-due payment whose rule does not authorize it (F)', function (
         'another emission' => ['emission_id' => Emission::factory()->create()->id],
         'not yet effective on the payment date' => ['effective_from' => '2026-07-01'],
     });
+    // Fase 4B-1: a recusa diz por que a regra não cobre -- ou que ela não vale para o pagamento.
+    $expected = match ($case) {
+        'limit below the amount' => 'A regra escolhida não cobre este pagamento. A divergência acumulada do empreendimento chega a R$ 1.000,00, acima do limite em reais da regra (R$ 999,99).',
+        'percent limit only (no amount due to apply it to)' => 'A regra escolhida não cobre este pagamento. O valor aprovado do empreendimento é R$ 0,00: o limite percentual não autoriza divergência sem valor aprovado positivo, e a exceção sobre valor aprovado zero exige uma regra só com limite em reais, sem limite percentual.',
+        'paying less only' => 'A regra escolhida não cobre este pagamento. A regra permite divergência para menos, e este pagamento diverge para mais do saldo a pagar.',
+        'retired', 'another emission', 'not yet effective on the payment date' => MeasurementPaymentFinancialService::RULE_UNAVAILABLE_REFUSAL,
+    };
     $before = originalDueState($measurement);
 
     expect(originalDueRefusal(fn () => app(MeasurementWorkflow::class)->registerPayment(
@@ -450,7 +481,7 @@ it('refuses a zero-due payment whose rule does not authorize it (F)', function (
             'financial_rule_id' => $rule->id,
             'financial_justification' => 'Adiantamento.',
         ]),
-    ), 'payments.0.financial_rule_id'))->toBe('A regra não cobre esta emissão, obra, data, direção ou valor. Sem valor devido neste empreendimento, o pagamento só é registrado com uma regra que cubra a divergência de R$ 1.000,00.')
+    ), 'payments.0.financial_rule_id'))->toBe($expected)
         ->and(originalDueState($measurement))->toBe($before);
 })->with([
     'limit below the amount',
@@ -464,17 +495,20 @@ it('refuses a zero-due payment whose rule does not authorize it (F)', function (
 it('never measures a percent limit against an amount already paid above what was due (F)', function (string $case) {
     $scenario = Scenario::plan([['fund' => '1000000.00']]);
     $workflow = app(MeasurementWorkflow::class);
-    // Já pago a maior em R$ 20.000,00 (com valor devido na época), ou já pago
+    // Já pago a maior em R$ 20.000,00 (coberto por regra), ou já pago
     // R$ 5.000,00 coberto por regra numa linha de aprovado zero: o saldo é
-    // negativo, e o excesso anterior não é base de percentual nenhum.
-    [$measurement, $amount, $divergence] = match ($case) {
+    // negativo, e o que já foi pago não é base de percentual nenhum -- desde a
+    // Fase 4B-1, o percentual é do valor aprovado.
+    [$measurement, $amount, $percent, $reason] = match ($case) {
         'line paid above the approved amount' => (function () use ($scenario, $workflow): array {
             $measurement = Scenario::awaitingPayment($scenario, '2026-05', [10]);
             $workflow->registerPayment($measurement->fresh(), $scenario['actor'], originalDueRow($scenario, 0, '120000.00', [
+                'financial_rule_id' => originalDueRule($measurement, ['maximum_difference_amount' => '20000.00'])->id,
                 'financial_justification' => 'Medição complementar paga junto.',
             ]));
 
-            return [$measurement, '20000.00', 'R$ 40.000,00'];
+            // 35% do aprovado (R$ 100.000,00) não cobre R$ 40.000,00; dos R$ 120.000,00 já pagos, cobriria.
+            return [$measurement, '20000.00', '35.0000', 'A divergência acumulada do empreendimento chega a R$ 40.000,00, acima de 35% do valor aprovado (R$ 100.000,00), isto é, R$ 35.000,00.'];
         })(),
         'second payment on a line approved at zero' => (function () use ($scenario, $workflow): array {
             $measurement = Scenario::awaitingPayment($scenario, '2026-05', [0]);
@@ -483,10 +517,10 @@ it('never measures a percent limit against an amount already paid above what was
                 'financial_justification' => 'Adiantamento previsto no contrato.',
             ]));
 
-            return [$measurement, '10000.00', 'R$ 15.000,00'];
+            return [$measurement, '10000.00', '300.0000', 'O valor aprovado do empreendimento é R$ 0,00: o limite percentual não autoriza divergência sem valor aprovado positivo, e a exceção sobre valor aprovado zero exige uma regra só com limite em reais, sem limite percentual.'];
         })(),
     };
-    $percentRule = originalDueRule($measurement, ['direction' => 'both', 'maximum_difference_amount' => null, 'maximum_difference_percent' => '300.0000']);
+    $percentRule = originalDueRule($measurement, ['direction' => 'both', 'maximum_difference_amount' => null, 'maximum_difference_percent' => $percent]);
     $before = originalDueState($measurement);
 
     expect(originalDueRefusal(fn () => $workflow->registerPayment(
@@ -496,7 +530,7 @@ it('never measures a percent limit against an amount already paid above what was
             'financial_rule_id' => $percentRule->id,
             'financial_justification' => 'Complemento pedido pela construtora.',
         ]),
-    ), 'payments.0.financial_rule_id'))->toBe("A regra não cobre esta emissão, obra, data, direção ou valor. Sem valor devido neste empreendimento, o pagamento só é registrado com uma regra que cubra a divergência de {$divergence}.")
+    ), 'payments.0.financial_rule_id'))->toBe("A regra escolhida não cobre este pagamento. {$reason}")
         ->and(originalDueState($measurement))->toBe($before);
 })->with([
     'line paid above the approved amount',
@@ -534,7 +568,7 @@ it('keeps the rule a zero-due payment was registered under when it is reassessed
         ->and($payment->fresh()->financial_assessment['justification'])->toBe('Conferido depois do encerramento da regra.');
 });
 
-it('drops, as before, a current rule that no longer covers the cumulative divergence of the line (F)', function () {
+it('keeps on reassessment the rule of a payment whose line a later payment took further, measuring the divergence of its registration (F)', function () {
     $scenario = Scenario::plan([['fund' => '1000000.00']]);
     $measurement = Scenario::awaitingPayment($scenario, '2026-05', [0]);
     $workflow = app(MeasurementWorkflow::class);
@@ -549,46 +583,49 @@ it('drops, as before, a current rule that no longer covers the cumulative diverg
         'financial_justification' => 'Segundo adiantamento.',
     ]));
 
-    // Escolhida, a regra atual também já não cobre: nada a manter, e a
-    // recusa não oferece mantê-la.
-    expect(originalDueRefusal(fn () => $workflow->reassessPayment($first->fresh(), $scenario['actor'], [
+    // Fase 4B-1: a reavaliação mede a exposição do registro do pagamento -- o
+    // posterior não a muda --, e a regra atual continua escolhível e mantida.
+    $workflow->reassessPayment($first->fresh(), $scenario['actor'], [
         'financial_rule_id' => $small->id,
         'financial_justification' => 'Primeiro adiantamento, com a regra dele.',
-    ], (int) $measurement->fresh()->workflow_revision), 'financial_rule_id'))
-        ->toBe('A regra não cobre esta emissão, obra, data, direção ou valor. Escolha uma regra válida ou justifique como exceção sem regra.');
+    ], (int) $measurement->fresh()->workflow_revision);
 
     $workflow->reassessPayment($first->fresh(), $scenario['actor'], [
         'financial_justification' => 'Primeiro adiantamento, conferido de novo.',
     ], (int) $measurement->fresh()->workflow_revision);
 
-    expect($first->fresh()->financial_rule_id)->toBeNull()
-        ->and($first->fresh()->financial_assessment['rule'])->toBeNull()
-        ->and($first->fresh()->financial_assessment['reference']['divergence_amount'])->toBe('10000.00')
+    expect($first->fresh()->financial_rule_id)->toBe($small->id)
+        ->and($first->fresh()->financial_assessment['rule']['id'])->toBe($small->id)
+        ->and($first->fresh()->financial_assessment['reference']['divergence_amount'])->toBe('5000.00')
+        ->and($first->fresh()->financial_assessment['justification'])->toBe('Primeiro adiantamento, conferido de novo.')
         ->and($first->fresh()->financial_assessment['requires_acceptance'])->toBeTrue();
 });
 
-it('drops, as before, a current rule whose direction or percent limit does not cover the payment once nothing else is due (C)', function (array $attributes) {
+it('keeps on reassessment a rule whose direction or percent limit covered the payment at its registration, even once nothing else is due (C)', function (array $attributes) {
     $scenario = Scenario::plan([['fund' => '1000000.00']]);
     $measurement = Scenario::awaitingPayment($scenario, '2026-05', [10]);
     $workflow = app(MeasurementWorkflow::class);
+    $rule = originalDueRule($measurement, $attributes);
     // R$ 1.000,00 de R$ 100.000,00 devidos: divergência para menos, coberta.
     $first = $workflow->registerPayment($measurement->fresh(), $scenario['actor'], originalDueRow($scenario, 0, '1000.00', [
-        'financial_rule_id' => originalDueRule($measurement, $attributes)->id,
+        'financial_rule_id' => $rule->id,
         'financial_justification' => 'Parcela inicial.',
     ]));
-    // O segundo pagamento esgota o valor devido: fora o primeiro, nada mais é
-    // devido, e o primeiro passa a divergir para mais.
+    // O segundo pagamento esgota o valor devido e passa dele em R$ 1.000,00:
+    // pela Fase 4B-1, só com regra que cubra o excedente.
     $workflow->registerPayment($measurement->fresh(), $scenario['actor'], originalDueRow($scenario, 0, '100000.00', [
+        'financial_rule_id' => originalDueRule($measurement)->id,
         'financial_justification' => 'Saldo com a parcela inicial a conferir.',
     ]));
 
+    // Fase 4B-1: a reavaliação mede a exposição do registro; o pagamento posterior não tira a regra do primeiro.
     $workflow->reassessPayment($first->fresh(), $scenario['actor'], [
         'financial_justification' => 'Parcela inicial, conferida de novo.',
     ], (int) $measurement->fresh()->workflow_revision);
 
-    expect($first->fresh()->financial_rule_id)->toBeNull()
-        ->and($first->fresh()->financial_assessment['rule'])->toBeNull()
-        ->and($first->fresh()->financial_assessment['reference']['divergence_amount'])->toBe('1000.00');
+    expect($first->fresh()->financial_rule_id)->toBe($rule->id)
+        ->and($first->fresh()->financial_assessment['rule']['id'])->toBe($rule->id)
+        ->and($first->fresh()->financial_assessment['reference']['divergence_amount'])->toBe('-99000.00');
 })->with([
     'percent limit, no base without amount due' => [['direction' => 'both', 'maximum_difference_amount' => null, 'maximum_difference_percent' => '99.0000']],
     'only for paying less' => [['direction' => 'under', 'maximum_difference_amount' => '99000.00']],
@@ -598,38 +635,44 @@ it('does not read a tampered rule snapshot as a rule when reassessing (F)', func
     $scenario = Scenario::plan([['fund' => '1000000.00']]);
     $measurement = Scenario::awaitingPayment($scenario, '2026-05', [0]);
     $workflow = app(MeasurementWorkflow::class);
+    $rule = originalDueRule($measurement);
     $payment = $workflow->registerPayment($measurement->fresh(), $scenario['actor'], originalDueRow($scenario, 0, '5000.00', [
-        'financial_rule_id' => originalDueRule($measurement)->id,
+        'financial_rule_id' => $rule->id,
         'financial_justification' => 'Adiantamento.',
     ]));
     // Limite reescrito como a tela mostra, e não como a regra grava.
     $assessment = $payment->fresh()->financial_assessment;
     $assessment['rule']['maximum_difference_amount'] = '5.000,00';
     DB::table('measurement_payments')->where('id', $payment->id)->update(['financial_assessment' => json_encode($assessment)]);
+    $before = originalDueState($measurement);
 
-    $workflow->reassessPayment($payment->fresh(), $scenario['actor'], [
+    // Fase 4B-1: sem regra legível, o excedente não fica só com a justificativa -- a reavaliação é recusada.
+    expect(originalDueRefusal(fn () => $workflow->reassessPayment($payment->fresh(), $scenario['actor'], [
         'financial_justification' => 'Conferido de novo.',
-    ], (int) $measurement->fresh()->workflow_revision);
-
-    expect($payment->fresh()->financial_rule_id)->toBeNull()
-        ->and($payment->fresh()->financial_assessment['rule'])->toBeNull();
+    ], (int) $measurement->fresh()->workflow_revision), 'financial_rule_id'))
+        ->toBe(originalDueExcessRefusal('Torre A', 'R$ 0,00', 'R$ 0,00', 'R$ 0,00', 'R$ 5.000,00'))
+        ->and(originalDueState($measurement))->toBe($before)
+        ->and($payment->fresh()->financial_rule_id)->toBe($rule->id);
 });
 
-it('drops, as before, the rule of a payment that still had an amount due when reassessed without one (C)', function () {
+it('keeps the rule of a payment that still had an amount due when reassessed without one (C)', function () {
     $scenario = Scenario::plan([['fund' => '1000000.00']]);
     $measurement = Scenario::awaitingPayment($scenario, '2026-05', [10]);
     $workflow = app(MeasurementWorkflow::class);
+    $rule = originalDueRule($measurement, ['maximum_difference_amount' => '1000.00']);
     $payment = $workflow->registerPayment($measurement->fresh(), $scenario['actor'], originalDueRow($scenario, 0, '100500.00', [
-        'financial_rule_id' => originalDueRule($measurement, ['maximum_difference_amount' => '1000.00'])->id,
+        'financial_rule_id' => $rule->id,
         'financial_justification' => 'Complemento contratual.',
     ]));
 
+    // Fase 4B-1: em branco, a reavaliação mantém a regra atual enquanto ela cobrir; o excedente nunca perde a regra.
     $workflow->reassessPayment($payment->fresh(), $scenario['actor'], [
-        'financial_justification' => 'Exceção sem regra, conferida.',
+        'financial_justification' => 'Complemento contratual, conferido de novo.',
     ], (int) $measurement->fresh()->workflow_revision);
 
-    expect($payment->fresh()->financial_rule_id)->toBeNull()
-        ->and($payment->fresh()->financial_assessment['rule'])->toBeNull()
+    expect($payment->fresh()->financial_rule_id)->toBe($rule->id)
+        ->and($payment->fresh()->financial_assessment['rule']['id'])->toBe($rule->id)
+        ->and($payment->fresh()->financial_assessment['justification'])->toBe('Complemento contratual, conferido de novo.')
         ->and($payment->fresh()->financial_assessment['requires_acceptance'])->toBeTrue();
 });
 
@@ -638,7 +681,7 @@ it('keeps the usual refusal of a non-covering rule where an amount is due (C)', 
     $measurement = Scenario::awaitingPayment($scenario, '2026-05', [10]);
     $workflow = app(MeasurementWorkflow::class);
     $narrow = originalDueRule($measurement, ['maximum_difference_amount' => '100.00']);
-    $usual = 'A regra não cobre esta emissão, obra, data, direção ou valor. Escolha uma regra válida ou justifique como exceção sem regra.';
+    $usual = 'A regra escolhida não cobre este pagamento. A divergência acumulada do empreendimento chega a R$ 500,00, acima do limite em reais da regra (R$ 100,00).';
 
     expect(originalDueRefusal(fn () => $workflow->registerPayment($measurement->fresh(), $scenario['actor'], originalDueRow($scenario, 0, '100500.00', [
         'financial_rule_id' => $narrow->id,
@@ -650,10 +693,12 @@ it('keeps the usual refusal of a non-covering rule where an amount is due (C)', 
         'financial_justification' => 'Complemento.',
     ]));
 
+    // Fase 4B-1: na reavaliação, a recusa aponta a regra atual, que a regra em branco mantém.
     expect(originalDueRefusal(fn () => $workflow->reassessPayment($payment->fresh(), $scenario['actor'], [
         'financial_rule_id' => $narrow->id,
         'financial_justification' => 'Outra regra.',
-    ], (int) $measurement->fresh()->workflow_revision), 'financial_rule_id'))->toBe($usual);
+    ], (int) $measurement->fresh()->workflow_revision), 'financial_rule_id'))
+        ->toBe($usual.' Escolha uma regra que cubra o pagamento, ou deixe a regra em branco para manter a atual (Adiantamento contratual · versão 1).');
 });
 
 it('keeps requiring the support document of the kept rule on reassessment', function () {
@@ -689,16 +734,17 @@ it('refuses to reassess a zero-due payment under a rule that does not cover it, 
         'financial_rule_id' => $narrow->id,
         'financial_justification' => 'Outra regra.',
     ], (int) $measurement->fresh()->workflow_revision), 'financial_rule_id'))
-        ->toBe('A regra não cobre esta emissão, obra, data, direção ou valor. Escolha uma regra que cubra o pagamento, ou deixe a regra em branco para manter a atual (Adiantamento contratual · versão 1).')
+        ->toBe('A regra escolhida não cobre este pagamento. A divergência acumulada do empreendimento chega a R$ 5.000,00, acima do limite em reais da regra (R$ 100,00). Escolha uma regra que cubra o pagamento, ou deixe a regra em branco para manter a atual (Adiantamento contratual · versão 1).')
         ->and($payment->fresh()->financial_assessment)->toBe($assessment);
 });
 
-it('lets a zero-due payment recorded without rule before the requirement be reassessed as it was (F)', function () {
+it('reassesses a zero-due payment recorded without rule before the requirement only under a rule that existed at its registration (F)', function () {
     $scenario = Scenario::plan([['fund' => '1000000.00']]);
     $measurement = Scenario::awaitingPayment($scenario, '2026-05', [0]);
     $workflow = app(MeasurementWorkflow::class);
+    $rule = originalDueRule($measurement);
     $payment = $workflow->registerPayment($measurement->fresh(), $scenario['actor'], originalDueRow($scenario, 0, '5000.00', [
-        'financial_rule_id' => originalDueRule($measurement)->id,
+        'financial_rule_id' => $rule->id,
         'financial_justification' => 'Adiantamento.',
     ]));
     // O pagamento de antes da exigência: justificado, sem regra.
@@ -706,14 +752,24 @@ it('lets a zero-due payment recorded without rule before the requirement be reas
         'financial_rule_id' => null,
         'financial_assessment' => json_encode(['rule' => null] + $payment->fresh()->financial_assessment),
     ]);
+    $before = originalDueState($measurement);
 
-    $workflow->reassessPayment($payment->fresh(), $scenario['actor'], [
+    // Fase 4B-1: a justificativa sozinha não autoriza o excedente, nem na reavaliação do pagamento antigo.
+    expect(originalDueRefusal(fn () => $workflow->reassessPayment($payment->fresh(), $scenario['actor'], [
         'financial_justification' => 'Pagamento antigo, mantido como exceção sem regra.',
+    ], (int) $measurement->fresh()->workflow_revision), 'financial_rule_id'))
+        ->toBe(originalDueExcessRefusal('Torre A', 'R$ 0,00', 'R$ 0,00', 'R$ 0,00', 'R$ 5.000,00'))
+        ->and(originalDueState($measurement))->toBe($before);
+
+    // Com a regra que já existia no registro, o pagamento antigo é enquadrado.
+    $workflow->reassessPayment($payment->fresh(), $scenario['actor'], [
+        'financial_rule_id' => $rule->id,
+        'financial_justification' => 'Pagamento antigo, enquadrado na regra vigente no registro.',
     ], (int) $measurement->fresh()->workflow_revision);
 
-    expect($payment->fresh()->financial_rule_id)->toBeNull()
-        ->and($payment->fresh()->financial_assessment['rule'])->toBeNull()
-        ->and($payment->fresh()->financial_assessment['justification'])->toBe('Pagamento antigo, mantido como exceção sem regra.');
+    expect($payment->fresh()->financial_rule_id)->toBe($rule->id)
+        ->and($payment->fresh()->financial_assessment['rule']['id'])->toBe($rule->id)
+        ->and($payment->fresh()->financial_assessment['justification'])->toBe('Pagamento antigo, enquadrado na regra vigente no registro.');
 });
 
 // ── Revisões: a regra própria continua ───────────────────────────────────────

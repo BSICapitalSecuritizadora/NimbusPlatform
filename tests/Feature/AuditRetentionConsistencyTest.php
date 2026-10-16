@@ -144,7 +144,8 @@ it('files an admin override under the workflow category, unchanged', function ()
     $measurement->reviews()->create(['stage' => 1, 'status' => 'approved', 'reviewed_at' => now()]);
     $measurement->reviews()->create(['stage' => 2, 'status' => 'pending']);
 
-    app(MeasurementWorkflow::class)->approve($measurement->fresh(), $admin, 'Override.');
+    // Fase 4B-1: o override exige o motivo, gravado na mesma trilha.
+    app(MeasurementWorkflow::class)->approve($measurement->fresh(), $admin, 'Override.', overrideReason: 'Responsável afastado.');
 
     $activity = Activity::query()
         ->where('description', 'measurement_stage_approved')
@@ -152,7 +153,8 @@ it('files an admin override under the workflow category, unchanged', function ()
         ->first();
 
     expect($activity->log_name)->toBe('measurement_workflow')
-        ->and($activity->properties['admin_override'])->toBeTrue();
+        ->and($activity->properties['admin_override'])->toBeTrue()
+        ->and($activity->properties['admin_override_reason'])->toBe('Responsável afastado.');
 });
 
 it('files the payment and receipt evidence under the measurement payments log', function () {

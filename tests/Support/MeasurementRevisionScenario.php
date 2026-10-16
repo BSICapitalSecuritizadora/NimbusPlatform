@@ -35,6 +35,9 @@ final class MeasurementRevisionScenario
     {
         $scenario = MeasurementPhysicalProgressScenario::plan($months, $initialPercent, $referenceDate);
         $scenario['actor']->givePermissionTo(AccessPermission::MeasurementsRevise->value);
+        // Quem cria e envia as revisões do cenário é o Finalizador -- participa
+        // da operação --, para a Compliance do ator ser independente delas.
+        $scenario['finalizer']->givePermissionTo(AccessPermission::MeasurementsRevise->value);
 
         return $scenario;
     }
@@ -98,7 +101,7 @@ final class MeasurementRevisionScenario
         $workflow = app(MeasurementWorkflow::class);
         $workflow->approve($measurement->fresh(), $scenario['actor'], $paymentNotes);
         self::receiptsApproved($scenario, $measurement);
-        $workflow->finalize($measurement->fresh(), $scenario['actor'], acceptFinancialExceptions: $acceptFinancialExceptions);
+        $workflow->finalize($measurement->fresh(), $scenario['finalizer'] ?? $scenario['actor'], acceptFinancialExceptions: $acceptFinancialExceptions);
 
         return $measurement->fresh();
     }
@@ -119,7 +122,8 @@ final class MeasurementRevisionScenario
                 "comprovante-{$payment->id}.pdf",
                 "%PDF-1.7 comprovante {$payment->id}",
             ));
-            MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['actor']);
+            // Quem envia o comprovante não o aprova: o Finalizador confere.
+            MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['finalizer'] ?? $scenario['actor']);
         }
     }
 
@@ -204,7 +208,7 @@ final class MeasurementRevisionScenario
      */
     public static function revise(array $scenario, Measurement $base, string $reason = 'Correção do percentual medido.'): Measurement
     {
-        return app(MeasurementRevisionService::class)->create($base->fresh(), $scenario['actor'], $reason);
+        return app(MeasurementRevisionService::class)->create($base->fresh(), $scenario['finalizer'] ?? $scenario['actor'], $reason);
     }
 
     /**
@@ -212,7 +216,7 @@ final class MeasurementRevisionScenario
      */
     public static function submit(array $scenario, Measurement $draft): Measurement
     {
-        app(MeasurementRevisionService::class)->submit($draft->fresh(), $scenario['actor']);
+        app(MeasurementRevisionService::class)->submit($draft->fresh(), $scenario['finalizer'] ?? $scenario['actor']);
 
         return $draft->fresh();
     }

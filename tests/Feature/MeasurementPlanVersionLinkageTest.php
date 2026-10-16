@@ -463,6 +463,10 @@ it('pays and finalizes under the V1 fund a measurement approved before the cost 
     $scenario = planVersionLinkageScenario();
     $workflow = app(MeasurementWorkflow::class);
     $planSetId = $scenario['planSet']->id;
+    // Fase 4B-1: quem envia o comprovante não o aprova -- a Finalização é de outra pessoa.
+    $finalizer = User::factory()->withTwoFactor()->create();
+    $finalizer->givePermissionTo(['measurements.view', 'measurements.finalize']);
+    $scenario['operation']->update(['payment_finalizer_user_id' => $finalizer->id]);
 
     planVersionLinkageTravelTo('2026-06-20');
     $m06 = Scenario::measurement($scenario, '2026-06');
@@ -501,8 +505,8 @@ it('pays and finalizes under the V1 fund a measurement approved before the cost 
     // capturada; contra o vigente, recusaria uma medição íntegra.
     $workflow->approve($m06->fresh(), $scenario['actor']);
     $workflow->attachReceipt($payment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
-    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['actor']);
-    $workflow->finalize($m06->fresh(), $scenario['actor']);
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $finalizer);
+    $workflow->finalize($m06->fresh(), $finalizer);
 
     expect($m06->fresh()->status)->toBe('finalized')
         ->and($m06->assets()->sole()->plan_version_id)->toBe($scenario['v1']->id);

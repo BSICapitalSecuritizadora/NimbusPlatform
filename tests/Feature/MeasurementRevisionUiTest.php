@@ -108,7 +108,10 @@ it('submits and cancels drafts from the measurement page', function () {
     $scenario = Scenario::plan();
     $may = Scenario::finalized($scenario, '2026-05', 10);
     $draft = Scenario::revise($scenario, $may);
-    $this->actingAs($scenario['actor']);
+    // Fase 4B-1: quem envia a revisão não a aprova na Compliance; o ator é o
+    // único revisor de Compliance da operação, e quem envia é o Finalizador,
+    // que criou o rascunho.
+    $this->actingAs($scenario['finalizer']);
 
     Livewire::test(ViewMeasurement::class, ['record' => $draft->getRouteKey()])
         ->assertActionVisible('submitRevision')

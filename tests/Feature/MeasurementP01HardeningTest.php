@@ -76,11 +76,16 @@ it('grants responsibility management only to the explicit administrative roles b
 });
 
 /**
- * @return array{actor: User, operation: Operation, measurement: Measurement, planSets: Collection<int, MeasurementPlanSet>, assets: Collection<int, MeasurementAsset>}
+ * O ator responde por todas as etapas, menos a Finalização: o Finalizador é
+ * outra pessoa, que confere os comprovantes que o ator envia e aceita o que
+ * ele aprovou na etapa Pagamento -- a segregação de funções da Fase 4B-1.
+ *
+ * @return array{actor: User, finalizer: User, operation: Operation, measurement: Measurement, planSets: Collection<int, MeasurementPlanSet>, assets: Collection<int, MeasurementAsset>}
  */
 function createP01Scenario(int $planSetCount = 1, ?User $actor = null): array
 {
     $actor ??= makeP01Admin();
+    $finalizer = makeP01Editor();
     test()->actingAs($actor);
 
     $operation = Operation::factory()->create([
@@ -91,7 +96,7 @@ function createP01Scenario(int $planSetCount = 1, ?User $actor = null): array
         'stage3_reviewer_user_id' => $actor->id,
         'payment_manager_user_id' => $actor->id,
         'payment_receipt_uploader_user_id' => $actor->id,
-        'payment_finalizer_user_id' => $actor->id,
+        'payment_finalizer_user_id' => $finalizer->id,
     ]);
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
@@ -132,11 +137,11 @@ function createP01Scenario(int $planSetCount = 1, ?User $actor = null): array
 
     app(MeasurementWorkflow::class)->startReview($measurement->fresh(), $actor);
 
-    return compact('actor', 'operation', 'measurement', 'planSets', 'assets');
+    return compact('actor', 'finalizer', 'operation', 'measurement', 'planSets', 'assets');
 }
 
 /**
- * @param  array{actor: User, operation: Operation, measurement: Measurement, planSets: Collection<int, MeasurementPlanSet>, assets: Collection<int, MeasurementAsset>}  $scenario
+ * @param  array{actor: User, finalizer: User, operation: Operation, measurement: Measurement, planSets: Collection<int, MeasurementPlanSet>, assets: Collection<int, MeasurementAsset>}  $scenario
  */
 function advanceP01ToDocumentedFinalization(array $scenario): void
 {
@@ -155,7 +160,8 @@ function advanceP01ToDocumentedFinalization(array $scenario): void
     // Só o primeiro plano é pago: os demais exigem a justificativa da etapa.
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor'], 'Demais planos sem pagamento nesta competência: retenção contratual.');
     $workflow->attachReceipt($payment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
-    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['actor']);
+    // Fase 4B-1: quem enviou o comprovante não o aprova -- o Finalizador confere.
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
 }
 
 it('blocks participant self-assignment and payment responsibility changes without the granular permission', function () {
@@ -304,12 +310,14 @@ it('finalizes with complete three-plan coverage and records the effective actor'
     $scenario = createP01Scenario(3);
     advanceP01ToDocumentedFinalization($scenario);
 
-    app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
+    // Fase 4B-1: quem aprovou a etapa Pagamento com planos sem pagamento não
+    // aceita essa exceção na Finalização -- finaliza o Finalizador.
+    app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
     $finalization = Activity::query()->where('description', 'measurement_finalized')->latest('id')->firstOrFail();
 
     expect($scenario['measurement']->fresh()->status)->toBe('finalized')
         ->and($scenario['measurement']->fresh()->engineering_snapshot['plan_sets'])->toHaveCount(3)
-        ->and($scenario['measurement']->fresh()->reviewForStage(5)?->reviewer_user_id)->toBe($scenario['actor']->id)
+        ->and($scenario['measurement']->fresh()->reviewForStage(5)?->reviewer_user_id)->toBe($scenario['finalizer']->id)
         ->and(collect($finalization->properties->get('unpaid_plan_sets_accepted'))->pluck('plan_set_id')->all())
         ->toBe($scenario['planSets']->slice(1)->pluck('id')->values()->all());
 });
@@ -338,7 +346,9 @@ it('blocks finalization when snapshot coverage is missing or points to the wrong
         ]);
     }
 
-    expect(fn () => app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['actor']))
+    // Fase 4B-1: finaliza o Finalizador -- a recusa da segregação ao ator, que
+    // aprovou a etapa Pagamento com a exceção, esconderia a da adulteração.
+    expect(fn () => app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['finalizer']))
         ->toThrow(MeasurementWorkflowException::class);
 })->with(['missing', 'wrong plan set']);
 
@@ -353,7 +363,9 @@ it('blocks finalization when an engineering file is missing or has a divergent h
         putP01Pdf($asset->storage_path, suffix: 'tampered-content');
     }
 
-    expect(fn () => app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['actor']))
+    // Fase 4B-1: finaliza o Finalizador -- a recusa da segregação ao ator, que
+    // aprovou a etapa Pagamento com a exceção, esconderia a da adulteração.
+    expect(fn () => app(MeasurementWorkflow::class)->finalize($scenario['measurement']->fresh(), $scenario['finalizer']))
         ->toThrow(MeasurementWorkflowException::class);
 })->with(['missing', 'divergent hash']);
 
@@ -505,12 +517,15 @@ it('records effective administrative reviewer separately from expected responsib
     ]);
     $this->actingAs($admin);
 
-    app(MeasurementWorkflow::class)->approve($measurement->fresh(), $admin);
+    // Fase 4B-1: quem age só pelo override administrativo informa o motivo.
+    $overrideReason = 'Revisor da Gestão afastado nesta competência.';
+    app(MeasurementWorkflow::class)->approve($measurement->fresh(), $admin, overrideReason: $overrideReason);
     $activity = Activity::query()->where('description', 'measurement_stage_approved')->latest('id')->firstOrFail();
 
     expect($review->fresh()->reviewer_user_id)->toBe($admin->id)
         ->and($activity->properties->get('expected_responsible_user_id'))->toBe($expectedReviewer->id)
-        ->and($activity->properties->get('actual_actor_user_id'))->toBe($admin->id);
+        ->and($activity->properties->get('actual_actor_user_id'))->toBe($admin->id)
+        ->and($activity->properties->get('admin_override_reason'))->toBe($overrideReason);
 });
 
 it('audits asset creation replacement and removal without binary content', function () {

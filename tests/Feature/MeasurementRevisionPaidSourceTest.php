@@ -7,11 +7,13 @@ use App\Enums\MeasurementRevisionAdjustmentStatus;
 use App\Enums\MeasurementRevisionStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Models\Measurement;
+use App\Models\MeasurementFinancialRule;
 use App\Models\MeasurementPause;
 use App\Models\MeasurementPayment;
 use App\Models\MeasurementReview;
 use App\Models\SlaConfiguration;
 use App\Notifications\MeasurementWorkflowNotification;
+use App\Services\MeasurementPaymentFinancialService;
 use App\Services\MeasurementReceiptEvidenceService;
 use App\Services\MeasurementRevisionService;
 use App\Services\MeasurementSlaService;
@@ -188,7 +190,7 @@ it('keeps refusing the paid measurement until every current receipt is approved,
         ->and(revisionPaidSourceRefusal(fn () => Scenario::revise($scenario, $may)))->toBe($refusal);
 
     // Rejeitado.
-    $receipts->review($first, $scenario['actor'], MeasurementReceiptReviewStatus::Rejected, true, rejectionReason: 'Comprovante ilegível.');
+    $receipts->review($first, $scenario['finalizer'], MeasurementReceiptReviewStatus::Rejected, true, rejectionReason: 'Comprovante ilegível.');
 
     expect($may->fresh()->status)->toBe('awaiting_receipt')
         ->and($revisions->creationBlockReason($may->fresh()))->toBe($refusal)
@@ -211,7 +213,7 @@ it('keeps refusing the paid measurement until every current receipt is approved,
         ->and(revisionPaidSourceRefusal(fn () => Scenario::revise($scenario, $may)))->toBe($refusal);
 
     DB::table('measurements')->where('id', $may->id)->update(['status' => 'awaiting_receipt']);
-    $receipts->review($second, $scenario['actor'], MeasurementReceiptReviewStatus::Approved, true);
+    $receipts->review($second, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
 
     expect($may->fresh()->status)->toBe('approved')
         ->and($revisions->creationBlockReason($may->fresh()))->toBeNull()
@@ -237,7 +239,7 @@ it('refuses to revise a revision waiting at Finalization without a payment of it
         ->and(revisionPaidSourceRefusal(fn () => Scenario::revise($scenario, $first)))->toBe(MeasurementRevisionService::UNPAID_FINALIZATION_REFUSAL)
         ->and(Measurement::query()->where('revision_number', 2)->exists())->toBeFalse();
 
-    $workflow->finalize($first->fresh(), $scenario['actor']);
+    $workflow->finalize($first->fresh(), $scenario['finalizer']);
     $second = Scenario::revise($scenario, $first->fresh());
 
     expect($first->fresh()->status)->toBe('finalized')
@@ -247,6 +249,14 @@ it('refuses to revise a revision waiting at Finalization without a payment of it
 
 it('refuses a legacy paid source whose frozen financial assessment no longer matches its Engineering record until the payment is reassessed', function () {
     $scenario = Scenario::plan();
+    // Regra da emissão para pagar até R$ 10.000,00 acima do saldo, registrada
+    // por outro responsável antes do pagamento.
+    $rule = MeasurementFinancialRule::factory()->create([
+        'emission_id' => $scenario['operation']->emission_id,
+        'direction' => 'over',
+        'maximum_difference_amount' => '10000.00',
+        'maximum_difference_percent' => null,
+    ]);
     $may = Scenario::paidAwaitingFinalization($scenario, '2026-05', 10);
     $payment = $may->payments()->sole();
     $workflow = app(MeasurementWorkflow::class);
@@ -269,24 +279,39 @@ it('refuses a legacy paid source whose frozen financial assessment no longer mat
         ->and($revisions->creationBlockReason($may->fresh()))->toBe($stale)
         ->and(revisionPaidSourceRefusal(fn () => Scenario::revise($scenario, $may)))->toBe($stale)
         // A Finalização recusa pelo mesmo motivo.
-        ->and(revisionPaidSourceRefusal(fn () => $workflow->finalize($may->fresh(), $scenario['actor'], acceptFinancialExceptions: true)))
+        ->and(revisionPaidSourceRefusal(fn () => $workflow->finalize($may->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true)))
         ->toBe('O contexto financeiro mudou. Devolva à etapa Pagamento para reavaliar o enquadramento.')
         ->and(revisionPaidSourceRevisionCount())->toBe(0);
 
     // O caminho que a recusa aponta: a etapa Pagamento reavalia o pagamento.
-    $workflow->returnToStage($may->fresh(), $scenario['actor'], MeasurementWorkflow::STAGE_PAYMENT, 'Reavaliar o enquadramento do pagamento.');
-    $workflow->reassessPayment($payment->fresh(), $scenario['actor'], [
-        'financial_justification' => 'Pago sobre os 10% aprovados antes da reaprovação em 9%.',
-    ], $may->fresh()->workflow_revision);
+    $workflow->returnToStage($may->fresh(), $scenario['finalizer'], MeasurementWorkflow::STAGE_PAYMENT, 'Reavaliar o enquadramento do pagamento.');
+    $reassessment = ['financial_justification' => 'Pago sobre os 10% aprovados antes da reaprovação em 9%.'];
+    $assessment = $payment->fresh()->financial_assessment;
+
+    // Fase 4B-1: a justificativa sozinha não autoriza o excedente sobre os 9% reaprovados.
+    expect(revisionPaidSourceValidationMessage(
+        fn () => $workflow->reassessPayment($payment->fresh(), $scenario['actor'], $reassessment, $may->fresh()->workflow_revision),
+        'financial_rule_id',
+    ))->toStartWith(MeasurementPaymentFinancialService::EXCESS_WITHOUT_RULE_REFUSAL)
+        ->and($payment->fresh()->financial_assessment)->toEqual($assessment);
+
+    $workflow->reassessPayment($payment->fresh(), $scenario['actor'], [...$reassessment, 'financial_rule_id' => $rule->id], $may->fresh()->workflow_revision);
     $workflow->approve($may->fresh(), $scenario['actor']);
+    $unaccepted = sprintf(MeasurementRevisionService::PAID_EXCEPTION_UNACCEPTED_REFUSAL, $payment->id);
 
+    // Reavaliado, o enquadramento volta a valer. Fase 4B-1: o excedente só é
+    // aceito na Finalização, por outro responsável -- antes dela, a medição
+    // paga não é revisada.
     expect($may->fresh()->status)->toBe('approved')
-        ->and($revisions->creationBlockReason($may->fresh()))->toBeNull();
+        ->and($revisions->creationBlockReason($may->fresh()))->toBe($unaccepted)
+        ->and(revisionPaidSourceRefusal(fn () => Scenario::revise($scenario, $may)))->toBe($unaccepted)
+        ->and(revisionPaidSourceRevisionCount())->toBe(0);
 
+    $workflow->finalize($may->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
     $revision = Scenario::revise($scenario, $may);
 
     expect($revision->revisionNumber())->toBe(1)
-        ->and(revisionPaidSourceActivity($revision, 'measurement_revision_created')->properties['source_eligibility'])->toBe('paid_awaiting_finalization');
+        ->and(revisionPaidSourceActivity($revision, 'measurement_revision_created')->properties['source_eligibility'])->toBe('finalized');
 });
 
 it('refuses to create the revision when a proof of the paid source is no longer intact in storage', function (string $damage) {
@@ -504,11 +529,11 @@ it('does not suspend the paid source while the revision is a draft: the source m
 
     expect($may->fresh()->isFrozenByRevision())->toBeFalse()
         ->and(app(MeasurementRevisionService::class)->overview($may->fresh())['frozen_by'])->toBeNull()
-        ->and($workflow->canFinalize($may->fresh(), $scenario['actor']))->toBeTrue()
-        ->and($workflow->canReturnFromFinalization($may->fresh(), $scenario['actor']))->toBeTrue()
+        ->and($workflow->canFinalize($may->fresh(), $scenario['finalizer']))->toBeTrue()
+        ->and($workflow->canReturnFromFinalization($may->fresh(), $scenario['finalizer']))->toBeTrue()
         ->and($workflow->pendingResponsibilities($may->fresh()))->toBe([MeasurementResponsibility::Finalizer]);
 
-    $workflow->finalize($may->fresh(), $scenario['actor']);
+    $workflow->finalize($may->fresh(), $scenario['finalizer']);
 
     expect($may->fresh()->status)->toBe('finalized');
 
@@ -551,6 +576,7 @@ it('suspends every action on the paid source while its revision is under review'
     $workflow = app(MeasurementWorkflow::class);
     $receipts = app(MeasurementReceiptEvidenceService::class);
     $actor = $scenario['actor'];
+    $finalizer = $scenario['finalizer'];
     $frozen = sprintf(MeasurementRevisionService::FROZEN_WORKFLOW_REFUSAL, 'R1');
     $source = $may->fresh();
     $storedFiles = count(Storage::disk('local')->allFiles());
@@ -566,7 +592,8 @@ it('suspends every action on the paid source while its revision is under review'
         // A trilha da própria anterior registra a suspensão, com a revisão que
         // a suspendeu, como registra a retomada e o encerramento.
         ->and($suspended->id)->toBeGreaterThan($submitted->id)
-        ->and($suspended->causer_id)->toBe($actor->id)
+        // Quem envia a revisão do cenário é o Finalizador.
+        ->and($suspended->causer_id)->toBe($finalizer->id)
         ->and($suspended->properties['stage'])->toBe(MeasurementWorkflow::STAGE_FINALIZATION)
         ->and($suspended->properties['status'])->toBe('approved')
         ->and($suspended->properties['suspended_by_revision_id'])->toBe($revision->id)
@@ -581,21 +608,21 @@ it('suspends every action on the paid source while its revision is under review'
         ->and($suspended->properties['related_revision_number'])->toBe(1)
         ->and($suspended->properties['workflow_revision'])->toBe((int) $source->workflow_revision)
         ->and($source->isFrozenByRevision())->toBeTrue()
-        ->and($workflow->canFinalize($source, $actor))->toBeFalse()
-        ->and($workflow->canReturnFromFinalization($source, $actor))->toBeFalse()
+        ->and($workflow->canFinalize($source, $finalizer))->toBeFalse()
+        ->and($workflow->canReturnFromFinalization($source, $finalizer))->toBeFalse()
         ->and($workflow->canManageReceipts($source, $actor))->toBeFalse()
         ->and($workflow->canResume($source, $actor))->toBeFalse()
         ->and($receipts->canUpload($source, $actor))->toBeFalse()
-        ->and($receipts->canReview($source, $actor))->toBeFalse()
+        ->and($receipts->canReview($source, $finalizer))->toBeFalse()
         ->and($workflow->pendingResponsibilities($source))->toBe([])
         ->and(app(MeasurementSlaService::class)->evaluate($source)['status'])->toBe(MeasurementSlaService::STATUS_SUSPENDED_BY_REVISION)
         ->and(app(MeasurementRevisionService::class)->overview($source)['frozen_by'])->toBe('R1')
         ->and(Measurement::query()->withPendingWork()->pluck('id')->all())->toBe([$revision->id]);
 
-    expect(revisionPaidSourceRefusal(fn () => $workflow->finalize($may->fresh(), $actor, acceptFinancialExceptions: true)))->toBe($frozen);
+    expect(revisionPaidSourceRefusal(fn () => $workflow->finalize($may->fresh(), $finalizer, acceptFinancialExceptions: true)))->toBe($frozen);
 
     foreach ([MeasurementWorkflow::STAGE_ENGINEERING, 2, 3, MeasurementWorkflow::STAGE_PAYMENT] as $target) {
-        expect(revisionPaidSourceRefusal(fn () => $workflow->returnToStage($may->fresh(), $actor, $target, 'Devolver durante a revisão.')))->toBe($frozen);
+        expect(revisionPaidSourceRefusal(fn () => $workflow->returnToStage($may->fresh(), $finalizer, $target, 'Devolver durante a revisão.')))->toBe($frozen);
     }
 
     expect(revisionPaidSourceRefusal(fn () => $workflow->approve($may->fresh(), $actor)))->toBe($frozen)
@@ -617,7 +644,7 @@ it('suspends every action on the paid source while its revision is under review'
         )))->toBe($frozen)
         // A suspensão vem antes de "já decidida": o comprovante aprovado
         // também não é reconferido.
-        ->and(revisionPaidSourceRefusal(fn () => $receipts->review($evidence->fresh(), $actor, MeasurementReceiptReviewStatus::Approved, true)))->toBe($frozen)
+        ->and(revisionPaidSourceRefusal(fn () => $receipts->review($evidence->fresh(), $finalizer, MeasurementReceiptReviewStatus::Approved, true)))->toBe($frozen)
         // A Finalização não tem pausa: retomar é recusado antes de chegar à
         // suspensão (a guarda da suspensão na retomada é provada à parte).
         ->and(revisionPaidSourceRefusal(fn () => $workflow->resume($may->fresh(), $actor)))
@@ -714,7 +741,7 @@ it('resumes the Finalization of the paid source when Engineering rejects the rev
         ->and($resumed->properties['rejected_revision_id'])->toBe($revision->id)
         ->and($resumed->properties['suspension_pause_id'])->toBe($pause->id)
         ->and(app(MeasurementRevisionService::class)->overview($may)['frozen_by'])->toBeNull()
-        ->and(app(MeasurementWorkflow::class)->canFinalize($may, $scenario['actor']))->toBeTrue();
+        ->and(app(MeasurementWorkflow::class)->canFinalize($may, $scenario['finalizer']))->toBeTrue();
 
     // Sexta-feira: quatro dias úteis desde que a Finalização abriu, dois deles
     // com a medição suspensa pela revisão.
@@ -725,7 +752,7 @@ it('resumes the Finalization of the paid source when Engineering rejects the rev
         ->and($sla['elapsed_business_seconds'])->toBe(2 * 86400);
 
     // O fluxo voltou de onde parou.
-    app(MeasurementWorkflow::class)->finalize($may->fresh(), $scenario['actor']);
+    app(MeasurementWorkflow::class)->finalize($may->fresh(), $scenario['finalizer']);
 
     expect($may->fresh()->status)->toBe('finalized');
 });
@@ -759,8 +786,8 @@ it('closes the Finalization of the paid source without a decision when the revis
         ->and($may->status)->toBe('superseded')
         ->and($may->current_stage)->toBe(MeasurementWorkflow::STAGE_FINALIZATION)
         ->and($may->analyzed_by)->toBe($scenario['actor']->id)
-        ->and($workflow->canFinalize($may, $scenario['actor']))->toBeFalse()
-        ->and($workflow->canReturnFromFinalization($may, $scenario['actor']))->toBeFalse()
+        ->and($workflow->canFinalize($may, $scenario['finalizer']))->toBeFalse()
+        ->and($workflow->canReturnFromFinalization($may, $scenario['finalizer']))->toBeFalse()
         ->and($workflow->pendingResponsibilities($may))->toBe([])
         // Encerrada, a R0 não recebe outro pagamento nem reavalia o
         // enquadramento do que pagou: a posição da família é a da R1.
@@ -885,10 +912,10 @@ it('takes the family overpayment of the revision of a paid source to a decision 
 
     expect($revision->fresh()->status)->toBe('approved')
         ->and($revision->payments()->exists())->toBeFalse()
-        ->and(revisionPaidSourceValidationMessage(fn () => $workflow->finalize($revision->fresh(), $scenario['actor']), 'accept_financial_exceptions'))
+        ->and(revisionPaidSourceValidationMessage(fn () => $workflow->finalize($revision->fresh(), $scenario['finalizer']), 'accept_financial_exceptions'))
         ->toContain('valor pago a maior desta revisão');
 
-    $workflow->finalize($revision->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
+    $workflow->finalize($revision->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
     $position = revisionPaidSourcePosition($revision);
     $acknowledged = revisionPaidSourceActivity($revision, 'measurement_revision_financial_difference_acknowledged');
     $unresolved = revisionPaidSourceActivity($revision, 'measurement_revision_financial_exception_unresolved');
@@ -901,7 +928,7 @@ it('takes the family overpayment of the revision of a paid source to a decision 
         ->and($acknowledged->properties['positions'])->toHaveCount(1)
         ->and($acknowledged->properties['positions'][0]['acknowledged_now_overpayment_amount'])->toBe('20000.00')
         ->and($acknowledged->properties['decision'])->toBe($decision)
-        ->and($acknowledged->properties['accepted_by'])->toBe($scenario['actor']->id)
+        ->and($acknowledged->properties['accepted_by'])->toBe($scenario['finalizer']->id)
         ->and($unresolved->properties['recovery_registered'])->toBeFalse()
         ->and($may->payments()->sole()->amount)->toBe('100000.00')
         ->and(MeasurementPayment::query()->count())->toBe(1);
@@ -990,14 +1017,14 @@ it('counts every installment of the paid source as history of the revision', fun
     $workflow->approve($may->fresh(), $scenario['actor']);
 
     $evidence = $receipts->upload($first->fresh(), $scenario['actor'], ReceiptScenario::file('parcela-1.pdf', '%PDF-1.7 parcela 1'));
-    $receipts->review($evidence, $scenario['actor'], MeasurementReceiptReviewStatus::Approved, true);
+    $receipts->review($evidence, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
 
     // A segunda parcela ainda sem comprovante.
     expect($may->fresh()->status)->toBe('awaiting_receipt')
         ->and($revisions->creationBlockReason($may->fresh()))->toBe(MeasurementRevisionService::PAID_RECEIPTS_PENDING_REFUSAL);
 
     $evidence = $receipts->upload($second->fresh(), $scenario['actor'], ReceiptScenario::file('parcela-2.pdf', '%PDF-1.7 parcela 2'));
-    $receipts->review($evidence, $scenario['actor'], MeasurementReceiptReviewStatus::Approved, true);
+    $receipts->review($evidence, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
 
     expect($may->fresh()->status)->toBe('approved');
 
@@ -1062,7 +1089,7 @@ it('accepts receipt corrections on the paid source closed by the revision and li
             ->where('subject_id', $correction->id)
             ->exists())->toBeTrue();
 
-    $receipts->review($correction, $scenario['actor'], MeasurementReceiptReviewStatus::Approved, true);
+    $receipts->review($correction, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
     $source = $may->fresh();
 
     expect($source->status)->toBe('superseded')
@@ -1102,7 +1129,7 @@ it('refuses to submit the draft while the receipt of the paid source is back und
         ->and($may->fresh()->isFrozenByRevision())->toBeFalse()
         ->and(Activity::query()->where('description', 'measurement_revision_submitted')->exists())->toBeFalse();
 
-    $receipts->review($replacement, $scenario['actor'], MeasurementReceiptReviewStatus::Approved, true);
+    $receipts->review($replacement, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
     $revision = Scenario::submit($scenario, $draft);
 
     expect($may->fresh()->status)->toBe('approved')

@@ -1,11 +1,13 @@
 <?php
 
+use App\DTOs\Measurements\MeasurementFinancialReconciliationLine;
 use App\Enums\MeasurementPlanRevisionCategory;
 use App\Enums\MeasurementReconciliationStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Filament\Resources\Measurements\Pages\ViewMeasurement;
 use App\Models\Construction;
 use App\Models\Measurement;
+use App\Models\MeasurementFinancialRule;
 use App\Models\MeasurementPayment;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
@@ -121,14 +123,20 @@ function reconciliationAdmin(): User
 /**
  * Cenário real: Engenharia aprovada pelo fluxo, medição em `awaiting_payment`.
  *
+ * O ator responde por todas as etapas, menos a Finalização: o Finalizador é
+ * outra pessoa, que confere os comprovantes que o ator envia e aceita o que
+ * ele registrou -- a segregação de funções da Fase 4B-1.
+ *
  * `name` fixa o nome do empreendimento quando o teste confere o texto exibido.
  *
  * @param  array<int, array{fund: string|null, percent: float|int, name?: string}>  $specs
- * @return array{actor: User, operation: Operation, measurement: Measurement, planSets: array<int, MeasurementPlanSet>, constructions: array<int, Construction>}
+ * @return array{actor: User, finalizer: User, operation: Operation, measurement: Measurement, planSets: array<int, MeasurementPlanSet>, constructions: array<int, Construction>}
  */
 function reconciliationApprovedScenario(array $specs): array
 {
     $actor = reconciliationAdmin();
+    $finalizer = User::factory()->withTwoFactor()->create();
+    $finalizer->givePermissionTo(['measurements.view', 'measurements.finalize']);
 
     $operation = Operation::factory()->create([
         'status' => 'active',
@@ -138,7 +146,7 @@ function reconciliationApprovedScenario(array $specs): array
         'stage3_reviewer_user_id' => $actor->getKey(),
         'payment_manager_user_id' => $actor->getKey(),
         'payment_receipt_uploader_user_id' => $actor->getKey(),
-        'payment_finalizer_user_id' => $actor->getKey(),
+        'payment_finalizer_user_id' => $finalizer->getKey(),
     ]);
 
     $measurement = Measurement::factory()->create([
@@ -204,6 +212,7 @@ function reconciliationApprovedScenario(array $specs): array
 
     return [
         'actor' => $actor,
+        'finalizer' => $finalizer,
         'operation' => $operation,
         'measurement' => $measurement->fresh(),
         'planSets' => $planSets,
@@ -636,8 +645,9 @@ it('updates the divergence in the payment modal when the amount changes', functi
         ->toContain('Conciliado');
 
     $component->set("mountedActions.0.data.payments.{$itemKey}.amount", '250.000,00');
+    // Fase 4B-1: acima do saldo é excedente, que só entra com regra financeira.
     expect(reconciliationModalContent($component, 'reconciliation_divergence'))
-        ->toContain('Divergência para mais')
+        ->toContain('Excede o saldo a pagar')
         ->toContain('R$ 50.000,00');
 });
 
@@ -678,9 +688,10 @@ it('allows finalization of a justified divergence with explicit acceptance', fun
     $workflow->approve($measurement->fresh(), $scenario['actor']);
 
     $workflow->attachReceipt($payment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
-    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['actor']);
+    // Fase 4B-1: quem enviou o comprovante não o aprova; o Finalizador confere.
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
 
-    $workflow->finalize($measurement->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
+    $workflow->finalize($measurement->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
 
     $line = reconciliationService()->forMeasurement($measurement->fresh())->line($scenario['planSets'][0]->getKey());
 
@@ -732,7 +743,7 @@ function reconciliationValidationErrors(callable $action): array
  * R$ 2.000,00 (fundo de R$ 20.000,00 a 10%).
  *
  * @param  array{fund: string|null, percent: float|int}  $second
- * @return array{actor: User, operation: Operation, measurement: Measurement, planSets: array<int, MeasurementPlanSet>, constructions: array<int, Construction>}
+ * @return array{actor: User, finalizer: User, operation: Operation, measurement: Measurement, planSets: array<int, MeasurementPlanSet>, constructions: array<int, Construction>}
  */
 function reconciliationTwoDevelopments(array $second = ['fund' => '20000.00', 'percent' => 10]): array
 {
@@ -743,7 +754,7 @@ function reconciliationTwoDevelopments(array $second = ['fund' => '20000.00', 'p
 }
 
 /**
- * @param  array{actor: User}  $scenario
+ * @param  array{actor: User, finalizer: User}  $scenario
  * @param  iterable<int, MeasurementPayment>  $payments
  */
 function reconciliationApproveReceipts(array $scenario, iterable $payments): void
@@ -754,7 +765,8 @@ function reconciliationApproveReceipts(array $scenario, iterable $payments): voi
             $scenario['actor'],
             MeasurementReceiptEvidenceScenario::file("comprovante-{$payment->id}.pdf", "%PDF-1.7 comprovante {$payment->id}"),
         );
-        MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['actor']);
+        // Fase 4B-1: quem enviou o comprovante não o aprova; o Finalizador confere.
+        MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
     }
 }
 
@@ -772,6 +784,12 @@ it('refuses the payment stage approval while a required development has no payme
             'plan_set_id' => $scenario['planSets'][0]->getKey(),
             'pay_date' => '2026-08-31',
             'amount' => '3000.00',
+            // Fase 4B-1: o excedente só entra com regra que o cubra, registrada por outra pessoa.
+            'financial_rule_id' => MeasurementFinancialRule::factory()->create([
+                'emission_id' => $scenario['operation']->emission_id,
+                'direction' => 'over',
+                'maximum_difference_amount' => '2000.00',
+            ])->getKey(),
             'financial_justification' => 'Valor da Torre Beta antecipado na Torre Alfa.',
         ],
     });
@@ -820,12 +838,12 @@ it('requires the finalizer acceptance for a justified development without paymen
     expect($scenario['measurement']->fresh()->status)->toBe('approved')
         ->and(app(MeasurementPaymentFinancialService::class)->requiresAcceptance($scenario['measurement']->fresh()))->toBeTrue();
 
-    $errors = reconciliationValidationErrors(fn () => $workflow->finalize($scenario['measurement']->fresh(), $scenario['actor']));
+    $errors = reconciliationValidationErrors(fn () => $workflow->finalize($scenario['measurement']->fresh(), $scenario['finalizer']));
 
     expect($errors['accept_financial_exceptions'][0] ?? '')->toContain('Torre Beta (R$ 2.000,00)')
         ->and($scenario['measurement']->fresh()->status)->toBe('approved');
 
-    $workflow->finalize($scenario['measurement']->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
+    $workflow->finalize($scenario['measurement']->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
     $finalization = reconciliationLastActivity('measurement_finalized');
     $accepted = $finalization->properties->get('unpaid_plan_sets_accepted');
 
@@ -841,7 +859,6 @@ it('requires the finalizer acceptance for a justified development without paymen
 it('does not ask for justification or acceptance when no required development is left without payment', function (string $case) {
     $scenario = reconciliationTwoDevelopments(match ($case) {
         'zero realized percent' => ['fund' => '20000.00', 'percent' => 0],
-        'no construction fund' => ['fund' => null, 'percent' => 10],
         'expected amount rounded to zero' => ['fund' => '0.10', 'percent' => 1],
         'paid in full' => ['fund' => '20000.00', 'percent' => 10],
     });
@@ -863,12 +880,50 @@ it('does not ask for justification or acceptance when no required development is
     expect($scenario['measurement']->fresh()->status)->toBe('approved')
         ->and($financial->requiresAcceptance($scenario['measurement']->fresh()))->toBeFalse();
 
-    $workflow->finalize($scenario['measurement']->fresh(), $scenario['actor']);
+    $workflow->finalize($scenario['measurement']->fresh(), $scenario['finalizer']);
 
     expect($scenario['measurement']->fresh()->status)->toBe('finalized')
         ->and(reconciliationLastActivity('measurement_stage_approved')->properties->get('unpaid_plan_sets'))->toBe([])
         ->and(reconciliationLastActivity('measurement_finalized')->properties->get('unpaid_plan_sets_accepted'))->toBe([]);
-})->with(['zero realized percent', 'no construction fund', 'expected amount rounded to zero', 'paid in full']);
+})->with(['zero realized percent', 'expected amount rounded to zero', 'paid in full']);
+
+// Fase 4B-1: sem Fundo de Obra o valor devido é indeterminado, não zero. O
+// empreendimento com avanço no mês e sem pagamento deixou de passar calado:
+// pede justificativa na etapa Pagamento e aceite expresso na Finalização.
+it('asks for justification and acceptance when a development without Construction Fund and with progress is left without payment', function () {
+    $scenario = reconciliationTwoDevelopments(['fund' => null, 'percent' => 10]);
+    $workflow = app(MeasurementWorkflow::class);
+    $financial = app(MeasurementPaymentFinancialService::class);
+    $justification = 'Torre Beta sem Fundo de Obra no plano: pagamento suspenso até a correção do cadastro.';
+    $payment = $workflow->registerPayment($scenario['measurement']->fresh(), $scenario['actor'], [
+        'plan_set_id' => $scenario['planSets'][0]->getKey(),
+        'pay_date' => '2026-08-31',
+        'amount' => '1000.00',
+    ]);
+
+    expect(array_map(
+        fn (MeasurementFinancialReconciliationLine $line): int => $line->planSetId,
+        $financial->unpaidRequiredPlanSets($scenario['measurement']->fresh()),
+    ))->toBe([$scenario['planSets'][1]->getKey()]);
+
+    $errors = reconciliationValidationErrors(fn () => $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']));
+
+    expect($errors['notes'][0] ?? '')
+        ->toBe('Justifique a ausência de pagamento nesta competência de: Torre Beta (valor devido indeterminado: sem Fundo de Obra); o Finalizador precisará aceitar expressamente.');
+
+    $workflow->approve($scenario['measurement']->fresh(), $scenario['actor'], $justification);
+    reconciliationApproveReceipts($scenario, [$payment]);
+
+    expect($financial->requiresAcceptance($scenario['measurement']->fresh()))->toBeTrue();
+
+    $workflow->finalize($scenario['measurement']->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
+    $accepted = reconciliationLastActivity('measurement_finalized')->properties->get('unpaid_plan_sets_accepted');
+
+    expect($scenario['measurement']->fresh()->status)->toBe('finalized')
+        ->and($accepted)->toHaveCount(1)
+        ->and($accepted[0]['plan_set_id'] ?? null)->toBe($scenario['planSets'][1]->getKey())
+        ->and($accepted[0]['justification'] ?? null)->toBe($justification);
+});
 
 it('treats a partially paid development as a payment divergence and not as an omission', function () {
     $scenario = reconciliationTwoDevelopments();
@@ -888,10 +943,10 @@ it('treats a partially paid development as a payment divergence and not as an om
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
     reconciliationApproveReceipts($scenario, $payments);
 
-    expect(reconciliationValidationErrors(fn () => $workflow->finalize($scenario['measurement']->fresh(), $scenario['actor'])))
+    expect(reconciliationValidationErrors(fn () => $workflow->finalize($scenario['measurement']->fresh(), $scenario['finalizer'])))
         ->toHaveKey('accept_financial_exceptions');
 
-    $workflow->finalize($scenario['measurement']->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
+    $workflow->finalize($scenario['measurement']->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
     $finalization = reconciliationLastActivity('measurement_finalized');
 
     expect($scenario['measurement']->fresh()->status)->toBe('finalized')
@@ -910,7 +965,7 @@ it('recomputes the omission after the finalizer returns to payment and the missi
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor'], 'Torre Beta será paga depois da conferência.');
     $workflow->returnToStage(
         $scenario['measurement']->fresh(),
-        $scenario['actor'],
+        $scenario['finalizer'],
         MeasurementWorkflow::STAGE_PAYMENT,
         'Registrar o pagamento da Torre Beta.',
     );
@@ -922,7 +977,7 @@ it('recomputes the omission after the finalizer returns to payment and the missi
 
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
     reconciliationApproveReceipts($scenario, [$first, $second]);
-    $workflow->finalize($scenario['measurement']->fresh(), $scenario['actor']);
+    $workflow->finalize($scenario['measurement']->fresh(), $scenario['finalizer']);
 
     $paymentApprovals = Activity::query()
         ->where('description', 'measurement_stage_approved')
@@ -957,7 +1012,7 @@ it('refuses to finalize an omission whose payment stage was approved without jus
     $refusal = null;
 
     try {
-        $workflow->finalize($scenario['measurement']->fresh(), $scenario['actor'], acceptFinancialExceptions: true);
+        $workflow->finalize($scenario['measurement']->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true);
     } catch (MeasurementWorkflowException $exception) {
         $refusal = $exception->getMessage();
     }
@@ -1001,7 +1056,7 @@ it('requires the acceptance checkbox of the finalization modal for a justified d
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor'], 'Torre Beta sem pagamento: pendência documental do construtor.');
     reconciliationApproveReceipts($scenario, [$payment]);
 
-    $page = Livewire::test(ViewMeasurement::class, ['record' => $scenario['measurement']->getRouteKey()])
+    $page = Livewire::actingAs($scenario['finalizer'])->test(ViewMeasurement::class, ['record' => $scenario['measurement']->getRouteKey()])
         ->mountAction('finalize')
         ->assertSet('mountedActions.0.data.accept_financial_exceptions', false)
         ->callMountedAction()

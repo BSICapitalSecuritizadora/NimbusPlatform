@@ -108,6 +108,19 @@ it('reads an administrative override as what it is, not as an error', function (
         ->and($source->auditColor())->not->toBe('danger');
 });
 
+// Fase 4B-1: o override administrativo exige um motivo -- a pausa já pede o
+// dela, que vale como o do override -- e a auditoria o mostra.
+it('shows the reason an administrative override recorded', function () {
+    $scenario = auditSourceScenario();
+    $admin = User::factory()->create(['is_active' => true, 'approved_at' => now()]);
+    $admin->assignRole('admin');
+
+    $activity = auditSourceActivity($scenario['measurement'], $admin);
+
+    expect($activity->properties['admin_override_reason'])->toBe('Motivo de auditoria')
+        ->and(ActivityResource::authorizationDetail($activity))->toBe('Motivo: Motivo de auditoria');
+});
+
 it('attributes no source to an activity that is not a workflow action', function () {
     $actor = User::factory()->create();
     activity('default')->causedBy($actor)->withProperties(['whatever' => true])->log('created');

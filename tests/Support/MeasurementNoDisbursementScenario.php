@@ -29,7 +29,7 @@ final class MeasurementNoDisbursementScenario
     /**
      * @param  list<array{fund: string|null, name?: string, initial?: string, reference_date?: string|null}>  $developments
      * @param  list<string>  $months  meses do cronograma ('Y-m'), na ordem das sequências
-     * @return array{actor: User, operation: Operation, planSets: list<MeasurementPlanSet>, lines: list<array<string, MeasurementPlanLine>>}
+     * @return array{actor: User, finalizer: User, operation: Operation, planSets: list<MeasurementPlanSet>, lines: list<array<string, MeasurementPlanLine>>}
      */
     public static function plan(array $developments = [['fund' => '1000000.00']], array $months = ['2026-05', '2026-06', '2026-07']): array
     {
@@ -37,6 +37,10 @@ final class MeasurementNoDisbursementScenario
 
         $actor = User::factory()->withTwoFactor()->create();
         $actor->givePermissionTo(['measurements.view', 'measurements.create', 'measurements.update', 'measurements.review', 'measurements.pay', 'measurements.receipts', 'measurements.finalize']);
+        // A Finalização é de outra pessoa: quem decide sem desembolso, paga ou
+        // envia comprovante não dá a ciência nem aceita o que fez.
+        $finalizer = User::factory()->withTwoFactor()->create();
+        $finalizer->givePermissionTo(['measurements.view', 'measurements.finalize']);
 
         $operation = Operation::factory()->create([
             'status' => 'active',
@@ -46,7 +50,7 @@ final class MeasurementNoDisbursementScenario
             'stage3_reviewer_user_id' => $actor->id,
             'payment_manager_user_id' => $actor->id,
             'payment_receipt_uploader_user_id' => $actor->id,
-            'payment_finalizer_user_id' => $actor->id,
+            'payment_finalizer_user_id' => $finalizer->id,
         ]);
 
         $planSets = [];
@@ -92,7 +96,7 @@ final class MeasurementNoDisbursementScenario
             $lines[] = $planLines;
         }
 
-        return compact('actor', 'operation', 'planSets', 'lines');
+        return compact('actor', 'finalizer', 'operation', 'planSets', 'lines');
     }
 
     /**
@@ -194,7 +198,7 @@ final class MeasurementNoDisbursementScenario
     {
         app(MeasurementWorkflow::class)->finalize(
             $measurement->fresh(),
-            $actor ?? $scenario['actor'],
+            $actor ?? $scenario['finalizer'] ?? $scenario['actor'],
             acknowledgeNoDisbursement: true,
         );
 

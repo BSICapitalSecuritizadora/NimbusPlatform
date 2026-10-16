@@ -368,7 +368,7 @@ it('refuses to return a paid measurement from Finalization to Engineering, writi
         $workflow->attachReceipt($payment->fresh(), $scenario['actor'], ReceiptScenario::file());
         app(MeasurementReceiptEvidenceService::class)->review(
             $payment->fresh()->currentReceiptEvidence,
-            $scenario['actor'],
+            $scenario['finalizer'],
             MeasurementReceiptReviewStatus::Rejected,
             true,
             rejectionReason: 'Comprovante sem a autenticação do banco.',
@@ -382,12 +382,12 @@ it('refuses to return a paid measurement from Finalization to Engineering, writi
 
     expect($paid->status)->toBe($status)
         ->and($paid->current_stage)->toBe(MeasurementWorkflow::STAGE_FINALIZATION)
-        ->and($workflow->canReturnFromFinalization($paid, $scenario['actor']))->toBeTrue()
+        ->and($workflow->canReturnFromFinalization($paid, $scenario['finalizer']))->toBeTrue()
         ->and($workflow->engineeringReturnBlockReason($paid))->toBe(MeasurementWorkflow::PAID_ENGINEERING_RETURN_REFUSAL);
 
     expect(paidEngineeringReturnRefusal(fn () => $workflow->returnToStage(
         $paid->fresh(),
-        $scenario['actor'],
+        $scenario['finalizer'],
         MeasurementWorkflow::STAGE_ENGINEERING,
         'Rever o percentual medido.',
     )))->toBe(MeasurementWorkflow::PAID_ENGINEERING_RETURN_REFUSAL);
@@ -411,7 +411,7 @@ it('still returns a paid measurement from Finalization to an earlier stage after
     $engineeringReview = $paid->reviewForStage(MeasurementWorkflow::STAGE_ENGINEERING)?->only(['id', 'status', 'reviewer_user_id']);
     $payments = DB::table('measurement_payments')->where('measurement_id', $paid->id)->orderBy('id')->get()->map(fn (object $row): array => (array) $row)->all();
 
-    $workflow->returnToStage($paid->fresh(), $scenario['actor'], $target, 'Rever o enquadramento antes de finalizar.');
+    $workflow->returnToStage($paid->fresh(), $scenario['finalizer'], $target, 'Rever o enquadramento antes de finalizar.');
 
     $returned = $paid->fresh();
     $returnAudit = Activity::query()->where('description', 'measurement_finalization_returned')->sole();
@@ -515,7 +515,7 @@ it('disables the Engineering option of the return from Finalization of a paid me
     $paid = Scenario::paidAwaitingFinalization($scenario, '2026-05', 10);
     $snapshot = $paid->engineering_snapshot;
     $before = paidEngineeringReturnFootprint($paid);
-    $this->actingAs($scenario['actor']);
+    $this->actingAs($scenario['finalizer']);
 
     $component = Livewire::test(ViewMeasurement::class, ['record' => $paid->getRouteKey()])
         ->assertActionVisible('returnToStage')
@@ -543,7 +543,7 @@ it('disables the Engineering option of the return from Finalization of a paid me
     // motivo.
     expect(paidEngineeringReturnRefusal(fn () => $workflow->returnToStage(
         $paid->fresh(),
-        $scenario['actor'],
+        $scenario['finalizer'],
         MeasurementWorkflow::STAGE_ENGINEERING,
         'Rever o percentual medido.',
     )))->toBe(MeasurementWorkflow::PAID_ENGINEERING_RETURN_REFUSAL)
@@ -637,7 +637,7 @@ it('still returns from Finalization to Engineering a legacy paid measurement wit
         'engineering_snapshot' => $legacySnapshot === null ? null : json_encode($legacySnapshot),
     ]);
     $legacy = $paid->fresh();
-    $this->actingAs($scenario['actor']);
+    $this->actingAs($scenario['finalizer']);
 
     expect($legacy->status)->toBe('approved')
         ->and($legacy->hasApprovedEngineering())->toBeTrue()
@@ -712,6 +712,9 @@ it('still sends back to Engineering, and approves again, an effective revision w
             ->and($atStage->current_stage)->toBe(MeasurementWorkflow::STAGE_FINALIZATION)
             ->and($workflow->protectsPaidEngineeringRecord($atStage))->toBeFalse()
             ->and($workflow->engineeringReturnBlockReason($atStage))->toBeNull();
+
+        // A devolução da Finalização é do Finalizador.
+        $this->actingAs($scenario['finalizer']);
 
         $component = Livewire::test(ViewMeasurement::class, ['record' => $revision->getRouteKey()])
             ->assertActionVisible('returnToStage')

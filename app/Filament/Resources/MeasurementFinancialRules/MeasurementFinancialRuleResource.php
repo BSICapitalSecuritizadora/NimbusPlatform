@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\MeasurementFinancialRules;
 
+use App\DTOs\Measurements\MeasurementFinancialRuleCoverage;
 use App\Enums\AccessPermission;
 use App\Filament\Resources\MeasurementFinancialRules\Pages\ManageMeasurementFinancialRules;
 use App\Filament\Support\AnchoredFilterDropdown;
@@ -76,13 +77,13 @@ class MeasurementFinancialRuleResource extends Resource
                 Textarea::make('description')->label('Condições de aplicação')->required()->rows(3)->maxLength(5000)->columnSpanFull(),
             ]),
             Section::make('Limites e conferência')->columns(2)->columnSpanFull()
-                ->description('Defina pelo menos um limite. Quando os dois forem informados, ambos precisam ser atendidos. Toda divergência exige justificativa e aceite do Finalizador.')
+                ->description('Defina pelo menos um limite. Quando os dois forem informados, ambos precisam ser atendidos. Os limites valem para a divergência acumulada de cada obra na competência, somados todos os pagamentos, e não para cada pagamento. Toda divergência exige justificativa e aceite do Finalizador, e quem registra esta versão da regra não a usa no próprio pagamento.')
                 ->schema([
                     Select::make('direction')->label('Diferença permitida')->options(MeasurementFinancialRule::DIRECTIONS)->required(),
                     Toggle::make('requires_document')->label('Exigir documento de suporte')->default(false),
                     TextInput::make('maximum_difference_amount')->label('Diferença máxima em reais')->prefix('R$')->numeric()->minValue(0)->requiredWithout('maximum_difference_percent'),
                     TextInput::make('maximum_difference_percent')->label('Diferença máxima em percentual')->suffix('%')->numeric()->minValue(0)
-                        ->requiredWithout('maximum_difference_amount')->helperText('Calculado sobre o saldo esperado antes deste pagamento. Não se aplica quando o saldo é zero.'),
+                        ->requiredWithout('maximum_difference_amount')->helperText('Percentual do valor aprovado da obra na competência (Fundo de Obra × realizado do mês). Sem valor aprovado positivo, o limite percentual não autoriza pagamento e impede a regra mesmo com o limite em reais: para essa exceção, cadastre uma regra só com o limite em reais.'),
                     DatePicker::make('effective_from')->label('Válida a partir de')->required()->helperText('A vigência considera a data do pagamento.'),
                     DatePicker::make('effective_until')->label('Válida até')->afterOrEqual('effective_from'),
                 ]),
@@ -101,7 +102,11 @@ class MeasurementFinancialRuleResource extends Resource
                 TextColumn::make('direction')->label('Direção')->formatStateUsing(fn (string $state): string => MeasurementFinancialRule::DIRECTIONS[$state]),
                 TextColumn::make('maximum_difference_amount')->label('Limite em reais')->placeholder('—')
                     ->formatStateUsing(fn (string $state): string => MeasurementFinancialReconciliationService::formatCurrency($state)),
-                TextColumn::make('maximum_difference_percent')->label('Limite percentual')->suffix('%')->placeholder('—'),
+                // A versão anterior à base explícita (sobre o saldo a pagar) não
+                // autoriza por percentual: a tabela diz, para ninguém contar com ela.
+                TextColumn::make('maximum_difference_percent')->label('Limite percentual')->suffix('%')->placeholder('—')
+                    ->description(fn (MeasurementFinancialRule $record): ?string => $record->maximum_difference_percent === null ? null
+                        : ($record->percent_basis === MeasurementFinancialRuleCoverage::PERCENT_BASIS_APPROVED_AMOUNT ? 'do valor aprovado' : 'base anterior — não autoriza')),
                 TextColumn::make('effective_from')->label('Início')->date('d/m/Y')->sortable(),
                 TextColumn::make('effective_until')->label('Fim')->date('d/m/Y')->placeholder('Sem fim definido'),
                 TextColumn::make('retired_at')->label('Disponibilidade')->badge()

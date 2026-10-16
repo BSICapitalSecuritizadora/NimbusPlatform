@@ -123,6 +123,7 @@ class ContaAzulBillIngestionService
                 'retries_batch_id' => $retryOf?->getKey(),
                 'requested_by_user_id' => $actor->getKey(),
                 'started_at' => now(),
+                'last_heartbeat_at' => now(),
             ]);
         });
 
@@ -216,7 +217,7 @@ class ContaAzulBillIngestionService
                     $expectedTotal = $total;
                 }
 
-                $counts = $this->storePage($batch, $items);
+                $counts = $this->storePage($actor, $batch, $items);
                 $received += $counts['received'];
                 $pagesCompleted++;
 
@@ -233,9 +234,9 @@ class ContaAzulBillIngestionService
      * @param  array<int, mixed>  $items
      * @return array{received: int, staged: int, updated: int, skipped: int, reobserved: int}
      */
-    private function storePage(ContaAzulImportBatch $batch, array $items): array
+    private function storePage(User $actor, ContaAzulImportBatch $batch, array $items): array
     {
-        return DB::transaction(function () use ($batch, $items): array {
+        return DB::transaction(function () use ($actor, $batch, $items): array {
             $counts = ['received' => 0, 'staged' => 0, 'updated' => 0, 'skipped' => 0, 'reobserved' => 0];
 
             foreach ($items as $record) {
@@ -255,7 +256,7 @@ class ContaAzulBillIngestionService
                     continue;
                 }
 
-                $outcome = $this->upsertBill($batch, $billId, $record);
+                $outcome = $this->upsertBill($actor, $batch, $billId, $record);
                 $counts[$outcome]++;
             }
 
@@ -266,19 +267,24 @@ class ContaAzulBillIngestionService
     /**
      * Idempotent bill upsert. Returns the counter to bump.
      *
+     * The row lock serializes reimports against governed Phase 3B
+     * attribution decisions: a correction and a reimport racing the same
+     * bill commit in order, never interleaved.
+     *
      * @param  array<string, mixed>  $record
      */
-    private function upsertBill(ContaAzulImportBatch $batch, string $billId, array $record): string
+    private function upsertBill(User $actor, ContaAzulImportBatch $batch, string $billId, array $record): string
     {
         $normalized = $this->normalizeBill($record);
 
-        $bill = ContaAzulImportedBill::query()->where('conta_azul_bill_id', $billId)->first();
+        $bill = ContaAzulImportedBill::query()->where('conta_azul_bill_id', $billId)->lockForUpdate()->first();
 
         if (! $bill instanceof ContaAzulImportedBill) {
             try {
                 ContaAzulImportedBill::query()->create(array_merge($normalized, [
                     'conta_azul_import_batch_id' => $batch->getKey(),
                     'last_seen_batch_id' => $batch->getKey(),
+                    'content_batch_id' => $batch->getKey(),
                     'bank_account_id' => $batch->bank_account_id,
                     'conta_azul_bill_id' => $billId,
                     'conta_azul_account_id' => $batch->conta_azul_account_id,
@@ -293,7 +299,7 @@ class ContaAzulBillIngestionService
                     throw $exception;
                 }
 
-                $bill = ContaAzulImportedBill::query()->where('conta_azul_bill_id', $billId)->first();
+                $bill = ContaAzulImportedBill::query()->where('conta_azul_bill_id', $billId)->lockForUpdate()->first();
 
                 if (! $bill instanceof ContaAzulImportedBill) {
                     throw $exception;
@@ -320,12 +326,78 @@ class ContaAzulBillIngestionService
             return 'reobserved';
         }
 
-        $bill->update(array_merge($normalized, ['last_seen_batch_id' => $batch->getKey()]));
+        return $this->applyContentUpdate($actor, $batch, $bill, $normalized);
+    }
+
+    /**
+     * Apply externally changed content to an existing bill.
+     *
+     * Staging mirrors the source, but an authorized attribution is never
+     * silently invalidated: attribution columns and the decision history
+     * are untouched here, and attribution-relevant changes on an attributed
+     * bill raise renewed review with the previous values preserved in the
+     * audit trail. Harmless metadata changes update quietly.
+     *
+     * @param  array<string, mixed>  $normalized
+     */
+    private function applyContentUpdate(User $actor, ContaAzulImportBatch $batch, ContaAzulImportedBill $bill, array $normalized): string
+    {
+        $previousFingerprint = $bill->payload_fingerprint;
+        $attributed = $bill->attributed_emission_id !== null;
+
+        $diff = $attributed
+            ? ContaAzulExternalChangePolicy::diff($bill, $normalized)
+            : ['relevant' => [], 'harmless_only' => true];
+
+        $previousValues = $attributed && ! $diff['harmless_only'] ? [
+            'total_amount' => $bill->total_amount,
+            'due_date' => $bill->due_date?->toDateString(),
+            'payment_date' => $bill->payment_date?->toDateString(),
+            'external_status' => $bill->external_status,
+            'mapped_category' => $bill->mapped_category,
+            'supplier_name' => $bill->supplier_name,
+        ] : null;
+
+        $update = array_merge($normalized, [
+            'last_seen_batch_id' => $batch->getKey(),
+            'content_batch_id' => $batch->getKey(),
+        ]);
+
+        if ($previousFingerprint !== $normalized['payload_fingerprint']) {
+            $update['previous_payload_fingerprint'] = $previousFingerprint;
+        }
+
+        $bill->update($update);
 
         // A bill that changed externally is traced as updated; a bill
         // recovering from an earlier record error returns to staged.
         if ($bill->wasChanged('payload_fingerprint')) {
             $bill->update(['import_status' => ContaAzulImportedBill::IMPORT_UPDATED]);
+
+            if ($attributed && ! $diff['harmless_only']) {
+                $bill->update([
+                    'needs_re_review' => true,
+                    're_review_reason' => 'Mudança externa em: '.implode(', ', $diff['relevant']),
+                ]);
+
+                activity(self::AUDIT_LOG)
+                    ->performedOn($bill)
+                    ->causedBy($actor)
+                    ->withProperties([
+                        'event' => 'bill_source_changed',
+                        'imported_bill_id' => $bill->getKey(),
+                        'conta_azul_bill_id' => $bill->maskedBillId(),
+                        'bank_account_id' => $bill->bank_account_id,
+                        'attributed_emission_id' => $bill->attributed_emission_id,
+                        'attribution_source_fingerprint' => $bill->attribution_source_fingerprint,
+                        'previous_payload_fingerprint' => $previousFingerprint,
+                        'payload_fingerprint' => $bill->payload_fingerprint,
+                        'changed_fields' => $diff['relevant'],
+                        'previous_values' => $previousValues,
+                        'import_batch_id' => $batch->getKey(),
+                    ])
+                    ->log('bill_source_changed');
+            }
 
             return 'updated';
         }
@@ -564,6 +636,7 @@ class ContaAzulBillIngestionService
             'bills_updated' => $batch->bills_updated + $counts['updated'],
             'bills_skipped' => $batch->bills_skipped + $counts['skipped'],
             'bills_reobserved' => $batch->bills_reobserved + $counts['reobserved'],
+            'last_heartbeat_at' => now(),
         ]);
 
         $batch->refresh();

@@ -195,7 +195,7 @@ function domainErrorWarningLogs(): ArrayObject
  * Medição de dois empreendimentos com os comprovantes conferidos, pronta para
  * a Finalização: Torre Alfa paga R$ 1.000,00 e Torre Beta, R$ 2.000,00.
  *
- * @return array{actor: User, measurement: Measurement, alfa: MeasurementPlanSet, beta: MeasurementPlanSet, payments: list<MeasurementPayment>}
+ * @return array{actor: User, finalizer: User, measurement: Measurement, alfa: MeasurementPlanSet, beta: MeasurementPlanSet, payments: list<MeasurementPayment>}
  */
 function domainErrorReadyToFinalize(): array
 {
@@ -215,7 +215,7 @@ function domainErrorReadyToFinalize(): array
 
     foreach ($payments as $payment) {
         $workflow->attachReceipt($payment->fresh(), $scenario['actor'], ReceiptScenario::file());
-        ReceiptScenario::approveCurrentReceipt($payment, $scenario['actor']);
+        ReceiptScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
     }
 
     return $scenario + ['payments' => $payments];
@@ -249,14 +249,15 @@ function domainErrorReceiptUploadFailsWith(Throwable $failure): void
 
 /**
  * Medição de um empreendimento, devolvida pela Finalização à etapa Pagamento
- * com o pagamento original (conciliado) já registrado.
+ * com o pagamento original (conciliado) já registrado. Quem devolve é o
+ * Finalizador; o ator, que paga, segue com a medição.
  *
- * @return array{actor: User, operation: Operation, measurement: Measurement, payment: MeasurementPayment}
+ * @return array{actor: User, finalizer: User, operation: Operation, measurement: Measurement, payment: MeasurementPayment}
  */
 function domainErrorPaymentStage(): array
 {
     $scenario = ReceiptScenario::open();
-    app(MeasurementWorkflow::class)->returnToStage($scenario['measurement']->fresh(), $scenario['actor'], MeasurementWorkflow::STAGE_PAYMENT, 'Complemento para conferência financeira.');
+    app(MeasurementWorkflow::class)->returnToStage($scenario['measurement']->fresh(), $scenario['finalizer'], MeasurementWorkflow::STAGE_PAYMENT, 'Complemento para conferência financeira.');
     $scenario['measurement']->refresh();
     test()->actingAs($scenario['actor']);
 
@@ -268,7 +269,7 @@ function domainErrorPaymentStage(): array
  * de {@see domainErrorPaymentStage()}: paga por inteiro, ela não tem valor
  * devido, e o complemento só é registrado coberto por regra.
  *
- * @param  array{actor: User, operation: Operation, measurement: Measurement, payment: MeasurementPayment}  $scenario
+ * @param  array{actor: User, finalizer: User, operation: Operation, measurement: Measurement, payment: MeasurementPayment}  $scenario
  */
 function domainErrorComplementRule(array $scenario): MeasurementFinancialRule
 {
@@ -296,13 +297,19 @@ function domainErrorPaymentItemKey(Testable $component): string
  * R$ 10.000,00 e R$ 20.000,00 a 10%). Engenharia, Gestão e Compliance
  * aprovadas: a medição espera a etapa Pagamento.
  *
- * @return array{actor: User, measurement: Measurement, alfa: MeasurementPlanSet, beta: MeasurementPlanSet}
+ * O ator responde por todas as etapas, menos a Finalização: o Finalizador é
+ * outra pessoa, que confere os comprovantes que o ator envia e aceita o que
+ * ele fez -- a segregação de funções da Fase 4B-1.
+ *
+ * @return array{actor: User, finalizer: User, measurement: Measurement, alfa: MeasurementPlanSet, beta: MeasurementPlanSet}
  */
 function domainErrorTwoDevelopments(): array
 {
     config()->set('filesystems.private_disk', 'local');
     $actor = User::factory()->withTwoFactor()->create();
     $actor->givePermissionTo(['measurements.view', 'measurements.create', 'measurements.review', 'measurements.pay', 'measurements.receipts', 'measurements.finalize']);
+    $finalizer = User::factory()->withTwoFactor()->create();
+    $finalizer->givePermissionTo(['measurements.view', 'measurements.finalize']);
     $operation = Operation::factory()->create([
         'status' => 'active',
         'assigned_user_id' => $actor->id,
@@ -311,7 +318,7 @@ function domainErrorTwoDevelopments(): array
         'stage3_reviewer_user_id' => $actor->id,
         'payment_manager_user_id' => $actor->id,
         'payment_receipt_uploader_user_id' => $actor->id,
-        'payment_finalizer_user_id' => $actor->id,
+        'payment_finalizer_user_id' => $finalizer->id,
     ]);
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
@@ -355,13 +362,13 @@ function domainErrorTwoDevelopments(): array
     $workflow->approve($measurement->fresh(), $actor);
     test()->actingAs($actor);
 
-    return ['actor' => $actor, 'measurement' => $measurement->fresh(), 'alfa' => $planSets[0], 'beta' => $planSets[1]];
+    return ['actor' => $actor, 'finalizer' => $finalizer, 'measurement' => $measurement->fresh(), 'alfa' => $planSets[0], 'beta' => $planSets[1]];
 }
 
 /**
  * A Torre Alfa recebe o valor esperado; a Torre Beta fica sem pagamento.
  *
- * @param  array{actor: User, measurement: Measurement, alfa: MeasurementPlanSet, beta: MeasurementPlanSet}  $scenario
+ * @param  array{actor: User, finalizer: User, measurement: Measurement, alfa: MeasurementPlanSet, beta: MeasurementPlanSet}  $scenario
  */
 function domainErrorPayOnlyAlfa(array $scenario): MeasurementPayment
 {
@@ -640,7 +647,7 @@ it('explains a receipt whose stored file disappeared before the documentary revi
     $scenario = ReceiptScenario::open();
     $evidence = app(MeasurementReceiptEvidenceService::class)->upload($scenario['payment'], $scenario['actor'], ReceiptScenario::file());
     Storage::disk('local')->delete($evidence->storage_path);
-    $this->actingAs($scenario['actor']);
+    $this->actingAs($scenario['finalizer']);
 
     $component = Livewire::test(ViewMeasurement::class, ['record' => $scenario['measurement']->getRouteKey()])
         ->callAction('reviewReceipt', data: ['evidence_id' => $evidence->id, 'decision' => 'approved', 'confirmed' => true]);
@@ -664,7 +671,7 @@ it('logs a receipt refused by the integrity check of the documentary review', fu
         Storage::disk('local')->put($evidence->storage_path, '%PDF-1.7 comprovante trocado depois do envio');
     }
 
-    $this->actingAs($scenario['actor']);
+    $this->actingAs($scenario['finalizer']);
 
     Livewire::test(ViewMeasurement::class, ['record' => $scenario['measurement']->getRouteKey()])
         ->callAction('reviewReceipt', data: ['evidence_id' => $evidence->id, 'decision' => 'approved', 'confirmed' => true])
@@ -712,6 +719,8 @@ it('logs a measurement file or a receipt refused by the integrity check of the f
     $tampering === 'measurement file removed'
         ? Storage::disk('local')->delete($path)
         : Storage::disk('local')->put($path, '%PDF-1.7 conteúdo trocado depois da conferência');
+
+    $this->actingAs($scenario['finalizer']);
 
     Livewire::test(ViewMeasurement::class, ['record' => $scenario['measurement']->getRouteKey()])
         ->callAction('finalize')
@@ -955,7 +964,8 @@ it('shows the development without payment to the finalizer, with its justificati
     $workflow = app(MeasurementWorkflow::class);
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor'], $justification);
     $workflow->attachReceipt($payment->fresh(), $scenario['actor'], ReceiptScenario::file());
-    ReceiptScenario::approveCurrentReceipt($payment, $scenario['actor']);
+    ReceiptScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
+    $this->actingAs($scenario['finalizer']);
 
     Livewire::test(ViewMeasurement::class, ['record' => $scenario['measurement']->getRouteKey()])
         ->assertSee('Empreendimentos sem pagamento nesta competência')
@@ -1013,15 +1023,17 @@ it('refuses the finalization without the acceptance with the sentence of the dom
 
     foreach ($payments as $payment) {
         $workflow->attachReceipt($payment->fresh(), $scenario['actor'], ReceiptScenario::file());
-        ReceiptScenario::approveCurrentReceipt($payment, $scenario['actor']);
+        ReceiptScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
     }
+
+    $this->actingAs($scenario['finalizer']);
 
     $component = Livewire::test(ViewMeasurement::class, ['record' => $scenario['measurement']->getRouteKey()])
         ->mountAction('finalize')
         ->callMountedAction();
 
     try {
-        $workflow->finalize($scenario['measurement']->fresh(), $scenario['actor']);
+        $workflow->finalize($scenario['measurement']->fresh(), $scenario['finalizer']);
         $domain = null;
     } catch (ValidationException $exception) {
         $domain = $exception->errors()['accept_financial_exceptions'] ?? null;
@@ -1058,7 +1070,7 @@ it('does not present as accepted a development without payment of a measurement 
     $workflow = app(MeasurementWorkflow::class);
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor'], 'Torre Beta fica para a próxima competência.');
     $workflow->attachReceipt($payment->fresh(), $scenario['actor'], ReceiptScenario::file());
-    ReceiptScenario::approveCurrentReceipt($payment, $scenario['actor']);
+    ReceiptScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
     $scenario['measurement']->fresh()->forceFill(['status' => 'finalized'])->save();
 
     Livewire::test(ViewMeasurement::class, ['record' => $scenario['measurement']->getRouteKey()])

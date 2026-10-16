@@ -331,8 +331,16 @@ function planVersionComparisonFundRevision(?string $baseFund, ?string $candidate
 {
     planVersionComparisonTravelTo('2027-01-10');
     ['actor' => $actor, 'operation' => $operation] = planVersionComparisonOperation();
-    $planSet = planVersionComparisonPlan($operation, $actor, planVersionComparisonMonthly('2027-03', 6, '10.00'), fund: $baseFund);
+    $planSet = planVersionComparisonPlan($operation, $actor, planVersionComparisonMonthly('2027-03', 6, '10.00'), fund: $baseFund ?? '0.00');
     $v1 = planVersionComparisonActivate(planVersionComparisonVersion($planSet, 1), $actor);
+
+    // Fase 4B-1: nenhuma versão é ativada sem Fundo de Obra (zero é aceito). A
+    // V1 sem fundo é legado de antes da regra: ativada pelo serviço, o fundo
+    // sai direto no banco, como a versão ficou gravada.
+    if ($baseFund === null) {
+        DB::table('measurement_plan_versions')->where('id', $v1->id)->update(['construction_fund_amount' => null]);
+        $v1 = $v1->fresh();
+    }
 
     planVersionComparisonTravelTo('2027-02-10');
     $draft = planVersionComparisonSaveDraft(
@@ -937,6 +945,10 @@ it('gives back its lineage to a planned measurement deleted and created again wi
 it('lists the open measurements sent under the base version, which stay on it after the revision', function () {
     planVersionComparisonTravelTo('2026-06-01');
     ['actor' => $actor, 'operation' => $operation] = planVersionComparisonOperation();
+    // Fase 4B-1: quem envia o comprovante não o aprova -- a Finalização é de outra pessoa.
+    $finalizer = User::factory()->withTwoFactor()->create();
+    $finalizer->givePermissionTo(['measurements.view', 'measurements.finalize']);
+    $operation->update(['payment_finalizer_user_id' => $finalizer->id]);
     $planSet = planVersionComparisonPlan(
         $operation,
         $actor,
@@ -965,8 +977,8 @@ it('lists the open measurements sent under the base version, which stay on it af
     ]);
     $workflow->approve($finalized->fresh(), $actor);
     $workflow->attachReceipt($payment->fresh(), $actor, MeasurementReceiptEvidenceScenario::file());
-    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $actor);
-    $workflow->finalize($finalized->fresh(), $actor);
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $finalizer);
+    $workflow->finalize($finalized->fresh(), $finalizer);
 
     // Julho: a primeira medição é recusada na Engenharia; a reenviada aguarda
     // a análise.

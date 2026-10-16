@@ -142,8 +142,9 @@ it('names who submitted the revision, which may differ from who created it', fun
     app(MeasurementRevisionService::class)->submit($draft->fresh(), $submitter->fresh());
     $submitted = app(MeasurementTimeline::class)->for($draft->fresh())->firstWhere('title', 'Revisão R1 enviada para análise');
 
+    // Fase 4B-1: as revisões do cenário são criadas pelo Finalizador.
     expect($draft->fresh()->uploaded_by)->toBe($submitter->id)
-        ->and($draft->fresh()->revision_created_by)->toBe($scenario['actor']->id)
+        ->and($draft->fresh()->revision_created_by)->toBe($scenario['finalizer']->id)
         ->and($submitted['actor'])->toBe('Quem envia');
 });
 

@@ -188,13 +188,19 @@ it('shows the zero-disbursement original as ready to finalize with the acknowled
     Livewire::test(ListPaymentWorkspace::class)
         ->assertTableColumnStateSet('operational_pending', 'Finalizar com ciência da ausência de pagamento', $measurement)
         ->assertTableActionHidden('approve_payment_stage', $measurement)
-        ->assertTableActionVisible('finalize', $measurement)
+        // Fase 4B-1: a Finalização é do Finalizador, não de quem decidiu sem desembolso.
+        ->assertTableActionHidden('finalize', $measurement)
         ->filterTable('operational_pending', 'ready_to_finalize')
         ->assertCanSeeTableRecords([$measurement])
         ->filterTable('operational_pending', 'awaiting_approval')
         ->assertCanNotSeeTableRecords([$measurement])
         ->filterTable('operational_pending', 'awaiting_receipt')
         ->assertCanNotSeeTableRecords([$measurement]);
+
+    $this->actingAs($scenario['finalizer']);
+    Livewire::test(ListPaymentWorkspace::class)
+        ->assertTableActionVisible('finalize', $measurement);
+    $this->actingAs($scenario['actor']);
 
     Livewire::test(ListMeasurements::class)
         ->assertTableColumnHasDescription('status', 'Finalizar com ciência da ausência de pagamento', $measurement);

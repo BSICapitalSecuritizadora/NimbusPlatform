@@ -183,16 +183,18 @@ function p4aMysqlPause(Measurement $measurement): array
 
 /**
  * A Finalização com a ciência da ausência de pagamento, com a versão e a
- * situação que a tela leu.
+ * situação que a tela leu -- pelo Finalizador, que não decidiu sem desembolso.
  *
+ * @param  array<string, mixed>  $scenario
  * @return array<string, mixed>
  */
-function p4aMysqlFinalize(Measurement $measurement): array
+function p4aMysqlFinalize(array $scenario, Measurement $measurement): array
 {
     $measurement = $measurement->fresh();
 
     return [
         'action' => 'finalize_acknowledging',
+        'actor_id' => $scenario['finalizer']->id,
         'measurement_id' => $measurement->id,
         'revision' => (int) $measurement->workflow_revision,
         'status' => $measurement->status,
@@ -201,16 +203,18 @@ function p4aMysqlFinalize(Measurement $measurement): array
 
 /**
  * A devolução da Finalização à etapa Pagamento, com a versão e a situação que
- * a tela leu.
+ * a tela leu -- pelo Finalizador, o único que devolve a Finalização.
  *
+ * @param  array<string, mixed>  $scenario
  * @return array<string, mixed>
  */
-function p4aMysqlReturnToPayment(Measurement $measurement): array
+function p4aMysqlReturnToPayment(array $scenario, Measurement $measurement): array
 {
     $measurement = $measurement->fresh();
 
     return [
         'action' => 'return_to_payment',
+        'actor_id' => $scenario['finalizer']->id,
         'measurement_id' => $measurement->id,
         'revision' => (int) $measurement->workflow_revision,
         'status' => $measurement->status,
@@ -343,8 +347,9 @@ it('lets either the acknowledged Finalization or the return to the Payment stage
     $scenario = Scenario::plan();
     $measurement = Scenario::concludeWithoutDisbursement($scenario, Scenario::awaitingPayment($scenario, '2026-05', [0]));
     $decision = p4aMysqlNoDisbursementDecisions($measurement)->sole();
-    $finalization = p4aMysqlFinalize($measurement);
-    $return = p4aMysqlReturnToPayment($measurement);
+    // Fase 4B-1: o ator decidiu sem desembolso; a ciência e a devolução são do Finalizador.
+    $finalization = p4aMysqlFinalize($scenario, $measurement);
+    $return = p4aMysqlReturnToPayment($scenario, $measurement);
 
     [$winner, $loser] = $finalizationFirst
         ? p4aMysqlRace($scenario, $finalization, $return)
@@ -372,7 +377,9 @@ it('lets either the acknowledged Finalization or the return to the Payment stage
                 'no_bank_payment_registered' => true,
                 'payment_stage_justification_reviewed' => true,
             ])
-            ->and($workflow->noDisbursementAcknowledgment($fresh)['acknowledged_by'])->toBe($scenario['actor']->id)
+            ->and($acknowledgment['decided_by'])->toBe($scenario['actor']->id)
+            ->and($acknowledgment['same_actor_as_decision'])->toBeFalse()
+            ->and($workflow->noDisbursementAcknowledgment($fresh)['acknowledged_by'])->toBe($scenario['finalizer']->id)
             ->and(p4aMysqlEvents($measurement, 'measurement_finalization_returned'))->toBeEmpty()
             ->and($fresh->reviews()->where('stage', MeasurementWorkflow::STAGE_PAYMENT)->value('status'))->toBe('approved')
             ->and($fresh->reviews()->where('stage', MeasurementWorkflow::STAGE_FINALIZATION)->value('status'))->toBe('approved');

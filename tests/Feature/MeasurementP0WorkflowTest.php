@@ -77,7 +77,10 @@ function createP0Scenario(): array
         'payment_receipt_uploader_user_id' => $actors['receipt']->id,
         'payment_finalizer_user_id' => $actors['finalizer']->id,
     ]);
-    $planSet = MeasurementPlanSet::factory()->default()->create(['operation_id' => $operation->id]);
+    // Fase 4B-1: Fundo de Obra fixo. Com o fundo aleatório da fábrica, o
+    // pagamento parcial de R$ 150.000,50 do fluxo formal às vezes passava do
+    // saldo aprovado, e acima do saldo só se paga com regra financeira.
+    $planSet = MeasurementPlanSet::factory()->default()->withConstructionFund('2000000.00')->create(['operation_id' => $operation->id]);
     $line = MeasurementPlanLine::factory()->create([
         'operation_id' => $operation->id,
         'plan_set_id' => $planSet->id,

@@ -46,7 +46,27 @@ class ContaAzulImportedBillFactory extends Factory
             'import_status' => ContaAzulImportedBill::IMPORT_STAGED,
             'last_import_error' => null,
             'reconciliation_status' => ContaAzulImportedBill::RECONCILIATION_PENDING,
+            'reconciliation_note' => null,
             'attributed_emission_id' => null,
+            'attribution_source_fingerprint' => null,
+            'attributed_by_user_id' => null,
+            'attributed_at' => null,
+            'attribution_reason' => null,
+            'needs_re_review' => false,
+            're_review_reason' => null,
+            'previous_payload_fingerprint' => null,
         ];
+    }
+
+    public function configure(): static
+    {
+        // Content starts as first-seen until a reimport establishes new
+        // content; tests that need a verified bill point this at a
+        // completed batch explicitly.
+        return $this->afterCreating(function (ContaAzulImportedBill $bill): void {
+            if ($bill->content_batch_id === null) {
+                $bill->update(['content_batch_id' => $bill->conta_azul_import_batch_id]);
+            }
+        });
     }
 }

@@ -324,12 +324,22 @@ class ActivityResource extends Resource
      */
     public static function authorizationDetail(Activity $record): ?string
     {
-        if (self::authorizationSource($record) !== WorkflowAuthorizationSource::Delegated) {
+        $source = self::authorizationSource($record);
+        $properties = $record->properties;
+        $properties = $properties instanceof Collection ? $properties->all() : (array) $properties;
+
+        // O override administrativo da medição grava o motivo exigido de quem
+        // agiu sem ser o responsável nem delegado (Fase 4B-1).
+        if ($source === WorkflowAuthorizationSource::AdminOverride) {
+            $reason = $properties['admin_override_reason'] ?? null;
+
+            return is_string($reason) && trim($reason) !== '' ? 'Motivo: '.trim($reason) : null;
+        }
+
+        if ($source !== WorkflowAuthorizationSource::Delegated) {
             return null;
         }
 
-        $properties = $record->properties;
-        $properties = $properties instanceof Collection ? $properties->all() : (array) $properties;
         $delegator = filled($properties['delegator_user_id'] ?? null)
             ? User::query()->whereKey($properties['delegator_user_id'])->value('name')
             : null;

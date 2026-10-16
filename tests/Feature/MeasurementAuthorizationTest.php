@@ -88,7 +88,8 @@ it('applies the explicit admin and super-admin workflow override', function (str
     $administrator = User::factory()->withTwoFactor()->create();
     $administrator->assignRole($role);
 
-    app(MeasurementWorkflow::class)->approve($scenario['measurement']->fresh(), $administrator);
+    // Fase 4B-1: o override administrativo exige o motivo explícito.
+    app(MeasurementWorkflow::class)->approve($scenario['measurement']->fresh(), $administrator, overrideReason: 'Revisor da etapa em férias; aprovação pelo administrador.');
 
     expect($scenario['measurement']->fresh()->current_stage)->toBe(3);
 })->with(['admin', 'super-admin']);
@@ -171,7 +172,7 @@ it('allows only the payment manager to register payments in the pending payment 
         'payment_manager_user_id' => $manager->id,
         'payment_receipt_uploader_user_id' => $uploader->id,
     ]);
-    $planSet = MeasurementPlanSet::factory()->default()->create(['operation_id' => $operation->id]);
+    $planSet = MeasurementPlanSet::factory()->default()->withConstructionFund('1000.00')->create(['operation_id' => $operation->id]);
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
         'storage_path' => null,
@@ -182,9 +183,10 @@ it('allows only the payment manager to register payments in the pending payment 
             'measurement_id' => 0,
             'operation_id' => $operation->id,
             'emission_id' => $operation->emission_id,
-            // Percentual e versão do plano, como a Engenharia grava; sem Fundo
-            // de Obra, o pagamento segue sem referência financeira.
-            'plan_sets' => [['plan_set_id' => $planSet->id, 'is_default' => true, 'plan_version_id' => $planSet->versions()->value('id'), 'realized_monthly_percent' => '0.00']],
+            // Percentual, versão do plano e Fundo de Obra, como a Engenharia
+            // grava (Fase 4B-1: sem Fundo, nenhum pagamento); o pagamento é o
+            // valor aprovado (10% do Fundo).
+            'plan_sets' => [['plan_set_id' => $planSet->id, 'is_default' => true, 'plan_version_id' => $planSet->versions()->value('id'), 'realized_monthly_percent' => '10.00', 'construction_fund_amount' => '1000.00']],
         ],
     ]);
     $snapshot = $measurement->engineering_snapshot;

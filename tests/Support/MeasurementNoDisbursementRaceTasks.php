@@ -2,8 +2,12 @@
 
 namespace Tests\Support;
 
+use App\Enums\MeasurementReceiptReviewStatus;
 use App\Models\Measurement;
+use App\Models\MeasurementPayment;
+use App\Models\MeasurementPaymentReceiptEvidence;
 use App\Models\User;
+use App\Services\MeasurementReceiptEvidenceService;
 use App\Services\MeasurementWorkflow;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +23,9 @@ use Throwable;
  * desembolso, o registro de pagamento, a pausa da etapa Pagamento, a
  * Finalização com a ciência da ausência de pagamento e a devolução da
  * Finalização à etapa Pagamento -- pelo mesmo serviço que a tela chama, com o
- * estado esperado que a tela teria lido antes.
+ * estado esperado que a tela teria lido antes. Da Fase 4B-1: a reavaliação do
+ * enquadramento de um pagamento, a aprovação de uma etapa e a aprovação de um
+ * comprovante, cada uma pelo `actor_id` da própria instrução.
  *
  * Classe, e não função do arquivo de teste: o processo filho de
  * `Concurrency::driver('process')` só carrega o autoload (`App\`, `Tests\`).
@@ -38,12 +44,18 @@ final class MeasurementNoDisbursementRaceTasks
 {
     public const MEASUREMENTS = 'measurements';
 
+    /**
+     * Dois registros de pagamento (e a aprovação que trava a família de uma
+     * revisão) disputam a Operation, que travam primeiro.
+     */
+    public const OPERATIONS = 'operations';
+
     private const HOLD_MICROSECONDS = 750_000;
 
     private const MARKER_TIMEOUT_SECONDS = 10;
 
     /**
-     * @param  array{action: string, actor_id: int, measurement_id: int, revision: int, storage_root: string, lock_table: string, lock_marker?: string, wait_for_marker?: string, stage?: int, status?: string, notes?: string, payment?: array<string, int|string>}  $instruction
+     * @param  array{action: string, actor_id: int, measurement_id: int, revision: int, storage_root: string, lock_table: string, lock_marker?: string, wait_for_marker?: string, stage?: int, status?: string, notes?: string, payment?: array<string, int|string>, payment_id?: int, evidence_id?: int, override_reason?: string}  $instruction
      * @return array{success: bool, result: int|null, exception: class-string<Throwable>|null, message: string|null, lock_wait_ms: float|null}
      */
     public static function run(array $instruction): array
@@ -154,6 +166,28 @@ final class MeasurementNoDisbursementRaceTasks
                 expectedRevision: $instruction['revision'],
                 expectedStatus: $instruction['status'],
             ),
+            // Fase 4B-1: a reavaliação do enquadramento, a aprovação de uma
+            // etapa (a Compliance da revisão) e a conferência do comprovante.
+            'reassess_payment' => $workflow->reassessPayment(
+                MeasurementPayment::query()->findOrFail($instruction['payment_id']),
+                $actor,
+                $instruction['payment'] ?? [],
+                $instruction['revision'],
+            ),
+            'approve_stage' => $workflow->approve(
+                $measurement,
+                $actor,
+                expectedStage: $instruction['stage'],
+                expectedRevision: $instruction['revision'],
+                overrideReason: $instruction['override_reason'] ?? null,
+            ),
+            'approve_receipt' => app(MeasurementReceiptEvidenceService::class)->review(
+                MeasurementPaymentReceiptEvidence::query()->findOrFail($instruction['evidence_id']),
+                $actor,
+                MeasurementReceiptReviewStatus::Approved,
+                true,
+                overrideReason: $instruction['override_reason'] ?? null,
+            )->getKey(),
             default => throw new RuntimeException("Ação de corrida desconhecida: {$instruction['action']}."),
         };
     }

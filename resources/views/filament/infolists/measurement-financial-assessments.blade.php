@@ -97,7 +97,9 @@
         $missingJustification = match (true) {
             in_array($measurement->status, ['finalized', 'superseded'], true) => 'Não registrada.',
             $paymentApproval === null => 'Ainda não registrada: a aprovação da etapa Pagamento precisa justificar a ausência de pagamento.',
-            default => 'Não registrada na aprovação da etapa Pagamento: devolva a medição àquela etapa para registrar o pagamento ou justificar a ausência.',
+            default => collect($unpaidPlanSets)->contains(fn ($line) => ! $line->hasFinancialReference())
+                ? 'Não registrada na aprovação da etapa Pagamento: '.\Illuminate\Support\Str::lcfirst(\App\Services\MeasurementPaymentFinancialService::unpaidRemedy($unpaidPlanSets))
+                : 'Não registrada na aprovação da etapa Pagamento: devolva a medição àquela etapa para registrar o pagamento ou justificar a ausência.',
         };
 
         if ($measurement->status === 'finalized') {
@@ -165,12 +167,34 @@
     }
 @endphp
 
+@php
+    /*
+     * Quem registrou cada pagamento e quem fez o enquadramento vigente dele: a
+     * segregação de funções da Finalização compara essas pessoas com quem
+     * aceita a exceção. Uma leitura só, para todos os pagamentos.
+     */
+    $assessmentActorNames = \App\Models\User::query()
+        ->whereKey($measurement->payments
+            ->flatMap(fn ($payment): array => [$payment->created_by, $payment->financial_assessment['assessed_by_user_id'] ?? null])
+            ->filter()
+            ->unique()
+            ->values()
+            ->all())
+        ->pluck('name', 'id');
+@endphp
+
 <div class="space-y-4 text-sm">
     @forelse ($measurement->payments as $payment)
         @php
             $assessment = $payment->financial_assessment;
             $rule = $assessment['rule'] ?? null;
             $reference = $assessment['reference'] ?? [];
+            $coverage = is_array($assessment['coverage'] ?? null) ? $assessment['coverage'] : null;
+            $assessedBy = $assessment['assessed_by_user_id'] ?? null;
+            $authorship = collect([
+                $payment->created_by === null ? null : 'Registrado por '.($assessmentActorNames[$payment->created_by] ?? 'usuário #'.$payment->created_by),
+                $assessedBy === null || (int) $assessedBy === (int) $payment->created_by ? null : 'enquadramento reavaliado por '.($assessmentActorNames[(int) $assessedBy] ?? 'usuário #'.$assessedBy),
+            ])->filter()->implode(' · ');
         @endphp
         <section wire:key="financial-assessment-{{ $payment->id }}" class="space-y-3 border-b border-gray-200 pb-4 dark:border-white/10">
             <h4 class="font-semibold">Pagamento #{{ $payment->id }} · {{ $money($payment->amount) }}</h4>
@@ -178,14 +202,20 @@
                 <p class="text-gray-500 dark:text-gray-400">Registro anterior ao controle de regras financeiras. Não há enquadramento ou aceite financeiro registrado neste formato.</p>
             @else
                 <p class="text-gray-500 dark:text-gray-400">{{ $reference['label'] ?? 'Empreendimento' }} · {{ $payment->pay_date->format('d/m/Y') }}</p>
+                @if ($authorship !== '')
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ $authorship }}</p>
+                @endif
                 <dl class="grid gap-3 sm:grid-cols-2">
                     <div><dt class="text-gray-500 dark:text-gray-400">Referência aprovada</dt><dd>{{ $money($reference['expected_amount'] ?? null) }}</dd></div>
                     <div><dt class="text-gray-500 dark:text-gray-400">Saldo antes deste pagamento</dt><dd>{{ $money($reference['expected_balance'] ?? null) }}</dd></div>
-                    <div><dt class="text-gray-500 dark:text-gray-400">Diferença deste pagamento</dt><dd>{{ $money($reference['divergence_amount'] ?? null) }} · {{ \App\Services\MeasurementFinancialReconciliationService::formatPercent($reference['divergence_percent'] ?? null) }}</dd></div>
+                    <div><dt class="text-gray-500 dark:text-gray-400">Divergência acumulada do empreendimento</dt><dd>{{ $money($reference['divergence_amount'] ?? null) }}@if (is_string($reference['divergence_amount'] ?? null) && is_string($reference['expected_amount'] ?? null) && bccomp($reference['expected_amount'], '0', 2) > 0) · {{ \App\Services\MeasurementFinancialReconciliationService::formatPercent(bcdiv(bcmul($reference['divergence_amount'], '100', 4), $reference['expected_amount'], 2)) }} do valor aprovado @endif</dd></div>
                     <div><dt class="text-gray-500 dark:text-gray-400">Enquadramento</dt><dd>{{ $rule ? $rule['name'].' · versão '.$rule['version'] : (($assessment['requires_acceptance'] ?? false) ? 'Exceção sem regra cadastrada' : (($reference['status'] ?? '') === 'reference_unavailable' ? 'Sem referência financeira' : 'Conciliado')) }}</dd></div>
                     @if ($rule)
                         <div><dt class="text-gray-500 dark:text-gray-400">Direção permitida</dt><dd>{{ \App\Models\MeasurementFinancialRule::DIRECTIONS[$rule['direction']] }}</dd></div>
-                        <div><dt class="text-gray-500 dark:text-gray-400">Limites da regra</dt><dd>{{ isset($rule['maximum_difference_amount']) ? $money($rule['maximum_difference_amount']) : 'Sem limite em reais' }} · {{ isset($rule['maximum_difference_percent']) ? \App\Services\MeasurementFinancialReconciliationService::formatPercent($rule['maximum_difference_percent']).' do saldo esperado' : 'Sem limite percentual' }}</dd></div>
+                        <div><dt class="text-gray-500 dark:text-gray-400">Limites da regra</dt><dd>{{ isset($rule['maximum_difference_amount']) ? $money($rule['maximum_difference_amount']) : 'Sem limite em reais' }} · {{ isset($rule['maximum_difference_percent']) ? \App\Services\MeasurementFinancialReconciliationService::formatPercent($rule['maximum_difference_percent']).(($rule['percent_basis'] ?? null) === \App\DTOs\Measurements\MeasurementFinancialRuleCoverage::PERCENT_BASIS_APPROVED_AMOUNT ? ' do valor aprovado' : ' do saldo esperado (base anterior)') : 'Sem limite percentual' }}</dd></div>
+                        @if ($coverage !== null)
+                            <div><dt class="text-gray-500 dark:text-gray-400">Cobertura da regra</dt><dd>Divergência acumulada do empreendimento {{ $money($coverage['divergence_amount'] ?? null) }} · teto da regra {{ $money($coverage['ceiling_amount'] ?? null) }}</dd></div>
+                        @endif
                         <div class="sm:col-span-2"><dt class="text-gray-500 dark:text-gray-400">Condições da regra aplicada</dt><dd class="whitespace-pre-wrap break-words">{{ $rule['description'] }}</dd></div>
                     @endif
                     @if ($assessment['justification'] ?? null)
@@ -245,13 +275,24 @@
     @if ($unpaidPlanSets !== [])
         <section wire:key="financial-unpaid-plan-sets" class="space-y-3 border-b border-gray-200 pb-4 dark:border-white/10">
             <h4 class="font-semibold">Empreendimentos sem pagamento nesta competência</h4>
-            <p class="text-gray-500 dark:text-gray-400">A Engenharia aprovou valor a pagar para estes empreendimentos e nenhum pagamento desta medição foi registrado para eles.</p>
+            @php
+                $undeterminedUnpaid = count(array_filter($unpaidPlanSets, fn ($line) => ! $line->hasFinancialReference()));
+            @endphp
+            <p class="text-gray-500 dark:text-gray-400">
+                @if ($undeterminedUnpaid === 0)
+                    A Engenharia aprovou valor a pagar para estes empreendimentos e nenhum pagamento desta medição foi registrado para eles.
+                @elseif ($undeterminedUnpaid === count($unpaidPlanSets))
+                    A Engenharia aprovou avanço no mês para estes empreendimentos, mas sem Fundo de Obra não há valor devido nem pagamento a registrar: a ausência só se justifica.
+                @else
+                    A Engenharia aprovou avanço no mês para estes empreendimentos e nenhum pagamento desta medição foi registrado para eles; o empreendimento sem Fundo de Obra não recebe pagamento, só a justificativa.
+                @endif
+            </p>
             <ul class="space-y-3">
                 @foreach ($unpaidPlanSets as $line)
                     <li wire:key="financial-unpaid-plan-set-{{ $line->planSetId }}">
                         <dl class="grid gap-3 sm:grid-cols-2">
                             <div><dt class="text-gray-500 dark:text-gray-400">Empreendimento</dt><dd>{{ $line->label }}</dd></div>
-                            <div><dt class="text-gray-500 dark:text-gray-400">Valor esperado</dt><dd>{{ $money($line->expectedAmount) }}</dd></div>
+                            <div><dt class="text-gray-500 dark:text-gray-400">Valor esperado</dt><dd>{{ $line->hasFinancialReference() ? $money($line->expectedAmount) : 'Indeterminado: sem Fundo de Obra' }}</dd></div>
                             @if (bccomp($line->historicalPaidAmount, '0', 2) > 0)
                                 <div><dt class="text-gray-500 dark:text-gray-400">Pago antes da revisão</dt><dd>{{ $money($line->historicalPaidAmount) }}</dd></div>
                                 <div><dt class="text-gray-500 dark:text-gray-400">{{ $isHistoricalRevision ? 'Saldo a pagar enquanto vigente' : 'Saldo a pagar em aberto' }}</dt><dd>{{ $money($line->expectedBalance) }}</dd></div>

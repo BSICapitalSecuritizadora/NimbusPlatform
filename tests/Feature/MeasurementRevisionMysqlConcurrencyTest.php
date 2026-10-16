@@ -230,7 +230,8 @@ it('lets either the revision submission or the payment of the unpaid measurement
     $scenario = Scenario::plan();
     $may = Scenario::awaitingPayment($scenario, '2026-05', 10);
     $draft = Scenario::revise($scenario, $may);
-    $submit = ['action' => 'submit_revision', 'measurement_id' => $draft->id];
+    // Fase 4B-1: quem criou o rascunho (o Finalizador) o envia, e a Compliance do ator fica independente.
+    $submit = ['action' => 'submit_revision', 'measurement_id' => $draft->id, 'actor_id' => $scenario['finalizer']->id];
     $payment = revisionRacePayment($scenario, $may, Scenario::expected(10));
 
     $results = $submissionFirst

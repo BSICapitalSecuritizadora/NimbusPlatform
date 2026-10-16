@@ -84,9 +84,10 @@ it('reads the operation before the measurement when finalizing', function () {
     $scenario = MeasurementReceiptEvidenceScenario::open();
     $workflow = app(MeasurementWorkflow::class);
     $workflow->attachReceipt($scenario['payment']->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
-    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($scenario['payment'], $scenario['actor']);
+    // Fase 4B-1: quem enviou o comprovante não o aprova -- a Finalização é de outra pessoa.
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($scenario['payment'], $scenario['finalizer']);
 
-    $tables = measurementLockOrderTables(fn () => $workflow->finalize($scenario['measurement']->fresh(), $scenario['actor']));
+    $tables = measurementLockOrderTables(fn () => $workflow->finalize($scenario['measurement']->fresh(), $scenario['finalizer']));
 
     expect(array_slice($tables, 0, 2))->toBe(['operations', 'measurements'])
         ->and($scenario['measurement']->fresh()->status)->toBe('finalized');

@@ -13,6 +13,12 @@ return [
     'sync_lookback_days' => (int) env('CONTA_AZUL_SYNC_LOOKBACK_DAYS', 60),
     'sync_start_date' => env('CONTA_AZUL_SYNC_START_DATE', '2025-01-01'),
 
+    // Phase 3B: minutes of heartbeat silence after which a `running` import
+    // batch counts as abandoned work (e.g. the process died to SIGKILL)
+    // rather than an active import. Recovery stays explicitly invoked —
+    // Filament action or Artisan command — and refuses anything fresher.
+    'stale_batch_timeout_minutes' => (int) env('CONTA_AZUL_STALE_BATCH_TIMEOUT_MINUTES', 60),
+
     'category_map' => [
         'AGENTE FIDUCIARIO' => 'Agente Fiduciário',
         'ASSEMBLEIA' => 'AGT',

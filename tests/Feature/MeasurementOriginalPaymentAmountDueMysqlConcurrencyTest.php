@@ -157,7 +157,7 @@ it('registers only one of two payments of the same amount due on MySQL: the wait
         ->and(app(MeasurementPaymentFinancialService::class)->amountDue($measurement->fresh())->isNothingDue())->toBeTrue();
 
     // Repetido com a página atualizada, o segundo pagamento já não encontra
-    // valor devido: sem regra financeira, é recusado.
+    // saldo a pagar: acima do saldo, sem regra financeira, é recusado.
     try {
         app(MeasurementWorkflow::class)->registerPayments($measurement->fresh(), $scenario['actor'], [
             originalDueMysqlPayment($scenario, $measurement, '100000.00', 'Repetido depois de atualizar a página.')['payment'],
@@ -167,7 +167,7 @@ it('registers only one of two payments of the same amount due on MySQL: the wait
         $retry = $exception->errors()['payments.0.amount'][0] ?? null;
     }
 
-    expect($retry)->toBe('Nada é devido para Torre A nesta medição: valor aprovado R$ 100.000,00, já registrado R$ 100.000,00, valor devido R$ 0,00. Sem valor devido, o pagamento só é registrado com uma regra financeira que o cubra; a justificativa sozinha não basta.')
+    expect($retry)->toBe('O pagamento excede o saldo autorizado e não possui regra financeira válida para a diferença. Torre A: valor aprovado R$ 100.000,00, já registrado R$ 100.000,00, saldo a pagar R$ 0,00; com este pagamento, o excedente acumulado chega a R$ 100.000,00. Acima do saldo, o pagamento só é registrado com uma regra financeira vigente que cubra o excedente acumulado; a justificativa sozinha não basta.')
         ->and(MeasurementPayment::query()->where('measurement_id', $measurement->id)->count())->toBe(1);
 });
 
@@ -175,7 +175,7 @@ it('refuses under the lock, in both processes, two payments without rule on an o
     $scenario = Scenario::plan();
     $measurement = Scenario::awaitingPayment($scenario, '2026-05', [0]);
     $revisionBefore = (int) $measurement->workflow_revision;
-    $refusal = 'Nada é devido para Torre A nesta medição: valor aprovado R$ 0,00, já registrado R$ 0,00, valor devido R$ 0,00. Sem valor devido, o pagamento só é registrado com uma regra financeira que o cubra; a justificativa sozinha não basta. Sem valor devido em nenhum empreendimento, conclua a etapa Pagamento sem desembolso, com a justificativa obrigatória.';
+    $refusal = 'O pagamento excede o saldo autorizado e não possui regra financeira válida para a diferença. Torre A: valor aprovado R$ 0,00, já registrado R$ 0,00, saldo a pagar R$ 0,00; com este pagamento, o excedente acumulado chega a R$ 1.000,00. Acima do saldo, o pagamento só é registrado com uma regra financeira vigente que cubra o excedente acumulado; a justificativa sozinha não basta. Sem valor devido em nenhum empreendimento, conclua a etapa Pagamento sem desembolso, com a justificativa obrigatória.';
 
     [$first, $second] = originalDueMysqlRace(
         $scenario,
@@ -222,7 +222,7 @@ it('keeps the no-disbursement decision as the only outcome against a payment wit
         // depois da decisão, pelo estado que ela mudou.
         ->and($paymentResult['exception'])->toBe($paymentFirst ? ValidationException::class : MeasurementWorkflowException::class)
         ->and($paymentResult['message'])->toBe($paymentFirst
-            ? 'Nada é devido para Torre A nesta medição: valor aprovado R$ 0,00, já registrado R$ 0,00, valor devido R$ 0,00. Sem valor devido, o pagamento só é registrado com uma regra financeira que o cubra; a justificativa sozinha não basta. Sem valor devido em nenhum empreendimento, conclua a etapa Pagamento sem desembolso, com a justificativa obrigatória.'
+            ? 'O pagamento excede o saldo autorizado e não possui regra financeira válida para a diferença. Torre A: valor aprovado R$ 0,00, já registrado R$ 0,00, saldo a pagar R$ 0,00; com este pagamento, o excedente acumulado chega a R$ 1.000,00. Acima do saldo, o pagamento só é registrado com uma regra financeira vigente que cubra o excedente acumulado; a justificativa sozinha não basta. Sem valor devido em nenhum empreendimento, conclua a etapa Pagamento sem desembolso, com a justificativa obrigatória.'
             : 'A etapa desta medição foi alterada por outra ação. Atualize a página.')
         ->and(MeasurementPayment::query()->where('measurement_id', $measurement->id)->exists())->toBeFalse()
         ->and($measurement->fresh()->status)->toBe('approved')

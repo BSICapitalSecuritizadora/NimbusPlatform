@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\DTOs\Measurements\MeasurementFinancialRuleCoverage;
 use Database\Factories\MeasurementFinancialRuleFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -56,13 +57,21 @@ class MeasurementFinancialRule extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * A versão da regra como o enquadramento do pagamento e a trilha a
+     * congelam: as condições, a base do limite percentual
+     * ({@see MeasurementFinancialRuleCoverage::PERCENT_BASIS_APPROVED_AMOUNT})
+     * e quem registrou a versão -- que não a usa na própria exceção.
+     *
+     * @return array<string, mixed>
+     */
     public function snapshot(): array
     {
         return $this->only(['id', 'emission_id', 'construction_id', 'name', 'description', 'direction',
-            'maximum_difference_amount', 'maximum_difference_percent', 'requires_document', 'version']) + [
+            'maximum_difference_amount', 'maximum_difference_percent', 'percent_basis', 'requires_document', 'version']) + [
                 'effective_from' => $this->effective_from->toDateString(),
                 'effective_until' => $this->effective_until?->toDateString(),
+                'created_by' => $this->created_by === null ? null : (int) $this->created_by,
             ];
     }
 }
