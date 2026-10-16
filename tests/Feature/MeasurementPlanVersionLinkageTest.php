@@ -489,6 +489,7 @@ it('pays and finalizes under the V1 fund a measurement approved before the cost 
         'pay_date' => '2026-07-06',
         'amount' => '5000000.00',
         'method' => 'TED',
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]);
     $assessment = $payment->fresh()->financial_assessment;
 
@@ -504,7 +505,6 @@ it('pays and finalizes under the V1 fund a measurement approved before the cost 
     // A Finalização confere o contexto aprovado contra o fundo da versão
     // capturada; contra o vigente, recusaria uma medição íntegra.
     $workflow->approve($m06->fresh(), $scenario['actor']);
-    $workflow->attachReceipt($payment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
     MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $finalizer);
     $workflow->finalize($m06->fresh(), $finalizer);
 

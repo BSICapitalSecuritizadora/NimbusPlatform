@@ -22,6 +22,7 @@ use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\MeasurementNoDisbursementScenario as Scenario;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 use Tests\Support\MeasurementRevisionScenario;
 
 /**
@@ -37,6 +38,9 @@ beforeEach(function () {
     $this->seed(RolesAndPermissionsSeeder::class);
     Storage::fake('local');
     Notification::fake();
+    // O cenário da data de pagamento viaja para o futuro: sem isto, a limpeza
+    // de uploads antigos do Livewire apaga o comprovante recém-enviado.
+    config()->set('livewire.temporary_file_upload.cleanup', false);
 });
 
 /**
@@ -528,13 +532,16 @@ it('defaults the payment date to the Brasília civil date when the UTC day has a
 
     expect((string) $component->get('mountedActions.0.data.pay_date'))->toStartWith('2026-10-31');
 
+    // Fase 4B-2: o pagamento só é registrado com o comprovante.
     $component->set('mountedActions.0.data.payments.'.p4aUiPaymentItemKey($component).'.amount', '100.000,00')
+        ->set('mountedActions.0.data.receipt', MeasurementReceiptEvidenceScenario::file())
         ->callMountedAction()
         ->assertHasNoActionErrors();
 
     $payment = MeasurementPayment::query()->sole();
 
     expect($payment->pay_date->toDateString())->toBe('2026-10-31')
+        ->and($payment->currentReceiptEvidence()->exists())->toBeTrue()
         ->and($payment->financial_assessment['pay_date'] ?? null)->toBe('2026-10-31')
         ->and($payment->amount)->toBe('100000.00');
 });

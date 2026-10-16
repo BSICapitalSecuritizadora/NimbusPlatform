@@ -435,8 +435,12 @@ it('refuses to delete an emission whose operation has a measurement, for the sup
         ->assertTableActionVisible('delete', $emission)
         ->assertTableActionDisabled('delete', $emission);
 
+    // O pagamento entra com o comprovante (Fase 4B-2): a medição paga também
+    // segura a emissão pelo comprovante.
     expect($list->instance()->getTable()->getAction('delete')->record($emission)->getTooltip())
-        ->toBe('A emissão não pode ser excluída: tem operação com medição registrada.');
+        ->toBe($state === 'returned_with_payment'
+            ? 'A emissão não pode ser excluída: tem operação com medição registrada e tem operação com comprovante de pagamento de medição.'
+            : 'A emissão não pode ser excluída: tem operação com medição registrada.');
 
     $list->callTableAction('delete', $emission);
 

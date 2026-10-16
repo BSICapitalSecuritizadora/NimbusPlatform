@@ -45,6 +45,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Component;
@@ -58,6 +59,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
 use Illuminate\Validation\ValidationException;
@@ -1304,6 +1306,10 @@ class ViewMeasurement extends ViewRecord
                             'financial_rule_id' => $row['financial_rule_id'] ?? null,
                             'financial_justification' => $row['financial_justification'] ?? null,
                             'financial_support' => $row['financial_support'] ?? null,
+                            // Com a transferência única, o comprovante do modal
+                            // vale para todas as linhas; sem ela, cada linha traz
+                            // o próprio.
+                            'receipt' => ($data['single_transfer'] ?? true) ? null : ($row['receipt'] ?? null),
                         ])
                         ->all();
 
@@ -1314,6 +1320,7 @@ class ViewMeasurement extends ViewRecord
                             $rows,
                             expectedRevision: (int) $data['expected_revision'],
                             overrideReason: $data['override_reason'] ?? null,
+                            receipt: ($data['single_transfer'] ?? true) && ($data['receipt'] ?? null) instanceof UploadedFile ? $data['receipt'] : null,
                         );
                     } catch (ValidationException $exception) {
                         throw $this->onPaymentRepeaterItems($exception, $rows);
@@ -1326,8 +1333,8 @@ class ViewMeasurement extends ViewRecord
                     }
 
                     $this->notify($created->count() > 1
-                        ? "{$created->count()} pagamentos registrados. A etapa Pagamento ainda precisa ser aprovada."
-                        : 'Pagamento registrado. A etapa Pagamento ainda precisa ser aprovada.');
+                        ? "{$created->count()} pagamentos registrados com o comprovante. O comprovante fica pendente de conferência na Finalização, e a etapa Pagamento ainda precisa ser aprovada."
+                        : 'Pagamento registrado com o comprovante. O comprovante fica pendente de conferência na Finalização, e a etapa Pagamento ainda precisa ser aprovada.');
                 });
             });
     }
@@ -1418,6 +1425,20 @@ class ViewMeasurement extends ViewRecord
                 ])
                 ->live(),
             TextInput::make('method')->label('Método')->placeholder('TED, PIX, Boleto...')->maxLength(255),
+            // O pagamento é o fato de uma transferência já feita, e entra com o
+            // comprovante dela. Uma transferência que pagou todos os
+            // empreendimentos tem um comprovante só -- nenhuma transferência é
+            // inventada para cada linha.
+            Toggle::make('single_transfer')
+                ->label('Uma única transferência pagou todos os empreendimentos')
+                ->helperText('Desligue quando cada empreendimento foi pago por uma transferência própria: cada pagamento recebe então o próprio comprovante.')
+                ->default(true)
+                ->live()
+                ->visible(count($labels) > 1)
+                ->dehydrated(),
+            $this->paymentReceiptField('receipt')
+                ->visible(fn (Get $get): bool => count($labels) <= 1 || (bool) $get('single_transfer'))
+                ->required(fn (Get $get): bool => count($labels) <= 1 || (bool) $get('single_transfer')),
             Repeater::make('payments')
                 ->label('Pagamento por empreendimento')
                 ->addable(false)
@@ -1456,10 +1477,32 @@ class ViewMeasurement extends ViewRecord
                         fn (Get $get): string => self::payDateString($get('../../pay_date')),
                         fn (Get $get): mixed => $get('amount'),
                     ),
+                    $this->paymentReceiptField('receipt')
+                        ->label('Comprovante deste pagamento')
+                        ->columnSpanFull()
+                        ->visible(fn (Get $get): bool => count($labels) > 1 && ! (bool) $get('../../single_transfer'))
+                        ->required(fn (Get $get): bool => count($labels) > 1 && ! (bool) $get('../../single_transfer') && filled($get('amount'))),
                     Textarea::make('notes')->label('Observações')->rows(2)->columnSpanFull(),
                 ]),
             $this->overrideReasonField(fn (): MeasurementResponsibility => MeasurementResponsibility::PaymentManager),
         ];
+    }
+
+    /**
+     * O comprovante do pagamento registrado: só o arquivo enviado agora (um
+     * caminho escrito no estado do modal é recusado no próprio campo), no
+     * armazenamento privado, pendente de conferência na Finalização.
+     */
+    private function paymentReceiptField(string $name): FileUpload
+    {
+        return FileUpload::make($name)
+            ->label('Comprovante de pagamento')
+            ->helperText('Comprovante da transferência já realizada (PDF, JPG ou PNG). Ordem de pagamento, autorização ou agendamento não comprovam pagamento. O Finalizador confere o comprovante; enviar não o aprova.')
+            ->storeFiles(false)
+            ->preventFilePathTampering()
+            ->acceptedFileTypes((array) config('uploads.measurement_receipt.allowed_mimes', []))
+            ->maxSize((int) config('uploads.measurement_receipt.max_kb', 10240))
+            ->validationMessages(['required' => MeasurementWorkflow::PAYMENT_RECEIPT_REQUIRED]);
     }
 
     /**
@@ -1962,8 +2005,9 @@ class ViewMeasurement extends ViewRecord
             ->icon('heroicon-o-flag')
             ->color('success')
             ->requiresConfirmation()
-            ->modalHeading('Finalizar medição')
-            ->modalDescription(fn (): string => 'A finalização do workflow será preservada. Correções posteriores de comprovantes exigirão nova versão e conferência documental.'
+            ->modalHeading('Conferência e Finalização')
+            ->modalWidth('3xl')
+            ->modalDescription(fn (): string => 'Confira os comprovantes e as exceções financeiras antes de finalizar. A finalização do workflow será preservada. Correções posteriores de comprovantes exigirão nova versão e conferência documental.'
                 .($this->revisionLeavesOpenDifference() ? ' Finalizar não regulariza diferença financeira em aberto.' : ''))
             ->visible(fn (): bool => $this->workflow()->canFinalize($this->record, $this->actor()))
             // Quem fez a exceção ou decidiu sem desembolso não finaliza aceitando
@@ -1973,6 +2017,11 @@ class ViewMeasurement extends ViewRecord
             ->schema([
                 Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),
                 Hidden::make('expected_status')->default(fn (): string => (string) $this->record->status),
+                Placeholder::make('documentary_review')->label('Comprovantes de pagamento')
+                    ->visible(fn (): bool => $this->record->payments()->exists())
+                    ->content(fn (): View => view('filament.infolists.measurement-finalization-evidences', [
+                        'measurement' => $this->record,
+                    ])),
                 Placeholder::make('financial_review')->label('Conferência financeira')
                     ->content(fn (): View => view('filament.infolists.measurement-financial-assessments', [
                         'measurement' => $this->record,
@@ -2034,7 +2083,28 @@ class ViewMeasurement extends ViewRecord
      */
     private function finalizationBlockReason(): ?string
     {
-        return $this->blockReason('finalize', fn (): ?string => $this->workflow()->finalizationBlockReason($this->record, $this->actor()));
+        return $this->blockReason('finalize', fn (): ?string => $this->documentaryBlockReason()
+            ?? $this->workflow()->finalizationBlockReason($this->record, $this->actor()));
+    }
+
+    /**
+     * Comprovante ausente, pendente ou rejeitado: cada um é decidido antes, na
+     * conferência do comprovante -- finalizar não aprova nada implicitamente.
+     */
+    private function documentaryBlockReason(): ?string
+    {
+        if (! $this->record->payments()->exists()) {
+            return null;
+        }
+
+        $counts = app(MeasurementReceiptEvidenceService::class)->documentarySummary($this->record);
+        $parts = array_filter([
+            $counts['pending'] > 0 ? sprintf('%d aguardando conferência ("Conferir comprovante")', $counts['pending']) : null,
+            $counts['rejected'] > 0 ? sprintf('%d rejeitado(s), aguardando nova versão', $counts['rejected']) : null,
+            $counts['missing'] > 0 ? sprintf('%d sem comprovante', $counts['missing']) : null,
+        ]);
+
+        return $parts === [] ? null : 'Antes de finalizar, cada comprovante precisa estar aprovado: '.implode('; ', $parts).'.';
     }
 
     /**

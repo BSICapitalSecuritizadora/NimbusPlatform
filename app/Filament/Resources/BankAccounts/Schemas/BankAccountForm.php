@@ -17,7 +17,18 @@ class BankAccountForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema->components([
+        return $schema->components(static::fields());
+    }
+
+    /**
+     * Campos do cadastro, reutilizados pelo cadastro de fundos (que permite
+     * criar a conta global sem sair do fluxo do fundo).
+     *
+     * @return array<int, Section>
+     */
+    public static function fields(): array
+    {
+        return [
             Section::make('Identificação da Conta')
                 ->description('Conta física global: pode atender a várias operações sem duplicar o saldo bancário.')
                 ->schema([
@@ -127,7 +138,7 @@ class BankAccountForm
                         ->helperText('Descrição livre. Não participa da identidade da conta.'),
 
                     TextInput::make('conta_azul_account_id')
-                        ->label('ID da conta no Conta Azul')
+                        ->label('ID da conta no Conta Azul (conceitual)')
                         ->placeholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
                         ->extraInputAttributes(['class' => 'font-mono'])
                         ->helperText('Configuração conceitual: apenas registra o ID. A sincronização automática continua operando exclusivamente pelos IDs cadastrados em cada fundo, e este valor nunca é copiado para os fundos vinculados.')
@@ -144,6 +155,6 @@ class BankAccountForm
                 ])
                 ->columns(2)
                 ->columnSpanFull(),
-        ]);
+        ];
     }
 }

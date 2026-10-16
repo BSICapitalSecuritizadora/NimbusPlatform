@@ -88,8 +88,9 @@ function financialRuleScenario(): array
         'emission_id' => $emission->id, 'construction_id' => $construction->id,
         'maximum_difference_amount' => '100.00', 'maximum_difference_percent' => '10.0000', 'created_by' => $ruleAuthor->id,
     ]);
-    $data = ['plan_set_id' => $plan->id, 'pay_date' => '2026-05-20', 'amount' => '900.00',
-        'financial_rule_id' => $rule->id, 'financial_justification' => 'Retenção conforme contrato da emissão.'];
+    // Fase 4B-2: o pagamento só é registrado junto com o comprovante.
+    $data = MeasurementReceiptEvidenceScenario::withReceipt(['plan_set_id' => $plan->id, 'pay_date' => '2026-05-20', 'amount' => '900.00',
+        'financial_rule_id' => $rule->id, 'financial_justification' => 'Retenção conforme contrato da emissão.']);
 
     return compact('actor', 'finalizer', 'ruleAuthor', 'emission', 'construction', 'operation', 'plan', 'measurement', 'workflow', 'rule', 'data');
 }
@@ -188,9 +189,9 @@ it('requires explicit acceptance at finalization and freezes the applied version
     $payment = $s['workflow']->registerPayment($s['measurement'], $s['actor'], $s['data']);
     app(MeasurementFinancialRuleService::class)->retire($s['rule'], $s['actor']);
     $s['workflow']->approve($s['measurement']->fresh(), $s['actor']);
-    $evidence = app(MeasurementReceiptEvidenceService::class)->upload($payment, $s['actor'], MeasurementReceiptEvidenceScenario::file());
-    // Fase 4B-1: quem enviou o comprovante não o aprova; o Finalizador confere.
-    app(MeasurementReceiptEvidenceService::class)->review($evidence, $s['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
+    // Fase 4B-2: o comprovante entrou com o pagamento; quem o enviou não o
+    // aprova, o Finalizador confere.
+    app(MeasurementReceiptEvidenceService::class)->review($payment->fresh()->currentReceiptEvidence, $s['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
     expect(fn () => $s['workflow']->finalize($s['measurement']->fresh(), $s['finalizer']))->toThrow(ValidationException::class);
     expect($s['measurement']->fresh()->status)->toBe('approved');
     $s['workflow']->finalize($s['measurement']->fresh(), $s['finalizer'], acceptFinancialExceptions: true);
@@ -209,9 +210,9 @@ it('allows a justified exception without a matching rule and never labels it as 
 
 it('does not classify a matched payment as an exception', function () {
     $s = financialRuleScenario();
-    $payment = $s['workflow']->registerPayment($s['measurement'], $s['actor'], [
+    $payment = $s['workflow']->registerPayment($s['measurement'], $s['actor'], MeasurementReceiptEvidenceScenario::withReceipt([
         'plan_set_id' => $s['plan']->id, 'amount' => '1000.00', 'pay_date' => '2026-05-20',
-    ]);
+    ]));
     expect($payment->financial_assessment['requires_acceptance'])->toBeFalse();
 });
 
@@ -250,10 +251,9 @@ it('explains damaged support at finalization and allows correction after returni
     ]);
     $originalAssessment = $payment->financial_assessment;
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
-    $evidenceService = app(MeasurementReceiptEvidenceService::class);
-    $evidence = $evidenceService->upload($payment, $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
-    // Fase 4B-1: quem enviou o comprovante não o aprova; o Finalizador confere.
-    $evidenceService->review($evidence, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
+    // Fase 4B-2: o comprovante entrou com o pagamento; quem o enviou não o
+    // aprova, o Finalizador confere.
+    app(MeasurementReceiptEvidenceService::class)->review($payment->fresh()->currentReceiptEvidence, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
     Storage::disk('local')->delete($originalAssessment['support']['path']);
 
     $this->actingAs($scenario['finalizer']);
@@ -312,6 +312,7 @@ it('applies a scoped rule and private document through the payment form', functi
                 'financial_rule_id' => $s['rule']->id, 'financial_justification' => 'Retenção conforme contrato.',
                 'financial_support' => [MeasurementReceiptEvidenceScenario::file()],
             ]],
+            'receipt' => MeasurementReceiptEvidenceScenario::file('comprovante-maio.pdf'),
         ])->assertHasNoActionErrors();
     $payment = $s['measurement']->payments()->sole();
     expect($payment->financial_rule_id)->toBe($s['rule']->id)

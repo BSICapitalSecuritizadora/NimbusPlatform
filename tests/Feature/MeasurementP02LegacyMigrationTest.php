@@ -316,7 +316,7 @@ it('produces the same safe result when the logical second record migrates first'
     Storage::disk('public')->assertMissing($source);
 });
 
-it('ignores null and divergent legacy hashes when counting exact shared references', function () {
+it('counts null and divergent legacy hashes as shared references but never overwrites a divergent hash', function () {
     $scenario = createP02LegacyBase();
     $source = 'measurements/shared/hash-metadata.pdf';
     Storage::disk('public')->put($source, '%PDF-1.7 shared-hash-metadata');
@@ -334,10 +334,18 @@ it('ignores null and divergent legacy hashes when counting exact shared referenc
     expect($nullHash->fileMigrationJournal?->fresh()->state)->toBe(MeasurementFileMigration::STATE_SHARED_SOURCE_RETAINED);
     Storage::disk('public')->assertExists($source);
 
-    $this->artisan('measurements:secure-legacy-files', ['--execute' => true, '--limit' => 1])->assertSuccessful();
-    expect($divergentHash->fresh()->storage_disk)->toBe('local')
-        ->and(MeasurementFileMigration::query()->where('state', MeasurementFileMigration::STATE_COMPLETED)->count())->toBe(3);
-    Storage::disk('public')->assertMissing($source);
+    // O hash divergente conta como referência ao arquivo compartilhado, mas o
+    // registro dele não migra: o SHA-256 gravado é o do conteúdo auditado, e um
+    // arquivo diferente nunca o substitui. A origem pública fica preservada
+    // para quem ainda aponta para ela.
+    $this->artisan('measurements:secure-legacy-files', ['--execute' => true, '--limit' => 1])->assertFailed();
+    expect($divergentHash->fresh()->storage_disk)->toBeNull()
+        ->and($divergentHash->fresh()->storage_path)->toBe($source)
+        ->and($divergentHash->fresh()->sha256)->toBe(str_repeat('f', 64))
+        ->and($divergentHash->fileMigrationJournal?->fresh()->last_error)->toContain('O SHA-256 gravado no registro não corresponde ao arquivo legado')
+        ->and(MeasurementFileMigration::query()->where('state', MeasurementFileMigration::STATE_SHARED_SOURCE_RETAINED)->count())->toBe(2)
+        ->and(MeasurementFileMigration::query()->where('state', MeasurementFileMigration::STATE_COMPLETED)->count())->toBe(0);
+    Storage::disk('public')->assertExists($source);
 });
 
 it('does not count an old journal as an active domain reference', function () {

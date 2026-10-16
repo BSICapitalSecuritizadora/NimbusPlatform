@@ -8,6 +8,7 @@ use App\Models\ResponsibilityDelegation;
 use App\Models\User;
 use App\Notifications\MeasurementSlaNotification;
 use App\Services\MeasurementReceiptEvidenceService;
+use App\Services\MeasurementSegregationService;
 use App\Services\MeasurementSlaService;
 use App\Services\MeasurementWorkflow;
 use App\Services\ResponsibilityDelegationService;
@@ -232,6 +233,18 @@ class EvaluateMeasurementSlaCommand extends Command
                 'user' => $delegation->delegate,
                 'delegation' => $delegation,
             ];
+        }
+
+        // O prazo da Finalização não cobra quem a segregação de funções impede
+        // de decidi-la (registrou o pagamento, enviou o comprovante, fez a
+        // exceção): sem ninguém elegível, conta como destinatário indisponível.
+        if ($responsibility === MeasurementResponsibility::Finalizer
+            && in_array($measurement->status, ['awaiting_receipt', 'approved'], true)) {
+            $segregation = app(MeasurementSegregationService::class);
+            $recipients = array_filter(
+                $recipients,
+                fn (array $recipient): bool => $segregation->finalizerDecisionBlockReason($measurement, $recipient['user']) === null,
+            );
         }
 
         return array_values($recipients);

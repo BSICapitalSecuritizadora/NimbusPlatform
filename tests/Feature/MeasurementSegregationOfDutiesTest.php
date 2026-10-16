@@ -190,19 +190,43 @@ function segregationEvidenceActivities(MeasurementPaymentReceiptEvidence $eviden
 /**
  * A medição de maio, medida a 10% nas duas torres, paga pelo valor aprovado
  * (Torre Norte R$ 100.000,00; Torre Sul R$ 50.000,00), com a etapa Pagamento
- * aprovada e esperando os comprovantes.
+ * aprovada e esperando a conferência dos comprovantes -- cada um enviado,
+ * na versão v1, por quem registrou o pagamento (`$payer`, o Gestor de
+ * Pagamento por padrão).
  *
  * @param  array<string, mixed>  $scenario
  */
-function segregationAwaitingReceipts(array $scenario): Measurement
+function segregationAwaitingReceipts(array $scenario, ?User $payer = null, ?string $overrideReason = null): Measurement
 {
     $measurement = Governance::awaitingPayment($scenario, '2026-05', [10, 10]);
     Governance::pay($scenario, $measurement, [
         Governance::row($scenario, 0, '100000.00'),
         Governance::row($scenario, 1, '50000.00'),
-    ]);
+    ], $payer, $overrideReason);
 
     return Governance::approvePaymentStage($scenario, $measurement);
+}
+
+/**
+ * A versão de substituição do comprovante: o Finalizador rejeita a versão
+ * atual do pagamento (o primeiro, por padrão) e quem responde pelo envio de
+ * comprovantes (`$by`, o `uploader` por padrão) envia a nova, com o motivo.
+ *
+ * @param  array<string, mixed>  $scenario
+ */
+function segregationReplacementVersion(array $scenario, Measurement $measurement, ?User $by = null, ?MeasurementPayment $payment = null): MeasurementPaymentReceiptEvidence
+{
+    $payment ??= $measurement->fresh()->payments()->orderBy('id')->firstOrFail();
+    $current = $payment->fresh()->currentReceiptEvidence()->firstOrFail();
+    segregationReview($current, $scenario['finalizer'], MeasurementReceiptReviewStatus::Rejected, rejectionReason: 'Comprovante de outro favorecido.');
+
+    return app(MeasurementReceiptEvidenceService::class)->upload(
+        $payment->fresh(),
+        $by ?? $scenario['uploader'],
+        MeasurementReceiptEvidenceScenario::file("comprovante-{$payment->id}-v2.pdf", "%PDF-1.7 comprovante {$payment->id} v2"),
+        $current->id,
+        'Comprovante correto enviado pelo banco.',
+    );
 }
 
 /**
@@ -223,37 +247,59 @@ function segregationReview(MeasurementPaymentReceiptEvidence $evidence, User $ac
 
 // ── SOD-1: o comprovante não é aprovado por quem o enviou ───────────────────
 
-it('refuses the uploader who also holds the Finalizer column the approval of the own receipt and keeps the version pending', function () {
+it('refuses the payer who sent the receipt with the payment and also holds the Finalizer column the approval of the own receipt and keeps the version pending', function () {
     $s = Governance::plan();
     $measurement = segregationAwaitingReceipts($s);
-    Governance::uploadReceipts($s, $measurement);
-    // Quem enviou passa a responder também pela Finalização: a coluna nova não
-    // apaga quem enviou a versão.
-    $s['uploader']->givePermissionTo('measurements.finalize');
-    segregationAssign($s, ['payment_finalizer_user_id' => $s['uploader']]);
+    // A versão v1 é enviada com o registro do pagamento, por quem o registra.
+    // Quem a enviou passa a responder também pela Finalização: a coluna nova
+    // não apaga quem enviou a versão.
+    $s['payer']->givePermissionTo('measurements.finalize');
+    segregationAssign($s, ['payment_finalizer_user_id' => $s['payer']]);
     $evidence = segregationFirstEvidence($measurement);
     $before = segregationState($measurement);
 
-    $refusal = segregationThrown(fn () => segregationReview($evidence, $s['uploader']));
+    expect((int) $evidence->uploaded_by)->toBe($s['payer']->id);
+
+    $refusal = segregationThrown(fn () => segregationReview($evidence, $s['payer']));
 
     expect($refusal)->toBeInstanceOf(MeasurementSegregationException::class)
         ->and($refusal->getMessage())->toBe(MeasurementSegregationService::RECEIPT_SELF_APPROVAL.' Você enviou a versão v1 do comprovante.')
         ->and($refusal->context())->toMatchArray([
             'control' => MeasurementSegregationService::CONTROL_RECEIPT,
-            'checker_user_id' => $s['uploader']->id,
-            'maker_user_ids' => [$s['uploader']->id],
+            'checker_user_id' => $s['payer']->id,
+            'maker_user_ids' => [$s['payer']->id],
         ])
         ->and($evidence->fresh()->review_status)->toBe(MeasurementReceiptReviewStatus::Pending)
         ->and(segregationState($measurement))->toBe($before)
         ->and(segregationEvidenceActivities($evidence, 'receipt_evidence_approved'))->toBeEmpty()
         // A tela desabilita a aprovação com a mesma frase do domínio.
-        ->and(app(MeasurementReceiptEvidenceService::class)->approvalConflict($evidence, $measurement->fresh(), $s['uploader']))->toBe($refusal->getMessage());
+        ->and(app(MeasurementReceiptEvidenceService::class)->approvalConflict($evidence, $measurement->fresh(), $s['payer']))->toBe($refusal->getMessage());
 });
 
-it('lets the Finalizer approve the receipt the uploader sent and records the independent check in the protected trail', function () {
+it('refuses the uploader who sent a replacement version and also holds the Finalizer column the approval of that version', function () {
     $s = Governance::plan();
     $measurement = segregationAwaitingReceipts($s);
-    Governance::uploadReceipts($s, $measurement);
+    $replacement = segregationReplacementVersion($s, $measurement);
+    $s['uploader']->givePermissionTo('measurements.finalize');
+    segregationAssign($s, ['payment_finalizer_user_id' => $s['uploader']]);
+    $before = segregationState($measurement);
+
+    $refusal = segregationThrown(fn () => segregationReview($replacement, $s['uploader']));
+
+    expect($refusal)->toBeInstanceOf(MeasurementSegregationException::class)
+        ->and($refusal->getMessage())->toBe(MeasurementSegregationService::RECEIPT_SELF_APPROVAL.' Você enviou a versão v2 do comprovante.')
+        ->and($refusal->context())->toMatchArray([
+            'control' => MeasurementSegregationService::CONTROL_RECEIPT,
+            'checker_user_id' => $s['uploader']->id,
+            'maker_user_ids' => [$s['uploader']->id],
+        ])
+        ->and($replacement->fresh()->review_status)->toBe(MeasurementReceiptReviewStatus::Pending)
+        ->and(segregationState($measurement))->toBe($before);
+});
+
+it('lets the Finalizer approve the receipt the payer sent with the payment and the replacement the uploader sent, recording the independent check in the protected trail', function () {
+    $s = Governance::plan();
+    $measurement = segregationAwaitingReceipts($s);
     $evidence = segregationFirstEvidence($measurement);
 
     segregationReview($evidence, $s['finalizer']);
@@ -262,16 +308,18 @@ it('lets the Finalizer approve the receipt the uploader sent and records the ind
 
     expect($evidence->fresh()->review_status)->toBe(MeasurementReceiptReviewStatus::Approved)
         ->and((int) $evidence->fresh()->reviewer_user_id)->toBe($s['finalizer']->id)
-        // O envio: quem enviou, pela autoridade direta.
-        ->and((int) $upload->causer_id)->toBe($s['uploader']->id)
-        ->and($upload->properties['uploaded_by'])->toBe($s['uploader']->id)
-        ->and($upload->properties['actual_actor_user_id'])->toBe($s['uploader']->id)
-        ->and($upload->properties['expected_responsible_user_id'])->toBe($s['uploader']->id)
+        // O envio da v1: quem registrou o pagamento, pela autoridade direta de
+        // Gestor de Pagamento.
+        ->and((int) $upload->causer_id)->toBe($s['payer']->id)
+        ->and($upload->properties['context'])->toBe('payment_registration')
+        ->and($upload->properties['uploaded_by'])->toBe($s['payer']->id)
+        ->and($upload->properties['actual_actor_user_id'])->toBe($s['payer']->id)
+        ->and($upload->properties['expected_responsible_user_id'])->toBe($s['payer']->id)
         ->and($upload->properties['delegated'])->toBeFalse()
         ->and($upload->properties['admin_override'])->toBeFalse()
         // A conferência: outra pessoa, e a trilha diz quem enviou.
         ->and((int) $approval->causer_id)->toBe($s['finalizer']->id)
-        ->and($approval->properties['uploaded_by'])->toBe($s['uploader']->id)
+        ->and($approval->properties['uploaded_by'])->toBe($s['payer']->id)
         ->and($approval->properties['actual_actor_user_id'])->toBe($s['finalizer']->id)
         ->and($approval->properties['expected_responsible_user_id'])->toBe($s['finalizer']->id)
         ->and($approval->properties['delegated'])->toBeFalse()
@@ -279,7 +327,7 @@ it('lets the Finalizer approve the receipt the uploader sent and records the ind
         ->and($approval->properties->all())->not->toHaveKey('admin_override_reason')
         ->and($approval->properties['segregation'])->toMatchArray([
             'control' => MeasurementSegregationService::CONTROL_RECEIPT,
-            'makers' => [['user_id' => $s['uploader']->id, 'act' => 'uploaded_evidence']],
+            'makers' => [['user_id' => $s['payer']->id, 'act' => 'uploaded_evidence']],
             'checker_user_id' => $s['finalizer']->id,
             'checker_authorization_source' => 'direct',
             'checker_delegation_id' => null,
@@ -287,24 +335,34 @@ it('lets the Finalizer approve the receipt the uploader sent and records the ind
             'independent' => true,
         ]);
 
-    Governance::approveReceipts($s, $measurement);
+    // A versão de substituição do segundo pagamento, enviada por quem responde
+    // pelo envio de comprovantes, também é conferida por outra pessoa.
+    $second = $measurement->fresh()->payments()->orderBy('id')->get()->last();
+    $replacement = segregationReplacementVersion($s, $measurement, payment: $second);
+    segregationReview($replacement, $s['finalizer']);
+    $replacementUpload = segregationEvidenceActivities($replacement, 'receipt_evidence_uploaded')->sole();
+    $replacementApproval = segregationEvidenceActivities($replacement, 'receipt_evidence_approved')->sole();
+
+    expect((int) $replacementUpload->causer_id)->toBe($s['uploader']->id)
+        ->and($replacementUpload->properties['expected_responsible_user_id'])->toBe($s['uploader']->id)
+        ->and($replacementApproval->properties['segregation']['makers'])->toBe([['user_id' => $s['uploader']->id, 'act' => 'uploaded_evidence']])
+        ->and($replacementApproval->properties['segregation']['independent'])->toBeTrue();
 
     expect($measurement->fresh()->status)->toBe('approved');
 });
 
-it('refuses the uploader acting as delegate of the Finalizer: the delegation changes who may act, not who uploaded', function () {
+it('refuses the payer acting as delegate of the Finalizer: the delegation changes who may act, not who uploaded', function () {
     $s = Governance::plan();
     $measurement = segregationAwaitingReceipts($s);
-    Governance::uploadReceipts($s, $measurement);
-    $s['uploader']->givePermissionTo('measurements.finalize');
-    segregationDelegate($s, MeasurementResponsibility::Finalizer, $s['uploader']);
+    $s['payer']->givePermissionTo('measurements.finalize');
+    segregationDelegate($s, MeasurementResponsibility::Finalizer, $s['payer']);
     $evidence = segregationFirstEvidence($measurement);
     $before = segregationState($measurement);
 
-    expect(app(MeasurementAuthorizationService::class)->resolveAuthorization($s['uploader'], $measurement->fresh(), MeasurementResponsibility::Finalizer)->source)
+    expect(app(MeasurementAuthorizationService::class)->resolveAuthorization($s['payer'], $measurement->fresh(), MeasurementResponsibility::Finalizer)->source)
         ->toBe(WorkflowAuthorizationSource::Delegated);
 
-    $refusal = segregationThrown(fn () => segregationReview($evidence, $s['uploader']));
+    $refusal = segregationThrown(fn () => segregationReview($evidence, $s['payer']));
 
     expect($refusal)->toBeInstanceOf(MeasurementSegregationException::class)
         ->and($refusal->getMessage())->toBe(MeasurementSegregationService::RECEIPT_SELF_APPROVAL.' Você enviou a versão v1 do comprovante.')
@@ -319,10 +377,10 @@ it('refuses the uploader acting as delegate of the Finalizer: the delegation cha
 it('refuses a Finalizer delegate whose delegator sent the receipt version', function () {
     $s = Governance::plan();
     $measurement = segregationAwaitingReceipts($s);
-    Governance::uploadReceipts($s, $measurement);
-    // Quem enviou passa a ser o Finalizador e delega a Finalização a outra pessoa.
-    $s['uploader']->givePermissionTo('measurements.finalize');
-    segregationAssign($s, ['payment_finalizer_user_id' => $s['uploader']]);
+    // Quem enviou a v1 (com o pagamento) passa a ser o Finalizador e delega a
+    // Finalização a outra pessoa.
+    $s['payer']->givePermissionTo('measurements.finalize');
+    segregationAssign($s, ['payment_finalizer_user_id' => $s['payer']]);
     $delegate = segregationUser(['measurements.view', 'measurements.finalize']);
     $delegation = segregationDelegate($s, MeasurementResponsibility::Finalizer, $delegate);
     $evidence = segregationFirstEvidence($measurement);
@@ -334,9 +392,9 @@ it('refuses a Finalizer delegate whose delegator sent the receipt version', func
         ->and($refusal->getMessage())->toBe(sprintf(
             '%s Você age por delegação de %s, que enviou a versão v1 do comprovante: a delegação muda quem pode agir, não quem fez a ação, e a conferência precisa ser de outro responsável.',
             MeasurementSegregationService::RECEIPT_SELF_APPROVAL,
-            $s['uploader']->name,
+            $s['payer']->name,
         ))
-        ->and((int) $delegation->delegator_user_id)->toBe($s['uploader']->id)
+        ->and((int) $delegation->delegator_user_id)->toBe($s['payer']->id)
         ->and(segregationState($measurement))->toBe($before);
 });
 
@@ -345,8 +403,9 @@ it('refuses the delegator of the upload the approval: the delegate sent the vers
     $measurement = segregationAwaitingReceipts($s);
     $delegate = segregationUser(['measurements.view', 'measurements.receipts']);
     $delegation = segregationDelegate($s, MeasurementResponsibility::ReceiptUploader, $delegate);
-    Governance::uploadReceipts($s, $measurement, $delegate);
-    $evidence = segregationFirstEvidence($measurement);
+    // A v1 rejeitada é substituída pela v2, enviada pelo delegado de quem
+    // responde pelo envio de comprovantes.
+    $evidence = segregationReplacementVersion($s, $measurement, $delegate);
     $upload = segregationEvidenceActivities($evidence, 'receipt_evidence_uploaded')->sole();
     // O delegante, que não enviou nada pessoalmente, passa a ser o Finalizador.
     $s['uploader']->givePermissionTo('measurements.finalize');
@@ -361,7 +420,7 @@ it('refuses the delegator of the upload the approval: the delegate sent the vers
     $refusal = segregationThrown(fn () => segregationReview($evidence, $s['uploader']));
 
     expect($refusal)->toBeInstanceOf(MeasurementSegregationException::class)
-        ->and($refusal->getMessage())->toBe(MeasurementSegregationService::RECEIPT_SELF_APPROVAL.' Você delegou o envio da versão v1 do comprovante.')
+        ->and($refusal->getMessage())->toBe(MeasurementSegregationService::RECEIPT_SELF_APPROVAL.' Você delegou o envio da versão v2 do comprovante.')
         ->and(segregationState($measurement))->toBe($before);
 
     // O Finalizador original confere, e a trilha guarda os dois autores do envio.
@@ -378,14 +437,17 @@ it('refuses the delegator of the upload the approval: the delegate sent the vers
 
 it('refuses an administrator who sent the receipt by override the approval by override, even with the override reason', function (string $administrator) {
     $s = Governance::plan();
-    $measurement = segregationAwaitingReceipts($s);
     $actor = $s[$administrator];
-    Governance::uploadReceipts($s, $measurement, $actor, 'Comprovante recebido do banco por e-mail.');
+    // O administrador registra o pagamento -- e envia a v1 do comprovante com
+    // ele -- pelo override.
+    $measurement = segregationAwaitingReceipts($s, $actor, 'Comprovante recebido do banco por e-mail.');
     $evidence = segregationFirstEvidence($measurement);
     $upload = segregationEvidenceActivities($evidence, 'receipt_evidence_uploaded')->sole();
     $before = segregationState($measurement);
 
     expect((int) $evidence->uploaded_by)->toBe($actor->id)
+        ->and($upload->properties['context'])->toBe('payment_registration')
+        ->and($upload->properties['expected_responsible_user_id'])->toBe($s['payer']->id)
         ->and($upload->properties['admin_override'])->toBeTrue()
         ->and($upload->properties['admin_override_reason'])->toBe('Comprovante recebido do banco por e-mail.');
 
@@ -426,9 +488,15 @@ it('fails closed on a pending receipt version without a known uploader and accep
     $s = Governance::plan();
     $measurement = segregationAwaitingReceipts($s);
     $payment = $measurement->payments()->orderBy('id')->firstOrFail();
-    // Versão anterior ao controle: sem quem a enviou, nem o envio na trilha.
+    // A v1 enviada com o pagamento é rejeitada e substituída por uma versão
+    // sem registro de quem a enviou, nem o envio na trilha (anterior ao
+    // controle).
+    $registered = $payment->currentReceiptEvidence()->firstOrFail();
+    segregationReview($registered, $s['finalizer'], MeasurementReceiptReviewStatus::Rejected, rejectionReason: 'Comprovante de outro favorecido.');
     $legacy = MeasurementPaymentReceiptEvidence::factory()->create([
         'measurement_payment_id' => $payment->id,
+        'version' => 2,
+        'supersedes_id' => $registered->id,
         'uploaded_by' => null,
     ]);
     $before = segregationState($measurement);
@@ -448,13 +516,14 @@ it('fails closed on a pending receipt version without a known uploader and accep
     app(MeasurementReceiptEvidenceService::class)->upload(
         $payment->fresh(),
         $s['uploader'],
-        MeasurementReceiptEvidenceScenario::file("comprovante-{$payment->id}-v2.pdf", "%PDF-1.7 comprovante {$payment->id} v2"),
+        MeasurementReceiptEvidenceScenario::file("comprovante-{$payment->id}-v3.pdf", "%PDF-1.7 comprovante {$payment->id} v3"),
         $legacy->id,
         'A versão anterior não tem registro de quem a enviou.',
     );
     $current = $payment->fresh()->currentReceiptEvidence;
 
-    expect($current->version)->toBe(2)
+    expect($current->version)->toBe(3)
+        ->and((int) $current->supersedes_id)->toBe($legacy->id)
         ->and((int) $current->uploaded_by)->toBe($s['uploader']->id);
 
     segregationReview($current, $s['finalizer']);
@@ -697,7 +766,7 @@ it('refuses the payer who justified a construction left unpaid the acceptance of
         ->and($finalization->properties['segregation']['financial_exceptions']['independent'])->toBeTrue();
 });
 
-it('keeps a partial payment an ordinary payment: the payer who is also the Finalizer accepts the justified divergence', function () {
+it('requires an independent Finalizer for a partial payment: the payer who is also the Finalizer does not accept the outstanding balance', function () {
     $s = Governance::plan();
     $measurement = Governance::awaitingPayment($s, '2026-05', [10, 10]);
     $payments = Governance::pay($s, $measurement, [
@@ -705,24 +774,92 @@ it('keeps a partial payment an ordinary payment: the payer who is also the Final
         Governance::row($s, 1, '50000.00'),
     ]);
     $measurement = Governance::readyToFinalize($s, $measurement);
+    $columns = $s['operation']->fresh()->only(Operation::RESPONSIBILITY_FIELDS);
     $s['payer']->givePermissionTo('measurements.finalize');
     segregationAssign($s, ['payment_finalizer_user_id' => $s['payer']]);
     $workflow = app(MeasurementWorkflow::class);
+    $partial = $payments->first();
+    $before = segregationState($measurement);
 
-    expect($payments->first()->financial_assessment['reference']['status'])->toBe('under')
-        ->and($payments->first()->financial_assessment['requires_acceptance'])->toBeTrue()
-        ->and($payments->first()->financial_assessment['rule'])->toBeNull()
-        ->and(app(MeasurementSegregationService::class)->financialExceptionMakers($measurement->fresh()))->toBe([])
-        ->and($workflow->finalizationBlockReason($measurement->fresh(), $s['payer']))->toBeNull();
+    // O pagamento parcial continua um pagamento legítimo, sem regra; o que
+    // pede conferência independente é o aceite do saldo que ele deixa aberto.
+    expect($partial->financial_assessment['reference']['status'])->toBe('under')
+        ->and($partial->financial_assessment['requires_acceptance'])->toBeTrue()
+        ->and($partial->financial_assessment['rule'])->toBeNull()
+        ->and($payments->last()->financial_assessment['requires_acceptance'])->toBeFalse()
+        ->and(collect(app(MeasurementSegregationService::class)->financialExceptionMakers($measurement->fresh()))
+            ->map(fn (array $maker): array => ['user_id' => $maker['user_id'], 'act' => $maker['act']])
+            ->unique(fn (array $maker): string => $maker['user_id'].':'.$maker['act'])
+            ->values()
+            ->all())->toEqual([
+                ['user_id' => $s['payer']->id, 'act' => 'registered_payment'],
+                ['user_id' => $s['payer']->id, 'act' => 'approved_payment_stage'],
+            ])
+        ->and(app(MeasurementSegregationService::class)->financialAcceptanceReasons($measurement->fresh()))->toBe(['partial_payment_outstanding_balance']);
 
-    $measurement = Governance::finalize($s, $measurement, accept: true, by: $s['payer']);
+    $refusal = segregationThrown(fn () => Governance::finalize($s, $measurement, accept: true, by: $s['payer']));
+
+    expect($refusal)->toBeInstanceOf(MeasurementSegregationException::class)
+        ->and($refusal->getMessage())->toBe(sprintf(
+            '%s Você registrou o pagamento #%d e aprovou a etapa Pagamento com a exceção.',
+            MeasurementSegregationService::FINANCIAL_EXCEPTION_SELF_ACCEPTANCE,
+            $partial->id,
+        ))
+        ->and($refusal->context())->toMatchArray([
+            'control' => MeasurementSegregationService::CONTROL_FINANCIAL_EXCEPTION,
+            'checker_user_id' => $s['payer']->id,
+        ])
+        ->and(segregationState($measurement))->toBe($before)
+        ->and(segregationActivities($measurement, 'measurement_finalized'))->toBeEmpty()
+        ->and($workflow->finalizationBlockReason($measurement->fresh(), $s['payer']))->toBe($refusal->getMessage());
+
+    // O Finalizador independente aceita o saldo em aberto.
+    $s['operation']->forceFill($columns)->save();
+
+    expect($workflow->finalizationBlockReason($measurement->fresh(), $s['finalizer']))->toBeNull();
+
+    $measurement = Governance::finalize($s, $measurement, accept: true);
+    $finalization = segregationActivities($measurement, 'measurement_finalized')->sole();
+    $check = $finalization->properties['segregation']['financial_exceptions'];
+
+    expect($measurement->status)->toBe('finalized')
+        ->and((int) $finalization->causer_id)->toBe($s['finalizer']->id)
+        ->and($finalization->properties['financial_exceptions_accepted'])->toHaveCount(1)
+        ->and($finalization->properties['financial_exceptions_accepted'][0]['payment_id'])->toBe($partial->id)
+        ->and($check)->toMatchArray([
+            'control' => MeasurementSegregationService::CONTROL_FINANCIAL_EXCEPTION,
+            'checker_user_id' => $s['finalizer']->id,
+            'checker_authorization_source' => 'direct',
+            'independent' => true,
+        ])
+        ->and($check['required_because'])->toContain('partial_payment_outstanding_balance')
+        ->and($check['required_because'])->not->toContain('excess_payment')
+        ->and($check['makers'])->toEqual([
+            ['user_id' => $s['payer']->id, 'act' => 'registered_payment'],
+            ['user_id' => $s['payer']->id, 'act' => 'approved_payment_stage'],
+        ]);
+});
+
+it('keeps an exact payment outside the financial exception control: the payer who is also the Finalizer finalizes it', function () {
+    $s = Governance::plan();
+    $measurement = Governance::awaitingPayment($s, '2026-05', [10, 10]);
+    Governance::pay($s, $measurement, [
+        Governance::row($s, 0, '100000.00'),
+        Governance::row($s, 1, '50000.00'),
+    ]);
+    $measurement = Governance::readyToFinalize($s, $measurement);
+    $s['payer']->givePermissionTo('measurements.finalize');
+    segregationAssign($s, ['payment_finalizer_user_id' => $s['payer']]);
+
+    expect(app(MeasurementSegregationService::class)->financialExceptionMakers($measurement->fresh()))->toBe([])
+        ->and(app(MeasurementWorkflow::class)->finalizationBlockReason($measurement->fresh(), $s['payer']))->toBeNull();
+
+    $measurement = Governance::finalize($s, $measurement, by: $s['payer']);
     $finalization = segregationActivities($measurement, 'measurement_finalized')->sole();
 
     expect($measurement->status)->toBe('finalized')
         ->and((int) $finalization->causer_id)->toBe($s['payer']->id)
-        ->and($finalization->properties->all())->not->toHaveKey('segregation')
-        ->and($finalization->properties['financial_exceptions_accepted'])->toHaveCount(1)
-        ->and($finalization->properties['financial_exceptions_accepted'][0]['payment_id'])->toBe($payments->first()->id);
+        ->and($finalization->properties->all())->not->toHaveKey('segregation');
 });
 
 // ── SOD-3: a ciência da ausência de desembolso é de quem não decidiu ────────
@@ -1375,9 +1512,14 @@ it('leaves ordinary payments outside the rule controls: a rule author keeps regi
         ->and($payments->last()->financial_assessment['reference']['status'])->toBe('under');
 
     $measurement = Governance::finalize($s, Governance::readyToFinalize($s, $measurement), accept: true);
+    $check = segregationActivities($measurement, 'measurement_finalized')->sole()->properties['segregation']['financial_exceptions'];
 
+    // O parcial pede o Finalizador independente pelo saldo em aberto, mas a
+    // regra de quem paga não entra: nenhum pagamento a aplicou.
     expect($measurement->status)->toBe('finalized')
-        ->and(segregationActivities($measurement, 'measurement_finalized')->sole()->properties->all())->not->toHaveKey('segregation');
+        ->and($check['required_because'])->toBe(['partial_payment_outstanding_balance'])
+        ->and($check['independent'])->toBeTrue()
+        ->and(collect($check['makers'])->pluck('act')->all())->not->toContain('authored_financial_rule');
 });
 
 // ── Motivo do override administrativo ───────────────────────────────────────

@@ -379,8 +379,8 @@ it('registers one payment per development', function () {
     $measurement->reviews()->create(['stage' => 4, 'reviewer_user_id' => $actor->id, 'status' => 'pending']);
 
     $payments = app(MeasurementWorkflow::class)->registerPayments($measurement, $actor, [
-        ['plan_set_id' => $planA->id, 'amount' => 100000, 'pay_date' => '2026-05-10', 'method' => 'PIX'],
-        ['plan_set_id' => $planB->id, 'amount' => 50000, 'pay_date' => '2026-05-10', 'method' => 'PIX'],
+        MeasurementReceiptEvidenceScenario::withReceipt(['plan_set_id' => $planA->id, 'amount' => 100000, 'pay_date' => '2026-05-10', 'method' => 'PIX']),
+        MeasurementReceiptEvidenceScenario::withReceipt(['plan_set_id' => $planB->id, 'amount' => 50000, 'pay_date' => '2026-05-10', 'method' => 'PIX']),
     ]);
 
     expect($payments)->toHaveCount(2)
@@ -423,7 +423,8 @@ it('ignores payment rows without an amount', function () {
     $measurement->reviews()->create(['stage' => 4, 'reviewer_user_id' => $actor->id, 'status' => 'pending']);
 
     $payments = app(MeasurementWorkflow::class)->registerPayments($measurement, $actor, [
-        ['plan_set_id' => $planA->id, 'amount' => 100000, 'pay_date' => '2026-05-10'],
+        MeasurementReceiptEvidenceScenario::withReceipt(['plan_set_id' => $planA->id, 'amount' => 100000, 'pay_date' => '2026-05-10']),
+        // A linha sem valor é ignorada e, por isso, não pede comprovante.
         ['plan_set_id' => $planB->id, 'amount' => null, 'pay_date' => '2026-05-10'],
     ]);
 
@@ -457,14 +458,16 @@ it('registers a payment then attaches a receipt and finalizes', function () {
         'amount' => 150000.50,
         'financial_justification' => 'Pagamento parcial previsto para esta medição.',
         'method' => 'PIX',
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]);
 
+    // Fase 4B-2: o comprovante é anexado no próprio registro do pagamento.
     expect($measurement->fresh()->status)->toBe('awaiting_payment')
         ->and($payment->operation_id)->toBe($measurement->operation_id)
-        ->and($payment->created_by)->toBe($actor->id);
+        ->and($payment->created_by)->toBe($actor->id)
+        ->and($payment->fresh()->currentReceiptEvidence?->uploaded_by)->toBe($actor->id);
 
     $workflow->approve($measurement->fresh(), $actor);
-    $workflow->attachReceipt($payment, $actor, MeasurementReceiptEvidenceScenario::file());
     MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $finalizer);
     expect($payment->fresh()->hasReceipt())->toBeTrue();
 

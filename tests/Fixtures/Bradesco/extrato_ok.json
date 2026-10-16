@@ -1,0 +1,83 @@
+{
+    "extratoUltimosLancamentos": {
+        "codigoRetorno": "00",
+        "mensagem": "CTAS0673 - CONSULTA EFETUADA COM SUCESSO",
+        "identificaoCliente": "0",
+        "razaoConta": "00705",
+        "numeroConta": "75557",
+        "digitoConta": "5",
+        "nomeCliente": "CONTA AMBIENTE TU",
+        "quantidadeLancamentos": "2",
+        "listaLancamentos": {
+            "Saldo Anterior": [
+                {
+                    "sinalSaldo": "+",
+                    "valorLancamento": "0,00",
+                    "valorSaldoAposLancamento": "6.759,00",
+                    "dataLancamento": "10/12/2024"
+                }
+            ],
+            "Ultimos Lancamentos": [
+                {
+                    "sinalSaldo": "+",
+                    "valorLancamento": "1,15",
+                    "sinalLancamento": "+",
+                    "codigoLancamento": "03584",
+                    "descritivoLancamentoAbreviado": "RENT.INV.FACIL",
+                    "numeroDocumento": "0000003",
+                    "valorSaldoAposLancamento": "6.760,15",
+                    "dataLancamento": "17/01/2025",
+                    "descritivoLancamentoCompleto": "RENTAB.INVEST FACILCRED*"
+                }
+            ]
+        }
+    },
+    "extratoPorPeriodo": {
+        "codigoRetorno": "00",
+        "mensagem": "CTAS0673 - CONSULTA EFETUADA COM SUCESSO",
+        "identificaoCliente": "1",
+        "razaoConta": "00705",
+        "numeroConta": "75557",
+        "digitoConta": "5",
+        "nomeCliente": "CONTA AMBIENTE TU",
+        "quantidadeLancamentos": "3",
+        "lstLancamentoMensal": [
+            {
+                "dataLancamento": "30/09/2024",
+                "numeroDocumento": "0000000",
+                "valorLancamento": "0,00",
+                "sinalLancamento": "+",
+                "valorSaldoAposLancamento": "80,00",
+                "sinalSaldo": "+",
+                "tipoLancamento": "01",
+                "codigoLancamento": "00000",
+                "descritivoLancamentoAbreviado": "Saldo Anterior",
+                "descritivoLancamentoCompleto": "Saldo Anterior"
+            },
+            {
+                "dataLancamento": "01/10/2024",
+                "numeroDocumento": "0000001",
+                "valorLancamento": "700,00",
+                "sinalLancamento": "-",
+                "valorSaldoAposLancamento": "620,00",
+                "sinalSaldo": "-",
+                "tipoLancamento": "02",
+                "codigoLancamento": "03205",
+                "descritivoLancamentoAbreviado": "TRANSFE PIX",
+                "descritivoLancamentoCompleto": "TRANSFERENCIA PIX"
+            },
+            {
+                "dataLancamento": "05/10/2024",
+                "numeroDocumento": "0000002",
+                "valorLancamento": "800,00",
+                "sinalLancamento": "+",
+                "valorSaldoAposLancamento": "180,00",
+                "sinalSaldo": "+",
+                "tipoLancamento": "02",
+                "codigoLancamento": "03205",
+                "descritivoLancamentoAbreviado": "TRANSFE PIX",
+                "descritivoLancamentoCompleto": "TRANSFERENCIA PIX"
+            }
+        ]
+    }
+}

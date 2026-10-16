@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\MeasurementPhysicalProgressScenario as Scenario;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 use Tests\Support\MeasurementRevisionScenario;
 
 /**
@@ -638,6 +639,7 @@ it('pays the delayed June measurement against the V1 fund of R$ 20 million while
         'pay_date' => '2027-08-12',
         'amount' => '2000000.00',
         'method' => 'TED',
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]);
     $assessment = $payment->fresh()->financial_assessment;
 
@@ -1060,6 +1062,7 @@ it('re-approves at Engineering a legacy paid measurement returned from Finalizat
         'pay_date' => '2027-08-10',
         'amount' => '2000000.00',
         'method' => 'TED',
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]);
     $workflow->approve($june->fresh(), $scenario['actor']);
 

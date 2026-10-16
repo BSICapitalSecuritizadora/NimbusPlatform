@@ -16,6 +16,7 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\CommittedRowsSweeper;
 use Tests\Support\MeasurementNoDisbursementRaceTasks as RaceTasks;
 use Tests\Support\MeasurementNoDisbursementScenario as Scenario;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 /*
  * O pagamento da medição original sem valor devido contra o MySQL de verdade,
@@ -160,7 +161,7 @@ it('registers only one of two payments of the same amount due on MySQL: the wait
     // saldo a pagar: acima do saldo, sem regra financeira, é recusado.
     try {
         app(MeasurementWorkflow::class)->registerPayments($measurement->fresh(), $scenario['actor'], [
-            originalDueMysqlPayment($scenario, $measurement, '100000.00', 'Repetido depois de atualizar a página.')['payment'],
+            MeasurementReceiptEvidenceScenario::withReceipt(originalDueMysqlPayment($scenario, $measurement, '100000.00', 'Repetido depois de atualizar a página.')['payment']),
         ]);
         $retry = null;
     } catch (ValidationException $exception) {

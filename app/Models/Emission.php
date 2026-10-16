@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Domain\PuCalculator\Services\PuGovernedHistoryGuard;
 use App\Enums\MalwareScanStatus;
 use App\Enums\SalesBoardSource;
+use App\Exceptions\OperationLifecycleException;
 use App\Observers\EmissionObserver;
 use App\Services\SalesBoards\SalesBoardPositionReader;
 use Carbon\CarbonImmutable;
@@ -59,6 +60,14 @@ class Emission extends Model
         // motivo; exclusão em massa e `DELETE` direto param na âncora RESTRICT.
         static::deleting(function (self $emission): void {
             app(PuGovernedHistoryGuard::class)->assertDeletable($emission);
+
+            // As operações saem em cascata pelo banco (`operations.emission_id`
+            // CASCADE), sem o `deleting` de cada uma, e levariam as medições:
+            // a recusa vale para qualquer caminho que exclua a emissão pelo
+            // model -- o super-admin inclusive, que passa pela policy.
+            if (Measurement::query()->whereIn('operation_id', Operation::query()->select('id')->where('emission_id', $emission->getKey()))->exists()) {
+                throw OperationLifecycleException::emissionMeasurementHistory();
+            }
         });
     }
 

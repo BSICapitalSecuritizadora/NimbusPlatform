@@ -19,18 +19,27 @@ class MeasurementPendingService
     ) {}
 
     /**
-     * @return array{items: list<array<string, mixed>>, count: int, overdue_count: int, delegated_count: int}
+     * As pendências de medição do ator. A decisão que a segregação de funções
+     * recusaria a ele -- conferir o comprovante que enviou, aceitar a exceção
+     * que fez, aprovar na Compliance a revisão que criou -- não conta como
+     * pendência dele: aparece bloqueada (`blocked`), com o motivo e, sem
+     * ninguém independente para decidir, o pedido de outro responsável
+     * (`needs_independent_reviewer`). A pendência continua a mesma; só não é
+     * apresentada como ação de quem não pode fazê-la.
+     *
+     * @return array{items: list<array<string, mixed>>, count: int, overdue_count: int, delegated_count: int, blocked_count: int}
      */
     public function summaryFor(User $user, int $previewLimit = 3): array
     {
         if (! $user->can('measurements.view')) {
-            return ['items' => [], 'count' => 0, 'overdue_count' => 0, 'delegated_count' => 0];
+            return ['items' => [], 'count' => 0, 'overdue_count' => 0, 'delegated_count' => 0, 'blocked_count' => 0];
         }
 
         $items = [];
         $count = 0;
         $overdueCount = 0;
         $delegatedCount = 0;
+        $blockedCount = 0;
 
         // O papel do ator não muda no meio da varredura, e `hasAnyRole()` só
         // consultaria o banco na primeira chamada de qualquer forma; resolver
@@ -73,10 +82,21 @@ class MeasurementPendingService
                 &$count,
                 &$overdueCount,
                 &$delegatedCount,
+                &$blockedCount,
             ): void {
                 foreach ($this->actionsFor($measurement, $user) as $action) {
                     $evaluation = $this->sla->evaluate($measurement, responsibility: $action['responsibility']);
                     $delegation = $this->delegationContextFor($action['authorization'], $isAdministrator);
+
+                    if ($action['blocked_reason'] !== null) {
+                        $blockedCount++;
+
+                        if (count($items) < $previewLimit) {
+                            $items[] = $this->item($measurement, $action, $evaluation, $delegation);
+                        }
+
+                        continue;
+                    }
 
                     $count++;
                     $overdueCount += $evaluation['status'] === MeasurementSlaService::STATUS_OVERDUE ? 1 : 0;
@@ -93,10 +113,11 @@ class MeasurementPendingService
             'count' => $count,
             'overdue_count' => $overdueCount,
             'delegated_count' => $delegatedCount,
+            'blocked_count' => $blockedCount,
         ];
     }
 
-    /** @return list<array{label: string, responsibility: MeasurementResponsibility, authorization: ResponsibilityAuthorization}> */
+    /** @return list<array{label: string, responsibility: MeasurementResponsibility, authorization: ResponsibilityAuthorization, blocked_reason: string|null, needs_independent_reviewer: bool}> */
     private function actionsFor(Measurement $measurement, User $user): array
     {
         // Comprovantes da Finalização aberta e as correções depois do
@@ -104,7 +125,22 @@ class MeasurementPendingService
         if (! in_array($measurement->status, ['awaiting_receipt', 'approved', 'finalized', 'superseded'], true)) {
             $action = $this->actionFor($measurement, $user);
 
-            return $action === null ? [] : [$action];
+            if ($action === null) {
+                return [];
+            }
+
+            // A revisão na Compliance: quem a criou, enviou ou alterou não a
+            // aprova.
+            if ($action['responsibility'] === MeasurementResponsibility::ComplianceReviewer
+                && $measurement->status !== 'paused' && $measurement->isRevision()) {
+                $reason = app(MeasurementSegregationService::class)->revisionComplianceConflict($measurement, $user, $action['authorization']);
+
+                if ($reason !== null) {
+                    return [$this->blocked($action, $reason, false)];
+                }
+            }
+
+            return [$action];
         }
 
         $actions = [];
@@ -114,15 +150,45 @@ class MeasurementPendingService
             $authorization = $this->authorization->resolveAuthorization($user, $measurement, $responsibility);
 
             if ($authorization->authorizes()) {
-                $actions[] = [
+                $action = [
                     'label' => $receipts->pendingActionLabel($measurement, $responsibility),
                     'responsibility' => $responsibility,
                     'authorization' => $authorization,
+                    'blocked_reason' => null,
+                    'needs_independent_reviewer' => false,
                 ];
+
+                // A Finalização aberta: quem só pode conferir o próprio
+                // comprovante, ou aceitar a própria exceção, não é quem decide.
+                if ($responsibility === MeasurementResponsibility::Finalizer
+                    && in_array($measurement->status, ['awaiting_receipt', 'approved'], true)) {
+                    $segregation = app(MeasurementSegregationService::class);
+                    $reason = $segregation->finalizerDecisionBlockReason($measurement, $user);
+
+                    if ($reason !== null) {
+                        $action = $this->blocked($action, $reason, ! $segregation->independentFinalizerExists($measurement));
+                    }
+                }
+
+                $actions[] = $action;
             }
         }
 
         return $actions;
+    }
+
+    /**
+     * @param  array{label: string, responsibility: MeasurementResponsibility, authorization: ResponsibilityAuthorization}  $action
+     * @return array{label: string, responsibility: MeasurementResponsibility, authorization: ResponsibilityAuthorization, blocked_reason: string, needs_independent_reviewer: bool}
+     */
+    private function blocked(array $action, string $reason, bool $needsIndependentReviewer): array
+    {
+        return [
+            ...$action,
+            'label' => $needsIndependentReviewer ? 'Sem conferente independente — designe outro responsável' : 'Aguardando conferente independente',
+            'blocked_reason' => $needsIndependentReviewer ? $reason.' '.MeasurementSegregationService::NO_INDEPENDENT_FINALIZER : $reason,
+            'needs_independent_reviewer' => $needsIndependentReviewer,
+        ];
     }
 
     /**
@@ -134,7 +200,7 @@ class MeasurementPendingService
      * pendência delegada, e de uma divergência possível entre o que autorizou a
      * ação e o que o payload descreve.
      *
-     * @return array{label: string, responsibility: MeasurementResponsibility, authorization: ResponsibilityAuthorization}|null
+     * @return array{label: string, responsibility: MeasurementResponsibility, authorization: ResponsibilityAuthorization, blocked_reason: string|null, needs_independent_reviewer: bool}|null
      */
     private function actionFor(Measurement $measurement, User $user): ?array
     {
@@ -178,7 +244,7 @@ class MeasurementPendingService
     }
 
     /**
-     * @return array{label: string, responsibility: MeasurementResponsibility, authorization: ResponsibilityAuthorization}
+     * @return array{label: string, responsibility: MeasurementResponsibility, authorization: ResponsibilityAuthorization, blocked_reason: null, needs_independent_reviewer: false}
      */
     private function action(
         string $label,
@@ -192,6 +258,8 @@ class MeasurementPendingService
             'label' => $label,
             'responsibility' => $responsibility,
             'authorization' => $capture->captured() ?? ResponsibilityAuthorization::none(),
+            'blocked_reason' => null,
+            'needs_independent_reviewer' => false,
         ];
     }
 
@@ -249,6 +317,9 @@ class MeasurementPendingService
             'delegation_id' => $delegation?->getKey(),
             'delegator_name' => $delegation?->delegator?->name,
             'delegation_ends_at' => $delegation?->ends_at,
+            'blocked' => $action['blocked_reason'] !== null,
+            'blocked_reason' => $action['blocked_reason'],
+            'needs_independent_reviewer' => $action['needs_independent_reviewer'],
         ];
     }
 }

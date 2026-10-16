@@ -110,7 +110,8 @@ function mysqlWorkflowTask(array $instruction): Closure
                 'payment' => app(MeasurementWorkflow::class)->registerPayment(
                     $measurement,
                     $actor,
-                    $instruction['payment'] ?? [],
+                    // O comprovante nasce no processo filho.
+                    MeasurementReceiptEvidenceScenario::withReceipt($instruction['payment'] ?? []),
                     expectedRevision: $instruction['revision'],
                 ),
                 'finalize' => app(MeasurementWorkflow::class)->finalize(

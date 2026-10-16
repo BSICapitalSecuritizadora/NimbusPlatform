@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 use Tests\Support\MeasurementRevisionScenario as Scenario;
 
 uses(RefreshDatabase::class);
@@ -49,18 +50,19 @@ function p4aPayDateAwaitingPayment(): array
 
 /**
  * Registra pelo fluxo um pagamento com a data informada, no valor aprovado
- * inteiro: sem divergência, nada além da data decide a recusa.
+ * inteiro e com o comprovante da transferência (Fase 4B-2): sem divergência,
+ * nada além da data decide a recusa.
  *
  * @param  array{actor: User, operation: Operation, planSet: MeasurementPlanSet, lines: array<string, MeasurementPlanLine>}  $scenario
  */
 function p4aPayDateRegister(array $scenario, Measurement $measurement, mixed $payDate): MeasurementPayment
 {
-    return app(MeasurementWorkflow::class)->registerPayment($measurement->fresh(), $scenario['actor'], [
+    return app(MeasurementWorkflow::class)->registerPayment($measurement->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::withReceipt([
         'plan_set_id' => $scenario['planSet']->id,
         'pay_date' => $payDate,
         'amount' => Scenario::expected(10),
         'method' => 'TED',
-    ]);
+    ]));
 }
 
 /**
@@ -319,8 +321,8 @@ it('checks the date of every row before registering any payment', function (stri
     $workflow = app(MeasurementWorkflow::class);
     $revision = (int) $measurement->workflow_revision;
     $rows = fn (string $second): array => [
-        ['plan_set_id' => $scenario['planSet']->id, 'pay_date' => '2026-10-14', 'amount' => '50000.00', 'method' => 'TED', 'financial_justification' => 'Primeira parcela da competência.'],
-        ['plan_set_id' => $scenario['planSet']->id, 'pay_date' => $second, 'amount' => '50000.00', 'method' => 'TED'],
+        MeasurementReceiptEvidenceScenario::withReceipt(['plan_set_id' => $scenario['planSet']->id, 'pay_date' => '2026-10-14', 'amount' => '50000.00', 'method' => 'TED', 'financial_justification' => 'Primeira parcela da competência.']),
+        MeasurementReceiptEvidenceScenario::withReceipt(['plan_set_id' => $scenario['planSet']->id, 'pay_date' => $second, 'amount' => '50000.00', 'method' => 'TED']),
     ];
     // A transação desfaria uma linha gravada antes da recusa; o que prova a
     // conferência prévia é nenhum INSERT ter sido sequer tentado.

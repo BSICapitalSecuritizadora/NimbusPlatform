@@ -117,19 +117,22 @@ it('serializes uploads so only one request based on the same version succeeds', 
 
     expect($results[0]['success'])->toBeTrue()
         ->and($results[1]['exception'])->toBe(MeasurementWorkflowException::class)
-        ->and($scenario['payment']->receiptEvidences()->pluck('version')->all())->toBe($finalized ? [2, 1] : [1]);
+        // A medição aberta já tem a v1 enviada com o pagamento (Fase 4B-2):
+        // as duas disputam a v2.
+        ->and($scenario['payment']->receiptEvidences()->pluck('version')->all())->toBe([2, 1]);
     if ($finalized) {
         expect($scenario['measurement']->fresh()->getRawOriginal())->toBe($before);
         Storage::disk('local')->assertExists($current->storage_path);
     }
-    expect(Storage::disk('local')->allFiles('nimbus_docs/measurements/receipts'))->toHaveCount($finalized ? 2 : 1);
+    expect(Storage::disk('local')->allFiles('nimbus_docs/measurements/receipts'))->toHaveCount(2);
 })->with([false, true])->group('mysql');
 
 it('serializes approve against reject with exactly one immutable decision and audit event', function () {
     $scenario = Scenario::open();
-    $evidence = app(MeasurementReceiptEvidenceService::class)->upload($scenario['payment'], $scenario['actor'], Scenario::file());
+    // Fase 4B-2: a v1 entrou com o pagamento, enviada pelo ator; quem a aprova
+    // ou rejeita é o Finalizador.
+    $evidence = $scenario['payment']->fresh()->currentReceiptEvidence;
     $marker = temporaryTestFilePath('receipt-review-lock', 'lock');
-    // Fase 4B-1: o ator enviou o comprovante; quem o aprova ou rejeita é o Finalizador.
     $instruction = [
         'actor_id' => $scenario['finalizer']->id,
         'payment_id' => $scenario['payment']->id,
@@ -149,7 +152,7 @@ it('serializes approve against reject with exactly one immutable decision and au
 
 it('refuses a review waiting behind a replacement upload', function () {
     $scenario = Scenario::open();
-    $first = app(MeasurementReceiptEvidenceService::class)->upload($scenario['payment'], $scenario['actor'], Scenario::file());
+    $first = $scenario['payment']->fresh()->currentReceiptEvidence;
     $marker = temporaryTestFilePath('receipt-supersession-lock', 'lock');
     $instruction = [
         'actor_id' => $scenario['actor']->id,

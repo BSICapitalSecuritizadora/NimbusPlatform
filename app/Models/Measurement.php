@@ -168,6 +168,19 @@ class Measurement extends Model
      */
     public const COMPETENCE_COVERAGE_REFUSAL = 'A competência %1$s exige também o arquivo de %2$s, e o Editar não acrescenta arquivo: para medir %1$s com esses empreendimentos, recuse esta medição e envie uma nova.';
 
+    /**
+     * Encerramentos sem pagamento: a medição recusada na Engenharia e a
+     * cancelada ficam como histórico, sem edição do conteúdo.
+     */
+    public const TERMINAL_CLOSED_STATUSES = ['rejected', 'cancelled'];
+
+    /**
+     * O conteúdo enviado da medição -- o que o encerramento congela.
+     */
+    public const SUBMITTED_CONTENT_FIELDS = ['reference_month', 'notes', 'filename', 'storage_path', 'storage_disk', 'sha256', 'file_size', 'mime_type'];
+
+    public const TERMINAL_CONTENT_CHANGE_REFUSAL = 'Esta medição foi encerrada (recusada ou cancelada) e é só histórico: o conteúdo dela não pode mais ser alterado. Para medir de novo esta competência, envie uma nova medição.';
+
     protected $fillable = [
         'operation_id',
         'reference_month',
@@ -198,6 +211,18 @@ class Measurement extends Model
             }
 
             $measurement->guardRevisionIdentity();
+
+            // O encerramento sem pagamento é terminal: nenhum caminho de
+            // aplicação reescreve o conteúdo de uma medição recusada ou
+            // cancelada, nem o super-admin pela URL de edição.
+            if ($measurement->exists
+                && in_array($measurement->getRawOriginal('status'), self::TERMINAL_CLOSED_STATUSES, true)
+                && $measurement->isDirty(self::SUBMITTED_CONTENT_FIELDS)) {
+                throw new MeasurementWorkflowException(self::TERMINAL_CONTENT_CHANGE_REFUSAL, [
+                    'measurement_id' => $measurement->getKey(),
+                    'status' => $measurement->getRawOriginal('status'),
+                ]);
+            }
 
             if ($measurement->exists
                 && $measurement->hasApprovedEngineering()
@@ -581,8 +606,10 @@ class Measurement extends Model
             return false;
         }
 
+        // A original recusada na Engenharia está encerrada: é histórico, não
+        // rascunho, e não volta a ser editada.
         if (! $this->isRevision()) {
-            return true;
+            return ! in_array($this->status, self::TERMINAL_CLOSED_STATUSES, true);
         }
 
         return match ($this->revisionStatus()) {

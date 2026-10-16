@@ -16,7 +16,7 @@
                 </span>
             </x-slot>
         @endif
-        @if($measurementCount > 0)
+        @if($measurementCount > 0 || $blockedMeasurementCount > 0)
             <section class="mb-5 border-b border-gray-200/80 pb-5 dark:border-white/10" aria-labelledby="cockpit-measurements-heading">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
@@ -29,6 +29,9 @@
                                 {{ $measurementCount }} {{ $measurementCount === 1 ? 'ação disponível' : 'ações disponíveis' }}
                                 @if($delegatedMeasurementCount > 0)
                                     · {{ $delegatedMeasurementCount }} {{ $delegatedMeasurementCount === 1 ? 'delegada' : 'delegadas' }} para você
+                                @endif
+                                @if($blockedMeasurementCount > 0)
+                                    · {{ $blockedMeasurementCount }} {{ $blockedMeasurementCount === 1 ? 'aguarda' : 'aguardam' }} conferente independente
                                 @endif
                             </p>
                         </div>
@@ -50,8 +53,14 @@
                                         @elseif($pendingMeasurement['sla_status'] === 'approaching')
                                             <x-filament::badge color="warning" size="sm">SLA em atenção</x-filament::badge>
                                         @endif
+                                        @if($pendingMeasurement['blocked'] ?? false)
+                                            <x-filament::badge color="gray" size="sm">Segregação de funções</x-filament::badge>
+                                        @endif
                                     </span>
                                     <span class="mt-1 block text-xs text-gray-500 dark:text-gray-400">{{ $pendingMeasurement['action_label'] }} · referência {{ $pendingMeasurement['reference_month'] ?? 'não informada' }}@if (filled($pendingMeasurement['revision_label'] ?? null)) · {{ $pendingMeasurement['revision_label'] }}@endif</span>
+                                    @if($pendingMeasurement['blocked'] ?? false)
+                                        <span class="mt-1 block text-xs font-medium text-warning-700 dark:text-warning-300">{{ $pendingMeasurement['blocked_reason'] }}</span>
+                                    @endif
                                     @if($pendingMeasurement['delegated'])
                                         <span class="mt-1 block text-xs font-medium text-info-700 dark:text-info-300">
                                             Responsabilidade original de {{ $pendingMeasurement['delegator_name'] }}; delegada para você até {{ $pendingMeasurement['delegation_ends_at']?->format('d/m/Y H:i') }}.

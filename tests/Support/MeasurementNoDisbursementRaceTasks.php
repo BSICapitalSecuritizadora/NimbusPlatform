@@ -141,7 +141,9 @@ final class MeasurementNoDisbursementRaceTasks
             'register_payment' => $workflow->registerPayments(
                 $measurement,
                 $actor,
-                [$instruction['payment']],
+                // O comprovante nasce no processo filho: um arquivo enviado não
+                // atravessa a instrução serializada.
+                [MeasurementReceiptEvidenceScenario::withReceipt($instruction['payment'])],
                 expectedRevision: $instruction['revision'],
             )->sole()->getKey(),
             'pause' => $workflow->pause(

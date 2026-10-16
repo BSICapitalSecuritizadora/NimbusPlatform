@@ -23,6 +23,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Text;
 use Filament\Schemas\Schema;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -31,6 +32,7 @@ use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\MeasurementGovernanceScenario as Governance;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 /**
  * A governança financeira e a segregação de funções da Fase 4B-1 como a pessoa
@@ -275,8 +277,10 @@ it('warns in the payment modal that an amount above the remaining balance needs 
     expect(governanceUiModalText($component, 'reconciliation_divergence', $item))
         ->toBe('Excede o saldo a pagar — o excedente acumulado do empreendimento chega a R$ 3.000,00. Acima do saldo, o pagamento só é registrado com uma regra financeira vigente que cubra o excedente acumulado; a justificativa sozinha não basta.');
 
+    // Fase 4B-2: com o comprovante anexado, a recusa é a do excedente.
     $component
         ->set("mountedActions.0.data.payments.{$item}.financial_justification", Governance::JUSTIFICATION)
+        ->set('mountedActions.0.data.receipt', MeasurementReceiptEvidenceScenario::file())
         ->callMountedAction();
 
     // A mensagem tem ':' -- lida do error bag, não pelo assertHasErrors.
@@ -362,9 +366,10 @@ it('shows whether the chosen rule covers the cumulative excess before sending, a
         ->set("mountedActions.0.data.payments.{$item}.financial_rule_id", $monetary->id)
         ->set("mountedActions.0.data.payments.{$item}.amount", '103.000,00')
         ->set("mountedActions.0.data.payments.{$item}.financial_justification", Governance::JUSTIFICATION)
+        ->set('mountedActions.0.data.receipt', MeasurementReceiptEvidenceScenario::file())
         ->callMountedAction()
         ->assertHasNoActionErrors()
-        ->assertNotified('Pagamento registrado. A etapa Pagamento ainda precisa ser aprovada.');
+        ->assertNotified('Pagamento registrado com o comprovante. O comprovante fica pendente de conferência na Finalização, e a etapa Pagamento ainda precisa ser aprovada.');
 
     $payment = MeasurementPayment::query()->sole();
 
@@ -449,6 +454,7 @@ it('tells in the payment modal that a construction without Construction Fund tak
         ->set("mountedActions.0.data.payments.{$withFund}.amount", '100.000,00')
         ->set("mountedActions.0.data.payments.{$withoutFund}.amount", '50.000,00')
         ->set("mountedActions.0.data.payments.{$withoutFund}.financial_justification", Governance::JUSTIFICATION)
+        ->set('mountedActions.0.data.receipt', MeasurementReceiptEvidenceScenario::file())
         ->callMountedAction();
 
     // A recusa fica no campo do empreendimento sem Fundo, e o registro é de
@@ -693,19 +699,39 @@ it('does not say that the payer reassessed a payment nobody reassessed', functio
         ->not->toContain('reavaliou o enquadramento');
 });
 
-it('keeps the Finalization enabled for the payer who also finalizes when the only divergence is a partial payment', function () {
+// Fase 4B-2: o pagamento parcial continua legítimo, mas o aceite do saldo que
+// ele deixa em aberto pede um Finalizador independente de quem pagou.
+it('disables the Finalization for the payer who also finalizes when the only divergence is a partial payment, and finalizes with the independent finalizer', function () {
     $scenario = Governance::plan();
     $measurement = Governance::awaitingPayment($scenario, '2026-05', [10, 10]);
-    // Pagar a menos é pagamento comum: o aceite segue como sempre, sem a
-    // conferência independente da exceção.
-    Governance::pay($scenario, $measurement, [
+    $partial = Governance::pay($scenario, $measurement, [
         Governance::row($scenario, 0, '90000.00', ['financial_justification' => 'Retenção contratual de 10% até a vistoria.']),
         Governance::row($scenario, 1, '50000.00'),
-    ]);
+    ])->first();
     Governance::readyToFinalize($scenario, $measurement);
+    $independentFinalizerId = $scenario['operation']->payment_finalizer_user_id;
     $scenario['payer']->givePermissionTo('measurements.finalize');
     $scenario['operation']->forceFill(['payment_finalizer_user_id' => $scenario['payer']->id])->save();
+    $before = governanceUiState($measurement);
     $this->actingAs($scenario['payer']);
+
+    $component = Livewire::test(ViewMeasurement::class, ['record' => $measurement->getRouteKey()])
+        ->assertActionVisible('finalize')
+        ->assertActionDisabled('finalize');
+
+    expect(governanceUiTooltip($component, 'finalize'))
+        ->toStartWith(MeasurementSegregationService::FINANCIAL_EXCEPTION_SELF_ACCEPTANCE)
+        ->toContain("Você registrou o pagamento #{$partial->id}");
+
+    // A chamada direta ao domínio, que pularia a tela, recusa pelo mesmo motivo.
+    expect(fn () => app(MeasurementWorkflow::class)->finalize($measurement->fresh(), $scenario['payer'], acceptFinancialExceptions: true))
+        ->toThrow(MeasurementSegregationException::class, MeasurementSegregationService::FINANCIAL_EXCEPTION_SELF_ACCEPTANCE)
+        ->and(governanceUiState($measurement))->toBe($before);
+
+    // O Finalizador independente aceita o saldo em aberto. A troca é direta
+    // no banco: quem está logado não altera os responsáveis da operação.
+    DB::table('operations')->where('id', $scenario['operation']->id)->update(['payment_finalizer_user_id' => $independentFinalizerId]);
+    $this->actingAs($scenario['finalizer']);
 
     $component = Livewire::test(ViewMeasurement::class, ['record' => $measurement->getRouteKey()])
         ->assertActionVisible('finalize')
@@ -715,15 +741,21 @@ it('keeps the Finalization enabled for the payer who also finalizes when the onl
 
     $component->mountAction('finalize');
 
-    expect(governanceUiModalComponent($component, 'segregation_notice'))->toBeNull()
+    expect(governanceUiModalText($component, 'segregation_notice'))
+        ->toContain($scenario['payer']->name." registrou o pagamento #{$partial->id}")
         ->and(governanceUiModalComponent($component, 'accept_financial_exceptions'))->toBeInstanceOf(Checkbox::class);
 
     $component->set('mountedActions.0.data.accept_financial_exceptions', true)
         ->callMountedAction()
         ->assertHasNoActionErrors();
 
+    $segregation = governanceUiActivity($measurement, 'measurement_finalized')?->properties['segregation']['financial_exceptions'] ?? [];
+
     expect($measurement->fresh()->status)->toBe('finalized')
-        ->and(governanceUiActivity($measurement, 'measurement_finalized')?->properties->has('segregation'))->toBeFalse();
+        ->and($segregation['independent'] ?? null)->toBeTrue()
+        ->and($segregation['checker_user_id'] ?? null)->toBe($scenario['finalizer']->id)
+        ->and($segregation['required_because'] ?? null)->toBe(['partial_payment_outstanding_balance'])
+        ->and(collect($segregation['makers'] ?? [])->pluck('user_id')->all())->toContain($scenario['payer']->id);
 });
 
 it('shows the independent finalizer who made the exception it accepts, and finalizes with the express acceptance', function () {
@@ -761,6 +793,7 @@ it('shows the independent finalizer who made the exception it accepts, and final
     expect($measurement->fresh()->status)->toBe('finalized')
         ->and($segregation['independent'] ?? null)->toBeTrue()
         ->and($segregation['checker_user_id'] ?? null)->toBe($scenario['finalizer']->id)
+        ->and($segregation['required_because'] ?? null)->toBe(['excess_payment'])
         ->and(collect($segregation['makers'] ?? [])->pluck('user_id')->unique()->sort()->values()->all())
         ->toBe(collect([$scenario['payer']->id, $scenario['ruleAuthor']->id])->sort()->values()->all());
 });
@@ -775,14 +808,14 @@ it('disables the approval of a receipt for the finalizer who uploaded it, and st
         Governance::row($scenario, 1, '50000.00'),
     ]);
     Governance::approvePaymentStage($scenario, $measurement);
-    Governance::uploadReceipts($scenario, $measurement);
-    // Quem envia os comprovantes passa a responder também pela Finalização.
-    $scenario['uploader']->givePermissionTo('measurements.finalize');
-    $scenario['operation']->forceFill(['payment_finalizer_user_id' => $scenario['uploader']->id])->save();
+    // Fase 4B-2: o comprovante entra com o pagamento, enviado por quem o
+    // registrou -- e quem paga passa a responder também pela Finalização.
+    $scenario['payer']->givePermissionTo('measurements.finalize');
+    $scenario['operation']->forceFill(['payment_finalizer_user_id' => $scenario['payer']->id])->save();
     $evidence = $payments->first()->fresh()->currentReceiptEvidence;
     $conflict = MeasurementSegregationService::RECEIPT_SELF_APPROVAL.' Você enviou a versão v1 do comprovante.';
     $before = governanceUiState($measurement);
-    $this->actingAs($scenario['uploader']);
+    $this->actingAs($scenario['payer']);
 
     $component = Livewire::test(ViewMeasurement::class, ['record' => $measurement->getRouteKey()])
         ->assertActionVisible('reviewReceipt')
@@ -820,14 +853,15 @@ it('disables the approval of a receipt for the finalizer who uploaded it, and st
         ->assertHasNoActionErrors()
         ->assertNotified('Decisão documental registrada para esta versão.');
 
-    expect($evidence->fresh()->review_status)->toBe(MeasurementReceiptReviewStatus::Rejected)
-        ->and($evidence->fresh()->reviewer_user_id)->toBe($scenario['uploader']->id);
+    expect($evidence->fresh()->uploaded_by)->toBe($scenario['payer']->id)
+        ->and($evidence->fresh()->review_status)->toBe(MeasurementReceiptReviewStatus::Rejected)
+        ->and($evidence->fresh()->reviewer_user_id)->toBe($scenario['payer']->id);
 
     // A aprovação que pulasse a tela é recusada pelo domínio.
     $other = $payments->last()->fresh()->currentReceiptEvidence;
 
     expect($other)->toBeInstanceOf(MeasurementPaymentReceiptEvidence::class)
-        ->and(fn () => app(MeasurementReceiptEvidenceService::class)->review($other, $scenario['uploader'], MeasurementReceiptReviewStatus::Approved, true))
+        ->and(fn () => app(MeasurementReceiptEvidenceService::class)->review($other, $scenario['payer'], MeasurementReceiptReviewStatus::Approved, true))
         ->toThrow(MeasurementSegregationException::class, MeasurementSegregationService::RECEIPT_SELF_APPROVAL)
         ->and($other->fresh()->review_status)->toBe(MeasurementReceiptReviewStatus::Pending);
 });

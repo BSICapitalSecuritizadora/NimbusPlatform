@@ -70,21 +70,32 @@ it('reads the operation before the measurement when registering payments', funct
     $workflow->approve($may->fresh(), $scenario['actor']);
     $workflow->approve($may->fresh(), $scenario['actor']);
 
-    $tables = measurementLockOrderTables(fn () => $workflow->registerPayment($may->fresh(), $scenario['actor'], [
-        'plan_set_id' => $scenario['planSet']->id,
-        'pay_date' => '2026-05-20',
-        'amount' => '100000.00',
-    ]));
+    $statements = [];
+    $tables = measurementLockOrderTables(function () use ($workflow, $may, $scenario, &$statements): void {
+        $statements = measurementLockOrderStatements(fn () => $workflow->registerPayment($may->fresh(), $scenario['actor'], [
+            'plan_set_id' => $scenario['planSet']->id,
+            'pay_date' => '2026-05-20',
+            'amount' => '100000.00',
+            'receipt' => MeasurementReceiptEvidenceScenario::file(),
+        ]));
+    });
+
+    // Fase 4B-2: o comprovante é gravado na mesma transação, depois das travas
+    // da Operation e da medição.
+    $measurementRead = array_search('select * from "measurements" where "measurements"."id" = ? limit 1', $statements, true);
+    $evidenceInsert = collect($statements)->search(fn (string $sql): bool => str_starts_with($sql, 'insert into "measurement_payment_receipt_evidences"'));
 
     expect(array_slice($tables, 0, 2))->toBe(['operations', 'measurements'])
-        ->and($may->payments()->pluck('amount')->all())->toBe(['100000.00']);
+        ->and($may->payments()->pluck('amount')->all())->toBe(['100000.00'])
+        ->and($measurementRead)->toBeInt()
+        ->and($evidenceInsert)->toBeInt()
+        ->and($evidenceInsert)->toBeGreaterThan($measurementRead);
 });
 
 it('reads the operation before the measurement when finalizing', function () {
     $scenario = MeasurementReceiptEvidenceScenario::open();
     $workflow = app(MeasurementWorkflow::class);
-    $workflow->attachReceipt($scenario['payment']->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
-    // Fase 4B-1: quem enviou o comprovante não o aprova -- a Finalização é de outra pessoa.
+    // Fase 4B-2: o comprovante entrou com o pagamento. Fase 4B-1: quem enviou o comprovante não o aprova -- a Finalização é de outra pessoa.
     MeasurementReceiptEvidenceScenario::approveCurrentReceipt($scenario['payment'], $scenario['finalizer']);
 
     $tables = measurementLockOrderTables(fn () => $workflow->finalize($scenario['measurement']->fresh(), $scenario['finalizer']));

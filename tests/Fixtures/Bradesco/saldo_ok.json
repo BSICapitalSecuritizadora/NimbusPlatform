@@ -1,0 +1,107 @@
+{
+    "saldoCC": {
+        "codigoRetorno": "00",
+        "mensagem": "CTAS0673 - CONSULTA EFETUADA COM SUCESSO",
+        "identificaoCliente": "0",
+        "razaoConta": "00705",
+        "numeroConta": "75557",
+        "digitoConta": "5",
+        "nomeCliente": "CONTA AMBIENTE TU",
+        "statusContaCorrente": "0",
+        "statusContaPoupanca": "0",
+        "identificadorTipoConta": "conta corrente",
+        "statusCoberturaAutomatica": "0",
+        "contaPoupancaFacil": "0000000",
+        "quantidadeLancamentos": "5",
+        "lstLancamentosSaldos": [
+            {
+                "nomeProduto": "DISPONIVEL:",
+                "nomeProdutoResumido": "DISPONIVEL:",
+                "codigoProduto": 999,
+                "identificadorSaldo": "0",
+                "dataLancamentoDb2": "",
+                "valorLancamento": "0,00",
+                "sinalSaldo": "+"
+            },
+            {
+                "nomeProduto": "= TOTAL DE RECURSOS",
+                "nomeProdutoResumido": "= TOTAL DE RECURSOS",
+                "codigoProduto": 995,
+                "identificadorSaldo": "0",
+                "dataLancamentoDb2": "",
+                "valorLancamento": "77,95",
+                "sinalSaldo": "+"
+            },
+            {
+                "nomeProduto": "+ CTA CORRENTE",
+                "nomeProdutoResumido": "+ CTA CORRENTE",
+                "codigoProduto": 998,
+                "identificadorSaldo": "0",
+                "dataLancamentoDb2": "",
+                "valorLancamento": "77,95",
+                "sinalSaldo": "+"
+            },
+            {
+                "nomeProduto": "LINHA EM BRANCO",
+                "nomeProdutoResumido": "LINHA EM BRANCO",
+                "codigoProduto": 977,
+                "identificadorSaldo": "",
+                "dataLancamentoDb2": "",
+                "valorLancamento": "",
+                "sinalSaldo": ""
+            },
+            {
+                "nomeProduto": "SALDO TOTAL",
+                "nomeProdutoResumido": "SALDO TOTAL",
+                "codigoProduto": 984,
+                "identificadorSaldo": "0",
+                "dataLancamentoDb2": "",
+                "valorLancamento": "77,95",
+                "sinalSaldo": "+"
+            }
+        ]
+    },
+    "saldoAplicacaoCC": {
+        "codigoRetorno": "00",
+        "mensagem": "CTAS0673 - CONSULTA EFETUADA COM SUCESSO",
+        "quantidadeLancamentos": "4",
+        "lstLancamentosSaldos": [
+            {
+                "nomeProduto": "INVEST FACIL BRADESCO",
+                "nomeProdutoResumido": "INVEST FACIL BR",
+                "codigoProduto": 19,
+                "identificadorSaldo": "1",
+                "dataLancamentoDb2": "",
+                "valorLancamento": "250,00",
+                "sinalSaldo": "+"
+            },
+            {
+                "nomeProduto": "INVEST FACIL BRADESCO",
+                "nomeProdutoResumido": "INVEST FACIL BR",
+                "codigoProduto": 19,
+                "identificadorSaldo": "2",
+                "dataLancamentoDb2": "",
+                "valorLancamento": "1.000,00",
+                "sinalSaldo": "+"
+            },
+            {
+                "nomeProduto": "CDB FACIL NOVO",
+                "nomeProdutoResumido": "CDB FACIL NOVO",
+                "codigoProduto": "00030",
+                "identificadorSaldo": "0",
+                "dataLancamentoDb2": "",
+                "valorLancamento": "10.500,25",
+                "sinalSaldo": "-"
+            },
+            {
+                "nomeProduto": "LINHA EM BRANCO",
+                "nomeProdutoResumido": "LINHA EM BRANCO",
+                "codigoProduto": 977,
+                "identificadorSaldo": "",
+                "dataLancamentoDb2": "",
+                "valorLancamento": "",
+                "sinalSaldo": ""
+            }
+        ]
+    }
+}

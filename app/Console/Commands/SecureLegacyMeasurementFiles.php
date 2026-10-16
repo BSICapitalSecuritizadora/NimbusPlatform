@@ -129,7 +129,12 @@ class SecureLegacyMeasurementFiles extends Command
                             : $this->inspectJournal($journal, $storage);
                         $this->recordOutcome($label, $outcome);
                     } catch (Throwable $exception) {
-                        $this->markJournalError($journal, $exception->getMessage());
+                        // O dry-run só lê: a falha vai para a saída, e o journal
+                        // continua como estava.
+                        if ($execute) {
+                            $this->markJournalError($journal, $exception->getMessage());
+                        }
+
                         $this->recordOutcome($label, 'failed', $exception->getMessage());
                     }
                 }
@@ -474,6 +479,14 @@ class SecureLegacyMeasurementFiles extends Command
             }
 
             if ($this->recordPointsToSource($locked, $lockedJournal, $configuration)) {
+                // O SHA-256 gravado é o do conteúdo auditado: a cópia só vale se
+                // for o mesmo arquivo, e um hash diferente nunca o substitui.
+                $recordedHash = $locked->getAttribute($configuration['hash']);
+
+                if (filled($recordedHash) && ! hash_equals((string) $recordedHash, $lockedJournal->source_sha256)) {
+                    throw new RuntimeException('O SHA-256 gravado no registro não corresponde ao arquivo legado: o hash histórico não é substituído.');
+                }
+
                 $metadata = $storage->metadata($lockedJournal->destination_path, $lockedJournal->destination_disk);
                 $saved = $locked->forceFill([
                     $configuration['path'] => $lockedJournal->destination_path,
@@ -486,6 +499,25 @@ class SecureLegacyMeasurementFiles extends Command
                 if (! $saved) {
                     throw new RuntimeException('O banco recusou a persistência do destino privado.');
                 }
+
+                // A gravação é silenciosa (sem os eventos do model, que recusam
+                // mexer no arquivo de medição aprovada ou paga): a troca de
+                // endereço fica na trilha protegida, para o histórico do arquivo
+                // continuar reconstituível. O conteúdo é o mesmo -- o SHA-256.
+                activity('measurement_file_access')
+                    ->performedOn($locked)
+                    ->withProperties([
+                        'file_role' => $lockedJournal->file_role,
+                        'journal_id' => $lockedJournal->getKey(),
+                        'source_disk' => $lockedJournal->source_disk,
+                        'source_path' => $lockedJournal->source_path,
+                        'destination_disk' => $lockedJournal->destination_disk,
+                        'destination_path' => $lockedJournal->destination_path,
+                        'sha256' => $lockedJournal->source_sha256,
+                        'previous_sha256' => $recordedHash,
+                        'command' => 'measurements:secure-legacy-files',
+                    ])
+                    ->log('measurement_legacy_file_secured');
             } elseif (! $this->recordPointsToDestination($locked, $lockedJournal, $configuration)) {
                 throw new RuntimeException('O registro foi alterado durante o DB switch.');
             }
@@ -566,7 +598,10 @@ class SecureLegacyMeasurementFiles extends Command
 
                     $this->line($this->journalLabel($journal).': cleanup compartilhado reconciliado.');
                 } catch (Throwable $exception) {
-                    $this->markJournalError($journal, $exception->getMessage());
+                    if ($execute) {
+                        $this->markJournalError($journal, $exception->getMessage());
+                    }
+
                     $this->recordOutcome($this->journalLabel($journal), 'failed', $exception->getMessage());
                 }
             });

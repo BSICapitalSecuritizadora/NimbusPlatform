@@ -196,6 +196,9 @@ it('groups the fund registries under Fundos inside Financeiro', function () {
             'Nomes de fundo',
             'Aplicações',
             'Bancos',
+            'Contas Bancárias',
+            'Aplicações Bancárias',
+            'Alocações por Competência',
         ]);
 });
 

@@ -169,10 +169,12 @@ it('respects competence occupation by measurement assets before engineering cons
     makeNextMeasurementLine($plan, 2, '2026-05-01');
     // O plano só recebe arquivo de medição depois de vigente.
     MeasurementPlanVersionFixture::activate($plan);
+    // Medição recusada é só histórico e não aceita arquivo novo: o arquivo
+    // entra com a medição aberta e o status final é gravado depois.
     $measurement = Measurement::factory()->create([
         'operation_id' => $plan->operation_id,
         'reference_month' => '2026-04-01',
-        'status' => $status,
+        'status' => 'pending',
         'filename' => null,
         'storage_path' => null,
     ]);
@@ -184,6 +186,7 @@ it('respects competence occupation by measurement assets before engineering cons
         'storage_path' => $path,
         'storage_disk' => 'local',
     ]);
+    $measurement->forceFill(['status' => $status])->save();
 
     expect($line->fresh()->measurement_id)->toBeNull()
         ->and(resolveNextMeasurementMonth($plan->operation))->toBe($expectedMonth);
@@ -198,10 +201,12 @@ it('keeps occupied the competence of a refused measurement that still holds a pa
     $line = makeNextMeasurementLine($plan, 1, '2026-04-01');
     makeNextMeasurementLine($plan, 2, '2026-05-01');
     MeasurementPlanVersionFixture::activate($plan);
+    // A recusa é gravada só depois do arquivo e do estado legado: medição
+    // recusada não aceita arquivo novo.
     $refused = Measurement::factory()->create([
         'operation_id' => $plan->operation_id,
         'reference_month' => '2026-04-01',
-        'status' => 'rejected',
+        'status' => 'pending',
         'filename' => null,
         'storage_path' => null,
     ]);
@@ -222,6 +227,7 @@ it('keeps occupied the competence of a refused measurement that still holds a pa
         ]),
         'current Engineering approval' => $refused->reviews()->create(['stage' => 1, 'status' => 'approved']),
     };
+    $refused->forceFill(['status' => 'rejected'])->save();
 
     expect($line->fresh()->measurement_id)->toBeNull()
         ->and(resolveNextMeasurementMonth($plan->operation))->toBe('05/2026');

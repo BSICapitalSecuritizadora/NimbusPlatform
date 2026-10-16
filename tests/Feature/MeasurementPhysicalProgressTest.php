@@ -655,11 +655,10 @@ it('keeps the Finalization of an approved measurement valid after another month 
     $may = Scenario::measured($scenario, '2026-05', 10);
     $workflow->approve($may->fresh(), $scenario['actor']);
     $workflow->approve($may->fresh(), $scenario['actor']);
-    $payment = $workflow->registerPayment($may->fresh(), $scenario['actor'], ['plan_set_id' => $scenario['planSet']->id, 'pay_date' => '2026-05-20', 'amount' => '100000.00', 'method' => 'TED']);
+    $payment = $workflow->registerPayment($may->fresh(), $scenario['actor'], ['plan_set_id' => $scenario['planSet']->id, 'pay_date' => '2026-05-20', 'amount' => '100000.00', 'method' => 'TED', 'receipt' => MeasurementReceiptEvidenceScenario::file()]);
     $workflow->approve($may->fresh(), $scenario['actor']);
 
     Scenario::measured($scenario, '2026-04', 3);
-    $workflow->attachReceipt($payment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
     // Fase 4B-1: quem enviou o comprovante não o aprova -- a Finalização é de outra pessoa.
     MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
     $workflow->finalize($may->fresh(), $scenario['finalizer']);

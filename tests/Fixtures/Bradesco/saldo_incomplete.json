@@ -1,0 +1,37 @@
+{
+    "saldoCC": {
+        "codigoRetorno": "00",
+        "mensagem": "CTAS0673 - CONSULTA EFETUADA COM SUCESSO",
+        "numeroConta": "75557",
+        "digitoConta": "5",
+        "nomeCliente": "CONTA AMBIENTE TU",
+        "quantidadeLancamentos": "3",
+        "lstLancamentosSaldos": [
+            {
+                "nomeProduto": "DISPONIVEL:",
+                "nomeProdutoResumido": "DISPONIVEL:",
+                "codigoProduto": 999,
+                "identificadorSaldo": "0",
+                "dataLancamentoDb2": "",
+                "valorLancamento": "0,00",
+                "sinalSaldo": "+"
+            }
+        ]
+    },
+    "saldoAplicacaoCC": {
+        "codigoRetorno": "01",
+        "mensagem": "CTAS0674 - SUCESSO COM MAIS DADOS",
+        "quantidadeLancamentos": "1",
+        "lstLancamentosSaldos": [
+            {
+                "nomeProduto": "INVEST FACIL BRADESCO",
+                "nomeProdutoResumido": "INVEST FACIL BR",
+                "codigoProduto": 19,
+                "identificadorSaldo": "1",
+                "dataLancamentoDb2": "",
+                "valorLancamento": "250,00",
+                "sinalSaldo": "+"
+            }
+        ]
+    }
+}

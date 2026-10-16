@@ -198,17 +198,19 @@ it('allows only the payment manager to register payments in the pending payment 
         'status' => 'pending',
     ]);
 
-    expect(fn () => app(MeasurementWorkflow::class)->registerPayment($measurement, $uploader, [
+    // Fase 4B-2: o pagamento só é registrado junto com o comprovante.
+    expect(fn () => app(MeasurementWorkflow::class)->registerPayment($measurement, $uploader, MeasurementReceiptEvidenceScenario::withReceipt([
         'pay_date' => now(),
         'amount' => 100,
-    ]))->toThrow(AuthorizationException::class);
+    ])))->toThrow(AuthorizationException::class);
 
-    $payment = app(MeasurementWorkflow::class)->registerPayment($measurement->fresh(), $manager, [
+    $payment = app(MeasurementWorkflow::class)->registerPayment($measurement->fresh(), $manager, MeasurementReceiptEvidenceScenario::withReceipt([
         'pay_date' => BusinessTime::dateString(),
         'amount' => 100,
-    ]);
+    ]));
 
     expect($payment->created_by)->toBe($manager->id)
+        ->and($payment->fresh()->currentReceiptEvidence->uploaded_by)->toBe($manager->id)
         ->and($measurement->fresh()->status)->toBe('awaiting_payment');
 });
 

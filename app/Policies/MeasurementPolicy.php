@@ -58,6 +58,7 @@ class MeasurementPolicy
             && $measurement->operation instanceof Operation
             && $this->authorization->hasDirectOperationalParticipation($user, $measurement->operation)
             && $measurement->status !== 'finalized'
+            && $measurement->acceptsEdits()
             && ! $measurement->hasApprovedEngineering();
     }
 

@@ -177,15 +177,12 @@ it('keeps refusing the paid measurement until every current receipt is approved,
     $revisions = app(MeasurementRevisionService::class);
     $refusal = MeasurementRevisionService::PAID_RECEIPTS_PENDING_REFUSAL;
 
-    // Sem comprovante.
-    expect($may->fresh()->status)->toBe('awaiting_receipt')
-        ->and($revisions->creationBlockReason($may->fresh()))->toBe($refusal)
-        ->and(revisionPaidSourceRefusal(fn () => Scenario::revise($scenario, $may)))->toBe($refusal);
+    // Em conferência: a v1 entra com o registro do pagamento.
+    $first = $payment->fresh()->currentReceiptEvidence;
 
-    // Em conferência.
-    $first = $receipts->upload($payment->fresh(), $scenario['actor'], ReceiptScenario::file());
-
-    expect($may->fresh()->status)->toBe('awaiting_receipt')
+    expect($first->version)->toBe(1)
+        ->and($first->review_status)->toBe(MeasurementReceiptReviewStatus::Pending)
+        ->and($may->fresh()->status)->toBe('awaiting_receipt')
         ->and($revisions->creationBlockReason($may->fresh()))->toBe($refusal)
         ->and(revisionPaidSourceRefusal(fn () => Scenario::revise($scenario, $may)))->toBe($refusal);
 
@@ -324,6 +321,7 @@ it('refuses to create the revision when a proof of the paid source is no longer 
         'method' => 'TED',
         'financial_justification' => 'Retenção contratual de 40% até a vistoria final.',
         'financial_support' => ReceiptScenario::file('retencao-contratual.pdf', '%PDF-1.7 retenção contratual'),
+        'receipt' => ReceiptScenario::file(),
     ]);
     app(MeasurementWorkflow::class)->approve($may->fresh(), $scenario['actor']);
     Scenario::receiptsApproved($scenario, $may);
@@ -367,6 +365,7 @@ function revisionPaidSourceWithSupport(array $scenario, Measurement $may): array
         'method' => 'TED',
         'financial_justification' => 'Retenção contratual de 40% até a vistoria final.',
         'financial_support' => ReceiptScenario::file('retencao-contratual.pdf', '%PDF-1.7 retenção contratual'),
+        'receipt' => ReceiptScenario::file(),
     ]);
     app(MeasurementWorkflow::class)->approve($may->fresh(), $scenario['actor']);
     Scenario::receiptsApproved($scenario, $may);
@@ -656,6 +655,7 @@ it('suspends every action on the paid source while its revision is under review'
             'pay_date' => '2026-07-20',
             'amount' => '1000.00',
             'method' => 'TED',
+            'receipt' => ReceiptScenario::file(),
         ])))->toBe('A etapa desta medição foi alterada por outra ação. Atualize a página.')
         ->and(revisionPaidSourceRefusal(fn () => $workflow->reassessPayment($payment->fresh(), $actor, [
             'financial_justification' => 'Reavaliar durante a revisão.',
@@ -796,6 +796,7 @@ it('closes the Finalization of the paid source without a decision when the revis
             'pay_date' => '2026-10-06',
             'amount' => '1000.00',
             'method' => 'TED',
+            'receipt' => ReceiptScenario::file(),
         ])))->toBe('A etapa desta medição foi alterada por outra ação. Atualize a página.')
         ->and(revisionPaidSourceRefusal(fn () => $workflow->reassessPayment($payment->fresh(), $scenario['actor'], [
             'financial_justification' => 'Reavaliar depois da substituição.',
@@ -1011,20 +1012,19 @@ it('counts every installment of the paid source as history of the revision', fun
     $receipts = app(MeasurementReceiptEvidenceService::class);
     $revisions = app(MeasurementRevisionService::class);
     [$first, $second] = $workflow->registerPayments($may->fresh(), $scenario['actor'], [
-        ['plan_set_id' => $scenario['planSet']->id, 'pay_date' => '2026-07-10', 'amount' => '40000.00', 'method' => 'TED', 'financial_justification' => 'Primeira parcela; o restante sai no dia 20.'],
-        ['plan_set_id' => $scenario['planSet']->id, 'pay_date' => '2026-07-20', 'amount' => '60000.00', 'method' => 'TED'],
+        ['plan_set_id' => $scenario['planSet']->id, 'pay_date' => '2026-07-10', 'amount' => '40000.00', 'method' => 'TED', 'financial_justification' => 'Primeira parcela; o restante sai no dia 20.', 'receipt' => ReceiptScenario::file('parcela-1.pdf', '%PDF-1.7 parcela 1')],
+        ['plan_set_id' => $scenario['planSet']->id, 'pay_date' => '2026-07-20', 'amount' => '60000.00', 'method' => 'TED', 'receipt' => ReceiptScenario::file('parcela-2.pdf', '%PDF-1.7 parcela 2')],
     ])->all();
     $workflow->approve($may->fresh(), $scenario['actor']);
 
-    $evidence = $receipts->upload($first->fresh(), $scenario['actor'], ReceiptScenario::file('parcela-1.pdf', '%PDF-1.7 parcela 1'));
-    $receipts->review($evidence, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
+    $receipts->review($first->fresh()->currentReceiptEvidence, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
 
-    // A segunda parcela ainda sem comprovante.
+    // O comprovante da segunda parcela ainda em conferência.
     expect($may->fresh()->status)->toBe('awaiting_receipt')
+        ->and($second->fresh()->currentReceiptEvidence->review_status)->toBe(MeasurementReceiptReviewStatus::Pending)
         ->and($revisions->creationBlockReason($may->fresh()))->toBe(MeasurementRevisionService::PAID_RECEIPTS_PENDING_REFUSAL);
 
-    $evidence = $receipts->upload($second->fresh(), $scenario['actor'], ReceiptScenario::file('parcela-2.pdf', '%PDF-1.7 parcela 2'));
-    $receipts->review($evidence, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
+    $receipts->review($second->fresh()->currentReceiptEvidence, $scenario['finalizer'], MeasurementReceiptReviewStatus::Approved, true);
 
     expect($may->fresh()->status)->toBe('approved');
 

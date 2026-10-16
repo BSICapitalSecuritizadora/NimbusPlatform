@@ -27,6 +27,7 @@ use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\MeasurementGovernanceScenario as Governance;
 use Tests\Support\MeasurementPlanVersionFixture;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 /**
  * O Fundo de Obra exigido onde ele importa (Fase 4B-1): a versão do plano --
@@ -602,10 +603,12 @@ it('shows in the payment modal that the construction without Construction Fund c
         ->and(fundRequirementModalText($component, 'reconciliation_reference', $funded))->not->toContain('Fundo de Obra válido')
         ->and(fundRequirementModalText($component, 'reconciliation_divergence', $funded))->toBe('Informe o valor para comparar com o saldo esperado.');
 
-    // O envio recebe a mesma recusa, no campo do empreendimento.
+    // O envio recebe a mesma recusa, no campo do empreendimento -- com o
+    // comprovante anexado (Fase 4B-2), a recusa é a do Fundo de Obra.
     $component
         ->set("mountedActions.0.data.payments.{$withoutFund}.amount", '50.000,00')
         ->set("mountedActions.0.data.payments.{$withoutFund}.financial_justification", Governance::JUSTIFICATION)
+        ->set('mountedActions.0.data.receipt', MeasurementReceiptEvidenceScenario::file())
         ->callMountedAction();
 
     expect($component->errors()->get("mountedActions.0.data.payments.{$withoutFund}.amount"))->toBe([$refusal])

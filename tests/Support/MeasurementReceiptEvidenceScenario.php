@@ -24,6 +24,18 @@ final class MeasurementReceiptEvidenceScenario
         return UploadedFile::fake()->createWithContent($name, $content);
     }
 
+    /**
+     * A linha de pagamento com o comprovante da transferência: o pagamento só
+     * é registrado junto com ele.
+     *
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    public static function withReceipt(array $row): array
+    {
+        return ['receipt' => self::file('comprovante-'.uniqid().'.pdf', '%PDF-1.7 comprovante '.uniqid('', true)), ...$row];
+    }
+
     public static function approveCurrentReceipt(MeasurementPayment $payment, User $reviewer): void
     {
         app(MeasurementReceiptEvidenceService::class)->review(
@@ -89,7 +101,7 @@ final class MeasurementReceiptEvidenceScenario
         $workflow->approve($measurement->fresh(), $actor, engineeringProgress: [$planSet->id => 10]);
         $workflow->approve($measurement->fresh(), $actor);
         $workflow->approve($measurement->fresh(), $actor);
-        $payment = $workflow->registerPayment($measurement->fresh(), $actor, ['plan_set_id' => $planSet->id, 'pay_date' => '2026-05-20', 'amount' => '1011480.16', 'method' => 'TED']);
+        $payment = $workflow->registerPayment($measurement->fresh(), $actor, ['plan_set_id' => $planSet->id, 'pay_date' => '2026-05-20', 'amount' => '1011480.16', 'method' => 'TED', 'receipt' => self::file()]);
         $workflow->approve($measurement->fresh(), $actor);
 
         $measurement->refresh();
@@ -103,6 +115,12 @@ final class MeasurementReceiptEvidenceScenario
     {
         $scenario = self::open();
         $payment = $scenario['payment'];
+        // O legado é anterior às evidências: o pagamento não tem a v1 que o
+        // registro grava desde a Fase 4B-2 (a evidência recusa `delete()`).
+        foreach (DB::table('measurement_payment_receipt_evidences')->where('measurement_payment_id', $payment->id)->get() as $evidence) {
+            Storage::disk($evidence->storage_disk)->delete($evidence->storage_path);
+        }
+        DB::table('measurement_payment_receipt_evidences')->where('measurement_payment_id', $payment->id)->delete();
         $path = 'nimbus_docs/measurements/receipts/legacy-'.$payment->id.'.pdf';
         Storage::disk('local')->put($path, '%PDF-1.7 manual de logotipos controlado');
         DB::table('measurement_payments')->where('id', $payment->id)->update([

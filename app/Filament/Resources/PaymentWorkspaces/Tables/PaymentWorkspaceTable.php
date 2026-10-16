@@ -9,6 +9,7 @@ use App\Models\Measurement;
 use App\Models\User;
 use App\Services\MeasurementOperationalReadModel;
 use App\Services\MeasurementPaymentFinancialService;
+use App\Services\MeasurementSegregationService;
 use App\Services\MeasurementSlaService;
 use App\Services\MeasurementWorkflow;
 use Filament\Actions\Action;
@@ -187,9 +188,14 @@ class PaymentWorkspaceTable
                         ->authorize(fn (Measurement $record): bool => MeasurementResource::canView($record))
                         ->url(fn (Measurement $record): string => MeasurementResource::getUrl('view', ['record' => $record])),
 
+                    // Quem a segregação de funções recusaria -- registrou o
+                    // pagamento, enviou o comprovante, fez a exceção -- vê a
+                    // Finalização bloqueada, com o motivo, e não como ação sua.
                     Action::make('finalize')
-                        ->label('Finalizar medição')
+                        ->label(fn (Measurement $record): string => self::finalizerBlockReason($record) === null ? 'Conferir e finalizar' : 'Aguardando conferente independente')
                         ->icon('heroicon-m-flag')
+                        ->disabled(fn (Measurement $record): bool => self::finalizerBlockReason($record) !== null)
+                        ->tooltip(fn (Measurement $record): ?string => self::finalizerBlockReason($record))
                         ->visible(fn (Measurement $record): bool => self::workflowCan('canFinalize', $record))
                         ->authorize(fn (Measurement $record): bool => self::workflowCan('canFinalize', $record))
                         ->url(fn (Measurement $record): string => MeasurementResource::getUrl('view', ['record' => $record])),
@@ -418,6 +424,31 @@ class PaymentWorkspaceTable
         $actor = auth()->user();
 
         return $actor instanceof User && app(MeasurementWorkflow::class)->{$method}($record, $actor);
+    }
+
+    /**
+     * Os motivos lidos nesta requisição, por medição e versão do fluxo: o
+     * rótulo, o bloqueio e o tooltip perguntam a mesma coisa.
+     *
+     * @var array<string, string|null>
+     */
+    private static array $finalizerBlockReasons = [];
+
+    private static function finalizerBlockReason(Measurement $record): ?string
+    {
+        $actor = auth()->user();
+
+        if (! $actor instanceof User) {
+            return null;
+        }
+
+        $key = $record->getKey().':'.$record->workflow_revision.':'.$actor->getKey();
+
+        if (! array_key_exists($key, self::$finalizerBlockReasons)) {
+            self::$finalizerBlockReasons[$key] = app(MeasurementSegregationService::class)->finalizerDecisionBlockReason($record, $actor);
+        }
+
+        return self::$finalizerBlockReasons[$key];
     }
 
     private static function hasWorkflowAction(Measurement $record): bool

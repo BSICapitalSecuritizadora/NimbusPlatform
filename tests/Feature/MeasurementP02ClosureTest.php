@@ -204,10 +204,11 @@ function advanceP02ToReadyForFinalization(array $scenario): void
         'pay_date' => '2026-08-25',
         'amount' => 1000,
         'financial_justification' => 'Pagamento parcial previsto para esta medição.',
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]);
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
-    $workflow->attachReceipt($payment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
-    // Fase 4B-1: quem enviou o comprovante não o aprova -- o Finalizador confere.
+    // Fase 4B-2: o comprovante entrou com o pagamento. Fase 4B-1: quem enviou o
+    // comprovante não o aprova -- o Finalizador confere.
     MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
 }
 
@@ -367,6 +368,7 @@ it('rejects payment when a top-level Engineering snapshot invariant diverges', f
         'plan_set_id' => $scenario['planSets']->first()->id,
         'pay_date' => '2026-08-26',
         'amount' => 100,
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]))->toThrow(MeasurementWorkflowException::class)
         ->and($scenario['measurement']->payments()->count())->toBe(0);
 })->with(['schema_version', 'measurement_id', 'operation_id', 'emission_id']);
@@ -487,6 +489,7 @@ it('keeps old Measurements on A B C while new Measurements can approve D and pay
         'plan_set_id' => $planSetD->id,
         'pay_date' => '2026-08-25',
         'amount' => 1000,
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]))->toThrow(ValidationException::class);
 
     $payment = $workflow->registerPayment($scenario['measurement']->fresh(), $scenario['actor'], [
@@ -494,11 +497,11 @@ it('keeps old Measurements on A B C while new Measurements can approve D and pay
         'pay_date' => '2026-08-25',
         'amount' => 1000,
         'financial_justification' => 'Pagamento parcial previsto para esta medição.',
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]);
     // Os planos B e C ficam sem pagamento nesta competência: a etapa exige a justificativa.
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor'], 'Planos B e C sem pagamento nesta competência.');
-    $workflow->attachReceipt($payment, $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
-    // Fase 4B-1: quem enviou o comprovante não o aprova, e quem aprovou a etapa
+    // Fase 4B-2: o comprovante entrou com o pagamento. Fase 4B-1: quem enviou o comprovante não o aprova, e quem aprovou a etapa
     // Pagamento sem os planos B e C não aceita essa exceção -- o Finalizador
     // confere e finaliza.
     MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['finalizer']);

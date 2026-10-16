@@ -218,7 +218,12 @@ final class MeasurementGovernanceScenario
      */
     public static function pay(array $scenario, Measurement $measurement, array $rows, ?User $by = null, ?string $overrideReason = null): Collection
     {
-        return app(MeasurementWorkflow::class)->registerPayments($measurement->fresh(), $by ?? $scenario['payer'], $rows, overrideReason: $overrideReason);
+        return app(MeasurementWorkflow::class)->registerPayments(
+            $measurement->fresh(),
+            $by ?? $scenario['payer'],
+            array_map(fn (array $row): array => MeasurementReceiptEvidenceScenario::withReceipt($row), $rows),
+            overrideReason: $overrideReason,
+        );
     }
 
     /**

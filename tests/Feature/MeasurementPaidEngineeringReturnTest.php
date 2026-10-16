@@ -36,7 +36,6 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\ForgedLivewireRequest;
 use Tests\Support\MeasurementPhysicalProgressScenario as PhysicalScenario;
 use Tests\Support\MeasurementPlanVersionFixture;
-use Tests\Support\MeasurementReceiptEvidenceScenario as ReceiptScenario;
 use Tests\Support\MeasurementRevisionScenario as Scenario;
 
 /*
@@ -365,7 +364,7 @@ it('refuses to return a paid measurement from Finalization to Engineering, writi
         $paid = Scenario::awaitingPayment($scenario, '2026-05', 10);
         $payment = Scenario::pay($scenario, $paid, Scenario::expected(10));
         $workflow->approve($paid->fresh(), $scenario['actor']);
-        $workflow->attachReceipt($payment->fresh(), $scenario['actor'], ReceiptScenario::file());
+        // A v1 do comprovante entra com o registro do pagamento; o Finalizador a rejeita.
         app(MeasurementReceiptEvidenceService::class)->review(
             $payment->fresh()->currentReceiptEvidence,
             $scenario['finalizer'],

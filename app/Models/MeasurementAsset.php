@@ -125,6 +125,12 @@ class MeasurementAsset extends Model
     public const CLOSED_REVISION_FILE_REFUSAL = 'Os arquivos desta medição não podem mais ser alterados: a revisão está encerrada ou já foi substituída.';
 
     /**
+     * A original recusada ou cancelada é histórico: nenhum arquivo entra, sai
+     * ou muda.
+     */
+    public const CLOSED_MEASUREMENT_FILE_REFUSAL = 'Os arquivos desta medição não podem mais ser alterados: a medição foi encerrada (recusada ou cancelada) e é só histórico. Para medir de novo esta competência, envie uma nova medição.';
+
+    /**
      * O arquivo que uma revisão herdou fica ligado a ela -- o banco também o
      * prende, pela FK do contexto herdado. O arquivo pode ser trocado; o
      * empreendimento, a versão e a medição prevista dele, não, e ele não sai.
@@ -173,7 +179,7 @@ class MeasurementAsset extends Model
                 $measurement = $asset->measurement()->first();
 
                 if ($measurement instanceof Measurement && ! $measurement->acceptsEdits()) {
-                    throw new MeasurementWorkflowException(self::CLOSED_REVISION_FILE_REFUSAL, [
+                    throw new MeasurementWorkflowException($measurement->isRevision() ? self::CLOSED_REVISION_FILE_REFUSAL : self::CLOSED_MEASUREMENT_FILE_REFUSAL, [
                         'measurement_id' => $measurement->getKey(),
                         'asset_id' => $asset->getKey(),
                     ]);

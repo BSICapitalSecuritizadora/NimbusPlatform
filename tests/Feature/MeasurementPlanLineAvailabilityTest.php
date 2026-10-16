@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\MeasurementWorkflowException;
+use App\Filament\Resources\Measurements\MeasurementResource;
 use App\Filament\Resources\Measurements\Pages\CreateMeasurement;
 use App\Filament\Resources\Measurements\Pages\EditMeasurement;
 use App\Filament\Resources\Measurements\Schemas\MeasurementForm;
@@ -66,10 +67,12 @@ function planLineAvailabilityOptions(MeasurementPlanSet $planSet, ?MeasurementAs
 function planLineAvailabilityPaidRefusal(array $scenario, string $month): Measurement
 {
     $line = $scenario['lines'][$month];
+    // Medição recusada é só histórico e não aceita arquivo novo: arquivo e
+    // pagamento entram com ela aberta, e a recusa é gravada por último.
     $refused = Measurement::factory()->create([
         'operation_id' => $scenario['operation']->id,
         'reference_month' => $line->measurement_date->toDateString(),
-        'status' => 'rejected',
+        'status' => 'pending',
         'filename' => null,
         'storage_path' => null,
     ]);
@@ -86,6 +89,7 @@ function planLineAvailabilityPaidRefusal(array $scenario, string $month): Measur
         'measurement_id' => $refused->id,
         'plan_set_id' => $scenario['planSet']->id,
     ]);
+    $refused->forceFill(['status' => 'rejected'])->save();
 
     return $refused;
 }
@@ -213,8 +217,9 @@ it('keeps the saved line selectable and hides lines held by other measurements w
 
 /**
  * A cláusula "presa a pagamento" só protege enquanto o arquivo pago continua
- * na linha. A recusada legada com pagamento ainda abre no Editar, e trocar a
- * linha do arquivo liberava a competência paga para uma nova medição.
+ * na linha. A recusada legada com pagamento abria no Editar, e trocar a
+ * linha do arquivo liberava a competência paga para uma nova medição. Hoje a
+ * recusada é só histórico: o Editar devolve para a visualização sem salvar.
  */
 it('keeps a refused paid measurement on its schedule line, so the paid competence is not offered again', function () {
     $scenario = Scenario::plan();
@@ -224,14 +229,15 @@ it('keeps a refused paid measurement on its schedule line, so the paid competenc
     $paidLine = $scenario['lines']['2026-05'];
     $this->actingAs($scenario['actor']);
 
+    // Recusada é só histórico: o arquivo já é recusado pela medição encerrada,
+    // antes mesmo da guarda do pagamento.
     expect(fn () => $asset->fresh()->update(['plan_line_id' => $scenario['lines']['2026-07']->id]))->toThrow(
         MeasurementWorkflowException::class,
-        'A obra e a linha do cronograma de uma medição com pagamento registrado não podem ser alteradas: o pagamento continua vinculado a elas.',
+        MeasurementAsset::CLOSED_MEASUREMENT_FILE_REFUSAL,
     );
 
     Livewire::test(EditMeasurement::class, ['record' => $refused->getRouteKey()])
-        ->set("data.assets.record-{$asset->id}.plan_line_id", $scenario['lines']['2026-07']->id)
-        ->call('save');
+        ->assertRedirect(MeasurementResource::getUrl('view', ['record' => $refused]));
 
     expect($asset->fresh()->plan_line_id)->toBe($paidLine->id)
         ->and(MeasurementPlanLine::query()->whereKey($paidLine->id)->availableForMeasurement()->exists())->toBeFalse()

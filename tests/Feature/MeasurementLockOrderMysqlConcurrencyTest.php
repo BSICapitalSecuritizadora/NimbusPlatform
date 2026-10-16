@@ -162,6 +162,7 @@ function measurementLockOrderTask(array $instruction): Closure
                     'plan_set_id' => $instruction['plan_set_id'],
                     'pay_date' => $instruction['pay_date'],
                     'amount' => $instruction['amount'],
+                    'receipt' => MeasurementReceiptEvidenceScenario::file(),
                 ], expectedRevision: $instruction['revision']);
             } elseif ($instruction['action'] === 'approve_engineering') {
                 $workflow->approve(
@@ -426,10 +427,11 @@ it('serializes the Finalization and an Engineering approval of the same operatio
         'plan_set_id' => $scenario['planSet']->id,
         'pay_date' => '2026-05-20',
         'amount' => '100000.00',
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]);
     $workflow->approve($scenario['may']->fresh(), $scenario['actor']);
-    $workflow->attachReceipt($payment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
-    // Fase 4B-1: o ator enviou o comprovante; a conferência e a Finalização são do Finalizador.
+    // Fase 4B-2: o comprovante entrou com o pagamento, enviado pelo ator; a
+    // conferência e a Finalização são do Finalizador.
     MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
     $june = Scenario::measurement($scenario, '2026-06');
     $markers = measurementLockOrderMarkers('lock-order-finalization-engineering');

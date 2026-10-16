@@ -156,11 +156,12 @@ function advanceP01ToDocumentedFinalization(array $scenario): void
         'amount' => 1000,
         'financial_justification' => 'Pagamento parcial previsto para esta medição.',
         'plan_set_id' => $scenario['planSets']->first()->id,
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]);
     // Só o primeiro plano é pago: os demais exigem a justificativa da etapa.
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor'], 'Demais planos sem pagamento nesta competência: retenção contratual.');
-    $workflow->attachReceipt($payment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
-    // Fase 4B-1: quem enviou o comprovante não o aprova -- o Finalizador confere.
+    // Fase 4B-2: o comprovante entrou com o pagamento. Fase 4B-1: quem enviou o
+    // comprovante não o aprova -- o Finalizador confere.
     MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
 }
 

@@ -99,7 +99,7 @@ class MeasurementReceiptEvidenceService
         $stored = null;
 
         try {
-            return DB::transaction(function () use ($payment, $actor, $file, $expectedEvidenceId, $correctionReason, $postFinalization, $expectedRevision, $overrideReason, &$stored): MeasurementPaymentReceiptEvidence {
+            $evidence = DB::transaction(function () use ($payment, $actor, $file, $expectedEvidenceId, $correctionReason, $postFinalization, $expectedRevision, $overrideReason, &$stored): MeasurementPaymentReceiptEvidence {
                 $measurement = $this->lockMeasurement((int) $payment->measurement_id);
                 $authorization = $this->authorize($measurement, $actor, MeasurementResponsibility::ReceiptUploader);
                 // Quem envia só pelo override administrativo informa o motivo --
@@ -129,36 +129,15 @@ class MeasurementReceiptEvidenceService
                 }
 
                 $reason = is_string($correctionReason) ? trim($correctionReason) : null;
-                Validator::make(['receipt' => $file, 'correction_reason' => $reason, 'original_filename' => $file->getClientOriginalName()], [
-                    'receipt' => ['required', 'file', 'extensions:'.implode(',', config('uploads.measurement_receipt.allowed_extensions', [])), 'max:'.config('uploads.measurement_receipt.max_kb', 10240)],
-                    'original_filename' => ['required', 'string', 'max:255'],
+                Validator::make(['correction_reason' => $reason], [
                     'correction_reason' => [$postFinalization || $current !== null ? 'required' : 'nullable', 'string', 'max:'.self::CORRECTION_REASON_MAX_LENGTH],
                 ])->validate();
 
-                $directory = 'measurements/receipts/'.Str::uuid();
-                $stored = [
-                    'disk' => DocumentStorageService::privateDisk(),
-                    'path' => $this->storage->privateDirectoryPath($directory).'/'.$file->hashName(),
-                ];
-                $this->registerRollbackCompensation($stored);
-                $this->storage->storePrivateFile($file, $directory);
-                $this->validation->validateReceipt($stored['path'], $stored['disk']);
-                $hash = $this->storage->checksum($stored['path'], $stored['disk']);
-
-                if (! is_string($hash) || mb_strlen($hash) !== 64) {
-                    throw ValidationException::withMessages(['receipt' => 'Não foi possível calcular o SHA-256 do comprovante.']);
-                }
-
-                $metadata = $this->storage->metadata($stored['path'], $stored['disk']);
+                $stored = $this->storeReceiptFile($file);
                 $evidence = $lockedPayment->receiptEvidences()->create([
                     'version' => ($current?->version ?? 0) + 1,
                     'supersedes_id' => $current?->getKey(),
-                    'storage_disk' => $stored['disk'],
-                    'storage_path' => $stored['path'],
-                    'original_filename' => $file->getClientOriginalName(),
-                    'mime_type' => $metadata['mime_type'],
-                    'size' => $metadata['size_bytes'],
-                    'sha256' => $hash,
+                    ...$stored,
                     'uploaded_by' => $actor->getKey(),
                     'uploaded_at' => now(),
                     'review_status' => MeasurementReceiptReviewStatus::Pending,
@@ -176,12 +155,158 @@ class MeasurementReceiptEvidenceService
 
                 return $evidence;
             });
+
+            // A versão nova espera a conferência: avisa quem pode conferi-la.
+            if (! $postFinalization) {
+                rescue(fn () => app(MeasurementWorkflow::class)->notifyFinalizationReviewers(
+                    Measurement::query()->with('operation')->findOrFail((int) $payment->measurement_id),
+                    $evidence->version > 1 ? 'receipt_replaced' : 'receipts_awaiting_review',
+                ), report: true);
+            }
+
+            return $evidence;
         } catch (Throwable $exception) {
             if ($stored !== null) {
-                $this->discardUnreferencedUpload($stored);
+                $this->discardUnreferencedUpload(['disk' => $stored['storage_disk'], 'path' => $stored['storage_path']]);
             }
 
             throw $exception;
+        }
+    }
+
+    /**
+     * Grava o comprovante junto com os pagamentos que ele prova, dentro da
+     * transação do registro ({@see MeasurementWorkflow::registerPayments()}),
+     * que já travou a Operation, a medição e os planos. Cada pagamento recebe a
+     * versão v1, pendente de conferência na Finalização: enviar não é aprovar.
+     *
+     * Uma transferência que paga mais de um empreendimento tem um comprovante
+     * só: o arquivo é gravado uma vez e cada pagamento ganha a própria versão
+     * apontando para ele -- nenhuma transferência é inventada, e a conferência
+     * continua sendo de cada pagamento. Os arquivos são compensados se a
+     * transação for desfeita.
+     *
+     * @param  list<array{payment: MeasurementPayment, file: UploadedFile, error_key: string}>  $attachments
+     * @return list<MeasurementPaymentReceiptEvidence>
+     */
+    public function attachOnPaymentRegistration(
+        Measurement $measurement,
+        array $attachments,
+        User $actor,
+        ResponsibilityAuthorization $authorization,
+        ?string $overrideReason = null,
+    ): array {
+        $groups = [];
+
+        foreach ($attachments as $attachment) {
+            $groups[spl_object_id($attachment['file'])][] = $attachment;
+        }
+
+        $evidences = [];
+
+        foreach ($groups as $group) {
+            $stored = $this->storeReceiptFile($group[0]['file'], $group[0]['error_key']);
+            $paymentIds = array_map(fn (array $attachment): int => (int) $attachment['payment']->getKey(), $group);
+
+            foreach ($group as $attachment) {
+                $evidence = $attachment['payment']->receiptEvidences()->create([
+                    'version' => 1,
+                    'supersedes_id' => null,
+                    ...$stored,
+                    'uploaded_by' => $actor->getKey(),
+                    'uploaded_at' => now(),
+                    'review_status' => MeasurementReceiptReviewStatus::Pending,
+                    'correction_reason' => null,
+                    'is_post_finalization' => false,
+                ]);
+
+                $this->audit($measurement, $evidence, $actor, $authorization, 'receipt_evidence_uploaded', array_filter([
+                    'context' => 'payment_registration',
+                    'payment_registered_by' => (int) $actor->getKey(),
+                    'shared_with_payment_ids' => count($paymentIds) > 1 ? $paymentIds : null,
+                    'admin_override_reason' => $overrideReason,
+                ], fn (mixed $value): bool => $value !== null), MeasurementResponsibility::PaymentManager);
+                $evidences[] = $evidence;
+            }
+        }
+
+        return $evidences;
+    }
+
+    /**
+     * Confere o envio (extensão, tamanho, nome), grava no disco privado,
+     * confere o tipo real e o antivírus e calcula o SHA-256. Devolve as
+     * colunas da evidência. Recusado depois de gravar, o arquivo é descartado
+     * aqui; gravado, fica a cargo da compensação da transação.
+     *
+     * @return array{storage_disk: string, storage_path: string, original_filename: string, mime_type: ?string, size: ?int, sha256: string}
+     *
+     * @throws ValidationException
+     */
+    private function storeReceiptFile(UploadedFile $file, string $errorKey = 'receipt'): array
+    {
+        self::validateReceiptUpload($file, $errorKey);
+
+        $directory = 'measurements/receipts/'.Str::uuid();
+        $stored = [
+            'disk' => DocumentStorageService::privateDisk(),
+            'path' => $this->storage->privateDirectoryPath($directory).'/'.$file->hashName(),
+        ];
+        $this->registerRollbackCompensation($stored);
+
+        try {
+            $this->storage->storePrivateFile($file, $directory);
+
+            try {
+                $this->validation->validateReceipt($stored['path'], $stored['disk']);
+            } catch (ValidationException $exception) {
+                throw ValidationException::withMessages([$errorKey => collect($exception->errors())->flatten()->all()]);
+            }
+
+            $hash = $this->storage->checksum($stored['path'], $stored['disk']);
+
+            if (! is_string($hash) || mb_strlen($hash) !== 64) {
+                throw ValidationException::withMessages([$errorKey => 'Não foi possível calcular o SHA-256 do comprovante.']);
+            }
+
+            $metadata = $this->storage->metadata($stored['path'], $stored['disk']);
+        } catch (Throwable $exception) {
+            $this->discardUnreferencedUpload($stored);
+
+            throw $exception;
+        }
+
+        return [
+            'storage_disk' => $stored['disk'],
+            'storage_path' => $stored['path'],
+            'original_filename' => $file->getClientOriginalName(),
+            'mime_type' => $metadata['mime_type'],
+            'size' => $metadata['size_bytes'],
+            'sha256' => $hash,
+        ];
+    }
+
+    /**
+     * A conferência do envio que não precisa do arquivo gravado -- o registro
+     * de pagamento a faz em todas as linhas antes de gravar qualquer uma.
+     *
+     * @throws ValidationException
+     */
+    public static function validateReceiptUpload(mixed $file, string $errorKey = 'receipt'): void
+    {
+        $validator = Validator::make([
+            'receipt' => $file,
+            'original_filename' => $file instanceof UploadedFile ? $file->getClientOriginalName() : null,
+        ], [
+            'receipt' => ['required', 'file', 'extensions:'.implode(',', config('uploads.measurement_receipt.allowed_extensions', [])), 'max:'.config('uploads.measurement_receipt.max_kb', 10240)],
+            'original_filename' => ['required', 'string', 'max:255'],
+        ], [], [
+            'receipt' => 'comprovante de pagamento',
+            'original_filename' => 'nome do arquivo do comprovante',
+        ]);
+
+        if ($validator->fails()) {
+            throw ValidationException::withMessages([$errorKey => $validator->errors()->all()]);
         }
     }
 
@@ -237,7 +362,7 @@ class MeasurementReceiptEvidenceService
         // medição. O pagamento nunca muda de medição.
         $measurementId = (int) $evidence->payment()->value('measurement_id');
 
-        return DB::transaction(function () use ($evidence, $actor, $decision, $confirmed, $notes, $rejectionReason, $measurementId, $overrideReason): MeasurementPaymentReceiptEvidence {
+        $reviewed = DB::transaction(function () use ($evidence, $actor, $decision, $confirmed, $notes, $rejectionReason, $measurementId, $overrideReason): MeasurementPaymentReceiptEvidence {
             $measurement = $this->lockMeasurement($measurementId);
             $payment = $measurement->payments()->whereKey($evidence->measurement_payment_id)->firstOrFail();
             $authorization = $this->authorize($measurement, $actor, MeasurementResponsibility::Finalizer);
@@ -285,6 +410,32 @@ class MeasurementReceiptEvidenceService
 
             return $current;
         });
+
+        rescue(fn () => $this->notifyAfterReview($measurementId, $reviewed), report: true);
+
+        return $reviewed;
+    }
+
+    /**
+     * A rejeição vai para quem substitui o comprovante; a última aprovação que
+     * completa a documentação vai para quem finaliza -- se pode finalizar
+     * ({@see MeasurementWorkflow::notifyFinalizationReviewers()}).
+     */
+    private function notifyAfterReview(int $measurementId, MeasurementPaymentReceiptEvidence $evidence): void
+    {
+        $measurement = Measurement::query()->with('operation')->find($measurementId);
+
+        if (! $measurement instanceof Measurement || $this->isClosedWithPayments($measurement)) {
+            return;
+        }
+
+        $workflow = app(MeasurementWorkflow::class);
+
+        if ($evidence->review_status === MeasurementReceiptReviewStatus::Rejected) {
+            $workflow->notifyUsers($measurement, 'receipt_rejected', [$measurement->operation?->payment_receipt_uploader_user_id]);
+        } elseif ($measurement->status === 'approved') {
+            $workflow->notifyFinalizationReviewers($measurement, 'ready_to_finalize');
+        }
     }
 
     public function allPaymentsApproved(Measurement $measurement): bool
@@ -311,6 +462,29 @@ class MeasurementReceiptEvidenceService
 
         if (! $this->allPaymentsApproved($measurement)) {
             throw new MeasurementWorkflowException('Todos os pagamentos precisam de comprovante atual aprovado. Existem comprovantes ausentes ou aguardando aprovação documental.');
+        }
+
+        // A aprovação vale só de quem não enviou a versão: a conferência já
+        // recusa a autoaprovação, e a Finalização não aceita uma aprovação que
+        // tenha escapado dela.
+        $segregation = app(MeasurementSegregationService::class);
+
+        foreach ($measurement->payments()->with('currentReceiptEvidence')->get() as $payment) {
+            $evidence = $payment->currentReceiptEvidence;
+
+            if ($evidence?->review_status !== MeasurementReceiptReviewStatus::Approved) {
+                continue;
+            }
+
+            $makerIds = array_filter(array_map(fn (array $maker): ?int => $maker['user_id'], $segregation->receiptApprovalMakers($evidence)));
+
+            if ($evidence->reviewer_user_id === null || in_array((int) $evidence->reviewer_user_id, $makerIds, true)) {
+                throw new MeasurementWorkflowException(sprintf(
+                    'O comprovante v%d do pagamento #%d foi aprovado por quem o enviou, ou sem conferente identificado: a aprovação não vale. Envie uma nova versão do comprovante para outro responsável conferir.',
+                    (int) $evidence->version,
+                    (int) $payment->getKey(),
+                ));
+            }
         }
     }
 
@@ -547,6 +721,7 @@ class MeasurementReceiptEvidenceService
         ResponsibilityAuthorization $authorization,
         string $event,
         array $extra = [],
+        ?MeasurementResponsibility $responsibility = null,
     ): void {
         activity('measurement_evidence')
             ->performedOn($evidence)
@@ -575,9 +750,9 @@ class MeasurementReceiptEvidenceService
                 'delegation_id' => $authorization->delegation?->getKey(),
                 'delegator_user_id' => $authorization->delegation?->delegator_user_id,
                 'expected_responsible_user_id' => $measurement->operation?->responsibleUserIdFor(
-                    $event === 'receipt_evidence_uploaded' || $event === 'receipt_evidence_corrected_after_finalization'
+                    $responsibility ?? ($event === 'receipt_evidence_uploaded' || $event === 'receipt_evidence_corrected_after_finalization'
                         ? MeasurementResponsibility::ReceiptUploader
-                        : MeasurementResponsibility::Finalizer,
+                        : MeasurementResponsibility::Finalizer),
                 ),
                 'timestamp' => now()->toIso8601String(),
                 ...$extra,

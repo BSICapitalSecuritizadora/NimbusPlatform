@@ -20,6 +20,7 @@ use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\MeasurementNoDisbursementScenario as Scenario;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 use Tests\Support\MeasurementRevisionScenario;
 
 pest()->group('parity');
@@ -304,6 +305,7 @@ it('keeps a real obligation of another construction mandatory and pays it normal
         'pay_date' => '2026-06-10',
         'amount' => '120000.00',
         'method' => 'TED',
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]);
 
     expect(noDisbursementValidationMessage(fn () => Scenario::concludeWithoutDisbursement($scenario, $measurement), 'payments'))
@@ -331,6 +333,7 @@ it('completes with one payment for the payable construction and none for the zer
         'plan_set_id' => $scenario['planSets'][1]->id,
         'pay_date' => '2026-06-10',
         'amount' => '120000.00',
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]);
     $amountDue = app(MeasurementPaymentFinancialService::class)->amountDue($measurement->fresh());
 

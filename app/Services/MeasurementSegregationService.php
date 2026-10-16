@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\MeasurementReceiptReviewStatus;
 use App\Enums\MeasurementResponsibility;
 use App\Exceptions\MeasurementSegregationException;
 use App\Models\Measurement;
@@ -20,9 +21,10 @@ use Spatie\Activitylog\Models\Activity;
  * não a confere.
  *
  * - **comprovante**: quem enviou a versão do comprovante não a aprova;
- * - **exceção financeira**: quem registrou o pagamento com divergência, quem
- *   reavaliou o enquadramento dele e quem aprovou a etapa Pagamento com a
- *   exceção não a aceitam na Finalização;
+ * - **exceção financeira**: quem registrou o pagamento com divergência --
+ *   acima do saldo ou parcial, com saldo em aberto --, quem reavaliou o
+ *   enquadramento dele e quem aprovou a etapa Pagamento com a exceção não a
+ *   aceitam na Finalização;
  * - **sem desembolso**: quem decidiu concluir a etapa Pagamento sem
  *   desembolso não dá a ciência dessa decisão na Finalização;
  * - **revisão**: quem criou ou enviou a revisão não a aprova na Compliance.
@@ -57,6 +59,8 @@ class MeasurementSegregationService
     public const REVISION_SELF_APPROVAL = 'O responsável que criou ou enviou a revisão não pode aprová-la na Compliance.';
 
     public const NO_INDEPENDENT_COMPLIANCE_APPROVER = 'Não há responsável de Compliance independente para aprovar esta revisão: quem cria ou envia a revisão não pode aprová-la na Compliance, e a operação não tem outro responsável de Compliance ativo nem administrador que possa aprová-la. Defina outro responsável de Compliance na operação antes de enviar a revisão.';
+
+    public const NO_INDEPENDENT_FINALIZER = 'Não há Finalizador independente disponível para esta medição: quem registrou o pagamento, enviou o comprovante ou fez a exceção financeira não confere nem aceita o próprio trabalho, e a operação não tem outro Finalizador ativo nem administrador que possa fazê-lo. Defina outro Finalizador na operação.';
 
     public const OVERRIDE_REASON_REQUIRED = 'Informe o motivo do override administrativo: você age nesta medição sem ser o responsável nem delegado desta etapa, e o motivo fica registrado na trilha protegida. O override não dispensa a segregação de funções.';
 
@@ -188,10 +192,11 @@ class MeasurementSegregationService
     /**
      * Os autores das exceções financeiras que a Finalização desta medição
      * aceita agora, quando há exceção de fato -- pagamento acima do saldo a
-     * pagar (excedente), empreendimento sem pagamento justificado na etapa
-     * Pagamento, valor pago a maior da revisão:
+     * pagar (excedente), pagamento parcial que deixa saldo aprovado em aberto,
+     * empreendimento sem pagamento justificado na etapa Pagamento, valor pago
+     * a maior da revisão:
      *
-     * - quem registrou cada pagamento excepcional, quem reavaliou o
+     * - quem registrou cada pagamento que pede aceite, quem reavaliou o
      *   enquadramento dele (todas as reavaliações) e quem registrou a regra
      *   financeira aplicada (a cadeia de versões);
      * - no valor pago a maior da revisão, quem registrou os pagamentos da
@@ -200,14 +205,16 @@ class MeasurementSegregationService
      * - e o delegante de cada ato feito por delegação: a autoridade usada foi
      *   a dele.
      *
-     * O pagamento parcial, abaixo do saldo, é pagamento comum: o aceite dele
-     * segue como sempre, sem esta conferência. Vazio sem exceção.
+     * O pagamento parcial continua sendo um fato legítimo e é registrado como
+     * sempre; o que pede conferência independente é o aceite do saldo que ele
+     * deixa em aberto. O pagamento exato, sem divergência, não pede aceite.
+     * Vazio sem exceção.
      *
      * @return list<array{user_id: int|null, act: string, label: string}>
      */
     public function financialExceptionMakers(Measurement $measurement): array
     {
-        $paymentIds = $this->exceptionalPayments($measurement);
+        $paymentIds = $this->acceptancePayments($measurement);
         $overpayments = $measurement->isRevision() ? app(MeasurementRevisionService::class)->unacknowledgedOverpayments($measurement) : [];
         $hasException = $paymentIds !== []
             || $overpayments !== []
@@ -265,6 +272,45 @@ class MeasurementSegregationService
         }
 
         return $makers;
+    }
+
+    /**
+     * Os pagamentos desta medição cujo enquadramento pede o aceite expresso
+     * na Finalização: acima do saldo a pagar ou parciais, com saldo aprovado
+     * em aberto.
+     *
+     * @return list<int>
+     */
+    public function acceptancePayments(Measurement $measurement): array
+    {
+        return MeasurementPayment::query()
+            ->where('measurement_id', $measurement->getKey())
+            ->orderBy('id')
+            ->get(['id', 'financial_assessment'])
+            ->filter(fn (MeasurementPayment $payment): bool => (bool) ($payment->financial_assessment['requires_acceptance'] ?? false))
+            ->map(fn (MeasurementPayment $payment): int => (int) $payment->id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Por que a Finalização desta medição pede aceite independente -- para a
+     * trilha protegida: excedente, parcial com saldo em aberto, empreendimento
+     * sem pagamento, valor pago a maior da revisão.
+     *
+     * @return list<string>
+     */
+    public function financialAcceptanceReasons(Measurement $measurement): array
+    {
+        $excess = $this->exceptionalPayments($measurement);
+        $partial = array_values(array_diff($this->acceptancePayments($measurement), $excess));
+
+        return array_values(array_filter([
+            $excess !== [] ? 'excess_payment' : null,
+            $partial !== [] ? 'partial_payment_outstanding_balance' : null,
+            app(MeasurementPaymentFinancialService::class)->unpaidRequiredPlanSets($measurement) !== [] ? 'unpaid_plan_set' : null,
+            $measurement->isRevision() && app(MeasurementRevisionService::class)->unacknowledgedOverpayments($measurement) !== [] ? 'revision_overpayment' : null,
+        ]));
     }
 
     /**
@@ -409,6 +455,83 @@ class MeasurementSegregationService
             : null;
     }
 
+    // ── Quem decide a Finalização ───────────────────────────────────────
+
+    /**
+     * As versões atuais de comprovante desta medição que esperam a conferência
+     * do Finalizador.
+     *
+     * @return Collection<int, MeasurementPaymentReceiptEvidence>
+     */
+    public function pendingEvidences(Measurement $measurement): Collection
+    {
+        return MeasurementPayment::query()
+            ->where('measurement_id', $measurement->getKey())
+            ->with('currentReceiptEvidence')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (MeasurementPayment $payment): ?MeasurementPaymentReceiptEvidence => $payment->currentReceiptEvidence)
+            ->filter(fn (?MeasurementPaymentReceiptEvidence $evidence): bool => $evidence?->review_status === MeasurementReceiptReviewStatus::Pending)
+            ->values();
+    }
+
+    /**
+     * Por que este usuário, que responde pela Finalização, não pode decidir a
+     * pendência dela agora, ou `null`: com comprovante pendente, ele precisa
+     * poder aprovar ao menos um (não enviou nem confere por delegação de quem
+     * enviou); sem comprovante pendente, precisa poder finalizar -- aceitar as
+     * exceções e dar a ciência sem desembolso ({@see self::finalizationConflict()}).
+     *
+     * É o que My Pendings e as notificações usam para não apontar como
+     * responsável quem a segregação recusaria; as ações conferem de novo, sob
+     * o lock.
+     */
+    public function finalizerDecisionBlockReason(Measurement $measurement, User $user): ?string
+    {
+        $pending = $this->pendingEvidences($measurement);
+
+        if ($pending->isEmpty()) {
+            return $this->finalizationConflict($measurement, $user);
+        }
+
+        $authorization = $this->authorization->resolveAuthorization($user, $measurement, MeasurementResponsibility::Finalizer);
+        $conflicts = $pending->map(fn (MeasurementPaymentReceiptEvidence $evidence): ?string => $this->receiptApprovalConflict($evidence, $user, $authorization));
+
+        return $conflicts->contains(fn (?string $conflict): bool => $conflict === null) ? null : $conflicts->first();
+    }
+
+    /**
+     * Quem não pode conferir o que a Finalização desta medição decide agora:
+     * os autores dos comprovantes pendentes, das exceções financeiras e da
+     * decisão sem desembolso.
+     *
+     * @return list<int>
+     */
+    public function finalizationMakerIds(Measurement $measurement): array
+    {
+        $decision = $this->standingNoDisbursementDecision($measurement);
+
+        return self::identifiedIds([
+            ...$this->pendingEvidences($measurement)->flatMap(fn (MeasurementPaymentReceiptEvidence $evidence): array => $this->receiptApprovalMakers($evidence))->all(),
+            ...($decision === null ? [] : $this->noDisbursementMakers($decision)),
+            ...$this->financialExceptionMakers($measurement),
+        ]);
+    }
+
+    /**
+     * Existe hoje alguém que possa decidir a Finalização desta medição sem ser
+     * autor do que ela confere? Sem ninguém, a medição espera a operação
+     * definir outro Finalizador -- nada é aprovado sozinho, e a pendência não
+     * volta para quem fez.
+     */
+    public function independentFinalizerExists(Measurement $measurement): bool
+    {
+        $operation = $measurement->operation;
+
+        return $operation instanceof Operation
+            && $this->independentApproverExists($operation, MeasurementResponsibility::Finalizer, $this->finalizationMakerIds($measurement));
+    }
+
     // ── Revisão na Compliance ───────────────────────────────────────────
 
     /**
@@ -516,17 +639,28 @@ class MeasurementSegregationService
 
     /**
      * Existe hoje alguém que possa aprovar a revisão na Compliance sem ser
-     * quem a criou ou a envia? O responsável direto de Compliance da operação,
-     * ou um administrador do fluxo pelo override -- sempre ativo, aprovado e
-     * com a permissão. Delegado não entra na conta: só delega quem tem a
-     * atribuição direta, e o delegado de um autor não é independente.
+     * quem a criou ou a envia? ({@see self::independentApproverExists()})
      *
      * @param  list<int>  $makerIds
      */
     public function independentComplianceApproverExists(Operation $operation, array $makerIds): bool
     {
-        $permission = MeasurementResponsibility::ComplianceReviewer->permission();
-        $directId = $operation->responsibleUserIdFor(MeasurementResponsibility::ComplianceReviewer);
+        return $this->independentApproverExists($operation, MeasurementResponsibility::ComplianceReviewer, $makerIds);
+    }
+
+    /**
+     * Existe hoje alguém que possa agir nesta responsabilidade sem ser um dos
+     * autores? O responsável direto da operação, ou um administrador do fluxo
+     * pelo override -- sempre ativo, aprovado e com a permissão. Delegado não
+     * entra na conta: só delega quem tem a atribuição direta, e o delegado de
+     * um autor não é independente.
+     *
+     * @param  list<int>  $makerIds
+     */
+    public function independentApproverExists(Operation $operation, MeasurementResponsibility $responsibility, array $makerIds): bool
+    {
+        $permission = $responsibility->permission();
+        $directId = $operation->responsibleUserIdFor($responsibility);
 
         if ($directId !== null && ! in_array($directId, $makerIds, true)) {
             $direct = User::query()->operational()->find($directId);
@@ -536,9 +670,9 @@ class MeasurementSegregationService
             }
         }
 
-        // O administrador que tem delegação de Compliance de um dos autores age
-        // como delegado dele (a delegação vem antes do override) e seria
-        // recusado: não conta.
+        // O administrador que tem delegação desta responsabilidade de um dos
+        // autores age como delegado dele (a delegação vem antes do override) e
+        // seria recusado: não conta.
         $delegations = app(ResponsibilityDelegationService::class);
 
         return User::query()
@@ -546,12 +680,12 @@ class MeasurementSegregationService
             ->whereHas('roles', fn ($roles) => $roles->whereIn('name', ['admin', 'super-admin']))
             ->whereKeyNot($makerIds)
             ->get()
-            ->contains(function (User $administrator) use ($permission, $operation, $delegations, $makerIds): bool {
+            ->contains(function (User $administrator) use ($permission, $operation, $delegations, $makerIds, $responsibility): bool {
                 if (! $administrator->can($permission)) {
                     return false;
                 }
 
-                $delegatorId = $delegations->activeDelegationFor($administrator, $operation, MeasurementResponsibility::ComplianceReviewer)?->delegator_user_id;
+                $delegatorId = $delegations->activeDelegationFor($administrator, $operation, $responsibility)?->delegator_user_id;
 
                 return $delegatorId === null || ! in_array((int) $delegatorId, $makerIds, true);
             });

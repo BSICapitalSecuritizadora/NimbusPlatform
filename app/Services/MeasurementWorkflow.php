@@ -124,6 +124,13 @@ class MeasurementWorkflow
 
     public const INVALID_PAY_DATE_REFUSAL = 'Informe a data do pagamento como uma data do calendário (dia, mês e ano).';
 
+    /**
+     * O pagamento é o fato de uma transferência já feita, e entra junto com o
+     * comprovante dela: ordem de pagamento, autorização ou agendamento não
+     * comprovam pagamento.
+     */
+    public const PAYMENT_RECEIPT_REQUIRED = 'Anexe o comprovante de pagamento: o pagamento só é registrado junto com o comprovante da transferência já realizada (PDF, JPG ou PNG). Ordem de pagamento, autorização ou agendamento não comprovam pagamento.';
+
     public function __construct(
         private MeasurementAuthorizationService $authorization,
         private MeasurementEngineeringService $engineering,
@@ -735,12 +742,19 @@ class MeasurementWorkflow
         $locked = $result['measurement'];
 
         if ($result['approved_stage'] === self::STAGE_PAYMENT) {
+            $documentary = app(MeasurementReceiptEvidenceService::class)->documentarySummary($locked);
+
             if ($result['without_disbursement']) {
-                $this->notifyUsers($locked, 'ready_to_finalize_without_disbursement', [$locked->operation->payment_finalizer_user_id]);
+                $this->notifyFinalizationReviewers($locked, 'ready_to_finalize_without_disbursement');
             } elseif ($result['status'] === 'approved') {
-                $this->notifyUsers($locked, 'ready_to_finalize', [$locked->operation->payment_finalizer_user_id]);
-            } else {
+                $this->notifyFinalizationReviewers($locked, 'ready_to_finalize');
+            } elseif ($documentary['missing'] + $documentary['rejected'] > 0) {
+                // Só o pagamento anterior à exigência do comprovante no registro
+                // chega aqui sem ele: o envio continua sendo do responsável pelos
+                // comprovantes.
                 $this->notifyUsers($locked, 'payment_approved', [$locked->operation->payment_receipt_uploader_user_id]);
+            } else {
+                $this->notifyFinalizationReviewers($locked, 'receipts_awaiting_review');
             }
 
             return;
@@ -1196,7 +1210,13 @@ class MeasurementWorkflow
      * financeira ({@see MeasurementPaymentFinancialService::assess()}), e quem
      * registra só pelo override administrativo informa o motivo.
      *
-     * @param  array<int, array{pay_date: mixed, amount: mixed, method?: ?string, notes?: ?string, plan_set_id?: ?int}>  $rows
+     * Cada pagamento entra com o comprovante da transferência -- o da própria
+     * linha (`receipt`) ou `$receipt`, o de uma transferência única que pagou
+     * todas as linhas sem comprovante próprio. Sem comprovante, nada é
+     * gravado. O comprovante nasce pendente: quem o confere é o Finalizador, e
+     * nunca quem registrou o pagamento ({@see MeasurementReceiptEvidenceService::attachOnPaymentRegistration()}).
+     *
+     * @param  array<int, array{pay_date: mixed, amount: mixed, method?: ?string, notes?: ?string, plan_set_id?: ?int, receipt?: ?UploadedFile}>  $rows
      * @return Collection<int, MeasurementPayment>
      */
     public function registerPayments(
@@ -1205,10 +1225,11 @@ class MeasurementWorkflow
         array $rows,
         ?int $expectedRevision = null,
         ?string $overrideReason = null,
+        ?UploadedFile $receipt = null,
     ): Collection {
         $expectedRevision ??= (int) $measurement->workflow_revision;
 
-        $created = DB::transaction(function () use ($measurement, $actor, $expectedRevision, $rows, $overrideReason): Collection {
+        $created = DB::transaction(function () use ($measurement, $actor, $expectedRevision, $rows, $overrideReason, $receipt): Collection {
             $locked = $this->lockMeasurementWithOperation($measurement);
 
             $this->assertExpectedState($locked, $expectedRevision, self::STAGE_PAYMENT, 'awaiting_payment');
@@ -1222,10 +1243,8 @@ class MeasurementWorkflow
                 );
             }
 
-            $overrideReason = app(MeasurementSegregationService::class)->overrideReason(
-                $this->authorization->resolveAuthorization($actor, $locked, MeasurementResponsibility::PaymentManager),
-                $overrideReason,
-            );
+            $paymentAuthorization = $this->authorization->resolveAuthorization($actor, $locked, MeasurementResponsibility::PaymentManager);
+            $overrideReason = app(MeasurementSegregationService::class)->overrideReason($paymentAuthorization, $overrideReason);
 
             $this->ensureEngineeringSnapshotTopLevelIsIntact($locked);
 
@@ -1250,6 +1269,7 @@ class MeasurementWorkflow
                 'payments.*.financial_rule_id' => ['nullable', 'integer'],
                 'payments.*.financial_justification' => ['nullable', 'string', 'max:5000'],
                 'payments.*.financial_support' => ['nullable', 'file', 'max:10240'],
+                'payments.*.receipt' => ['nullable'],
             ], [
                 // "tomorrow", "+1 day", 14/10/2026 ou 30/02: a mesma frase da
                 // data do calendário conferida adiante, em vez da genérica.
@@ -1264,6 +1284,7 @@ class MeasurementWorkflow
                 'payments.*.financial_rule_id' => 'regra financeira',
                 'payments.*.financial_justification' => 'justificativa da divergência',
                 'payments.*.financial_support' => 'documento de suporte',
+                'payments.*.receipt' => 'comprovante de pagamento',
             ])->validate()['payments'];
 
             $snapshotPlanSets = collect($locked->engineering_snapshot['plan_sets'] ?? []);
@@ -1289,6 +1310,7 @@ class MeasurementWorkflow
             // O dia de hoje é o civil de Brasília, não o UTC: entre 21h e 24h o
             // UTC já está no dia seguinte.
             $businessToday = BusinessTime::dateString();
+            $receiptErrorKeys = [];
 
             foreach ($validated as $index => $row) {
                 if (filled($row['plan_set_id'] ?? null)
@@ -1319,6 +1341,22 @@ class MeasurementWorkflow
                 }
 
                 $validated[$index]['pay_date'] = $payDate;
+
+                // O comprovante de cada linha, conferido (tipo, tamanho, nome)
+                // antes de qualquer gravação; o tipo real e o antivírus, depois
+                // de gravado o arquivo, ainda dentro desta transação.
+                $ownReceipt = ($row['receipt'] ?? null) instanceof UploadedFile;
+                $rowReceipt = $ownReceipt ? $row['receipt'] : $receipt;
+
+                if (! $rowReceipt instanceof UploadedFile) {
+                    throw ValidationException::withMessages([
+                        "payments.{$index}.receipt" => self::PAYMENT_RECEIPT_REQUIRED,
+                    ]);
+                }
+
+                $receiptErrorKeys[$index] = $ownReceipt ? "payments.{$index}.receipt" : 'receipt';
+                MeasurementReceiptEvidenceService::validateReceiptUpload($rowReceipt, $receiptErrorKeys[$index]);
+                $validated[$index]['receipt'] = $rowReceipt;
             }
 
             $payments = collect($validated)->map(function (array $row, int $index) use ($locked, $actor, $defaultPlanSetId): MeasurementPayment {
@@ -1349,6 +1387,18 @@ class MeasurementWorkflow
                     'financial_assessment' => $assessment,
                 ]);
             })->values();
+
+            app(MeasurementReceiptEvidenceService::class)->attachOnPaymentRegistration(
+                $locked,
+                $payments->map(fn (MeasurementPayment $payment, int $index): array => [
+                    'payment' => $payment,
+                    'file' => $validated[$index]['receipt'],
+                    'error_key' => $receiptErrorKeys[$index],
+                ])->all(),
+                $actor,
+                $paymentAuthorization,
+                $overrideReason,
+            );
 
             $this->audit($locked, $actor, 'measurement_payment_registered', [
                 'stage' => self::STAGE_PAYMENT,
@@ -2210,10 +2260,14 @@ class MeasurementWorkflow
             $checks['no_disbursement'] = $segregation->assertNoDisbursementAcknowledgmentIsIndependent($measurement, $noDisbursement['decision'], $actor, $authorization);
         }
 
-        // Só a exceção de fato -- excedente, ausência justificada de pagamento,
-        // valor pago a maior --; o pagamento parcial é pagamento comum.
+        // Só a exceção de fato -- excedente, parcial com saldo em aberto,
+        // ausência justificada de pagamento, valor pago a maior --; o
+        // pagamento exato não pede aceite.
         if ($segregation->financialExceptionMakers($measurement) !== []) {
-            $checks['financial_exceptions'] = $segregation->assertFinancialAcceptanceIsIndependent($measurement, $actor, $authorization);
+            $checks['financial_exceptions'] = [
+                ...$segregation->assertFinancialAcceptanceIsIndependent($measurement, $actor, $authorization),
+                'required_because' => $segregation->financialAcceptanceReasons($measurement),
+            ];
         }
 
         return $checks;
@@ -2768,7 +2822,41 @@ class MeasurementWorkflow
     /**
      * @param  array<int, int|null>  $userIds
      */
-    private function notifyUsers(Measurement $measurement, string $event, array $userIds): void
+    /**
+     * Avisa quem decide a Finalização -- conferir comprovantes, aceitar
+     * exceções, dar a ciência sem desembolso -- só quando pode decidir: o
+     * Finalizador da operação que a segregação recusaria (registrou o
+     * pagamento, enviou o comprovante, fez a exceção) não é chamado a aprovar.
+     * No lugar dele, quem coordena a operação e os administradores do fluxo
+     * recebem o pedido de um Finalizador independente, sem valores; o aviso
+     * não dá acesso a ninguém (o link segue a visibilidade de cada um).
+     */
+    public function notifyFinalizationReviewers(Measurement $measurement, string $event): void
+    {
+        $measurement->loadMissing('operation');
+        $finalizerId = $measurement->operation?->payment_finalizer_user_id;
+        $finalizer = $finalizerId === null ? null : User::query()->operational()->find($finalizerId);
+        $segregation = app(MeasurementSegregationService::class);
+
+        if ($finalizer instanceof User && $segregation->finalizerDecisionBlockReason($measurement, $finalizer) === null) {
+            $this->notifyUsers($measurement, $event, [$finalizer->getKey()]);
+
+            return;
+        }
+
+        $this->notifyUsers($measurement, 'independent_finalizer_required', [
+            $measurement->operation?->assigned_user_id,
+            ...User::query()->operational()
+                ->whereHas('roles', fn ($roles) => $roles->whereIn('name', ['admin', 'super-admin']))
+                ->pluck('id')
+                ->all(),
+        ]);
+    }
+
+    /**
+     * @param  array<int, int|string|null>  $userIds
+     */
+    public function notifyUsers(Measurement $measurement, string $event, array $userIds): void
     {
         $ids = array_values(array_unique(array_filter($userIds)));
 

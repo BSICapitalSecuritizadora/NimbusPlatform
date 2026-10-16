@@ -83,4 +83,13 @@ class OperationLifecycleException extends RuntimeException implements ShouldntRe
     {
         return new self('Uma operação com medições registradas não pode ser excluída. Cancele a operação para encerrá-la.');
     }
+
+    /**
+     * A emissão leva as operações em cascata pelo banco, sem passar pelo
+     * `deleting` de cada uma: a recusa das medições precisa vir da emissão.
+     */
+    public static function emissionMeasurementHistory(): self
+    {
+        return new self('Uma emissão com operação que tem medições registradas não pode ser excluída: as medições, os pagamentos e os comprovantes são histórico protegido. Para tirar a emissão de operação, altere o status para "Liquidada".');
+    }
 }

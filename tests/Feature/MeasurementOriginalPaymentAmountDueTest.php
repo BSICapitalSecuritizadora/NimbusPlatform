@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\MeasurementNoDisbursementScenario as Scenario;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 use Tests\Support\MeasurementRevisionScenario;
 
 /**
@@ -83,7 +84,8 @@ function originalDueState(Measurement $measurement): array
 
 /**
  * Uma linha do registro de pagamentos, para o empreendimento de posição
- * indicada no cenário.
+ * indicada no cenário, com o comprovante da transferência (Fase 4B-2: o
+ * pagamento só é registrado junto com ele).
  *
  * @param  array<string, mixed>  $scenario
  * @param  array<string, mixed>  $extra
@@ -91,13 +93,13 @@ function originalDueState(Measurement $measurement): array
  */
 function originalDueRow(array $scenario, int $planSet, string $amount, array $extra = []): array
 {
-    return [
+    return MeasurementReceiptEvidenceScenario::withReceipt([
         'plan_set_id' => $scenario['planSets'][$planSet]->id,
         'pay_date' => '2026-06-10',
         'amount' => $amount,
         'method' => 'TED',
         ...$extra,
-    ];
+    ]);
 }
 
 /**

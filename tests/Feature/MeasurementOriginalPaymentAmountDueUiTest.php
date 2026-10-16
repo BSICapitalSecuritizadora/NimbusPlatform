@@ -10,6 +10,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Placeholder;
 use Filament\Schemas\Schema;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -17,6 +18,7 @@ use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\MeasurementNoDisbursementScenario as Scenario;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 use Tests\Support\MeasurementRevisionScenario;
 
 /**
@@ -41,6 +43,17 @@ function originalDueUiItemKey(Testable $component, int $planSetId): string
 {
     return (string) collect($component->get('mountedActions.0.data.payments') ?? [])
         ->search(fn (array $item): bool => (int) ($item['plan_set_id'] ?? 0) === $planSetId);
+}
+
+/**
+ * O comprovante da transferência anexado no modal montado (Fase 4B-2: o
+ * pagamento só é registrado junto com ele), para a recusa vir do valor.
+ */
+function originalDueUiAttachReceipt(Testable $component): Testable
+{
+    return $component->set('mountedActions.0.data.receipt', [
+        UploadedFile::fake()->createWithContent('comprovante-ted.pdf', '%PDF-1.7 comprovante da transferência'),
+    ]);
 }
 
 /**
@@ -128,6 +141,7 @@ it('sends a paid original whose engineering record is not verifiable back to Eng
     app(MeasurementWorkflow::class)->registerPayment($measurement->fresh(), $scenario['actor'], [
         'plan_set_id' => $scenario['planSets'][0]->id, 'pay_date' => '2026-06-10', 'amount' => '60000.00',
         'financial_justification' => 'Primeira parcela.',
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]);
     // Registro sem a versão de esquema: não verificável, a medição paga ainda
     // volta à Engenharia para ser corrigida.
@@ -155,6 +169,7 @@ it('adds what was already paid above the approved amount to the divergence a rul
         'plan_set_id' => $scenario['planSets'][0]->id, 'pay_date' => '2026-06-10', 'amount' => '120000.00',
         'financial_rule_id' => $rule->id,
         'financial_justification' => 'Medição complementar paga junto.',
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]);
     $this->actingAs($scenario['actor']);
     $component = Livewire::test(ViewMeasurement::class, ['record' => $measurement->getRouteKey()])
@@ -173,6 +188,7 @@ it('keeps the paid original out of the Engineering path in the preview of an und
     app(MeasurementWorkflow::class)->registerPayment($measurement->fresh(), $scenario['actor'], [
         'plan_set_id' => $scenario['planSets'][0]->id, 'pay_date' => '2026-06-10', 'amount' => '60000.00',
         'financial_justification' => 'Primeira parcela.',
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]);
     $snapshot = $measurement->fresh()->engineering_snapshot;
     $snapshot['plan_sets'][0]['realized_monthly_percent'] = null;
@@ -199,7 +215,9 @@ it('warns about an undetermined position also on the construction without Constr
     expect(originalDueUiModalText($component, 'reconciliation_divergence', $withoutFund))
         ->toBe('O valor devido desta medição não pode ser determinado: nenhum pagamento é registrado até o registro da Engenharia ser corrigido.');
 
-    $component->set("mountedActions.0.data.payments.{$withoutFund}.amount", '1.000,00')->callMountedAction();
+    originalDueUiAttachReceipt($component)
+        ->set("mountedActions.0.data.payments.{$withoutFund}.amount", '1.000,00')
+        ->callMountedAction();
 
     expect($component->errors()->get("mountedActions.0.data.payments.{$withoutFund}.amount")[0] ?? null)
         ->toStartWith('Nenhum pagamento é registrado sem a posição financeira desta medição.')
@@ -214,6 +232,7 @@ it('says in the reassessment of an original and of a revision that a blank rule 
     $measurement = Scenario::awaitingPayment($scenario, '2026-05', [10]);
     app(MeasurementWorkflow::class)->registerPayment($measurement->fresh(), $scenario['actor'], [
         'plan_set_id' => $scenario['planSets'][0]->id, 'pay_date' => '2026-06-10', 'amount' => '100000.00',
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]);
     $this->actingAs($scenario['actor']);
 
@@ -245,7 +264,7 @@ it('tells in the payment modal that no payment is registered while the amount du
     expect(originalDueUiModalText($component, 'reconciliation_divergence', $item))
         ->toBe('O valor devido desta medição não pode ser determinado: nenhum pagamento é registrado até o registro da Engenharia ser corrigido.');
 
-    $component
+    originalDueUiAttachReceipt($component)
         ->set("mountedActions.0.data.payments.{$item}.amount", '100.000,00')
         ->set("mountedActions.0.data.payments.{$item}.financial_justification", 'Pagamento da competência.')
         ->callMountedAction();
@@ -277,7 +296,7 @@ it('refuses on the amount of the zero-due construction a payment justified witho
     $zeroDue = originalDueUiItemKey($component, $scenario['planSets'][0]->id);
     $payable = originalDueUiItemKey($component, $scenario['planSets'][1]->id);
 
-    $component
+    originalDueUiAttachReceipt($component)
         ->set("mountedActions.0.data.payments.{$zeroDue}.amount", '1.000,00')
         ->set("mountedActions.0.data.payments.{$zeroDue}.financial_justification", 'Adiantamento pedido pela construtora.')
         ->set("mountedActions.0.data.payments.{$payable}.amount", '80.000,00')
@@ -305,7 +324,7 @@ it('registers through the modal a zero-due payment covered by a financial rule o
         ->mountAction('registerPayment');
     $item = originalDueUiItemKey($component, $scenario['planSets'][0]->id);
 
-    $component
+    originalDueUiAttachReceipt($component)
         ->set('mountedActions.0.data.pay_date', '2026-06-10')
         ->set("mountedActions.0.data.payments.{$item}.amount", '5.000,00')
         ->set("mountedActions.0.data.payments.{$item}.financial_rule_id", $rule->id)
@@ -317,5 +336,7 @@ it('registers through the modal a zero-due payment covered by a financial rule o
         'plan_set_id' => $scenario['planSets'][0]->id,
         'amount' => '5000.00',
         'financial_rule_id' => $rule->id,
-    ]);
+    ])
+        // Fase 4B-2: o comprovante anexado no modal vira a evidência v1 do pagamento.
+        ->and(MeasurementPayment::query()->sole()->receiptEvidences()->count())->toBe(1);
 });

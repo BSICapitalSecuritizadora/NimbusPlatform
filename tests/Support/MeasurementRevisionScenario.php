@@ -3,6 +3,7 @@
 namespace Tests\Support;
 
 use App\Enums\AccessPermission;
+use App\Enums\MeasurementReceiptReviewStatus;
 use App\Models\Measurement;
 use App\Models\MeasurementPayment;
 use App\Models\MeasurementPlanLine;
@@ -87,6 +88,7 @@ final class MeasurementRevisionScenario
             'method' => 'TED',
             'financial_rule_id' => $financialRuleId,
             'financial_justification' => $justification,
+            'receipt' => MeasurementReceiptEvidenceScenario::file('comprovante-'.uniqid().'.pdf', '%PDF-1.7 comprovante '.uniqid('', true)),
         ], fn (mixed $value): bool => $value !== null));
     }
 
@@ -114,14 +116,21 @@ final class MeasurementRevisionScenario
         $workflow = app(MeasurementWorkflow::class);
 
         foreach ($measurement->fresh()->payments()->orderBy('id')->get() as $payment) {
-            if ($payment->currentReceiptEvidence()->exists()) {
+            $current = $payment->currentReceiptEvidence()->first();
+
+            if ($current !== null && $current->review_status !== MeasurementReceiptReviewStatus::Pending) {
                 continue;
             }
 
-            $workflow->attachReceipt($payment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file(
-                "comprovante-{$payment->id}.pdf",
-                "%PDF-1.7 comprovante {$payment->id}",
-            ));
+            // O comprovante entra com o pagamento; o envio na Finalização só
+            // sobra para o pagamento sem ele.
+            if ($current === null) {
+                $workflow->attachReceipt($payment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file(
+                    "comprovante-{$payment->id}.pdf",
+                    "%PDF-1.7 comprovante {$payment->id}",
+                ));
+            }
+
             // Quem envia o comprovante não o aprova: o Finalizador confere.
             MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['finalizer'] ?? $scenario['actor']);
         }

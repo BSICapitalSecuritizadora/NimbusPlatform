@@ -88,7 +88,7 @@ it('shows financial validation on the correct payment row and preserves the subm
         ->callAction('registerPayment', data: ['pay_date' => '2026-05-20', 'payments' => [[
             'plan_set_id' => $revisionScenario['planSet']->id, 'amount' => '100.100,00',
             'financial_justification' => 'Complemento contratual a conferir.',
-        ]]])
+        ]], 'receipt' => Scenario::file()])
         ->assertHasActionErrors(['payments.0.amount']);
     expect($excess->errors()->first('mountedActions.0.data.payments.0.amount'))
         ->toStartWith(MeasurementPaymentFinancialService::EXCESS_WITHOUT_RULE_REFUSAL)
@@ -96,7 +96,7 @@ it('shows financial validation on the correct payment row and preserves the subm
 
     $data = ['pay_date' => '2026-05-20', 'payments' => [[
         'plan_set_id' => $revisionScenario['planSet']->id, 'amount' => '99.900,00',
-    ]]];
+    ]], 'receipt' => Scenario::file()];
     Livewire::test(ViewMeasurement::class, ['record' => $measurement->id])
         ->callAction('registerPayment', data: $data)
         ->assertHasActionErrors(['payments.0.financial_justification']);
@@ -123,14 +123,14 @@ it('requires unchecked financial acceptance in the finalization action', functio
     ];
     test()->actingAs($s['actor']);
     $workflow = app(MeasurementWorkflow::class);
-    $workflow->registerPayment($s['measurement'], $s['actor'], [
+    $workflow->registerPayment($s['measurement'], $s['actor'], Scenario::withReceipt([
         'plan_set_id' => $revisionScenario['planSet']->id, 'pay_date' => '2026-05-20', 'amount' => '99900.00',
         'financial_justification' => 'Retenção contratual <script>alert(1)</script>',
-    ]);
+    ]));
     $workflow->approve($s['measurement']->fresh(), $s['actor']);
     foreach ($s['measurement']->payments()->get() as $payment) {
-        $workflow->attachReceipt($payment, $s['actor'], Scenario::file());
-        // Fase 4B-1: quem enviou o comprovante não o aprova; o Finalizador confere.
+        // Fase 4B-2: o comprovante entrou com o pagamento; quem o enviou não o
+        // aprova, o Finalizador confere.
         Scenario::approveCurrentReceipt($payment, $s['finalizer']);
     }
     $page = Livewire::actingAs($s['finalizer'])->test(ViewMeasurement::class, ['record' => $s['measurement']->id])

@@ -974,9 +974,9 @@ it('lists the open measurements sent under the base version, which stay on it af
         'pay_date' => '2026-06-25',
         'amount' => '2000000.00',
         'method' => 'TED',
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]);
     $workflow->approve($finalized->fresh(), $actor);
-    $workflow->attachReceipt($payment->fresh(), $actor, MeasurementReceiptEvidenceScenario::file());
     MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $finalizer);
     $workflow->finalize($finalized->fresh(), $finalizer);
 

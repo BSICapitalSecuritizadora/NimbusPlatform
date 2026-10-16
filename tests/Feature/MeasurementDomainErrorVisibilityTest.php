@@ -208,13 +208,13 @@ function domainErrorReadyToFinalize(): array
             'plan_set_id' => $scenario[$development]->id,
             'pay_date' => '2026-08-31',
             'amount' => $amount,
+            'receipt' => ReceiptScenario::file(),
         ]);
     }
 
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
 
     foreach ($payments as $payment) {
-        $workflow->attachReceipt($payment->fresh(), $scenario['actor'], ReceiptScenario::file());
         ReceiptScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
     }
 
@@ -245,6 +245,23 @@ function domainErrorReceiptUploadFailsWith(Throwable $failure): void
     ])->makePartial();
     $service->shouldReceive('upload')->andThrow($failure);
     app()->instance(MeasurementReceiptEvidenceService::class, $service);
+}
+
+/**
+ * Dados do modal "Anexar / substituir comprovante" para o pagamento do
+ * {@see ReceiptScenario::open()}. O pagamento já nasce com o comprovante v1
+ * do registro: o envio na Finalização é uma substituição, que exige o motivo.
+ *
+ * @param  array{payment: MeasurementPayment}  $scenario
+ * @return array{payment_id: int, receipt: UploadedFile, correction_reason: string}
+ */
+function domainErrorReceiptReplacementData(array $scenario): array
+{
+    return [
+        'payment_id' => $scenario['payment']->id,
+        'receipt' => ReceiptScenario::file(),
+        'correction_reason' => 'Substituição do comprovante ilegível enviado no registro.',
+    ];
 }
 
 /**
@@ -376,6 +393,7 @@ function domainErrorPayOnlyAlfa(array $scenario): MeasurementPayment
         'plan_set_id' => $scenario['alfa']->id,
         'pay_date' => '2026-08-31',
         'amount' => '1000.00',
+        'receipt' => ReceiptScenario::file(),
     ]);
 }
 
@@ -505,6 +523,7 @@ it('shows the financial validation of a payment on the real row of the repeater'
 
     $component->set("mountedActions.0.data.payments.{$key}.financial_rule_id", $rule->id)
         ->set("mountedActions.0.data.payments.{$key}.amount", '100,00')
+        ->set('mountedActions.0.data.receipt', ReceiptScenario::file())
         ->callMountedAction();
 
     expect($key)->not->toBe('')->not->toBe('0')
@@ -524,6 +543,7 @@ it('puts the refusal of a field shared by every payment row on that single field
 
     $component->fillForm([
         'method' => str_repeat('T', 256),
+        'receipt' => ReceiptScenario::file(),
         'payments' => [$key => ['amount' => '100,00', 'financial_justification' => 'Complemento contratual a conferir.']],
     ])->callMountedAction();
 
@@ -541,6 +561,7 @@ it('refuses a zero payment amount on the row itself, in plain words', function (
     $key = domainErrorPaymentItemKey($component);
 
     $component->set("mountedActions.0.data.payments.{$key}.amount", '0,00')
+        ->set('mountedActions.0.data.receipt', ReceiptScenario::file())
         ->callMountedAction();
 
     expect($component->errors()->toArray())->toBe(["mountedActions.0.data.payments.{$key}.amount" => ['O valor do pagamento deve ser maior que zero.']])
@@ -556,6 +577,7 @@ it('names the payment fields when the payment registration refuses a row', funct
         'amount' => '100.00',
         'method' => 'TED',
         'financial_justification' => 'Complemento contratual a conferir.',
+        'receipt' => ReceiptScenario::file(),
     ];
     [$row, $message] = match ($field) {
         'amount' => [['amount' => '0.00'] + $row, 'O campo valor do pagamento deve ser maior que 0.'],
@@ -588,6 +610,7 @@ it('puts the divergence justification error on the row of the development that d
     // (Beta), sem justificativa. O domínio numera só as linhas com valor: com
     // a primeira em branco, a linha 0 dele é o segundo item do Repeater.
     $component->set("mountedActions.0.data.payments.{$keyOf[$scenario[$diverging]->id]}.amount", '100,00')
+        ->set('mountedActions.0.data.receipt', ReceiptScenario::file())
         ->callMountedAction();
 
     expect($component->errors()->toArray())->toBe([
@@ -607,7 +630,7 @@ it('shows an unavailable antivirus under the support document of the payment row
         ->mountAction('registerPayment');
     $key = domainErrorPaymentItemKey($component);
 
-    $component->fillForm(['payments' => [$key => [
+    $component->fillForm(['receipt' => ReceiptScenario::file(), 'payments' => [$key => [
         'amount' => '100,00',
         'financial_rule_id' => $rule->id,
         'financial_justification' => 'Complemento contratual a conferir.',
@@ -626,18 +649,20 @@ it('shows an unavailable antivirus under the support document of the payment row
 
 it('keeps an unavailable antivirus on the receipt field and logs it', function () {
     $scenario = ReceiptScenario::open();
+    $registered = $scenario['payment']->fresh()->currentReceiptEvidence;
     $this->actingAs($scenario['actor']);
     domainErrorScanner(ClamAvFileScanner::RESULT_UNAVAILABLE);
     $logs = domainErrorCriticalLogs();
 
     $component = Livewire::test(ViewMeasurement::class, ['record' => $scenario['measurement']->getRouteKey()])
-        ->callAction('attachReceipt', data: ['payment_id' => $scenario['payment']->id, 'receipt' => ReceiptScenario::file()]);
+        ->callAction('attachReceipt', data: domainErrorReceiptReplacementData($scenario));
 
     expect($component->errors()->get('mountedActions.0.data.receipt'))
         ->toBe(['Não foi possível verificar a segurança do arquivo. Tente novamente quando o antivírus estiver disponível.'])
         ->and(domainErrorKeysWithoutField($component))->toBe([])
         ->and(domainErrorNotifications())->toBe([])
-        ->and($scenario['payment']->fresh()->currentReceiptEvidence)->toBeNull()
+        ->and($scenario['payment']->fresh()->currentReceiptEvidence?->id)->toBe($registered->id)
+        ->and($scenario['payment']->receiptEvidences()->count())->toBe(1)
         ->and($logs->getArrayCopy())->toHaveCount(1)
         ->and($logs[0]['context'])->toMatchArray(['reason' => 'antivirus_indisponivel', 'field' => 'receipt', 'disk' => 'local'])
         ->and($logs[0]['context']['relative_path'])->toStartWith('nimbus_docs/measurements/receipts/');
@@ -645,7 +670,8 @@ it('keeps an unavailable antivirus on the receipt field and logs it', function (
 
 it('explains a receipt whose stored file disappeared before the documentary review', function () {
     $scenario = ReceiptScenario::open();
-    $evidence = app(MeasurementReceiptEvidenceService::class)->upload($scenario['payment'], $scenario['actor'], ReceiptScenario::file());
+    // O comprovante v1 do registro, enviado pelo ator, aguarda o Finalizador.
+    $evidence = $scenario['payment']->fresh()->currentReceiptEvidence;
     Storage::disk('local')->delete($evidence->storage_path);
     $this->actingAs($scenario['finalizer']);
 
@@ -662,7 +688,8 @@ it('explains a receipt whose stored file disappeared before the documentary revi
 
 it('logs a receipt refused by the integrity check of the documentary review', function (string $tampering) {
     $scenario = ReceiptScenario::open();
-    $evidence = app(MeasurementReceiptEvidenceService::class)->upload($scenario['payment'], $scenario['actor'], ReceiptScenario::file());
+    // O comprovante v1 do registro, enviado pelo ator, aguarda o Finalizador.
+    $evidence = $scenario['payment']->fresh()->currentReceiptEvidence;
     $logs = domainErrorWarningLogs();
 
     if ($tampering === 'file removed from the storage') {
@@ -755,7 +782,8 @@ it('explains a submission whose action was taken away by another decision', func
         $action = 'registerPayment';
         $component = Livewire::test(ViewMeasurement::class, ['record' => $measurement->getRouteKey()])
             ->mountAction($action);
-        $component->set('mountedActions.0.data.payments.'.domainErrorPaymentItemKey($component).'.amount', '100,00');
+        $component->set('mountedActions.0.data.payments.'.domainErrorPaymentItemKey($component).'.amount', '100,00')
+            ->set('mountedActions.0.data.receipt', ReceiptScenario::file());
 
         app(MeasurementWorkflow::class)->approve($measurement->fresh(), $scenario['actor']);
         $expectedStatus = 'awaiting_receipt';
@@ -802,6 +830,7 @@ it('reports an unexpected failure with a generic message and keeps the modal ope
 it('asks to try again when the database refuses the action because of a concurrent update', function (string $failure) {
     Exceptions::fake();
     $scenario = ReceiptScenario::open();
+    $registered = $scenario['payment']->fresh()->currentReceiptEvidence;
     $this->actingAs($scenario['actor']);
     $deadlock = new QueryException('mysql', 'insert into `measurement_payment_receipt_evidences` (`version`) values (?)', [1], new PDOException('SQLSTATE[40001]: Serialization failure: 1213 Deadlock found when trying to get lock; try restarting transaction'));
     $exception = match ($failure) {
@@ -813,7 +842,7 @@ it('asks to try again when the database refuses the action because of a concurre
     domainErrorReceiptUploadFailsWith($exception);
 
     $component = Livewire::test(ViewMeasurement::class, ['record' => $scenario['measurement']->getRouteKey()])
-        ->callAction('attachReceipt', data: ['payment_id' => $scenario['payment']->id, 'receipt' => ReceiptScenario::file()]);
+        ->callAction('attachReceipt', data: domainErrorReceiptReplacementData($scenario));
 
     expect(domainErrorNotificationBody('Ação não concluída.'))->toBe($failure === 'integrity violation'
         ? 'Não foi possível concluir a ação agora. Atualize a página para conferir a situação da medição antes de tentar de novo.'
@@ -823,7 +852,8 @@ it('asks to try again when the database refuses the action because of a concurre
     Exceptions::assertReported($exception::class);
     $component->assertActionMounted('attachReceipt');
 
-    expect($scenario['payment']->fresh()->currentReceiptEvidence)->toBeNull();
+    expect($scenario['payment']->fresh()->currentReceiptEvidence?->id)->toBe($registered->id)
+        ->and($scenario['payment']->receiptEvidences()->count())->toBe(1);
 })->with(['deadlock', 'lock wait timeout', 'deadlock inside an outer transaction', 'integrity violation']);
 
 it('leaves an HTTP response to the panel instead of turning it into the generic message', function () {
@@ -832,7 +862,7 @@ it('leaves an HTTP response to the panel instead of turning it into the generic 
     domainErrorReceiptUploadFailsWith(new HttpException(403, 'Acesso negado pelo painel.'));
 
     Livewire::test(ViewMeasurement::class, ['record' => $scenario['measurement']->getRouteKey()])
-        ->callAction('attachReceipt', data: ['payment_id' => $scenario['payment']->id, 'receipt' => ReceiptScenario::file()])
+        ->callAction('attachReceipt', data: domainErrorReceiptReplacementData($scenario))
         ->assertForbidden();
 
     expect(domainErrorNotifications())->toBe([]);
@@ -844,7 +874,7 @@ it('explains a lost authorization in Portuguese', function () {
     domainErrorReceiptUploadFailsWith(new AuthorizationException);
 
     $component = Livewire::test(ViewMeasurement::class, ['record' => $scenario['measurement']->getRouteKey()])
-        ->callAction('attachReceipt', data: ['payment_id' => $scenario['payment']->id, 'receipt' => ReceiptScenario::file()]);
+        ->callAction('attachReceipt', data: domainErrorReceiptReplacementData($scenario));
 
     expect(domainErrorNotificationBody('Ação não concluída.'))
         ->toBe('Você não tem permissão para concluir esta ação nesta medição. Atualize a página para ver a situação atual.')
@@ -963,7 +993,6 @@ it('shows the development without payment to the finalizer, with its justificati
     $justification = 'Torre Beta sem pagamento: pendência documental do construtor.';
     $workflow = app(MeasurementWorkflow::class);
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor'], $justification);
-    $workflow->attachReceipt($payment->fresh(), $scenario['actor'], ReceiptScenario::file());
     ReceiptScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
     $this->actingAs($scenario['finalizer']);
 
@@ -1013,6 +1042,7 @@ it('refuses the finalization without the acceptance with the sentence of the dom
             'pay_date' => '2026-08-31',
             'amount' => '1500.00',
             'financial_justification' => 'Retenção de R$ 500,00 por pendência documental.',
+            'receipt' => ReceiptScenario::file(),
         ]);
         $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
         $expected = 'Confirme expressamente o aceite das divergências e justificativas financeiras.';
@@ -1022,7 +1052,6 @@ it('refuses the finalization without the acceptance with the sentence of the dom
     }
 
     foreach ($payments as $payment) {
-        $workflow->attachReceipt($payment->fresh(), $scenario['actor'], ReceiptScenario::file());
         ReceiptScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
     }
 
@@ -1069,7 +1098,6 @@ it('does not present as accepted a development without payment of a measurement 
     $payment = domainErrorPayOnlyAlfa($scenario);
     $workflow = app(MeasurementWorkflow::class);
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor'], 'Torre Beta fica para a próxima competência.');
-    $workflow->attachReceipt($payment->fresh(), $scenario['actor'], ReceiptScenario::file());
     ReceiptScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
     $scenario['measurement']->fresh()->forceFill(['status' => 'finalized'])->save();
 
@@ -1093,6 +1121,7 @@ it('no longer says that the reconciliation divergence is merely informative', fu
 
 it('refuses a forged receipt path on the field and still accepts a real upload', function () {
     $scenario = ReceiptScenario::open();
+    $registered = $scenario['payment']->fresh()->currentReceiptEvidence;
     $this->actingAs($scenario['actor']);
     $forged = 'nimbus_docs/measurements/receipts/'.Str::uuid().'/alheio.pdf';
     Storage::disk('local')->put($forged, '%PDF-1.7 comprovante de outra medição');
@@ -1100,20 +1129,23 @@ it('refuses a forged receipt path on the field and still accepts a real upload',
     $component = Livewire::test(ViewMeasurement::class, ['record' => $scenario['measurement']->getRouteKey()])
         ->mountAction('attachReceipt')
         ->set('mountedActions.0.data.payment_id', $scenario['payment']->id)
+        ->set('mountedActions.0.data.correction_reason', 'Substituição do comprovante ilegível enviado no registro.')
         ->set('mountedActions.0.data.receipt', [(string) Str::uuid() => $forged])
         ->callMountedAction();
 
     expect($component->errors()->get('mountedActions.0.data.receipt'))->toBe(['O campo comprovante contém um caminho de arquivo que não é permitido.'])
         ->and(domainErrorKeysWithoutField($component))->toBe([])
-        ->and($scenario['payment']->fresh()->currentReceiptEvidence)->toBeNull();
+        ->and($scenario['payment']->fresh()->currentReceiptEvidence?->id)->toBe($registered->id)
+        ->and($scenario['payment']->receiptEvidences()->count())->toBe(1);
 
     // Em lista, o arquivo novo substitui a entrada forjada no estado do campo
     // (arquivo único num estado que já é array seria anexado a ela).
-    $component->fillForm(['receipt' => [ReceiptScenario::file()]])
+    $component->fillForm(['receipt' => [ReceiptScenario::file('comprovante substituto.pdf')]])
         ->callMountedAction()
         ->assertHasNoActionErrors();
 
-    expect($scenario['payment']->fresh()->currentReceiptEvidence?->original_filename)->toBe('comprovante TED.pdf');
+    expect($scenario['payment']->fresh()->currentReceiptEvidence?->original_filename)->toBe('comprovante substituto.pdf')
+        ->and($scenario['payment']->fresh()->currentReceiptEvidence?->version)->toBe(2);
     Storage::disk('local')->assertExists($forged);
 });
 
@@ -1127,7 +1159,7 @@ it('refuses a forged support document path on the payment row and still accepts 
         ->mountAction('registerPayment');
     $key = domainErrorPaymentItemKey($component);
 
-    $component->fillForm(['payments' => [$key => ['amount' => '100,00', 'financial_rule_id' => $rule->id, 'financial_justification' => 'Complemento contratual a conferir.']]])
+    $component->fillForm(['receipt' => ReceiptScenario::file(), 'payments' => [$key => ['amount' => '100,00', 'financial_rule_id' => $rule->id, 'financial_justification' => 'Complemento contratual a conferir.']]])
         ->set("mountedActions.0.data.payments.{$key}.financial_support", [(string) Str::uuid() => $forged])
         ->callMountedAction();
 

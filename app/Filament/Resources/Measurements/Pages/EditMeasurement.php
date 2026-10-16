@@ -112,7 +112,11 @@ class EditMeasurement extends EditRecord
 
         $this->wasApprovedMeanwhile = true;
 
-        $this->refuse($record->hasApprovedEngineering() ? self::ALREADY_APPROVED_MESSAGE : self::CLOSED_REVISION_MESSAGE);
+        $this->refuse(match (true) {
+            $record->hasApprovedEngineering() => self::ALREADY_APPROVED_MESSAGE,
+            $record->isRevision() => self::CLOSED_REVISION_MESSAGE,
+            default => Measurement::TERMINAL_CONTENT_CHANGE_REFUSAL,
+        });
 
         $this->redirect($resource::getUrl('view', ['record' => $record]));
     }

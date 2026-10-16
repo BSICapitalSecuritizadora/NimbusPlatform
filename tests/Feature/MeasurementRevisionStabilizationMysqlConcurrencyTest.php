@@ -617,10 +617,9 @@ it('keeps the measurement awaiting receipts when a receipt correction and the ap
     $firstPayment = Scenario::pay($scenario, $may, '60000.00', justification: 'Primeira parcela do pagamento de maio.');
     $secondPayment = Scenario::pay($scenario, $may, '40000.00');
     app(MeasurementWorkflow::class)->approve($may->fresh(), $scenario['actor']);
-    $receipts = app(MeasurementReceiptEvidenceService::class);
-    $pending = $receipts->upload($firstPayment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file('parcela-1.pdf', '%PDF-1.7 parcela 1'));
-    $receipts->upload($secondPayment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file('parcela-2.pdf', '%PDF-1.7 parcela 2'));
-    // Fase 4B-1: o ator enviou os comprovantes; quem os aprova é o Finalizador.
+    // Fase 4B-2: os comprovantes entraram com os pagamentos, enviados pelo
+    // ator; quem os aprova é o Finalizador.
+    $pending = $firstPayment->fresh()->currentReceiptEvidence;
     MeasurementReceiptEvidenceScenario::approveCurrentReceipt($secondPayment, $scenario['finalizer']);
     $correction = p31RaceReceiptUpload($secondPayment);
     $approval = p31RaceReceiptApproval($scenario, $pending);

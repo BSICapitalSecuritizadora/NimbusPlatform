@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Funds\Schemas;
 
 use App\Concerns\MoneyFormatter;
+use App\Filament\Resources\BankAccounts\Schemas\BankAccountForm;
 use App\Filament\Resources\Banks\Schemas\BankForm;
 use App\Filament\Resources\FundAllocations\FundAllocationResource;
 use App\Filament\Resources\FundAllocations\Schemas\FundAllocationDraftLines;
@@ -212,7 +213,16 @@ class FundForm
                                 $set('account', $account->formattedAccount());
                             }
                         })
-                        ->helperText('Uma conta pode atender a várias operações. Ao selecionar, banco, agência e conta legados são derivados da conta.'),
+                        ->helperText('Uma conta pode atender a várias operações. Ao selecionar, banco, agência e conta legados são derivados da conta.')
+                        ->createOptionForm(BankAccountForm::fields())
+                        ->createOptionAction(
+                            fn (Action $action): Action => $action
+                                ->label('Cadastrar conta')
+                                ->tooltip('Cadastrar conta bancária global')
+                                ->modalHeading('Cadastrar conta bancária global')
+                                ->modalWidth('2xl')
+                                ->visible(fn (): bool => auth()->user()?->can('funds.create') ?? false),
+                        ),
 
                     Select::make('bank_application_id')
                         ->label('Aplicação bancária')
@@ -234,6 +244,18 @@ class FundForm
                         ->helperText('Filtrada pela conta selecionada. Pode ficar pendente: o fundo pode ser vinculado à conta antes da aplicação ser identificada. Não confundir com a "Aplicação" da classificação.')
                         ->rule(new BankApplicationBelongsToAccount),
 
+                    Placeholder::make('bank_account_summary')
+                        ->label('Resumo da conta física')
+                        ->content(fn (Get $get): ?HtmlString => static::bankAccountSummary($get('bank_account_id')))
+                        ->visible(fn (Get $get): bool => filled($get('bank_account_id')))
+                        ->columnSpanFull(),
+
+                    Placeholder::make('bank_application_pending_note')
+                        ->hiddenLabel()
+                        ->content(new HtmlString('<span class="text-sm text-gray-600 dark:text-gray-300">Aplicação bancária pendente: o fundo fica vinculado à conta até que o código do produto informado pelo banco seja identificado. Selecione a aplicação depois, na edição do fundo.</span>'))
+                        ->visible(fn (Get $get): bool => filled($get('bank_account_id')) && blank($get('bank_application_id')))
+                        ->columnSpanFull(),
+
                     Placeholder::make('bank_application_shared_note')
                         ->hiddenLabel()
                         ->content(fn (Get $get): ?HtmlString => static::sharedApplicationNote($get('bank_application_id')))
@@ -244,7 +266,7 @@ class FundForm
                 ->columnSpanFull(),
 
             Section::make('Dados Bancários')
-                ->description('Informações da instituição financeira, agência, conta e integração técnica.')
+                ->description('Cadastro manual legado: preencha banco, agência e conta somente quando o fundo ainda não usa uma conta bancária global. Com a conta selecionada acima, estes valores são derivados dela e ficam somente leitura.')
                 ->schema([
                     Select::make('bank_id')
                         ->label('Banco')
@@ -357,6 +379,13 @@ class FundForm
                             'unique' => 'Já existe um fundo cadastrado com esta combinação de operação, aplicação e conta.',
                         ]),
 
+                ])
+                ->columns(3)
+                ->columnSpanFull(),
+
+            Section::make('Integração Conta Azul')
+                ->description('Sincronização operacional de despesas: informe o UUID da conta financeira deste fundo no Conta Azul. A importação automática usa este ID — ele nunca é derivado da conta física nem copiado da conta global.')
+                ->schema([
                     TextInput::make('conta_azul_account_id')
                         ->label('ID da conta no Conta Azul')
                         ->placeholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
@@ -368,7 +397,6 @@ class FundForm
                         ])
                         ->columnSpanFull(),
                 ])
-                ->columns(3)
                 ->columnSpanFull(),
 
             Section::make('Saldos e Limites')
@@ -438,6 +466,40 @@ class FundForm
         }
 
         return (int) $value;
+    }
+
+    /**
+     * Read-only physical identity of the selected global bank account.
+     *
+     * Runs one account lookup plus one application count on a single-record
+     * form, so the cost is constant. Never renders Conta Azul identifiers:
+     * the operational UUID lives in "Integração Conta Azul" and is not
+     * derived from this account.
+     */
+    protected static function bankAccountSummary(mixed $accountId): ?HtmlString
+    {
+        if (blank($accountId)) {
+            return null;
+        }
+
+        $account = BankAccount::query()->with('bank')->find($accountId);
+
+        if (! $account instanceof BankAccount) {
+            return null;
+        }
+
+        $applicationsCount = $account->bankApplications()->count();
+
+        $applicationsNote = $applicationsCount === 0
+            ? 'Nenhuma aplicação bancária cadastrada nesta conta ainda.'
+            : ($applicationsCount === 1
+                ? '1 aplicação bancária cadastrada nesta conta.'
+                : $applicationsCount.' aplicações bancárias cadastradas nesta conta.');
+
+        return new HtmlString(
+            '<span class="font-mono text-sm font-semibold text-gray-900 dark:text-white">'.e($account->optionLabel()).'</span>'
+            .' <span class="text-sm text-gray-500 dark:text-gray-400">'.e($applicationsNote).'</span>'
+        );
     }
 
     /**

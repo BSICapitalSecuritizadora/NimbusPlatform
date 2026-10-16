@@ -240,10 +240,10 @@ it('never lets the revision maker approve it at Compliance on MySQL, even by adm
 it('never lets the uploader approve the receipt they sent on MySQL, even by admin override, while the Finalizer approves it', function () {
     $scenario = Governance::plan();
     $measurement = Governance::awaitingPayment($scenario, '2026-05', [10, 10]);
-    Governance::pay($scenario, $measurement, [Governance::row($scenario, 0, '100000.00'), Governance::row($scenario, 1, '50000.00')]);
+    // Fase 4B-2: o admin registra o pagamento pelo override -- e com ele envia
+    // o comprovante -- e tentaria aprová-lo.
+    Governance::pay($scenario, $measurement, [Governance::row($scenario, 0, '100000.00'), Governance::row($scenario, 1, '50000.00')], $scenario['admin'], 'Registro em nome do Gestor de Pagamento, ausente.');
     Governance::approvePaymentStage($scenario, $measurement);
-    // O admin envia o comprovante pelo override e tentaria aprová-lo.
-    Governance::uploadReceipts($scenario, $measurement, $scenario['admin'], 'Envio em nome de quem envia comprovantes, ausente.');
     $evidence = $measurement->fresh()->payments()->orderBy('id')->first()->currentReceiptEvidence()->firstOrFail();
     $review = fn (int $actorId, ?string $reason = null): array => array_filter([
         'action' => 'approve_receipt',

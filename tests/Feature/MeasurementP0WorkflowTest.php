@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\MeasurementReceiptReviewStatus;
 use App\Enums\OperationStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Models\Measurement;
@@ -9,6 +10,7 @@ use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use App\Models\User;
 use App\Notifications\MeasurementWorkflowNotification;
+use App\Services\MeasurementReceiptEvidenceService;
 use App\Services\MeasurementWorkflow;
 use App\Support\BusinessTime;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -178,11 +180,16 @@ it('executes the formal five-stage workflow without treating payment registratio
         'amount' => 150000.50,
         'financial_justification' => 'Pagamento parcial previsto para esta medição.',
         'method' => 'PIX',
+        'receipt' => MeasurementReceiptEvidenceScenario::file('payment.pdf', '%PDF-1.7 receipt-real-content'),
     ]);
 
+    // Fase 4B-2: o pagamento entra com o comprovante da transferência, que
+    // nasce pendente e assinado por quem registrou o pagamento.
     expect($measurement->fresh()->status)->toBe('awaiting_payment')
         ->and($measurement->fresh()->reviewForStage(4)?->status)->toBe('pending')
-        ->and($payment->created_by)->toBe($scenario['payment']->id);
+        ->and($payment->created_by)->toBe($scenario['payment']->id)
+        ->and($payment->fresh()->currentReceiptEvidence->uploaded_by)->toBe($scenario['payment']->id)
+        ->and($payment->fresh()->currentReceiptEvidence->sha256)->toBe(hash('sha256', '%PDF-1.7 receipt-real-content'));
 
     expect(fn () => $workflow->finalize($measurement->fresh(), $scenario['finalizer']))
         ->toThrow(MeasurementWorkflowException::class);
@@ -192,11 +199,11 @@ it('executes the formal five-stage workflow without treating payment registratio
         ->and($measurement->fresh()->current_stage)->toBe(5)
         ->and($measurement->fresh()->reviewForStage(4)?->status)->toBe('approved');
 
-    $workflow->attachReceipt($payment, $scenario['receipt'], MeasurementReceiptEvidenceScenario::file('payment.pdf', '%PDF-1.7 receipt-real-content'));
+    // O comprovante pendente segura a Finalização até a conferência.
+    expect(fn () => $workflow->finalize($measurement->fresh(), $scenario['finalizer'], acceptFinancialExceptions: true))
+        ->toThrow(MeasurementWorkflowException::class);
 
-    expect($measurement->fresh()->status)->toBe('awaiting_receipt')
-        ->and($payment->fresh()->currentReceiptEvidence->uploaded_by)->toBe($scenario['receipt']->id)
-        ->and($payment->fresh()->currentReceiptEvidence->sha256)->toBe(hash('sha256', '%PDF-1.7 receipt-real-content'));
+    expect($measurement->fresh()->status)->toBe('awaiting_receipt');
 
     MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
 
@@ -294,6 +301,7 @@ function registerP0Payment(array $scenario): MeasurementPayment
         'pay_date' => '2026-08-20',
         'amount' => 1000,
         'financial_justification' => 'Pagamento parcial previsto para esta medição.',
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]);
 }
 
@@ -318,8 +326,16 @@ it('refuses to return a paid measurement from Finalization to Engineering and to
     $payment = registerP0Payment($scenario);
     $workflow->approve($scenario['measurement']->fresh(), $scenario['payment']);
 
-    if ($receipt !== 'no receipt') {
-        $workflow->attachReceipt($payment->fresh(), $scenario['receipt'], MeasurementReceiptEvidenceScenario::file());
+    // Fase 4B-2: o comprovante entra com o pagamento -- não existe mais
+    // pagamento sem comprovante. A situação do comprovante é o que varia.
+    if ($receipt === 'rejected receipt') {
+        app(MeasurementReceiptEvidenceService::class)->review(
+            $payment->fresh()->currentReceiptEvidence,
+            $scenario['finalizer'],
+            MeasurementReceiptReviewStatus::Rejected,
+            true,
+            rejectionReason: 'Comprovante ilegível.',
+        );
     }
 
     if ($receipt === 'approved receipt') {
@@ -387,7 +403,7 @@ it('refuses to return a paid measurement from Finalization to Engineering and to
         MeasurementWorkflowNotification::class,
         fn (MeasurementWorkflowNotification $notification): bool => $notification->event === 'rejected',
     );
-})->with(['no receipt', 'pending receipt', 'approved receipt']);
+})->with(['pending receipt', 'rejected receipt', 'approved receipt']);
 
 it('stops at Gestão the stage-by-stage rejection of a paid measurement and lets Engineering correct a legacy paid row without closing it', function () {
     $scenario = createP0Scenario();
@@ -491,6 +507,7 @@ it('allows finalization to return to an earlier stage only with persisted eviden
         'pay_date' => BusinessTime::dateString(),
         'amount' => 1000,
         'financial_justification' => 'Pagamento parcial previsto para esta medição.',
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]);
     $workflow->approve($scenario['measurement']->fresh(), $scenario['payment']);
 
@@ -516,8 +533,8 @@ it('keeps batch and per-development payments, records authors and rejects invali
     $workflow = app(MeasurementWorkflow::class);
 
     $payments = $workflow->registerPayments($scenario['measurement']->fresh(), $scenario['payment'], [
-        ['plan_set_id' => $scenario['planSet']->id, 'amount' => 100, 'pay_date' => '2026-08-20', 'financial_justification' => 'Primeira parcela.'],
-        ['plan_set_id' => $scenario['planSet']->id, 'amount' => 200, 'pay_date' => '2026-08-21', 'financial_justification' => 'Segunda parcela.'],
+        MeasurementReceiptEvidenceScenario::withReceipt(['plan_set_id' => $scenario['planSet']->id, 'amount' => 100, 'pay_date' => '2026-08-20', 'financial_justification' => 'Primeira parcela.']),
+        MeasurementReceiptEvidenceScenario::withReceipt(['plan_set_id' => $scenario['planSet']->id, 'amount' => 200, 'pay_date' => '2026-08-21', 'financial_justification' => 'Segunda parcela.']),
         ['plan_set_id' => $scenario['planSet']->id, 'amount' => null, 'pay_date' => '2026-08-21'],
     ]);
 
@@ -528,6 +545,7 @@ it('keeps batch and per-development payments, records authors and rejects invali
     expect(fn () => $workflow->registerPayment($scenario['measurement']->fresh(), $scenario['payment'], [
         'amount' => -1,
         'pay_date' => BusinessTime::dateString(),
+        'receipt' => MeasurementReceiptEvidenceScenario::file(),
     ]))->toThrow(ValidationException::class);
 });
 

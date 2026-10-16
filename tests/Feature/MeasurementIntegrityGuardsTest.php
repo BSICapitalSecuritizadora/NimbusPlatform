@@ -41,6 +41,7 @@ use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\MeasurementPhysicalProgressScenario as PhysicalScenario;
 use Tests\Support\MeasurementPlanVersionFixture;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 use Tests\Support\MeasurementRevisionScenario;
 
 /**
@@ -218,8 +219,9 @@ function integrityGuardsApproveEngineering(array $scenario, int $percent = 10): 
 
 /**
  * A medição de agosto paga nas duas obras -- R$ 1.000,00 e R$ 2.000,00, o
- * esperado pelo avanço de 10% --, com a etapa Pagamento aprovada e os
- * comprovantes ainda por enviar, na Finalização: o ponto de onde a medição
+ * esperado pelo avanço de 10% --, cada pagamento registrado com o seu
+ * comprovante, com a etapa Pagamento aprovada e os comprovantes ainda por
+ * conferir, na Finalização: o ponto de onde a medição
  * paga voltava à Engenharia antes da Fase 3.1.
  *
  * @return array{actor: User, operation: Operation, measurement: Measurement, planSets: list<MeasurementPlanSet>, august: list<MeasurementPlanLine>, september: list<MeasurementPlanLine>, assets: list<MeasurementAsset>, payments: list<MeasurementPayment>}
@@ -234,8 +236,8 @@ function integrityGuardsPaidAtFinalization(): array
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
     $scenario['payments'] = $workflow->registerPayments($scenario['measurement']->fresh(), $scenario['actor'], [
-        ['plan_set_id' => $alfa->id, 'pay_date' => '2026-08-31', 'amount' => '1000.00'],
-        ['plan_set_id' => $beta->id, 'pay_date' => '2026-08-31', 'amount' => '2000.00'],
+        MeasurementReceiptEvidenceScenario::withReceipt(['plan_set_id' => $alfa->id, 'pay_date' => '2026-08-31', 'amount' => '1000.00']),
+        MeasurementReceiptEvidenceScenario::withReceipt(['plan_set_id' => $beta->id, 'pay_date' => '2026-08-31', 'amount' => '2000.00']),
     ])->all();
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
     $scenario['measurement'] = $scenario['measurement']->fresh();
@@ -838,7 +840,9 @@ it('offers on the send form only the operations where the person can send a meas
 it('keeps the saved operation listed when editing a measurement of a closed operation', function () {
     $scenario = PhysicalScenario::plan();
     $measurement = PhysicalScenario::measurement($scenario, '2026-05');
-    app(MeasurementWorkflow::class)->reject($measurement->fresh(), $scenario['actor'], 'Arquivo de outra competência.');
+    // A recusada é só histórico e não abre mais no Editar. A medição aberta
+    // numa operação encerrada é estado legado (o encerramento recusa operação
+    // com medição aberta), montado em silêncio: o que importa é o seletor.
     $scenario['operation']->forceFill(['status' => 'completed'])->saveQuietly();
     $this->actingAs($scenario['actor']);
 

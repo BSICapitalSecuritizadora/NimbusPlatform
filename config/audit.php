@@ -41,6 +41,11 @@ return [
         'measurement_file_access',   // controllers de download — asset, arquivo da medição e comprovante, com sha256
         'measurements',              // Measurement (LogsActivity) — situação, etapa e demais colunas; MeasurementPlanSet, MeasurementPlanVersion e MeasurementPlanLine (LogsActivity) — plano, versões (fundo e cronograma), avanço físico inicial; MeasurementPlanVersionService::audit() — criação, ativação, substituição e cancelamento de versão
         'measurement_payments',      // MeasurementPayment (LogsActivity) — valor, data, comprovante
+        // Quem criou, trocou ou removeu o arquivo de um empreendimento: a
+        // segregação da Compliance (MeasurementSegregationService::revisionContentEditorIds())
+        // lê daqui quem alterou o conteúdo da revisão. Descartada em um ano, a
+        // autoria sumiria antes do histórico financeiro que ela protege.
+        'measurement_assets',        // MeasurementAsset::auditAssetChange() — arquivo criado, substituído ou removido, com sha256
         'operations',                // Operation (LogsActivity) + OperationLifecycleService — transições de ciclo de vida; OperationResponsibilityService::syncRejectionRecipients() — quem é notificado em caso de recusa
         'delegations',               // ResponsibilityDelegation (LogsActivity) + criação/revogação explícitas
         'areas',                     // AreaResponsibilityService — quem responde por cada área (habilita a auto-homologação do PU)

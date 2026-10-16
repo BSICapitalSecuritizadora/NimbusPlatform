@@ -19,6 +19,7 @@ use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\CommittedRowsSweeper;
 use Tests\Support\MeasurementPhysicalProgressScenario;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 use Tests\Support\MeasurementRevisionScenario as Scenario;
 
 /*
@@ -134,7 +135,8 @@ function revisionRaceTask(array $instruction): Closure
                 'payment' => app(MeasurementWorkflow::class)->registerPayment(
                     $measurement,
                     $actor,
-                    $instruction['payment'],
+                    // O comprovante nasce no processo filho.
+                    MeasurementReceiptEvidenceScenario::withReceipt($instruction['payment']),
                     expectedRevision: $instruction['revision'],
                 )->getKey(),
                 'submit_measurement' => Scenario::submitUnderOperationLock($instruction, $actor),

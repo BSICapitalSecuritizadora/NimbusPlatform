@@ -137,7 +137,7 @@ it('notifies the payment manager to attach receipts when a payment is registered
     ]);
 
     app(MeasurementWorkflow::class)->registerPayments($measurement, $manager, [
-        ['amount' => 5000, 'pay_date' => BusinessTime::dateString()],
+        MeasurementReceiptEvidenceScenario::withReceipt(['amount' => 5000, 'pay_date' => BusinessTime::dateString()]),
     ]);
 
     Notification::assertSentTo(
@@ -179,6 +179,12 @@ it('does not announce readiness to finalize while an uploaded receipt awaits doc
         MeasurementWorkflowNotification::class,
         fn (MeasurementWorkflowNotification $n): bool => $n->event === 'ready_to_finalize',
     );
+    // Fase 4B-2: o Finalizador é avisado de que há comprovante a conferir.
+    Notification::assertSentTo(
+        $finalizer,
+        MeasurementWorkflowNotification::class,
+        fn (MeasurementWorkflowNotification $n): bool => $n->event === 'receipts_awaiting_review',
+    );
 });
 
 it('does not announce readiness when another payment still has no evidence', function () {
@@ -202,7 +208,20 @@ it('does not announce readiness when another payment still has no evidence', fun
 
     app(MeasurementWorkflow::class)->attachReceipt($paymentA, $uploader, MeasurementReceiptEvidenceScenario::file());
 
-    Notification::assertNotSentTo($finalizer, MeasurementWorkflowNotification::class);
+    // Fase 4B-2: o envio avisa o Finalizador de que há comprovante a conferir
+    // (`receipts_awaiting_review`), mas não anuncia a medição pronta para
+    // finalizar enquanto o outro pagamento continua sem comprovante.
+    Notification::assertNotSentTo(
+        $finalizer,
+        MeasurementWorkflowNotification::class,
+        fn (MeasurementWorkflowNotification $n): bool => $n->event === 'ready_to_finalize',
+    );
+    Notification::assertSentTo(
+        $finalizer,
+        MeasurementWorkflowNotification::class,
+        fn (MeasurementWorkflowNotification $n): bool => $n->event === 'receipts_awaiting_review',
+    );
+    Notification::assertSentToTimes($finalizer, MeasurementWorkflowNotification::class, 1);
 });
 
 it('notifies the payment manager when the last stage is approved', function () {
