@@ -128,7 +128,8 @@ function fundAllocationP0Scenario(string $competence = '2026-09'): array
 
 it('observes a fund edit committed while the approval waited on the fund lock', function () {
     $scenario = fundAllocationP0Scenario();
-    $gate = tempnam(sys_get_temp_dir(), 'fund_allocation_p0_gate_');
+    $gate = temporaryTestFilePath('fund-allocation-p0-gate', 'lock');
+    file_put_contents($gate, '');
 
     try {
         // The background editor takes the fund row lock first (the gate file

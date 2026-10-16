@@ -13,6 +13,7 @@ use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\Obligatio
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Filament\Resources\Expenses\Pages\ListExpenses;
 use App\Filament\Resources\ExpenseServiceProviders\Pages\ListExpenseServiceProviders;
+use App\Filament\Resources\FundAllocations\Pages\ListFundAllocations;
 use App\Filament\Resources\FundNames\Pages\ListFundNames;
 use App\Filament\Resources\Funds\Pages\ListFunds;
 use App\Filament\Resources\ImportRuns\Pages\ListImportRuns;
@@ -119,7 +120,7 @@ function constructionFilterPages(): array
 
 /**
  * Todo filtro de Operação das tabelas do painel: a página de listagem e o nome do filtro.
- * Despesas e Fundos filtram a emissão, mas o rótulo exibido é "Operação".
+ * Despesas, Fundos e Alocações filtram a emissão, mas o rótulo exibido é "Operação".
  *
  * @return array<string, array{0: class-string, 1: string}>
  */
@@ -130,6 +131,7 @@ function operationFilterPages(): array
         'workspace de pagamentos' => [ListPaymentWorkspace::class, 'operation_id'],
         'despesas' => [ListExpenses::class, 'emission_id'],
         'fundos' => [ListFunds::class, 'emission_id'],
+        'alocações por competência' => [ListFundAllocations::class, 'emission_id'],
     ];
 }
 

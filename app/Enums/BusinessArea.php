@@ -76,7 +76,7 @@ enum BusinessArea: string
             self::ConstructionOperations => ['constructions.', 'operations.', 'measurements.', 'delegations.'],
             self::SalesBoards => ['sales-boards.', 'receivables.', 'negotiations.'],
             self::ClientsContracts => ['clients.', 'contracts.', 'contract-installments.'],
-            self::Registrations => ['investors.', 'funds.', 'documents.', 'expenses.', 'conta-azul-imports.'],
+            self::Registrations => ['investors.', 'funds.', 'fund-allocations.', 'documents.', 'expenses.', 'conta-azul-imports.'],
             self::Commercial => ['proposals.', 'proposal-representatives.', 'contact-messages.'],
             self::Recruitment => ['recruitment.'],
             self::ExternalDocuments => ['nimbus.'],

@@ -83,7 +83,7 @@ it('flags incomplete fixtures instead of failing', function () {
 });
 
 it('rejects ambiguous fixtures and bad targets', function () {
-    $mixed = sys_get_temp_dir().'/bradesco-mixed-'.uniqid().'.json';
+    $mixed = temporaryTestFilePath('bradesco-mixed', 'json');
     file_put_contents($mixed, json_encode(['saldoCC' => [], 'extratoPorPeriodo' => []]));
 
     $this->artisan('bradesco:balances:diagnose', [
